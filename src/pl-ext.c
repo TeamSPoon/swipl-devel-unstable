@@ -380,6 +380,7 @@ DECL_PLIST(term);
 DECL_PLIST(debug);
 DECL_PLIST(locale);
 DECL_PLIST(dict);
+DECL_PLIST(cont);
 
 void
 initBuildIns(void)
@@ -441,6 +442,7 @@ initBuildIns(void)
 #endif
   REG_PLIST(debug);
   REG_PLIST(dict);
+  REG_PLIST(cont);
 
 #define LOOKUPPROC(name) \
 	{ GD->procedures.name = lookupProcedure(FUNCTOR_ ## name, m); \
@@ -449,6 +451,7 @@ initBuildIns(void)
 
   LOOKUPPROC(dgarbage_collect1);
   LOOKUPPROC(catch3);
+  LOOKUPPROC(reset3);
   LOOKUPPROC(true0);
   LOOKUPPROC(fail0);
   LOOKUPPROC(equals2);
