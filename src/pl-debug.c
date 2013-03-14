@@ -84,9 +84,13 @@ const debug_topic debug_topics[] =
   DEBUG_TOPIC(MSG_OPERATOR),
   DEBUG_TOPIC(MSG_MUTEX_GC),
   DEBUG_TOPIC(MSG_REC_ATTVAR),
-						/* Parser */
+	/* Parser */
   DEBUG_TOPIC(MSG_READ_TOKEN),
-						/* GC messages */
+
+    /* continuations*/
+    DEBUG_TOPIC(MSG_CONTINUE),
+
+  /* GC messages */
   DEBUG_TOPIC(MSG_AGC),
   DEBUG_TOPIC(MSG_CLAUSE_GC),
   DEBUG_TOPIC(MSG_GC_STATS),
