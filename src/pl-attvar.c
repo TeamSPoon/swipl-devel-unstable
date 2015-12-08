@@ -93,6 +93,65 @@ PL_get_attr__LD(term_t t, term_t a ARG_LD)
 
 #define PL_get_attr(t, a) PL_get_attr__LD(t, a PASS_LD)
 
+static void put_att_value(Word vp, atom_t name, Word value ARG_LD);
+
+#if O_TERMSINK
+bool
+canUnifyAttVar(atom_t uniftype, bool* exitNow, bool* trailUnneeded, bool* restart, Word av, Word value ARG_LD) {
+
+	exitNow = trailUnneeded = restart = 0;
+	if( (LD->attvar.sinkdepth > 2 )) return(FALSE);
+	
+    if( (LD->attvar.sinkmode & 512) != 0 ) return(FALSE);
+
+	word w1, w2;
+
+	deRef(av); w1 = *av;
+	deRef(value); w2 = *value;
+
+	wakeup_state wstate;
+	int rc;
+	predicate_t  pred;
+
+	
+
+	pred = _PL_predicate("unify_attvar", 6, "$attvar",
+						 &GD->procedures.unify_attvar6);
+
+    if( !saveWakeup(&wstate, TRUE PASS_LD) )
+		return(FALSE);
+
+	term_t avr = PL_new_term_refs(6);
+	
+	*valTermRef(avr+1) = makeRef(av);   
+	*valTermRef(avr+2) = makeRef(value);
+
+	LD->attvar.sinkdepth++;
+    PL_put_atom(avr,uniftype);
+	rc = PL_call_predicate(NULL, PL_Q_NODEBUG|PL_Q_PASS_EXCEPTION, pred, avr);
+    LD->attvar.sinkdepth--;
+
+	if( rc != TRUE && !PL_exception(0) )
+		rc = TRUE;
+
+	int b;
+	if( PL_get_bool(avr+6, & b ) ) {
+		exitNow = b;
+	}
+
+	if( rc == TRUE ) {
+		*av = *valTermRef(avr+5);
+		*value = *valTermRef(avr+6);
+	} else {
+		*value = *av;
+	}
+	restoreWakeup(&wstate PASS_LD);
+
+	return(rc);
+}
+#endif
+
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 (*) Although this is an assignment from var   to value, we use a trailed
 assignment  to  exploit  mergeTrailedAssignments()   in  GC,  discarding
@@ -106,8 +165,14 @@ SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word name, Word value ARG_LD)
+registerWakeup(Word av00, Word name, Word value ARG_LD)
 { Word wake;
+
+  if ((LD->attvar.sinkmode & 64) == 0) {
+	  LD->attvar.sinks = makeRef(av00);
+	  LD->attvar.sinkvalue = makeRef(value);
+  }
+
   Word tail = valTermRef(LD->attvar.tail);
 
   assert(gTop+6 <= gMax && tTop+4 <= tMax);
@@ -166,12 +231,20 @@ void
 assignAttVar(Word av, Word value ARG_LD)
 { Word a;
 
+  bool exitNow, trailUnneeded, restart;
+  bool can = canUnifyAttVar(ATOM_equals, &exitNow, &trailUnneeded, &restart, av, value PASS_LD);
+  if(restart) {
+	  assignAttVar(av,value PASS_LD);
+	  return;
+  }
+  if (exitNow) return;
+
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -182,17 +255,32 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
+	if( (LD->attvar.sinkmode & 128) != 0 ) {
+		put_att_value(av,ATOM_anonvar,value PASS_LD);
+	}
+	if( (LD->attvar.sinkmode & 256) != 0 ) {
+		LD->attvar.sinks = makeRef(av);
+		LD->attvar.sinkvalue = makeRef(value);
+	}
+
   a = valPAttVar(*av);
-  registerWakeup(a, value PASS_LD);
 
+	registerWakeup(av, a, value PASS_LD);
+
+	if( (LD->attvar.sinkmode & 2) == 0 )
   TrailAssignment(av);
-  if ( isAttVar(*value) )
-  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
-    *av = makeRef(value);
-  } else
-    *av = *value;
 
-  return;
+	if( isAttVar(*value) ) {
+		DEBUG(1, Sdprintf("Unifying two attvars\n"));
+		if( (LD->attvar.sinkmode & 4) == 0 ) {
+			*av = makeRef(value); 
+		} else if( (LD->attvar.sinkmode & 32) != 0 ) {
+    *av = makeRef(value);
+		}
+	} else {
+		if( (LD->attvar.sinkmode & 4) == 0 )
+    *av = *value;
+	}
 }
 
 
@@ -592,6 +680,121 @@ restoreWakeup(wakeup_state *state ARG_LD)
 		 /*******************************
 		 *	     PREDICATES		*
 		 *******************************/
+
+
+#ifdef O_TERMSINK
+
+
+static
+PRED_IMPL("termsink", 2, termsink, 0) {
+	PRED_LD
+	Word vp = valTermRef(A1);
+	Word value = valTermRef(A1);
+	put_att_value(vp,ATOM_anonvar,value PASS_LD);
+	succeed;
+}
+/*
+0 = normal
++ 1 = skip trailing an of of term sinks
++ 2 = skip trailing an of an attvar
++ 4 = skip assigment onto attvars refernce value
++ 32 = attempt linkvals
++ 16+0 = LD->slow_unify= FALSE
++ 16+8 = LD->slow_unify= TRUE
+*/
+static 
+PRED_IMPL("sinkmode", 2, sinkmode, 0) {
+PRED_LD
+    term_t old = A1;
+    term_t new = A2;
+	if( PL_unify_integer(old, (LD->attvar.sinkmode)) ) {
+		int val;
+		if( !PL_get_integer(new, &val) )
+			return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, new));
+		LD->attvar.sinkmode = val;
+		if( (val & 16)!=0 ) {
+			LD->slow_unify = (((val & 8)!=0)?TRUE:FALSE);
+		}
+		succeed;
+	}
+	fail;
+}
+
+static 
+PRED_IMPL("sinkref", 2, sinkref, 0) {
+	PRED_LD
+    return PL_unify(A1,LD->attvar.sinks) && PL_unify(A2,LD->attvar.sinkvalue);
+	
+}
+
+static
+PRED_IMPL("depth_of_var", 2, depth_of_var, 0) {
+	PRED_LD
+	Word v = valTermRef(A1);
+	LocalFrame fr = environment_frame;
+	long l0 = levelFrame(fr)-1;		/* -1: Use my parent as reference */
+
+	int negInfo = -1;
+	{ while(isRef(*(v))) 
+	{
+	    negInfo--;
+		  (v) = unRef(*(v)); }}
+		  
+
+	if( onStackArea(local, v) ) {
+		DEBUG(0, Sdprintf("Ok, on local stack\n"));
+		while( fr && fr > (LocalFrame)v )
+			fr = parentFrame(fr);
+		if( fr ) {
+			l0 -= levelFrame(fr);
+			return(PL_unify_integer(A2, l0));
+		} else {
+			DEBUG(0, Sdprintf("Not on local stack\n"));
+			return(PL_unify_integer(A2, -1));
+		}
+	}
+	DEBUG(0, Sdprintf("!onStackArea\n"));
+	return(PL_unify_integer(A2, negInfo));
+	succeed;
+}
+
+static
+PRED_IMPL("set_var", 2, set_var, 0) {
+	PRED_LD
+	Word vp = valTermRef(A1);
+	Word val = valTermRef(A2);
+	unify_vp(vp, val PASS_LD);
+	succeed;
+}
+
+static
+PRED_IMPL("get_var", 2, get_var, 0) {
+	PRED_LD
+	Word vp = valTermRef(A1);
+    (vp) = unRef(*(vp));
+	if(!(needsRef(*vp))) {
+	  (vp) = unRef(*(vp));
+	}
+	if(!(needsRef(*vp))) {
+	  (vp) = unRef(*(vp));
+	}
+	Word val = valTermRef(A2);
+	*val = *vp;
+	succeed;
+}
+
+static
+PRED_IMPL("unset_var", 1, unset_var, 0) {
+	PRED_LD
+	term_t t = A1;
+	Word p = valTermRef(t);
+	deRef(p);
+	setVar(*p);
+	succeed;
+}
+
+
+#endif
 
 static
 PRED_IMPL("attvar", 1, attvar, 0)
@@ -1366,6 +1569,15 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 		 *******************************/
 
 BeginPredDefs(attvar)
+#ifdef O_TERMSINK
+  PRED_DEF("termsink",    2, termsink,    0)
+  PRED_DEF("depth_of_var",    2, depth_of_var,    0)
+  PRED_DEF("unset_var",    1, unset_var,    0)
+  PRED_DEF("set_var",    2,  set_var,    0)
+  PRED_DEF("get_var",    2,  get_var,    0)
+  PRED_DEF("sinkmode",   2, sinkmode,    0)
+  PRED_DEF("sinkref",    2,  sinkref,    0)
+#endif
   PRED_DEF("attvar",    1, attvar,    0)
   PRED_DEF("put_attr",  3, put_attr,  0)
   PRED_DEF("get_attr",  3, get_attr,  0)

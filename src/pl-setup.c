@@ -1206,6 +1206,12 @@ emptyStacks(void)
     LD->attvar.tail       = PL_new_term_ref();
     LD->attvar.gc_attvars = PL_new_term_ref();
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
+#ifdef O_TERMSINK 
+	LD->attvar.sinks = PL_new_term_ref();    	/* currently only one but will be PL_list of all termsinks */
+	LD->attvar.sinkvalue = PL_new_term_ref();
+	LD->attvar.sinkmode = 0;
+	LD->attvar.sinkdepth = 0;
+#endif
 #endif
 #ifdef O_GVAR
     destroyGlobalVars();

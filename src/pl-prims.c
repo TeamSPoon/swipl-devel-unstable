@@ -230,6 +230,15 @@ do_unify(Word t1, Word t2 ARG_LD)
     DEBUG(CHK_SECURE, assert(w1 != ATOM_garbage_collected);
 	   assert(w2 != ATOM_garbage_collected));
 
+#ifdef O_TERMSINK
+  bool exitNow, trailUnneeded, restart;
+  bool can = canUnifyAttVar(ATOM_equals, &exitNow, &trailUnneeded, &restart, t1, t2 PASS_LD);
+  if(restart) {
+	  return do_unify(t1, t2 PASS_LD);
+  }
+  if (exitNow) return can;
+#endif
+
     if ( isVar(w1) )
     { if ( unlikely(tTop+1 >= tMax) )
       { rc = TRAIL_OVERFLOW;
@@ -1590,6 +1599,11 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
 
     deRef(p1); w1 = *p1;
     deRef(p2); w2 = *p2;
+#ifdef O_TERMSINK
+	if(isAttVar(w1)) {
+		
+	}
+#endif
 
     if ( w1 == w2 )
     { if ( isVar(w1) )

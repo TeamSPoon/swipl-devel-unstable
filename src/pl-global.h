@@ -270,6 +270,7 @@ struct PL_global_data
 #ifdef O_ATTVAR
     Procedure	dwakeup1;		/* system:$wakeup/1 */
     Procedure	portray_attvar1;	/* $attvar:portray_attvar/1 */
+	Procedure	unify_attvar6;	/* $attvar:unify_attvar/6 */
 #endif
     Procedure   comment_hook3;		/* prolog:comment_hook/3 */
 
@@ -410,6 +411,12 @@ struct PL_local_data
     term_t	tail;			/* Tail of this list */
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
+#ifdef O_TERMSINK 
+    int     sinkmode;
+	int     sinkdepth;
+    term_t	sinkvalue;
+	term_t	sinks;		/* might be the pl_list of all termsinks */
+#endif
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
   } attvar;
 #endif

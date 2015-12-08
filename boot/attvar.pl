@@ -36,6 +36,16 @@
 	    copy_term/3                 % +Term, -Copy, -Residue
 	  ]).
 
+
+ 
+'$attvar':unify_attvar(Type,Into,With,NewInto,NewWith,Result):- 
+  writeq('$attvar':unify_attvar(Type,Into,With)),nl,
+   fail,nop(Result),
+   (\+ number(With)
+    ->((NewWith=With; writeq('$attvar':unify_attvar(Into,With,NewWith))));
+      ((NewWith is With * With),writeq('$attvar':unify_attvar(Into,With,NewWith)),( 0 is With div 2))).
+
+
 /** <module> Attributed variable handling
 
 Attributed  variable  and  coroutining  support    based  on  attributed
