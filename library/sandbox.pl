@@ -334,11 +334,6 @@ copy_goal_arg(_, _, _).
 copy_goal_arg(Var) :- var(Var), !, fail.
 copy_goal_arg(_:_).
 
-dcg_goal(X) :-
-	var(X), !, fail.
-dcg_goal(phrase(_,_,_)).
-dcg_goal(dcg_call(_,_,_)).
-
 %%	verify_safe_declaration(+Decl)
 %
 %	See whether a  safe  declaration  makes   sense.  That  is,  the
@@ -749,7 +744,7 @@ safe_meta('$dcg':call_dcg(NT,Xs0), [Goal]) :-
 
 attr_hook_predicates([], _, []).
 attr_hook_predicates([H|T], M, Called) :-
-	(   predicate_property(M:H, interpreted)
+	(   predicate_property(M:H, defined)
 	->  Called = [M:H|Rest]
 	;   Called = Rest
 	),
@@ -923,6 +918,7 @@ format_callables([_|TT], [_|TA], TG) :- !,
 
 :- multifile
 	prolog:sandbox_allowed_directive/1,
+	prolog:sandbox_allowed_goal/1,
 	prolog:sandbox_allowed_expansion/1.
 
 %%	prolog:sandbox_allowed_directive(:G) is det.
@@ -937,13 +933,13 @@ prolog:sandbox_allowed_directive(Directive) :-
 prolog:sandbox_allowed_directive(M:PredAttr) :-
 	\+ prolog_load_context(module, M), !,
 	debug(sandbox(directive), 'Cross-module directive', []),
-	permission_error(directive, sandboxed, (:- M:PredAttr)).
+	permission_error(execute, sandboxed_directive, (:- M:PredAttr)).
 prolog:sandbox_allowed_directive(M:PredAttr) :-
 	safe_pattr(PredAttr), !,
 	PredAttr =.. [Attr, Preds],
 	(   safe_pattr(Preds, Attr)
 	->  true
-	;   permission_error(directive, sandboxed, (:- M:PredAttr))
+	;   permission_error(execute, sandboxed_directive, (:- M:PredAttr))
 	).
 prolog:sandbox_allowed_directive(_:Directive) :-
 	safe_source_directive(Directive), !.
@@ -1001,6 +997,8 @@ safe_source_directive(set_prolog_flag(Flag, Value)) :- !,
 	atom(Flag), ground(Value),
 	safe_directive_flag(Flag, Value).
 safe_source_directive(style_check(_)).
+safe_source_directive(initialization(_)).   % Checked at runtime
+safe_source_directive(initialization(_,_)). % Checked at runtime
 
 directive_loads_file(use_module(library(X)), X).
 directive_loads_file(use_module(library(X), _Imports), X).
@@ -1054,6 +1052,13 @@ prolog:sandbox_allowed_expansion(M:G) :-
 	prolog_load_context(module, M), !,
 	safe_goal(M:G).
 prolog:sandbox_allowed_expansion(_,_).
+
+%%	prolog:sandbox_allowed_goal(:G) is det.
+%
+%	Throw an exception if it is not safe to call G
+
+prolog:sandbox_allowed_goal(G) :-
+	safe_goal(G).
 
 
 		 /*******************************

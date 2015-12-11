@@ -36,6 +36,7 @@
 	    version/1,			% Add message to the banner
 	    prolog/0,			% user toplevel predicate
 	    '$query_loop'/0,		% toplevel predicate
+	    residual_goals/1,		% +Callable
 	    (initialization)/1,		% initialization goal (directive)
 	    '$thread_init'/0,		% initialise thread
 	    (thread_initialization)/1	% thread initialization goal
@@ -207,7 +208,7 @@ prolog:message(initialize_now(Goal, Use)) -->
 	].
 
 '$run_initialization' :-
-	'$run_initialization'(_),
+	'$run_initialization'(_, []),
 	'$thread_init'.
 
 
@@ -870,8 +871,46 @@ write_bindings2(Bindings, Residuals, _Det) :-
 	    print_message(query, query(done))
 	).
 
+%%	residual_goals(:NonTerminal)
+%
+%	Directive that registers NonTerminal as a collector for residual
+%	goals.
+
+:- multifile
+	residual_goal_collector/1.
+
+:- meta_predicate
+	residual_goals(2).
+
+residual_goals(NonTerminal) :-
+	throw(error(context_error(nodirective, residual_goals(NonTerminal)), _)).
+
+system:term_expansion((:- residual_goals(NonTerminal)),
+		      '$toplevel':residual_goal_collector(M2:Head)) :-
+	prolog_load_context(module, M),
+	strip_module(M:NonTerminal, M2, Head),
+	'$must_be'(callable, Head).
+
+%%	prolog:residual_goals//0 is det.
+%
+%	DCG that collects residual goals that   are  not associated with
+%	the answer through attributed variables.
+
+:- public prolog:residual_goals//0.
+
+prolog:residual_goals -->
+	{ findall(NT, residual_goal_collector(NT), NTL) },
+	collect_residual_goals(NTL).
+
+collect_residual_goals([]) --> [].
+collect_residual_goals([H|T]) -->
+	( call(H) -> [] ; [] ),
+	collect_residual_goals(T).
+
+
+
 %%	prolog:translate_bindings(+Bindings0, -Bindings, +ResidueVars,
-%%				  -Residuals) is det.
+%%				  +ResidualGoals, -Residuals) is det.
 %
 %	Translate the raw variable bindings  resulting from successfully
 %	completing a query into a  binding   list  and  list of residual
@@ -892,26 +931,32 @@ write_bindings2(Bindings, Residuals, _Det) :-
 %		related that are disconnected from the query.
 
 :- public
-	prolog:translate_bindings/4.
+	prolog:translate_bindings/5.
 :- meta_predicate
-	prolog:translate_bindings(+, -, +, :).
+	prolog:translate_bindings(+, -, +, +, :).
 
-prolog:translate_bindings(Bindings0, Bindings, ResidueVars, Residuals) :-
-	translate_bindings(Bindings0, Bindings, ResidueVars, Residuals).
+prolog:translate_bindings(Bindings0, Bindings, ResVars, ResGoals, Residuals) :-
+	translate_bindings(Bindings0, Bindings, ResVars, ResGoals, Residuals).
 
-translate_bindings(Bindings0, Bindings, [], _:[]-[]) :-
+translate_bindings(Bindings0, Bindings, ResidueVars, Residuals) :-
+	prolog:residual_goals(ResidueGoals, []),
+	translate_bindings(Bindings0, Bindings, ResidueVars, ResidueGoals,
+			   Residuals).
+
+translate_bindings(Bindings0, Bindings, [], [], _:[]-[]) :-
 	term_attvars(Bindings0, []), !,
 	join_same_bindings(Bindings0, Bindings1),
 	factorize_bindings(Bindings1, Bindings2),
 	bind_vars(Bindings2, Bindings3),
 	filter_bindings(Bindings3, Bindings).
-translate_bindings(Bindings0, Bindings, ResidueVars,
+translate_bindings(Bindings0, Bindings, ResidueVars, ResGoals0,
 		   TypeIn:Residuals-HiddenResiduals) :-
 	project_constraints(Bindings0, ResidueVars),
 	hidden_residuals(ResidueVars, Bindings0, HiddenResiduals0),
 	omit_qualifiers(HiddenResiduals0, TypeIn, HiddenResiduals),
-	copy_term(Bindings0, Bindings1, Residuals0),
-	omit_qualifiers(Residuals0, TypeIn, Residuals),
+	copy_term(Bindings0+ResGoals0, Bindings1+ResGoals1, Residuals0),
+	'$append'(ResGoals1, Residuals0, Residuals1),
+	omit_qualifiers(Residuals1, TypeIn, Residuals),
 	join_same_bindings(Bindings1, Bindings2),
 	factorize_bindings(Bindings2, Bindings3),
 	bind_vars(Bindings3, Bindings4),
@@ -1240,6 +1285,8 @@ print_predicate(0'p, [print], [ quoted(true),
 
 call_expand_query(Goal, Expanded, Bindings, ExpandedBindings) :-
 	user:expand_query(Goal, Expanded, Bindings, ExpandedBindings), !.
+call_expand_query(Goal, Expanded, Bindings, ExpandedBindings) :-
+	toplevel_variables:expand_query(Goal, Expanded, Bindings, ExpandedBindings), !.
 call_expand_query(Goal, Goal, Bindings, Bindings).
 
 
@@ -1248,4 +1295,6 @@ call_expand_query(Goal, Goal, Bindings, Bindings).
 
 call_expand_answer(Goal, Expanded) :-
 	user:expand_answer(Goal, Expanded), !.
+call_expand_answer(Goal, Expanded) :-
+	toplevel_variables:expand_answer(Goal, Expanded), !.
 call_expand_answer(Goal, Goal).

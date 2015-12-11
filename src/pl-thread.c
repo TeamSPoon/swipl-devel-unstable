@@ -2672,14 +2672,17 @@ queue_message(message_queue *queue, thread_message *msgp, struct timespec *deadl
 	break;
       }
       case ETIMEDOUT:
-	 return MSG_WAIT_TIMEOUT;
+	queue->wait_for_drain--;
+        return MSG_WAIT_TIMEOUT;
       case 0:
-	 break;
+	break;
       default:
-	 assert(0); // should never happen
+	assert(0); // should never happen
       }
       if ( queue->destroyed )
+      { queue->wait_for_drain--;
 	return MSG_WAIT_DESTROYED;
+      }
     }
 
     queue->wait_for_drain--;
@@ -5540,6 +5543,9 @@ localiseDefinition(Definition def)
   clear(local, P_THREAD_LOCAL);		/* remains P_DYNAMIC */
   local->impl.clauses.first_clause = NULL;
   local->impl.clauses.clause_indexes = NULL;
+  ATOMIC_INC(&GD->statistics.predicates);
+  ATOMIC_ADD(&local->module->code_size, sizeof(*local));
+  DEBUG(MSG_PROC_COUNT, Sdprintf("Localise %s\n", predicateName(def)));
 
   createSupervisor(local);
   registerLocalDefinition(def);
@@ -5570,7 +5576,7 @@ cleanupLocalDefinitions(PL_local_data_t *ld)
 }
 
 
-/** '"$thread_local_clause_count'(:Head, +Thread, -NumberOfClauses) is semidet.
+/** '$thread_local_clause_count'(:Head, +Thread, -NumberOfClauses) is semidet.
 
 True when NumberOfClauses is the number  of clauses for the thread-local
 predicate Head in Thread.  Fails silently if
@@ -5607,8 +5613,10 @@ PRED_IMPL("$thread_local_clause_count", 3, thread_local_clause_count, 0)
   if ( !get_thread_sync(thread, &info, FALSE) )
     fail;
 
+  LOCK();
   if ( (def = getProcDefinitionForThread(proc->definition, info->pl_tid)) )
     number_of_clauses = def->impl.clauses.number_of_clauses;
+  UNLOCK();
 
   return PL_unify_integer(count, number_of_clauses);
 }

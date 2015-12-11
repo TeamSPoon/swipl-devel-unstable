@@ -3629,7 +3629,8 @@ PL_module_name(Module m)
 
 module_t
 PL_new_module(atom_t name)
-{ return lookupModule(name);
+{ GET_LD
+  return lookupModule(name);
 }
 
 int
@@ -3670,7 +3671,8 @@ PL_predicate(const char *name, int arity, const char *module)
   PL_unregister_atom(a);
 
   if ( module )
-  { a = lookupAtom(module, strlen(module));
+  { GET_LD
+    a = lookupAtom(module, strlen(module));
     m = lookupModule(a);
     PL_unregister_atom(a);
   } else
@@ -3767,7 +3769,8 @@ PL_foreign_control(control_t h)
 
 predicate_t				/* = Procedure */
 PL_foreign_context_predicate(control_t h)
-{ Definition def = h->predicate;
+{ GET_LD
+  Definition def = h->predicate;
 
   return isCurrentProcedure(def->functor->functor, def->module);
 }
