@@ -162,6 +162,7 @@ function. If you change this you must also adjust unifiable/3.
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#ifndef TERMSINK_0
 void
 assignAttVar(Word av, Word value ARG_LD)
 { Word a;
@@ -194,6 +195,174 @@ assignAttVar(Word av, Word value ARG_LD)
 
   return;
 }
+
+#else //O_TERMSINK
+
+static void put_att_value(Word vp, atom_t name, Word value ARG_LD);
+static int find_attr(Word av, atom_t name, Word *vp ARG_LD);
+
+
+int
+getSinkMode_LD(Word value ARG_LD) {
+	Word w;
+	if( !isAttVar(*value) )	return(0);
+	atom_t sinkname = LD->attvar.sinkname;
+	if( sinkname == 0 )	sinkname = LD->attvar.sinkname = PL_new_atom("$sink");
+	if( !find_attr(value,sinkname, &w PASS_LD) ) return(0);
+	word v = *w;
+	if( isTaggedInt(v) ) return(valInteger(v));
+	return(LD->attvar.gsinkmode);
+}
+
+bool
+isDontCare_LD(Word value ARG_LD) {	
+ int sinkmode = getSinkMode_LD(value PASS_LD);
+ return ((sinkmode == (1+2+16)));
+}
+
+char *print_addr(Word adr, char *buf); 
+char *print_val(word val, char *buf); 
+
+#ifndef SPVALUE_PRINT
+#define SPVALUE_PRINT 1
+#define DEBUG_TERMSINK( DBG ) {if ((LD->attvar.gsinkmode & (1<<24)) != 0 ) { DBG }}
+#define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s *(%s)={%s}", txt, print_addr(addr, 0), print_val(*addr, 0));Sdprintf(REST);})
+#define SHVALUE( type, name ) if ( (name) > 0 ) DEBUG_TERMSINK({Sdprintf("\t%%\t%s = ",#name); Sdprintf(type,(name)); Sdprintf("\n");})
+#endif
+
+void
+assignAttVar(Word av, Word value ARG_LD) 
+{ Word a;
+  Word oa;
+
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
+
+	if( av == value ) {
+		SPVALUE("\n\t%% SAMV assignAttVar ",av, "\n");
+		return;
+	}
+		
+	if( *av == *value ) {
+		SPVALUE("\n\t%% EQU assignAttVar ",av, "\n");
+		return;
+	}		
+	int sinkmode_outer = LD->attvar.sinkmode;
+	int sinkmode_global = LD->attvar.gsinkmode;
+
+
+	bool otherIsVar = isVar(*value);
+
+	DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+	SPVALUE("\n\t%% ENTER assignAttVar ",av, "\n");
+	SHVALUE("%d",isRef(*value));
+	SHVALUE("%d",isVar(*value));
+	SHVALUE("%d",sinkmode_global);
+	SHVALUE("%d",sinkmode_outer);
+	SPVALUE("\t  VALUE = ",value,"\n");
+
+
+	int sinkmode = getSinkMode_LD(av PASS_LD);
+	if( sinkmode < 0 ) {
+		sinkmode = sinkmode_global;
+	} else {			
+		LD->attvar.sinkmode = sinkmode;
+	}
+	
+	SHVALUE("%d",sinkmode);
+
+	/*  for these three values is what constitutes "normal"
+	  the values can be set with sinkmode/2 predicate */
+	bool remainVar = ((sinkmode & 1) != 0);  /* pushOntoOther - not sure yet.. perhaps only it early wakeup tells us */
+	bool dontCare = ((sinkmode & 2) != 0); /* We are an anonmous "maybe"-care variable */
+	bool dontTrail = ((sinkmode & 4) != 0);	 /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
+	bool trailOther = ((sinkmode & 8) != 0);  /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
+	bool skipWakeup = ((sinkmode & 16) != 0); /* calling wakeup early to find out if we maybe care */
+	bool scheduleOther = (((sinkmode & 32) != 0) || ((LD->attvar.gsinkmode & 32) != 0));  
+	bool passReferenceToAttvar = (((sinkmode & 64) != 0) || ((LD->attvar.gsinkmode & 64) != 0)); 
+	bool termSource = ((sinkmode & 128) != 0);
+	
+	SHVALUE("%d",remainVar);
+	SHVALUE("%d",dontCare);
+	SHVALUE("%d",dontTrail);
+	SHVALUE("%d",trailOther);
+	SHVALUE("%d",skipWakeup);
+	SHVALUE("%d",scheduleOther);	
+	SHVALUE("%d",passReferenceToAttvar);
+	SHVALUE("%d",termSource);
+
+	bool otherIsAttvar = isAttVar(*value);
+
+	if( otherIsAttvar ) {
+
+		int otherSinkMode = getSinkMode_LD(value PASS_LD);
+		bool otherTermSource = ((otherSinkMode & 128) != 0);
+		bool otherSkipWakeup = ((otherSinkMode & 16) != 0);
+		SHVALUE("%d",otherSinkMode);		
+		SHVALUE("%d",otherTermSource);
+		if(otherSkipWakeup && scheduleOther) {
+			scheduleOther = FALSE;
+		}
+
+		if( value > av ) {
+			SHVALUE("SWAPPPING %d",value > av )
+			LD->attvar.sinkmode = sinkmode_outer;
+			assignAttVar(value,av PASS_LD);
+			return;
+		}
+	}
+
+	a = valPAttVar(*av);
+
+	if(termSource) {
+        if (otherIsVar && !otherIsAttvar) {
+			registerWakeup(a, value PASS_LD);
+			return;
+		}
+	}
+
+    if( !skipWakeup ) {
+		SPVALUE("\t%% SCHEDULED WAKEUP with value = ",a,"\n");
+		registerWakeup(a, value PASS_LD);
+	}
+
+	if( trailOther ) {
+		TrailAssignment(value);
+		SPVALUE("\t%% TRAILED other ",value,"\n");
+		dontTrail = TRUE;
+		trailOther = FALSE;
+	}
+	if( !dontTrail ) {
+		TrailAssignment(av);
+		SPVALUE("\t%% TRAILED attvar ",av,"\n");
+		dontTrail = TRUE;
+		trailOther = FALSE;
+	}
+	if(scheduleOther && isAttVar(*value)) {
+		oa = valPAttVar(*value);
+		SPVALUE("\t%% SCHEDULED Other with value = ",oa,"\n");
+		registerWakeup(oa,av PASS_LD);
+	}
+	if( remainVar ) {
+		word savevalue = *value;
+		setVar(*value);
+		SHVALUE("%d",((savevalue != *value)));
+	}
+	if( !dontCare ) {
+		if( isAttVar(*value) ) {
+			DEBUG(1, Sdprintf("Unifying two attvars\n"));
+			*av = makeRef(value);
+		} else
+			*av	= *value;
+	}
+
+	SPVALUE("\t%% EXIT AV = ",av,"\n"); 
+	SPVALUE("\t%% EXIT VALUE = ",value,"\n\n"); 	
+	LD->attvar.sinkmode = sinkmode_outer;
+}
+
+#endif
+
 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -592,6 +761,65 @@ restoreWakeup(wakeup_state *state ARG_LD)
 		 /*******************************
 		 *	     PREDICATES		*
 		 *******************************/
+
+
+#ifdef O_TERMSINK
+
+
+
+static 
+PRED_IMPL("$sinkmode", 2, sinkmode, 0) {
+PRED_LD
+    if (LD->attvar.sinkname == 0) LD->attvar.sinkname = PL_new_atom("$sink");
+    term_t old = A1;
+    term_t new = A2;
+	if( PL_unify_integer(old, (LD->attvar.sinkmode)) ) {
+		int val;
+		if( !PL_get_integer(new, &val) )
+			return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, new));
+		LD->attvar.sinkmode = val;
+		LD->attvar.gsinkmode = val;
+		if ( (val & 512)!=0 ) {
+				LD->slow_unify = (((val & 1024)==0)?TRUE:FALSE);
+		}
+		succeed;
+	}
+	fail;
+}
+
+static
+PRED_IMPL("depth_of_var", 2, depth_of_var, 0) {
+	PRED_LD
+	Word v = valTermRef(A1);
+	LocalFrame fr = environment_frame;
+	long l0 = levelFrame(fr)-1;		/* -1: Use my parent as reference */
+
+	int negInfo = -2;
+	{ while(isRef(*(v))) 
+	{
+	    negInfo--;
+		(v) = unRef(*(v)); }}
+		  
+
+	if( onStackArea(local, v) ) {
+		DEBUG_TERMSINK( Sdprintf("Ok, on local stack\n"));
+		while( fr && fr > (LocalFrame)v )
+			fr = parentFrame(fr);
+		if( fr ) {
+			l0 -= levelFrame(fr);
+			return(PL_unify_integer(A2, l0));
+		} else {
+			DEBUG_TERMSINK( Sdprintf("Not on local stack\n"));
+			return(PL_unify_integer(A2, -1));
+		}
+	}
+	DEBUG_TERMSINK(Sdprintf("!onStackArea\n"));
+	return(PL_unify_integer(A2, negInfo));
+	succeed;
+}
+
+
+#endif
 
 static
 PRED_IMPL("attvar", 1, attvar, 0)
@@ -1366,6 +1594,10 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 		 *******************************/
 
 BeginPredDefs(attvar)
+#ifdef O_TERMSINK
+  PRED_DEF("depth_of_var",    2, depth_of_var,    0)
+  PRED_DEF("$sinkmode",   2, sinkmode,    0)
+#endif
   PRED_DEF("attvar",    1, attvar,    0)
   PRED_DEF("put_attr",  3, put_attr,  0)
   PRED_DEF("get_attr",  3, get_attr,  0)

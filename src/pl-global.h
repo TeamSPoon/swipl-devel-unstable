@@ -409,6 +409,11 @@ struct PL_local_data
     term_t	tail;			/* Tail of this list */
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
+#ifdef O_TERMSINK 
+    int  sinkmode;
+	int  gsinkmode;
+	atom_t sinkname;
+#endif
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
   } attvar;
 #endif
