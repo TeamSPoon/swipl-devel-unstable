@@ -417,6 +417,7 @@ bindConst__LD(Word p, word c ARG_LD)
       (tTop++)->address = p;
   } else
   {
+    assert(isAttVar(*p));
     assignAttVar(p, &(c), "p = c", 0, 0 PASS_LD);
   }
 #else

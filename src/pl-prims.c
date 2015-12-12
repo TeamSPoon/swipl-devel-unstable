@@ -263,7 +263,8 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = TRAIL_OVERFLOW;
 				goto out_fail;
 			}
-			if( isVar(w2) )
+
+      if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
 	{ Trail(t2, makeRef(t1));
 					continue;
