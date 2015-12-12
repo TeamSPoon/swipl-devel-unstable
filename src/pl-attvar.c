@@ -209,6 +209,7 @@ static int find_attr(Word av, atom_t name, Word *vp ARG_LD);
 
 int
 getSinkMode_LD(Word value ARG_LD) {
+	if((LD->attvar.gsinkmode & 4096) != 0) return 0;
 	Word w;
 	if( !isAttVar(*value) )	return(0);
 	atom_t sinkname = LD->attvar.sinkname;
@@ -235,36 +236,58 @@ char *print_val(word val, char *buf);
 #define SHVALUE( type, name ) if ( (name) > 0 ) DEBUG_TERMSINK({Sdprintf("\t%%\t%s = ",#name); Sdprintf(type,(name)); Sdprintf("\n");})
 
 #if O_DEBUG || defined(O_MAINTENANCE)
-#define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s *(%s)={%s}", txt, print_addr(addr, 0), print_val(*addr, 0));Sdprintf(REST);})
+#define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s%s", txt, print_val(*addr, 0));Sdprintf(REST);})
 #else
 #define SPVALUE( txt, addr, REST ) 
 #endif
+
 #endif // SPVALUE_PRINT
 
+word deConsted(word d ARG_LD) {
+	if(isRef(d)) {
+	   return d;
+	}
+	if(isVar(d)) {
+		return d;
+	}
+	if(isAttVar(d)) {
+		// we want to get the "value" ?
+		return d;
+	}
+	if(isTerm(d)) {
+		return d;
+	}
+	// we want to make a fake refernce probably
+	return d;
+}
 void
-assignAttVar(Word av, Word value ARG_LD) 
+assignAttVar(Word av, Word value, int pleaseTrail ARG_LD) 
 { Word a;
   Word oa;
 
-  Word origvalue = value;
-  deRef(value);
-  SHVALUE("%d",(value!=origvalue));
-
-  // at least have the 2048 bit on 
-  if(LD->attvar.sinkname == 0) {
+  // AllDisabled
+  if((LD->attvar.gsinkmode & 4096) != 0) {
 	  assignAttVarOriginal(av,value PASS_LD);
 	  return;
   }
 
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
 
+  Word origvalue = value;
+  deRef(value);
+  if(value!=origvalue) {
+	///  SPVALUE("\n\t%% VALUECHANGE vin = ",origvalue, "\n");
+	  SPVALUE("\n\t%% VALUECHANGE into = ",value, "\n");
+	   *value = *origvalue;
+  }
+
   if( av == value ) {
-		SPVALUE("\n\t%% SAMV assignAttVar ",av, "\n");
+		SPVALUE("\n\t%% EQ_ATV assignAttVar ",av, "\n");
 		return;
 	}
 		
 	if( *av == *value ) {
-		SPVALUE("\n\t%% EQU assignAttVar ",av, "\n");
+		SPVALUE("\n\t%% EQU_ATV ",av, "\n");
 		return;
 	}		
 
@@ -276,7 +299,7 @@ assignAttVar(Word av, Word value ARG_LD)
 
 	DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-	SPVALUE("\n\t%% ENTER assignAttVar ",av, "\n");
+	SPVALUE("\n\t%% ENTER_ATV ",av, "\n");
 	SHVALUE("%d",isRef(*value));
 	SHVALUE("%d",isVar(*value));
 	SHVALUE("%d",sinkmode_global);
@@ -322,15 +345,14 @@ assignAttVar(Word av, Word value ARG_LD)
 		bool otherSkipWakeup = ((otherSinkMode & 16) != 0);
 		SHVALUE("%d",otherSinkMode);		
 		SHVALUE("%d",otherTermSource);
-		if(otherSkipWakeup) {
-			scheduleOther = FALSE;
-		}
-
-		if( value > av ) {
+		if( value > av && pleaseTrail==0) {
 			SHVALUE("SWAPPPING %d",value > av )
 			LD->attvar.sinkmode = sinkmode_outer;
-			assignAttVar(value,av PASS_LD);
+			assignAttVar(value,av, 0 PASS_LD);
 			return;
+		}
+		if(otherSkipWakeup) {
+			scheduleOther = FALSE;
 		}
 	}
 
@@ -346,7 +368,7 @@ assignAttVar(Word av, Word value ARG_LD)
 	}
 
     if( !skipWakeup ) {
-		SPVALUE("\t%% SCHEDULED WAKEUP with value = ",a,"\n");
+		SPVALUE("\t%% SCHEDULED WAKEUP valPAttVar(*av) = ",value,"\n");
 		registerWakeup(a, value PASS_LD);
 	}
 
@@ -395,7 +417,7 @@ assignAttVar(Word av, Word value ARG_LD)
 
 	if(scheduleOther && isAttVar(*value)) {
 		oa = valPAttVar(*value);
-		SPVALUE("\t%% SCHEDULED Other with value = ",oa,"\n");
+		SPVALUE("\t%% SCHEDULED WAKEUP REVERSED(*value) = ",av,"\n");
 		registerWakeup(oa,av PASS_LD);
 	}
 
@@ -418,8 +440,6 @@ assignAttVar(Word av, Word value ARG_LD)
 }
 
 #endif
-
-
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Link known attributes variables into a reference list.

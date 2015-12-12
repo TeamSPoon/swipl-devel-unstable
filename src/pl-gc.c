@@ -303,7 +303,7 @@ print_val_recurse(word val, char *buf, int dereflevel)
   static const char *tag_name[] = { "var", "attvar", "float", "int", "atom",
 				    "string", "term", "ref" };
   static const char *stg_name[] = { "static", "global", "local", "reserved" };
-  static char tmp[256];
+  static char tmp[2560];
   char *o;
 
   if ( !buf )
@@ -351,7 +351,7 @@ print_val_recurse(word val, char *buf, int dereflevel)
 	{
       if(isRef(val))
       {
-		 static char moreBuff[256];
+		 static char moreBuff[2560];
 	     Word at = unRef(val);
 	     int i=dereflevel;
 	     while(i-->0) Ssprintf(o,"{");
@@ -365,7 +365,7 @@ print_val_recurse(word val, char *buf, int dereflevel)
   return buf;
 }
 
-char* print_val(word val, char *buf) { return print_val_recurse(val,buf,1); }
+char* print_val(word val, char *buf) { return print_val_recurse(val,buf,5); }
 
 #endif /*O_DEBUG*/
 

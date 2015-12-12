@@ -215,15 +215,23 @@ Returns one of:
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#ifdef O_TERM_SINK
-#define MAY_PASS_REF(T,O) (((LD->attvar.gsinkmode & 64) != 0 )? O : T)
+#ifdef O_TERMSINK
+#define EAGER_OPTION(O) (((LD->attvar.gsinkmode & 4096) == 0)&&((LD->attvar.gsinkmode & (4096 << O)) != 0 ))
+#define DONTCARE_OPTION(O) EAGER_OPTION(O)
+#define MAY_PASS_REF(T,O) (((LD->attvar.gsinkmode & 4096) == 0) &&((LD->attvar.gsinkmode & 64) != 0 )? DO_PASS_REF(T,O) : T)
 #else
 #define MAY_PASS_REF(T,O) T 
 #endif
 
-#define DONTCARE_OPTION(O) ((LD->attvar.gsinkmode & (4096 << O)) != 0 )
-#define ATTVAR_EAGER_OPTION(O) ((LD->attvar.gsinkmode & (4096 << O)) != 0 )
 #define FAIL_ON_OVERFLOW  if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
+
+
+#ifdef O_TERMSINK
+ #define DO_PASS_REF(T,O)  ((!EAGER_OPTION(1)&&!EAGER_OPTION(2))?( isRef(*T) ? T :  ( isRef(*O) ? O : T)):T)
+#else 
+ #define DO_PASS_REF(T,O)  O
+#endif
+
 static int
 do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
@@ -254,11 +262,10 @@ do_unify(Word t1, Word t2 ARG_LD)
 	goto out_fail;
       }
 #ifdef O_ATTVAR_EAGER
-        if(ATTVAR_EAGER_OPTION(1)) {
+        if(EAGER_OPTION(1)) {
 			if ( isAttVar(w2) )
 			{ FAIL_ON_OVERFLOW
-			  assignAttVar(t2, orig1 PASS_LD);
-			  continue;
+				assignAttVar(t2, t1, 1 PASS_LD);
 			}
 		}
 #endif
@@ -289,8 +296,10 @@ do_unify(Word t1, Word t2 ARG_LD)
       {
 #ifdef O_ATTVAR_EAGER
       FAIL_ON_OVERFLOW
-	  if(ATTVAR_EAGER_OPTION(2)) {
-            assignAttVar(t1, orig2 PASS_LD); continue;}
+	  if(EAGER_OPTION(2)) {
+		  assignAttVar(t1, t2, 1 PASS_LD);
+		  continue;
+	  }
 #endif
 	w1 = makeRef(t1); }
   #endif
@@ -301,12 +310,12 @@ do_unify(Word t1, Word t2 ARG_LD)
   #ifdef O_ATTVAR
     if ( isAttVar(w1) )
     { FAIL_ON_OVERFLOW
-      assignAttVar(t1, MAY_PASS_REF(t2,orig2) PASS_LD);
+      assignAttVar(t1, MAY_PASS_REF(t2,orig2), 0  PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
     { FAIL_ON_OVERFLOW
-      assignAttVar(t2, MAY_PASS_REF(t1,orig1) PASS_LD);
+      assignAttVar(t2, MAY_PASS_REF(t1,orig1), 0 PASS_LD);
       continue;
     }
   #endif

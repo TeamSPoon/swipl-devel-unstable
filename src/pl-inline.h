@@ -300,7 +300,7 @@ Note that the local stack is always _above_ the global stack.
 static inline void
 Trail__LD(Word p, word v ARG_LD)
 { DEBUG(CHK_SECURE, assert(tTop+1 <= tMax));
-
+  v = deConsted(v PASS_LD);
   if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
     (tTop++)->address = p;
   *p = v;
@@ -312,13 +312,14 @@ bindConst__LD(Word p, word c ARG_LD)
 { DEBUG(CHK_SECURE, assert(hasGlobalSpace(0)));
 
 #ifdef O_ATTVAR
+  c = deConsted(c PASS_LD);
   if ( isVar(*p) )
   { *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
-  { assert(isAttVar(*p));
-    assignAttVar(p, &(c) PASS_LD);
+  {
+    assignAttVar(p, &(c), 1 PASS_LD);
   }
 #else
   *p = (c);
