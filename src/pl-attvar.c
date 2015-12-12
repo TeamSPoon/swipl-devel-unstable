@@ -162,7 +162,7 @@ function. If you change this you must also adjust unifiable/3.
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#ifndef TERMSINK_0
+#ifndef O_TERMSINK
 void
 assignAttVar(Word av, Word value ARG_LD)
 { Word a;
@@ -201,7 +201,6 @@ assignAttVar(Word av, Word value ARG_LD)
 static void put_att_value(Word vp, atom_t name, Word value ARG_LD);
 static int find_attr(Word av, atom_t name, Word *vp ARG_LD);
 
-
 int
 getSinkMode_LD(Word value ARG_LD) {
 	Word w;
@@ -223,11 +222,17 @@ isDontCare_LD(Word value ARG_LD) {
 char *print_addr(Word adr, char *buf); 
 char *print_val(word val, char *buf); 
 
+
 #ifndef SPVALUE_PRINT
 #define SPVALUE_PRINT 1
-#define DEBUG_TERMSINK( DBG ) {if ((LD->attvar.gsinkmode & (1<<24)) != 0 ) { DBG }}
-#define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s *(%s)={%s}", txt, print_addr(addr, 0), print_val(*addr, 0));Sdprintf(REST);})
+#define DEBUG_TERMSINK( DBG ) {if ((LD->attvar.gsinkmode & (1<<24)) != 0 ) { DBG ; }}
 #define SHVALUE( type, name ) if ( (name) > 0 ) DEBUG_TERMSINK({Sdprintf("\t%%\t%s = ",#name); Sdprintf(type,(name)); Sdprintf("\n");})
+
+#if O_DEBUG || defined(O_MAINTENANCE)
+#define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s *(%s)={%s}", txt, print_addr(addr, 0), print_val(*addr, 0));Sdprintf(REST);})
+#else
+#endif
+#define SPVALUE( txt, addr, REST ) 
 #endif
 
 void
@@ -276,7 +281,7 @@ assignAttVar(Word av, Word value ARG_LD)
 	bool remainVar = ((sinkmode & 1) != 0);  /* pushOntoOther - not sure yet.. perhaps only it early wakeup tells us */
 	bool dontCare = ((sinkmode & 2) != 0); /* We are an anonmous "maybe"-care variable */
 	bool dontTrail = ((sinkmode & 4) != 0);	 /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
-	bool trailOther = ((sinkmode & 8) != 0);  /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
+	bool trailOther = ((sinkmode & 8) != 0);  /* trailOther - not sure yet.. perhaps only it early wakeup tells us */
 	bool skipWakeup = ((sinkmode & 16) != 0); /* calling wakeup early to find out if we maybe care */
 	bool scheduleOther = (((sinkmode & 32) != 0) || ((LD->attvar.gsinkmode & 32) != 0));  
 	bool passReferenceToAttvar = (((sinkmode & 64) != 0) || ((LD->attvar.gsinkmode & 64) != 0)); 

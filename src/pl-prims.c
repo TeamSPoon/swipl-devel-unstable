@@ -215,6 +215,15 @@ Returns one of:
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#ifdef O_ATTVAR_EAGER
+#define MAY_PASS_REF(T,O) (((LD->attvar.gsinkmode & 64) != 0 )? O : T)
+#else
+#define MAY_PASS_REF(T,O) T 
+#endif
+
+#define DONTCARE_OPTION(O) ((LD->attvar.gsinkmode & (4096 << O)) != 0 )
+#define ATTVAR_EAGER_OPTION(O) ((LD->attvar.gsinkmode & (4096 << O)) != 0 )
+#define FAIL_ON_OVERFLOW  if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
 static int
 do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
@@ -224,8 +233,17 @@ do_unify(Word t1, Word t2 ARG_LD)
   do
   { word w1, w2;
 
+#ifdef O_ATTVAR_EAGER
+    Word orig1 = t1;
+    Word orig2 = t2;
+#endif
+
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
+
+#ifdef O_DONTCARE_TAGS
+    if(DONTCARE_OPTION(5) && (isDontCare(t1) || (isDontCare(t2)))) continue;
+#endif
 
     DEBUG(CHK_SECURE, assert(w1 != ATOM_garbage_collected);
 	   assert(w2 != ATOM_garbage_collected));
@@ -235,7 +253,15 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = TRAIL_OVERFLOW;
 	goto out_fail;
       }
-
+#ifdef O_ATTVAR_EAGER
+        if(ATTVAR_EAGER_OPTION(1)) {
+			if ( isAttVar(w2) )
+			{ FAIL_ON_OVERFLOW
+			  assignAttVar(MAY_PASS_REF(t2,orig2), MAY_PASS_REF(t1,orig1) PASS_LD);
+			  continue;
+			}
+		}
+#endif
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
 	{ Trail(t2, makeRef(t1));
@@ -260,7 +286,13 @@ do_unify(Word t1, Word t2 ARG_LD)
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w1) )
-	w1 = makeRef(t1);
+      {
+#ifdef O_ATTVAR_EAGER
+      FAIL_ON_OVERFLOW
+	  if(ATTVAR_EAGER_OPTION(2)) {
+            assignAttVar(MAY_PASS_REF(t1,orig1), MAY_PASS_REF(t2,orig2) PASS_LD); continue;}
+#endif
+	w1 = makeRef(t1); }
   #endif
       Trail(t2, w1);
       continue;
@@ -268,19 +300,13 @@ do_unify(Word t1, Word t2 ARG_LD)
 
   #ifdef O_ATTVAR
     if ( isAttVar(w1) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-	goto out_fail;
-      }
-      assignAttVar(t1, t2 PASS_LD);
+    { FAIL_ON_OVERFLOW
+      assignAttVar(MAY_PASS_REF(t1,orig1), MAY_PASS_REF(t2,orig2) PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-	goto out_fail;
-      }
-      assignAttVar(t2, t1 PASS_LD);
+    { FAIL_ON_OVERFLOW
+      assignAttVar(MAY_PASS_REF(t2,orig2), MAY_PASS_REF(t1,orig1) PASS_LD);
       continue;
     }
   #endif
@@ -442,6 +468,9 @@ can_unify(Word t1, Word t2, term_t ex)
 { GET_LD
   fid_t fid;
 
+#ifdef O_DONTCARE_TAGS
+  if(DONTCARE_OPTION(3) && (isDontCare(t1) || isDontCare(t2))) return TRUE;
+#endif
   if ( (fid = PL_open_foreign_frame()) )
   { int handle_exception = !ex;
 
@@ -1590,6 +1619,10 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
 
     deRef(p1); w1 = *p1;
     deRef(p2); w2 = *p2;
+
+#ifdef O_DONTCARE_TAGS
+   if(DONTCARE_OPTION(4) && (isDontCare(p1) || isDontCare(p2))) return CMP_EQUAL;
+#endif
 
     if ( w1 == w2 )
     { if ( isVar(w1) )

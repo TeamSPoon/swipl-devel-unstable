@@ -55,6 +55,9 @@
 #define isCurrentProcedure(f,m) isCurrentProcedure__LD(f, m PASS_LD)
 #define resolveProcedure(f,m)	resolveProcedure__LD(f, m PASS_LD)
 
+#define isDontCare(w) isDontCare_LD(w PASS_LD)
+#define getSinkMode(w) getSinkMode_LD(w PASS_LD)
+
 #define _PL_get_arg(n, t, a)	_PL_get_arg__LD(n, t, a PASS_LD)
 #define _PL_put_number(t, n)	_PL_put_number__LD(t, n PASS_LD)
 #define PL_new_term_ref()	PL_new_term_ref__LD(PASS_LD1)

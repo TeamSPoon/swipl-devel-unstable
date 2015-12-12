@@ -156,6 +156,47 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
+
+/*
+
+   Some experiments ongoing
+
+   O_TERMSINK
+         Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
+         removed from the current call So now the wakeups like attrib_unify_hook/2 decide 
+        the effective binding of this.  Sometimes keep the attributed variable unbound despite
+         being unified with a term?!? (This is what Tarau's EmtpySinks do!)
+         requires O_ATTVAR
+
+   O_ATTVAR_EAGER
+         Notice potential wakeups eagerly, for example instead of being put into Variables.. 
+        in do_unify(..)  the L or R side of the unify might decide.. or Before/After.
+        So the above wakeups decide maybe if a binding will put into the variable instead of the attributed variable
+         (Maybe allow to run code early enough the attributed variables binding is decided by attrib_unify_hook  )
+
+   O_DONTCARE_TAGS
+       We can test the implications of using variables that need no trail/undo/copy_term that claim to 
+       unify with everything and remains free afterwards Currently this is implemented 
+        poorly to see if it is correctly operating (semantically as well).  
+       eventually this would not be an attributed variable but 
+        a single variable in the system that (effectively could be a constant) or *_TAG'ed if we had any space for it
+
+   With any of the above set the system still operates as normal
+              until the user invokes  '$sinkmode'/2 to 
+
+   None of these option being enabled will cost more than 
+              if( (LD->attrvar.gsinkmode & SOME_OPTION) != 0) ...
+  
+    
+*/
+
+
+
+#define O_TERMSINK		1
+#define O_DONTCARE_TAGS		1
+#define O_ATTVAR_EAGER		1
+
+
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
 #endif

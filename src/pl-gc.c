@@ -287,17 +287,18 @@ print_addr(Word adr, char *buf)
   { name = "trail";
     base = (Word) tBase;
   } else
-  { Ssprintf(buf, "%p", adr);
+  { Ssprintf(buf, "pointer(%p)", adr);
     return buf;
   }
 
   Ssprintf(buf, "%p=%s(%d)", adr, name, adr-base);
+  /* DMILES: this seems to disagree with the print_val(..) by -1 */
   return buf;
 }
 
 
 char *
-print_val(word val, char *buf)
+print_val_recurse(word val, char *buf, int dereflevel)
 { GET_LD
   static const char *tag_name[] = { "var", "attvar", "float", "int", "atom",
 				    "string", "term", "ref" };
@@ -345,10 +346,25 @@ print_val(word val, char *buf)
 	     tag_name[tag(val)],
 	     stg_name[storage(val) >> 3],
 	     (long)offset);
-  }
+    /* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
+	if(dereflevel > 0) 
+	{
+      if(isRef(val))
+      {
+	     Word at = unRef(val);
+	     int i=dereflevel;
+	     while(i-->0) Ssprintf(o,"{");
+	     char[256] moreBuff;
+	     Ssprintf(o,print_val_recurse(at,moreBuff,dereflevel--));
+	     i=dereflevel;
+	     while(i-->0) Ssprintf(o,"}");
+	   }
+	}
 
   return buf;
 }
+
+char* print_val(word val, char *buf) { return print_val_recurse(val,buf,1); }
 
 #endif /*O_DEBUG*/
 

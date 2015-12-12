@@ -414,6 +414,13 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	continue;
       }
       case TAG_ATTVAR:
+#ifdef O_DONTCARE_VARS
+	   if (isDontCare(*from)))
+	   {
+		  *to = *from;
+		  continue;
+	   }
+#endif
 	if ( flags&COPY_ATTRS )
 	{ Word p = valPAttVar(*from);
 
