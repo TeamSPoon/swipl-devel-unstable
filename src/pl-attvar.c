@@ -162,9 +162,13 @@ function. If you change this you must also adjust unifiable/3.
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#ifndef O_TERMSINK
 void
+#ifndef O_TERMSINK
 assignAttVar(Word av, Word value ARG_LD)
+#else
+assignAttVarOriginal(Word av, Word value ARG_LD)
+#endif
+
 { Word a;
 
   assert(isAttVar(*av));
@@ -196,7 +200,9 @@ assignAttVar(Word av, Word value ARG_LD)
   return;
 }
 
-#else //O_TERMSINK
+
+
+#if O_TERMSINK
 
 static void put_att_value(Word vp, atom_t name, Word value ARG_LD);
 static int find_attr(Word av, atom_t name, Word *vp ARG_LD);
@@ -231,18 +237,28 @@ char *print_val(word val, char *buf);
 #if O_DEBUG || defined(O_MAINTENANCE)
 #define SPVALUE( txt, addr, REST ) DEBUG_TERMSINK({Sdprintf("%s *(%s)={%s}", txt, print_addr(addr, 0), print_val(*addr, 0));Sdprintf(REST);})
 #else
-#endif
 #define SPVALUE( txt, addr, REST ) 
 #endif
+#endif // SPVALUE_PRINT
 
 void
 assignAttVar(Word av, Word value ARG_LD) 
 { Word a;
   Word oa;
 
+  Word origvalue = value;
+  deRef(value);
+  SHVALUE("%d",(value!=origvalue));
+
+  // at least have the 2048 bit on 
+  if(LD->attvar.sinkname == 0) {
+	  assignAttVarOriginal(av,value PASS_LD);
+	  return;
+  }
+
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
 
-	if( av == value ) {
+  if( av == value ) {
 		SPVALUE("\n\t%% SAMV assignAttVar ",av, "\n");
 		return;
 	}
@@ -251,6 +267,7 @@ assignAttVar(Word av, Word value ARG_LD)
 		SPVALUE("\n\t%% EQU assignAttVar ",av, "\n");
 		return;
 	}		
+
 	int sinkmode_outer = LD->attvar.sinkmode;
 	int sinkmode_global = LD->attvar.gsinkmode;
 
@@ -279,16 +296,16 @@ assignAttVar(Word av, Word value ARG_LD)
 	/*  for these three values is what constitutes "normal"
 	  the values can be set with sinkmode/2 predicate */
 	bool remainVar = ((sinkmode & 1) != 0);  /* pushOntoOther - not sure yet.. perhaps only it early wakeup tells us */
-	bool dontCare = ((sinkmode & 2) != 0); /* We are an anonmous "maybe"-care variable */
+	bool skipAssign = ((sinkmode & 2) != 0); /* We are an anonmous "maybe"-care variable */
 	bool dontTrail = ((sinkmode & 4) != 0);	 /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
 	bool trailOther = ((sinkmode & 8) != 0);  /* trailOther - not sure yet.. perhaps only it early wakeup tells us */
 	bool skipWakeup = ((sinkmode & 16) != 0); /* calling wakeup early to find out if we maybe care */
 	bool scheduleOther = (((sinkmode & 32) != 0) || ((LD->attvar.gsinkmode & 32) != 0));  
 	bool passReferenceToAttvar = (((sinkmode & 64) != 0) || ((LD->attvar.gsinkmode & 64) != 0)); 
 	bool termSource = ((sinkmode & 128) != 0);
-	
+    
 	SHVALUE("%d",remainVar);
-	SHVALUE("%d",dontCare);
+	SHVALUE("%d",skipAssign);
 	SHVALUE("%d",dontTrail);
 	SHVALUE("%d",trailOther);
 	SHVALUE("%d",skipWakeup);
@@ -305,7 +322,7 @@ assignAttVar(Word av, Word value ARG_LD)
 		bool otherSkipWakeup = ((otherSinkMode & 16) != 0);
 		SHVALUE("%d",otherSinkMode);		
 		SHVALUE("%d",otherTermSource);
-		if(otherSkipWakeup && scheduleOther) {
+		if(otherSkipWakeup) {
 			scheduleOther = FALSE;
 		}
 
@@ -321,6 +338,8 @@ assignAttVar(Word av, Word value ARG_LD)
 
 	if(termSource) {
         if (otherIsVar && !otherIsAttvar) {
+			SPVALUE("\t%% TERM_SOURCE BINDING VAR ",value,"\n");
+			LD->attvar.sinkmode = sinkmode_outer;
 			registerWakeup(a, value PASS_LD);
 			return;
 		}
@@ -332,38 +351,70 @@ assignAttVar(Word av, Word value ARG_LD)
 	}
 
 	if( trailOther ) {
-		TrailAssignment(value);
-		SPVALUE("\t%% TRAILED other ",value,"\n");
+		if(otherIsVar) {
+			Trail(value,makeRef(av));
+			SPVALUE("\t%% TRAILED info ",value,"\n");
+		} else {
+			TrailAssignment(value);
+			SPVALUE("\t%% TRAILED other ",value,"\n");
+		}
 		dontTrail = TRUE;
 		trailOther = FALSE;
 	}
+
 	if( !dontTrail ) {
 		TrailAssignment(av);
 		SPVALUE("\t%% TRAILED attvar ",av,"\n");
 		dontTrail = TRUE;
 		trailOther = FALSE;
 	}
+
+
+	if( remainVar ) {
+		if(otherIsVar) {
+			
+		} else {		
+			word savevalue = *value;
+			setVar(*value);
+			if(savevalue != *value) {
+				SPVALUE("\t%% CONVERTED VALUE ",&savevalue,"");
+				SPVALUE(" into ",value,"\n");
+			}
+		}
+	}
+
+	if( termSource ) {
+
+		if (otherIsAttvar) {		 
+            SPVALUE("\t%% TERM_SOURCE TO ATTVAR ",value,"\n");
+			LD->attvar.sinkmode = sinkmode_outer;
+			registerWakeup(a, value PASS_LD);
+			return;
+		}
+	}
+
 	if(scheduleOther && isAttVar(*value)) {
 		oa = valPAttVar(*value);
 		SPVALUE("\t%% SCHEDULED Other with value = ",oa,"\n");
 		registerWakeup(oa,av PASS_LD);
 	}
-	if( remainVar ) {
-		word savevalue = *value;
-		setVar(*value);
-		SHVALUE("%d",((savevalue != *value)));
-	}
-	if( !dontCare ) {
+
+	if( !skipAssign ) {
+
+		SPVALUE("\t%% ASSIGN *",av," ");SPVALUE(" VALUE ",value,"\n"); 	
+
 		if( isAttVar(*value) ) {
 			DEBUG(1, Sdprintf("Unifying two attvars\n"));
 			*av = makeRef(value);
 		} else
 			*av	= *value;
+	} else {
+		SPVALUE("\t%% ASSIGN SKIPPED ",av,"\n");
 	}
 
-	SPVALUE("\t%% EXIT AV = ",av,"\n"); 
-	SPVALUE("\t%% EXIT VALUE = ",value,"\n\n"); 	
-	LD->attvar.sinkmode = sinkmode_outer;
+
+	SPVALUE("\t%% EXIT AV = ",av,"\n\n"); 
+    LD->attvar.sinkmode = sinkmode_outer;
 }
 
 #endif

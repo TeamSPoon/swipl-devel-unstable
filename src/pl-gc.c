@@ -351,16 +351,17 @@ print_val_recurse(word val, char *buf, int dereflevel)
 	{
       if(isRef(val))
       {
+		 static char moreBuff[256];
 	     Word at = unRef(val);
 	     int i=dereflevel;
 	     while(i-->0) Ssprintf(o,"{");
-	     char[256] moreBuff;
-	     Ssprintf(o,print_val_recurse(at,moreBuff,dereflevel--));
+	     
+	     Ssprintf(o,print_val_recurse(*at,moreBuff,dereflevel--));
 	     i=dereflevel;
 	     while(i-->0) Ssprintf(o,"}");
 	   }
 	}
-
+  }
   return buf;
 }
 

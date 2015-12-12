@@ -215,7 +215,7 @@ Returns one of:
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#ifdef O_ATTVAR_EAGER
+#ifdef O_TERM_SINK
 #define MAY_PASS_REF(T,O) (((LD->attvar.gsinkmode & 64) != 0 )? O : T)
 #else
 #define MAY_PASS_REF(T,O) T 
@@ -257,7 +257,7 @@ do_unify(Word t1, Word t2 ARG_LD)
         if(ATTVAR_EAGER_OPTION(1)) {
 			if ( isAttVar(w2) )
 			{ FAIL_ON_OVERFLOW
-			  assignAttVar(MAY_PASS_REF(t2,orig2), MAY_PASS_REF(t1,orig1) PASS_LD);
+			  assignAttVar(t2, orig1 PASS_LD);
 			  continue;
 			}
 		}
@@ -290,7 +290,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 #ifdef O_ATTVAR_EAGER
       FAIL_ON_OVERFLOW
 	  if(ATTVAR_EAGER_OPTION(2)) {
-            assignAttVar(MAY_PASS_REF(t1,orig1), MAY_PASS_REF(t2,orig2) PASS_LD); continue;}
+            assignAttVar(t1, orig2 PASS_LD); continue;}
 #endif
 	w1 = makeRef(t1); }
   #endif
@@ -301,12 +301,12 @@ do_unify(Word t1, Word t2 ARG_LD)
   #ifdef O_ATTVAR
     if ( isAttVar(w1) )
     { FAIL_ON_OVERFLOW
-      assignAttVar(MAY_PASS_REF(t1,orig1), MAY_PASS_REF(t2,orig2) PASS_LD);
+      assignAttVar(t1, MAY_PASS_REF(t2,orig2) PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
     { FAIL_ON_OVERFLOW
-      assignAttVar(MAY_PASS_REF(t2,orig2), MAY_PASS_REF(t1,orig1) PASS_LD);
+      assignAttVar(t2, MAY_PASS_REF(t1,orig1) PASS_LD);
       continue;
     }
   #endif
