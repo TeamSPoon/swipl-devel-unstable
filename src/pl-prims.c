@@ -234,10 +234,10 @@ Returns one of:
 static int
 do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
-	int compound = FALSE;
-	int rc = FALSE;
+  int compound = FALSE;
+  int rc = FALSE;
 
-	do
+  do
 	{
 		word w1, w2;
 
@@ -246,8 +246,8 @@ do_unify(Word t1, Word t2 ARG_LD)
 		Word orig2 = t2;
 #endif
 
-		deRef(t1); w1 = *t1;
-		deRef(t2); w2 = *t2;
+    deRef(t1); w1 = *t1;
+    deRef(t2); w2 = *t2;
 
 #ifdef O_DONTCARE_TAGS
 		if( DONTCARE_OPTION(unify) && (isDontCare(t1) || (isDontCare(t2))) ) continue;
@@ -258,23 +258,23 @@ do_unify(Word t1, Word t2 ARG_LD)
 	    assert(w2 != ATOM_garbage_collected);
 	  });
 
-		if( isVar(w1) )
+    if ( isVar(w1) )
     { if ( unlikely(tTop+1 >= tMax) )
       { rc = TRAIL_OVERFLOW;
-				goto out_fail;
-			}
+	goto out_fail;
+      }
 
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
 	{ Trail(t2, makeRef(t1));
-					continue;
-				}
-				if( t1 == t2 )
-					continue;
-				Trail(t1, makeRef(t2));
-				continue;
-			}
-#ifdef O_ATTVAR
+	  continue;
+	}
+	if ( t1 == t2 )
+	  continue;
+	Trail(t1, makeRef(t2));
+	continue;
+      }
+  #ifdef O_ATTVAR
 			if( isAttVar(w2 ) ) {
 #ifdef O_ATTVAR_EAGER
 					if( IS_SINKMODE_GLOBAL(eagerALL) )
@@ -288,20 +288,19 @@ do_unify(Word t1, Word t2 ARG_LD)
 						} 
 					}
 #endif
-				w2 = makeRef(t2);
+	w2 = makeRef(t2);
 			}
-#endif
-			Trail(t1, w2);
-			continue;
-		}
-
-		if( isVar(w2) )
+  #endif
+      Trail(t1, w2);
+      continue;
+    }
+    if ( isVar(w2) )
     { if ( unlikely(tTop+1 >= tMax) )
       { rc = TRAIL_OVERFLOW;
-				goto out_fail;
-			}
-#ifdef O_ATTVAR
-			if( isAttVar(w1) )
+	goto out_fail;
+      }
+  #ifdef O_ATTVAR
+      if ( isAttVar(w1) )
 			{
 	#ifdef O_ATTVAR_EAGER
 				if( IS_SINKMODE_GLOBAL(eagerSome) )
@@ -315,88 +314,88 @@ do_unify(Word t1, Word t2 ARG_LD)
 					}
 				}
 	#endif
-				w1 = makeRef(t1);
+	w1 = makeRef(t1);
 			}
-#endif
-			Trail(t2, w1);
-			continue;
-		}
+  #endif
+      Trail(t2, w1);
+      continue;
+    }
 
-#ifdef O_ATTVAR
-		if( isAttVar(w1) )
+  #ifdef O_ATTVAR
+    if ( isAttVar(w1) )
 		{
 			FAIL_ON_OVERFLOW
 			if(!assignAttVar(t1, MAY_PASS_REF(t2,orig2), "t1==t2", 1, 0  PASS_LD)) goto out_fail; 
-			continue;
-		}
-		if( isAttVar(w2) )
+      continue;
+    }
+    if ( isAttVar(w2) )
 		{
 			FAIL_ON_OVERFLOW
 			if(!assignAttVar(t2, MAY_PASS_REF(t1,orig1),"t2==t1", 0, 0 PASS_LD)) goto out_fail;
-			continue;
-		}
-#endif
+      continue;
+    }
+  #endif
 
-		if( w1 == w2 )
-			continue;
-		if( tag(w1) != tag(w2) )
-			goto out_fail;
+    if ( w1 == w2 )
+      continue;
+    if ( tag(w1) != tag(w2) )
+      goto out_fail;
 
-		switch( tag(w1) )
+    switch(tag(w1))
     { case TAG_ATOM:
-				goto out_fail;
-			case TAG_INTEGER:
-				if( storage(w1) == STG_INLINE ||
-					storage(w2) == STG_INLINE )
-					goto out_fail;
-			case TAG_STRING:
-			case TAG_FLOAT:
-				if( equalIndirect(w1, w2) )
-					continue;
-				goto out_fail;
-			case TAG_COMPOUND:
-				{ Functor f1 = valueTerm(w1);
-					Functor f2 = valueTerm(w2);
-					int arity;
+	goto out_fail;
+      case TAG_INTEGER:
+	if ( storage(w1) == STG_INLINE ||
+	     storage(w2) == STG_INLINE )
+	  goto out_fail;
+      case TAG_STRING:
+      case TAG_FLOAT:
+	if ( equalIndirect(w1, w2) )
+	  continue;
+        goto out_fail;
+      case TAG_COMPOUND:
+      { Functor f1 = valueTerm(w1);
+	Functor f2 = valueTerm(w2);
+	int arity;
 
 #if O_CYCLIC
-					while( isRef(f1->definition) )
-						f1 = (Functor)unRef(f1->definition);
-					while( isRef(f2->definition) )
-						f2 = (Functor)unRef(f2->definition);
-					if( f1 == f2 )
-						continue;
+	while ( isRef(f1->definition) )
+	  f1 = (Functor)unRef(f1->definition);
+	while ( isRef(f2->definition) )
+	  f2 = (Functor)unRef(f2->definition);
+	if ( f1 == f2 )
+	  continue;
 #endif
 
-					if( f1->definition != f2->definition )
-						goto out_fail;
-					arity = arityFunctor(f1->definition);
+	if ( f1->definition != f2->definition )
+	  goto out_fail;
+	arity = arityFunctor(f1->definition);
 
-					if( !compound )
+	if ( !compound )
 	{ compound = TRUE;
-						initCyclic(PASS_LD1);
-						initTermAgendaLR(&agenda, arity, f1->arguments, f2->arguments);
-					} else
+	  initCyclic(PASS_LD1);
+	  initTermAgendaLR(&agenda, arity, f1->arguments, f2->arguments);
+	} else
 	{ if ( !pushWorkAgendaLR(&agenda, arity, f1->arguments, f2->arguments) )
 	  { rc = MEMORY_OVERFLOW;
-							goto out_fail;
-						}
-					}
-
-					linkTermsCyclic(f1, f2 PASS_LD);
-
-					continue;
-				}
-		}
-	} while( compound && nextTermAgendaLR(&agenda, &t1, &t2) );
-
-	rc = TRUE;
-
-	out_fail:
-	if( compound )
-  { clearTermAgendaLR(&agenda);
-		exitCyclic(PASS_LD1);
+	    goto out_fail;
+	  }
 	}
+
+	linkTermsCyclic(f1, f2 PASS_LD);
+
+	continue;
+      }
+    }
+  } while(compound && nextTermAgendaLR(&agenda, &t1, &t2));
+
+  rc = TRUE;
+
+out_fail:
+  if ( compound )
+  { clearTermAgendaLR(&agenda);
+    exitCyclic(PASS_LD1);
+  }
   return rc;
 }
 

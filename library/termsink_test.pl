@@ -1,9 +1,9 @@
-/*  Part of SWI-Prolog
+/*  Part of (HACKED!) SWI-Prolog
 
-    Author:        Jan Wielemaker
-    E-mail:        J.Wielemaker@cs.vu.nl
-    WWW:           http://www.swi-prolog.org
-    Copyright (C): 2015, VU University Amsterdam
+    Author:        Douglas R. Miles
+    E-mail:        logicmoo@gmail.com 
+    WWW:           http://www.swi-prolog.org http://www.prologmoo.com
+    Copyright (C): naw...
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -34,18 +34,33 @@
   memory_sink/1,counter_var/1,sinkbits_to_number/2,  
   anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
 
-:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+:- meta_predicate wno_mvars(+).
+:- meta_predicate wno_dmvars(+).
+:- meta_predicate wno_debug(+).
+:- meta_predicate w_mvars(+).
+:- meta_predicate w_dmvars(+).
+:- meta_predicate w_debug(+).
+
+:- module_trasparent((
+  wno_mvars/1,w_mvars/1,w_mvars/2,
+  wno_dmvars/1,w_dmvars/1,
+  wno_debug/1,w_debug/1))
  
+:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+
 % /devel/LogicmooDeveloperFramework/swipl-devel/library/termsink
 /** <module> Dict utilities
 
    Some experiments ongoing
 
    O_TERMSINK
+         Without this set #define the 
          Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
-         removed from the current call So now the wakeups like attrib_unify_hook/2 decide 
-        the effective binding of this.  Sometimes keep the attributed variable unbound despite
-         being unified with a term?!? (This is what Tarau''s EmtpySinks do!)
+         removed from the current call (destroyed until unwind).
+         So this prevents their destuction until code in $wakeup/3 destroys them
+          So the wakeups in attrib_unify_hook/2 decides  (the effective binding)
+          Thus code has the option to keep the attributed variable unbound despite laws of "Prolog physics"..
+          (This is what Tarau''s EmtpySinks do!)
          requires O_ATTVAR
 
    O_ATTVAR_EAGER
@@ -124,26 +139,26 @@ nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz), \+ memberchk_sam
 %
 % Base class of var that consumes terms 
 %
-termsink(X):-mvar_set(X,termsink).
+termsink(X):-mvar_set(X,+termsink).
 
 
 %% termsource(-X) is det.
 %
 % Base class of var that may have a value
 %
-termsource(X):-mvar_set(X,termsource),put_attr(X,'$ident',X).
+termsource(X):-mvar_set(X,+termsource),put_attr(X,'$ident',X).
 
 %% termfilter(-X) is det.
 %
 % Filter that may produce a term (termsource/1)
 %
-termfilter(X):-mvar_set(X,wakeAssigns+iteratorVar).
+termfilter(X):-mvar_set(X,+wakeAssigns+remainVar).
 
 %% nb_termfilter(-X) is det.
 %
 % Filters terms but stays unbound even after filtering
 %
-nb_termfilter(X):-mvar_set(X,wakeAssigns+remainVar).
+nb_termfilter(X):-mvar_set(X,+wakeAssigns+remainVar-dontTrail).
 
 %% dont_care(-X) is det.
 %
@@ -154,14 +169,15 @@ dont_care(X):-mvar_set(X,skipWakeup+wakeAssigns+remainVar-scheduleOther+evenDuri
 
 %% plvar(-X) is det.
 %
-% Example of:
+% Example of the well known "Prolog" variable!
 %
 % Using a term sink to emulate a current prolog variable (note we cannot use remainVar)
 %
+% the code:
 % ==
-% plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
 % /* if the new value is the same as the old value accept the unification*/
-% plvar:attrib_unify_hook(binding(Var,Prev),Value):-  (var(Prev)-> put_attr(Var,plvar,binding(Var,Value)); Value=Prev).
+% plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
+% plvar:attrib_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plvar,binding(Var,Value)).
 % ==
 %
 % ==
@@ -175,12 +191,6 @@ dont_care(X):-mvar_set(X,skipWakeup+wakeAssigns+remainVar-scheduleOther+evenDuri
 /* if the new value is the same as the old value accept the unification*/
 plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
 plvar:attrib_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plvar,binding(Var,Value)).
-
-
-% plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
-% /* if the new value is the same as the old value accept the unification*/
-% plvar:attrib_unify_hook(binding(Var,Prev),Value):-  (var(Prev)-> put_attr(Var,plvar,binding(Var,Value)); Value=Prev).
-
 
 
 %% subsumer_var(-X) is det.
@@ -198,7 +208,7 @@ plvar:attrib_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plva
 %  X = a(_).
 % ==
 %
-subsumer_var(X):- termsource(X),init_accumulate(X,subsumer_var,term_subsumer).
+subsumer_var(X):- termsource(X),init_accumulate(X,pattern,term_subsumer).
 
 
 %% counter_var(-X) is det.
@@ -208,7 +218,7 @@ subsumer_var(X):- termsource(X),init_accumulate(X,subsumer_var,term_subsumer).
 % Using a term sink to add numbers together
 %
 % ==
-% counter_var(X):- termsource(X),init_accumulate(X,counter_var,plus).
+% counter_var(X):- termsource(X),init_accumulate(X,numeric,plus).
 % ==
 % 
 % ==
@@ -219,13 +229,41 @@ subsumer_var(X):- termsource(X),init_accumulate(X,subsumer_var,term_subsumer).
 counter_var(X):- termsource(X),init_accumulate(X,counter_var,plus).
 
 
-%% nb_var(-X) is det.
+%% nb_var(+X) is det.
 %
-% Using prolog variable that is stored in a global variable 
+% Using prolog variable that is stored as a global (for later use)
 %
-nb_var(X):- termsource(X), format(atom(N),'~q',[X]),nb_linkval(N,X),put_attr(X,nb_var,N).
-nb_var:attrib_unify_hook(N,V):- nb_linkval(N,V).
-nb_var:early_unify_hook(_Var,N,V):- nb_setval(N,V).
+% nb_var/1 code above doesnt call nb_var/2 (since termsource/1 needs called before call we call format/3 .. promotes a _L666 varable to _G666 )
+nb_var(X):- termsource(X), format(atom(N),'~q',[X]),nb_linkval(N,X),put_attr(X,nb_var,N),nb_linkval(N,V).
+nb_var:attrib_unify_hook(N,V):-
+       nb_getval(N,Prev),
+       ( % This is how we produce a binding for +termsource "iterator"
+          (var(Value),nonvar(Prev)) ->  Value=Prev;
+         % same binding (effectively)
+             Value==Prev->true;
+         % On unification we will update the internal value
+             Value=Prev->nb_setval(N,Prev)).
+
+%%  nb_var(+Name,+X) is det.
+%
+% Using prolog variable that is stored as a global Name (for later use)
+%
+%  like nb_linkvar(+Name,+X)
+%
+%  with the difference that more complex operations are now available at the address 
+%  (Like fifdling with the sinkvar props)
+%
+% ==
+%  ?-  nb_var('ForLater',X), member(X,[1,2,3]).
+%  X = 1.
+%
+%  ?- nb_var('ForLater',X).
+%  X = 1.
+%
+%
+% ==
+nb_var(N, X):- termsource(X), nb_linkval(N,X),put_attr(X,nb_var,N),nb_linkval(N,V).
+
 
 %% debug_sinks is det.
 %
@@ -238,33 +276,76 @@ debug_sinks:- sinkmode(+debugSink),!.
 %
 % Set system wide sink modes
 %
-%      containsSlowUnify = WAM needs our help soemtimes
-%      slowUnifyUneeded = If true we dont dont help
-%      twoO48 = bit 2048 
-%      eagerSome = Attvar''s control unification with plain variables (Irregardless to whom was created first)
-%      eagerALL  = Attvar''s control unification with plain variables (But abiding by creation order )
-%      dontCare(unifiable) = assume we are 
-%      dontCare(==)  = assume we are 
-%      dontCare(=)   = dont trail undo of some special variables
-%      dontCare(=@=)  = assume we are 
-%      debugSink=bit(24) = print extra term reference pointer information
-%
-%   Per variable the default sink modes 
-%
-%      remainVar = after unification stay a variable (even if if we are bound)
-%      wakeAssigns = allow early_unify_hook/3 to control (instead of =/2)
-%      dontTrail = this variable need no trailing (non backtrackable)
-%      trailOther =  we anticipate changing something in the value we unify with
-%      skipWakeup = this variable need no calls to $wakeup/3
-%      scheduleOther =  call $wakeup on other attributed variable who bind with us (overrides the stack priority) 
-%      takeOverReferences = this is for when we might create a linkval back to us where unification just happened
-%      iteratorVar = on unification ask attr_unify_hook/2 
+% == 
+%      remainVar =bit(0), /* survive bindings to even constants */
+%      wakeAssigns =bit(1), /* let $wakeup do our value settings */
+%      dontTrail =bit(2), /* dontTrail we are a constant */
+%      trailOther =bit(3), /* tail any assignment we are about to make on others */
+%      skipWakeup =bit(4), /* we dont need wakeups called */
+%      scheduleOther =bit(5), /* schedule wakeup on other attvars */
+%      takeOverReferences =bit(6), /* attempt to linkval to what we unify */
+%      iteratorVar =bit(7), /* call wakeup to deteremine effective values */
+%      replaceVars =bit(8), /* when unifying with a variable attempt to replace it  */
+%      containsSlowUnify =bit(9), /* direct LD->slow_unify to be true */
+%      dontSlowUnify =bit(10), /* direct LD->slow_unify to be optional */
+%      evenDuringWakeup =bit(11), /*  if off (default .. term sinking disabled durring calls to $wakeup/=bit(3), ) */
+%      disableTermSink =bit(12), /*  */
+%      disabledAll =bit(12), /*  */
+%      eagerALL =bit(13), /* call assignAttVar for all value setting  */
+%      eagerSome =bit(14), /* call assignAttVar for some unifications with vars */
+%      dontCare(unify) =bit(18), /*  dontCare(=) */
+%      dontCare(==) =bit(17), /*  dontCare(==) */
+%      dontCare(can_unify) =bit(16), /*  dontCare(can_unify) */
+%      dontCare(variant) =bit(19), /*  dontCare(=@=) */
+%      dontCare(compare) =bit(20), /*  dontCare(compare) */
+%      dontInheritGlobal =bit(21),
+%      dontTrailAttributes = bit(22),
+%      trailAttributes = bit(23),
+%      debugSink =bit(24), /*  debugger on  */
+%      allAttvarsAreSinks = bit(25),
+%         dontCare(copy_term) =bit(26), /*  dontCare(copy_term) */
+%         unifyMakesCopy =bit(27), 
+%      termsink=(+remainVar+wakeAssigns+dontTrailAttributes+dontInheritGlobal),
+%      termsource=(+remainVar+iteratorVar+scheduleOther+wakeAssigns+dontInheritGlobal)
+% ==
 %
 %   more to come...
 %
 sinkmode(X):- var(X),!,'$sinkmode'(X,X).
 sinkmode(X):- '$sinkmode'(M,M),merge_sinkmodes(X,M,XM),must_ts('$sinkmode'(_,XM)),!,sinkmode,!.
+bits_for_sinkmode(v(
+      remainVar =bit(0), /* survive bindings to even constants */
+      wakeAssigns =bit(1), /* let $wakeup do our value settings */
+      dontTrail =bit(2), /* dontTrail we are a constant */
+      trailOther =bit(3), /* tail any assignment we are about to make on others */
+      skipWakeup =bit(4), /* we dont need wakeups called */
+      scheduleOther =bit(5), /* schedule wakeup on other attvars */
+      takeOverReferences =bit(6), /* attempt to linkval to what we unify */
+      iteratorVar =bit(7), /* call wakeup to deteremine effective values */
+      replaceVars =bit(8), /* when unifying with a variable attempt to replace it  */
+      containsSlowUnify =bit(9), /* direct LD->slow_unify to be true */
+      dontSlowUnify =bit(10), /* direct LD->slow_unify to be optional */
+      evenDuringWakeup =bit(11), /*  if off (default .. term sinking disabled durring calls to $wakeup/=bit(3), ) */
+      disableTermSink =bit(12), /*  */
+      disabledAll =bit(12), /*  */
+      eagerALL =bit(13), /* call assignAttVar for all value setting  */
+      eagerSome =bit(14), /* call assignAttVar for some unifications with vars */
+      dontCare(unify) =bit(18), /*  dontCare(=) */
+      dontCare(==) =bit(17), /*  dontCare(==) */
+      dontCare(can_unify) =bit(16), /*  dontCare(can_unify) */
+      dontCare(variant) =bit(19), /*  dontCare(=@=) */
+      dontCare(compare) =bit(20), /*  dontCare(compare) */
+      dontInheritGlobal =bit(21),
+      dontTrailAttributes = bit(22),
+      trailAttributes = bit(23),
+      debugSink =bit(24), /*  debugger on  */
+      allAttvarsAreSinks = bit(25),
+         dontCare(copy_term) =bit(26), /*  dontCare(copy_term) */
+         unifyMakesCopy =bit(27), 
+      termsink=(+remainVar+wakeAssigns+dontTrailAttributes+dontInheritGlobal),
+      termsource=(+remainVar+iteratorVar+scheduleOther+wakeAssigns+dontInheritGlobal)
 
+    )). 
 
 %% sinkmode is det.
 %
@@ -307,50 +388,10 @@ mvar_set(Var,Modes):-
 %
 new_mvar(Bits,Var):-mvar_set(Var,Bits).
 
-bits_for_sinkmode(v(
-      remainVar =bit(0), /* survive bindings to even constants */
-      wakeAssigns =bit(1), /* let $wakeup do our value settings */
-      dontTrail =bit(2), /* dontTrail we are a constant */
-      trailOther =bit(3), /* tail any assignment we are about to make on others */
-      skipWakeup =bit(4), /* we dont need wakeups called */
-      scheduleOther =bit(5), /* schedule wakeup on other attvars */
-      takeOverReferences =bit(6), /* attempt to linkval to what we unify */
-      iteratorVar =bit(7), /* call wakeup to deteremine effective values */
-      replaceVars =bit(8), /* when unifying with a variable attempt to replace it  */
-      containsSlowUnify =bit(9), /* direct LD->slow_unify to be true */
-      dontSlowUnify =bit(10), /* direct LD->slow_unify to be optional */
-      evenDuringWakeup =bit(11), /*  if off (default .. term sinking disabled durring calls to $wakeup/=bit(3), ) */
-      disableTermSink =bit(12), /*  */
-      disabledAll =bit(12), /*  */
-      eagerALL =bit(13), /* call assignAttVar for all value setting  */
-      eagerSome =bit(14), /* call assignAttVar for some unifications with vars */
-      dontCare(unify) =bit(18), /*  dontCare(=) */
-      dontCare(==) =bit(17), /*  dontCare(==) */
-      dontCare(can_unify) =bit(16), /*  dontCare(can_unify) */
-      dontCare(variant) =bit(19), /*  dontCare(=@=) */
-      dontCare(compare) =bit(20), /*  dontCare(compare) */
-      dontInheritGlobal =bit(21),
-      dontTrailAttributes = bit(22),
-      trailAttributes = bit(23),
-      debugSink =bit(24), /*  debugger on  */
-      allAttvarsAreSinks = bit(25),
-         dontCare(copy_term) =bit(26), /*  dontCare(compare) */
-         unifyMakesCopy =bit(27), 
-      termsink=(+remainVar+wakeAssigns+dontTrailAttributes+dontInheritGlobal),
-      termsource=(+remainVar+iteratorVar+scheduleOther+wakeAssigns+dontInheritGlobal)
-
-    )). 
-
-
 %  counter_var(X),X=1,X=2,w_mvars(eagerSome+eagerALL+takeOverReferences,X=Y).
 
 
 must_ts(G):- G*-> true; throw(must_ts_fail(G)).
-
-:- meta_predicate w_mvars(0).
-:- meta_predicate wno_mvars(0).
-:- meta_predicate wno_debug(0).
-:- meta_predicate w_debug(+).
 
 /*
 
