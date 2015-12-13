@@ -45,9 +45,14 @@
   wno_mvars/1,w_mvars/1,w_mvars/2,
   wno_dmvars/1,w_dmvars/1,
   wno_debug/1,w_debug/1))
+<<<<<<< HEAD
 
 :- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+=======
+>>>>>>> still easy to control
  
+:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+
 % /devel/LogicmooDeveloperFramework/swipl-devel/library/termsink
 /** <module> Dict utilities
 
@@ -55,7 +60,11 @@
 
    O_TERMSINK
          Without this set #define the 
+<<<<<<< HEAD
           Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
+=======
+         Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
+>>>>>>> still easy to control
          removed from the current call (destroyed until unwind).
          So this prevents their destuction until code in $wakeup/3 destroys them
           So the wakeups in attrib_unify_hook/2 decides  (the effective binding)
@@ -230,6 +239,7 @@ counter_var(X):- termsource(X),init_accumulate(X,counter_var,plus).
 
 
 %% nb_var(+X) is det.
+<<<<<<< HEAD
 %
 % Using prolog variable that is stored as a global (for later use)
 %
@@ -261,6 +271,39 @@ nb_var:attrib_unify_hook(N,V):-
 %  X = 1.
 %
 %  
+=======
+%
+% Using prolog variable that is stored as a global (for later use)
+%
+% nb_var/1 code above doesnt call nb_var/2 (since termsource/1 needs called before call we call format/3 .. promotes a _L666 varable to _G666 )
+nb_var(X):- termsource(X), format(atom(N),'~q',[X]),nb_linkval(N,X),put_attr(X,nb_var,N),nb_linkval(N,V).
+nb_var:attrib_unify_hook(N,V):-
+       nb_getval(N,Prev),
+       ( % This is how we produce a binding for +termsource "iterator"
+          (var(Value),nonvar(Prev)) ->  Value=Prev;
+         % same binding (effectively)
+             Value==Prev->true;
+         % On unification we will update the internal value
+             Value=Prev->nb_setval(N,Prev)).
+
+%%  nb_var(+Name,+X) is det.
+%
+% Using prolog variable that is stored as a global Name (for later use)
+%
+%  like nb_linkvar(+Name,+X)
+%
+%  with the difference that more complex operations are now available at the address 
+%  (Like fifdling with the sinkvar props)
+%
+% ==
+%  ?-  nb_var('ForLater',X), member(X,[1,2,3]).
+%  X = 1.
+%
+%  ?- nb_var('ForLater',X).
+%  X = 1.
+%
+%
+>>>>>>> still easy to control
 % ==
 nb_var(N, X):- termsource(X), nb_linkval(N,X),put_attr(X,nb_var,N),nb_linkval(N,V).
 
