@@ -45,9 +45,9 @@
   wno_mvars/1,w_mvars/1,w_mvars/2,
   wno_dmvars/1,w_dmvars/1,
   wno_debug/1,w_debug/1))
- 
-:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
 
+:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+ 
 % /devel/LogicmooDeveloperFramework/swipl-devel/library/termsink
 /** <module> Dict utilities
 
