@@ -31,7 +31,7 @@ symbol lookup and relocations.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 /* pl-attvar.c */
-COMMON(void)		assignAttVar(Word av, Word value, int pleaseTrailFlags ARG_LD);
+COMMON(int)		assignAttVar(Word av, Word value,char* info, int pleaseTrailFlags ARG_LD);
 COMMON(bool) isDontCare_LD(Word value ARG_LD);
 COMMON(int) getSinkMode_LD(Word value ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);
@@ -46,6 +46,8 @@ COMMON(word)		deConsted(word ARG_LD);
 COMMON(void)		destroyGlobalVars();
 COMMON(void)		freezeGlobal(ARG1_LD);
 COMMON(int)		gvar_value__LD(atom_t name, Word p ARG_LD);
+COMMON(int) bt_get_set_val(word name, word* old, word value, word* newValue, int isSetting, word NEW_MARKER, int backtrackable ARG_LD);
+
 
 /* pl-wam.c */
 COMMON(word)		pl_count(void);

@@ -282,6 +282,7 @@ error:
 }
 
 
+
 static
 PRED_IMPL("nb_linkval", 2, nb_linkval, 0)
 { PRED_LD
@@ -316,10 +317,10 @@ PRED_IMPL("b_getval", 2, b_getval, 0)
 static
 PRED_IMPL("nb_delete", 1, nb_delete, 0)
 { PRED_LD
-  atom_t name;
+	atom_t name;
 
-  if ( !PL_get_atom_ex(A1, &name) )
-    fail;
+	if ( !PL_get_atom_ex(A1, &name) )
+	  fail;
 
   if ( LD->gvar.nb_vars )
   { word w;

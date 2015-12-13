@@ -234,153 +234,175 @@ Returns one of:
 
 static int
 do_unify(Word t1, Word t2 ARG_LD)
-{ term_agendaLR agenda;
-  int compound = FALSE;
-  int rc = FALSE;
+{
+	term_agendaLR agenda;
+	int compound = FALSE;
+	int rc = FALSE;
 
-  do
-  { word w1, w2;
+	do
+	{
+		word w1, w2;
 
 #ifdef O_ATTVAR_EAGER
-    Word orig1 = t1;
-    Word orig2 = t2;
+		Word orig1 = t1;
+		Word orig2 = t2;
 #endif
 
-    deRef(t1); w1 = *t1;
-    deRef(t2); w2 = *t2;
+		deRef(t1); w1 = *t1;
+		deRef(t2); w2 = *t2;
 
 #ifdef O_DONTCARE_TAGS
-    if(DONTCARE_OPTION(5) && (isDontCare(t1) || (isDontCare(t2)))) continue;
+		if( DONTCARE_OPTION(5) && (isDontCare(t1) || (isDontCare(t2))) ) continue;
 #endif
 
-    DEBUG(CHK_SECURE, assert(w1 != ATOM_garbage_collected);
-	   assert(w2 != ATOM_garbage_collected));
+		DEBUG(CHK_SECURE, assert(w1 != ATOM_garbage_collected);
+			 assert(w2 != ATOM_garbage_collected));
 
-    if ( isVar(w1) )
-    { if ( unlikely(tTop+1 >= tMax) )
-      { rc = TRAIL_OVERFLOW;
-	goto out_fail;
-      }
-#ifdef O_ATTVAR_EAGER
-        if(EAGER_OPTION(1)) {
-			if ( isAttVar(w2) )
-			{ FAIL_ON_OVERFLOW
-				assignAttVar(t2, t1, 1 PASS_LD);
+		if( isVar(w1) )
+		{
+			if( unlikely(tTop+1 >= tMax) )
+			{
+				rc = TRAIL_OVERFLOW;
+				goto out_fail;
 			}
+			if( isVar(w2) )
+			{
+				if( t1 < t2 )	/* always point downwards */
+				{
+					Trail(t2, makeRef(t1));
+					continue;
+				}
+				if( t1 == t2 )
+					continue;
+				Trail(t1, makeRef(t2));
+				continue;
+			}
+#ifdef O_ATTVAR
+			if( isAttVar(w2 ) ) {
+#ifdef O_ATTVAR_EAGER
+					if( EAGER_OPTION(1) )
+					{
+						FAIL_ON_OVERFLOW
+						if( !assignAttVar(t2, t1, "attrBeforeVar: t2==t1", 1 PASS_LD) ) goto out_fail;
+						continue;
+					}
+#endif
+				w2 = makeRef(t2);
+			}
+#endif
+			Trail(t1, w2);
+			continue;
+		}
+
+		if( isVar(w2) )
+		{
+			if( unlikely(tTop+1 >= tMax) )
+			{
+				rc = TRAIL_OVERFLOW;
+				goto out_fail;
+			}
+#ifdef O_ATTVAR
+			if( isAttVar(w1) )
+			{
+	#ifdef O_ATTVAR_EAGER
+				if( EAGER_OPTION(2) )
+				{
+					FAIL_ON_OVERFLOW
+					if( !assignAttVar(t1, t2, "attrReverseVar: t1==t2", 1 PASS_LD) )
+					{
+						goto out_fail;
+					}
+					continue;
+				}
+	#endif
+				w1 = makeRef(t1);
+			}
+#endif
+			Trail(t2, w1);
+			continue;
+		}
+
+#ifdef O_ATTVAR
+		if( isAttVar(w1) )
+		{
+			FAIL_ON_OVERFLOW
+			if(!assignAttVar(t1, MAY_PASS_REF(t2,orig2), "t1==t2", 0  PASS_LD)) goto out_fail; 
+			continue;
+		}
+		if( isAttVar(w2) )
+		{
+			FAIL_ON_OVERFLOW
+			if(!assignAttVar(t2, MAY_PASS_REF(t1,orig1),"t2==t1", 0 PASS_LD)) goto out_fail;
+			continue;
 		}
 #endif
-      if ( isVar(w2) )
-      { if ( t1 < t2 )			/* always point downwards */
-	{ Trail(t2, makeRef(t1));
-	  continue;
-	}
-	if ( t1 == t2 )
-	  continue;
-	Trail(t1, makeRef(t2));
-	continue;
-      }
-  #ifdef O_ATTVAR
-      if ( isAttVar(w2 ) )
-	w2 = makeRef(t2);
-  #endif
-      Trail(t1, w2);
-      continue;
-    }
-    if ( isVar(w2) )
-    { if ( unlikely(tTop+1 >= tMax) )
-      { rc = TRAIL_OVERFLOW;
-	goto out_fail;
-      }
-  #ifdef O_ATTVAR
-      if ( isAttVar(w1) )
-      {
-#ifdef O_ATTVAR_EAGER
-      FAIL_ON_OVERFLOW
-	  if(EAGER_OPTION(2)) {
-		  assignAttVar(t1, t2, 1 PASS_LD);
-		  continue;
-	  }
-#endif
-	w1 = makeRef(t1); }
-  #endif
-      Trail(t2, w1);
-      continue;
-    }
 
-  #ifdef O_ATTVAR
-    if ( isAttVar(w1) )
-    { FAIL_ON_OVERFLOW
-      assignAttVar(t1, MAY_PASS_REF(t2,orig2), 0  PASS_LD);
-      continue;
-    }
-    if ( isAttVar(w2) )
-    { FAIL_ON_OVERFLOW
-      assignAttVar(t2, MAY_PASS_REF(t1,orig1), 0 PASS_LD);
-      continue;
-    }
-  #endif
+		if( w1 == w2 )
+			continue;
+		if( tag(w1) != tag(w2) )
+			goto out_fail;
 
-    if ( w1 == w2 )
-      continue;
-    if ( tag(w1) != tag(w2) )
-      goto out_fail;
-
-    switch(tag(w1))
-    { case TAG_ATOM:
-	goto out_fail;
-      case TAG_INTEGER:
-	if ( storage(w1) == STG_INLINE ||
-	     storage(w2) == STG_INLINE )
-	  goto out_fail;
-      case TAG_STRING:
-      case TAG_FLOAT:
-	if ( equalIndirect(w1, w2) )
-	  continue;
-        goto out_fail;
-      case TAG_COMPOUND:
-      { Functor f1 = valueTerm(w1);
-	Functor f2 = valueTerm(w2);
-	int arity;
+		switch( tag(w1) )
+		{
+			case TAG_ATOM:
+				goto out_fail;
+			case TAG_INTEGER:
+				if( storage(w1) == STG_INLINE ||
+					storage(w2) == STG_INLINE )
+					goto out_fail;
+			case TAG_STRING:
+			case TAG_FLOAT:
+				if( equalIndirect(w1, w2) )
+					continue;
+				goto out_fail;
+			case TAG_COMPOUND:
+				{ Functor f1 = valueTerm(w1);
+					Functor f2 = valueTerm(w2);
+					int arity;
 
 #if O_CYCLIC
-	while ( isRef(f1->definition) )
-	  f1 = (Functor)unRef(f1->definition);
-	while ( isRef(f2->definition) )
-	  f2 = (Functor)unRef(f2->definition);
-	if ( f1 == f2 )
-	  continue;
+					while( isRef(f1->definition) )
+						f1 = (Functor)unRef(f1->definition);
+					while( isRef(f2->definition) )
+						f2 = (Functor)unRef(f2->definition);
+					if( f1 == f2 )
+						continue;
 #endif
 
-	if ( f1->definition != f2->definition )
-	  goto out_fail;
-	arity = arityFunctor(f1->definition);
+					if( f1->definition != f2->definition )
+						goto out_fail;
+					arity = arityFunctor(f1->definition);
 
-	if ( !compound )
-	{ compound = TRUE;
-	  initCyclic(PASS_LD1);
-	  initTermAgendaLR(&agenda, arity, f1->arguments, f2->arguments);
-	} else
-	{ if ( !pushWorkAgendaLR(&agenda, arity, f1->arguments, f2->arguments) )
-	  { rc = MEMORY_OVERFLOW;
-	    goto out_fail;
-	  }
+					if( !compound )
+					{
+						compound = TRUE;
+						initCyclic(PASS_LD1);
+						initTermAgendaLR(&agenda, arity, f1->arguments, f2->arguments);
+					} else
+					{
+						if( !pushWorkAgendaLR(&agenda, arity, f1->arguments, f2->arguments) )
+						{
+							rc = MEMORY_OVERFLOW;
+							goto out_fail;
+						}
+					}
+
+					linkTermsCyclic(f1, f2 PASS_LD);
+
+					continue;
+				}
+		}
+	} while( compound && nextTermAgendaLR(&agenda, &t1, &t2) );
+
+	rc = TRUE;
+
+	out_fail:
+	if( compound )
+	{
+		clearTermAgendaLR(&agenda);
+		exitCyclic(PASS_LD1);
 	}
-
-	linkTermsCyclic(f1, f2 PASS_LD);
-
-	continue;
-      }
-    }
-  } while(compound && nextTermAgendaLR(&agenda, &t1, &t2));
-
-  rc = TRUE;
-
-out_fail:
-  if ( compound )
-  { clearTermAgendaLR(&agenda);
-    exitCyclic(PASS_LD1);
-  }
-  return rc;
+	return(rc);
 }
 
 

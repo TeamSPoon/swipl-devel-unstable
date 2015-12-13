@@ -413,7 +413,7 @@ struct PL_local_data
 #ifdef O_TERMSINK 
     int  sinkmode;
 	int  gsinkmode;
-	atom_t sinkname;
+	/*  Table sinkvars;		table of sinkvardata */
 #endif
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
   } attvar;

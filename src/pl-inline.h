@@ -290,45 +290,6 @@ stepPC_unlocked(Code PC)
 }
 
 
-/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Mark() sets LD->mark_bar, indicating  that   any  assignment  above this
-value need not be trailed.
-
-Note that the local stack is always _above_ the global stack.
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
-static inline void
-Trail__LD(Word p, word v ARG_LD)
-{ DEBUG(CHK_SECURE, assert(tTop+1 <= tMax));
-  v = deConsted(v PASS_LD);
-  if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
-    (tTop++)->address = p;
-  *p = v;
-}
-
-
-static inline void
-bindConst__LD(Word p, word c ARG_LD)
-{ DEBUG(CHK_SECURE, assert(hasGlobalSpace(0)));
-
-#ifdef O_ATTVAR
-  c = deConsted(c PASS_LD);
-  if ( isVar(*p) )
-  { *p = (c);
-    if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
-      (tTop++)->address = p;
-  } else
-  {
-    assignAttVar(p, &(c), 1 PASS_LD);
-  }
-#else
-  *p = (c);
-  if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
-    (tTop++)->address = p;
-#endif
-}
-
-
 static inline word
 consPtr__LD(void *p, word ts ARG_LD)
 { uintptr_t v = (uintptr_t) p;
@@ -349,6 +310,56 @@ valFloat__LD(word w ARG_LD)
   return d;
 }
 #endif
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Mark() sets LD->mark_bar, indicating  that   any  assignment  above this
+value need not be trailed.
+
+Note that the local stack is always _above_ the global stack.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+static inline void
+Trail__LD(Word p, word v ARG_LD)
+{ DEBUG(CHK_SECURE, assert(tTop+1 <= tMax));
+  v = deConsted(v PASS_LD);
+  if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
+    (tTop++)->address = p;
+  *p = v;
+}
+
+static inline void
+bindConst__LD(Word p, word c ARG_LD)
+{ DEBUG(CHK_SECURE, assert(hasGlobalSpace(0)));
+
+#ifdef O_ATTVAR
+  c = deConsted(c PASS_LD);
+  if ( isVar(*p) )
+  { 
+  if(isAttVar(c)) {	 
+	  Word C = NULL;
+	    C = &c;
+	   if(C!=NULL)
+	   {
+		   if( assignAttVar(C, p, "c= !!!!!!!! =p", 1 PASS_LD)) {
+				return;
+	   }
+	 }
+  }
+
+    *p = (c);
+    if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
+      (tTop++)->address = p;
+  } else
+  {
+    assignAttVar(p, &(c), "p==c", 1 PASS_LD);
+  }
+#else
+  *p = (c);
+  if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
+    (tTop++)->address = p;
+#endif
+}
+
 
 static inline int
 is_signalled(ARG1_LD)

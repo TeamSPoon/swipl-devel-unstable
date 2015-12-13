@@ -272,7 +272,7 @@ print_addr(Word adr, char *buf)
 { GET_LD
   char *name;
   Word base;
-  static char tmp[256];
+  static char tmp[2560];
 
   if ( !buf )
     buf = tmp;
@@ -297,15 +297,20 @@ print_addr(Word adr, char *buf)
 }
 
 
-char *
-print_val_recurse(word val, char *buf, int dereflevel)
+char* print_val_recurse4(word val, char *buf, int tablevel, int dereflevel);
+char* 
+print_val_recurse(word val, char *buf, int dereflevel) {
+	return print_val_recurse4( val,buf, 0, dereflevel);
+}
+char*
+print_val_recurse4(word val, char *buf, int tablevel, int dereflevel)
 { GET_LD
   static const char *tag_name[] = { "var", "attvar", "float", "int", "atom",
 				    "string", "term", "ref" };
   static const char *stg_name[] = { "static", "global", "local", "reserved" };
-  static char tmp[2560];
+   char tmp[2560];
   char *o;
-
+  
   if ( !buf )
     buf = tmp;
   o = buf;
@@ -321,7 +326,8 @@ print_val_recurse(word val, char *buf, int dereflevel)
   }
 
   if ( isVar(val) )
-  { strcpy(o, "VAR");
+  {  Ssprintf(o, "VAR(%ld)",val);
+    
   } else if ( isTaggedInt(val) )
   { Ssprintf(o, "int(%ld)", valInteger(val));
   } else if ( isAtom(val) )
@@ -339,28 +345,36 @@ print_val_recurse(word val, char *buf, int dereflevel)
   } else
   { size_t offset = (val>>(LMASK_BITS-2))/sizeof(word);
 
-    if ( storage(val) == STG_GLOBAL )
-      offset -= gBase - (Word)base_addresses[STG_GLOBAL];
+		if( storage(val) == STG_GLOBAL )
+			offset -= gBase - (Word)base_addresses[STG_GLOBAL];
 
-    Ssprintf(o, "%s at %s(%ld)",
-	     tag_name[tag(val)],
-	     stg_name[storage(val) >> 3],
-	     (long)offset);
-    /* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
-	if(dereflevel > 0) 
-	{
-      if(isRef(val))
-      {
-		 static char moreBuff[2560];
-	     Word at = unRef(val);
-	     int i=dereflevel;
-	     while(i-->0) Ssprintf(o,"{");
-	     
-	     Ssprintf(o,print_val_recurse(*at,moreBuff,dereflevel--));
-	     i=dereflevel;
-	     while(i-->0) Ssprintf(o,"}");
-	   }
-	}
+		/* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
+
+		if( isRef(val) && dereflevel>0 )
+		{
+			Word at = unRef(val);
+			if(*at!=val)
+			{
+				Ssprintf(o, "%s at %s(%ld)\n%\td%s",
+						 tag_name[tag(val)],
+						 stg_name[storage(val) >> 3],
+						 (long)offset,tablevel,
+						 print_val_recurse4(*at,0,tablevel+1, dereflevel-1));
+			} else
+				Ssprintf(o, "LOOPED-REF %s at %s(%ld)",
+						 tag_name[tag(val)],
+						 stg_name[storage(val) >> 3],
+						 (long)offset);
+			{
+			}
+		} else
+		{
+			Ssprintf(o, "%s at %s(%ld)",
+					 tag_name[tag(val)],
+					 stg_name[storage(val) >> 3],
+					 (long)offset);
+		}
+ 
   }
   return buf;
 }

@@ -26,8 +26,8 @@
     invalidate any other reasons why the executable file might be covered by
     the GNU General Public License.
 */
-:- module(termsink,[memory_var/1,memberchk_same/2,mvar_new/2, mvar_getsink/2,mvar_setsink/2,dont_care/1,
-  wno_mvars/1,w_mvars/2,memory_sink/1,termsink/1,counter_var/1,sinkbits_to_number/2,  
+:- module(termsink_test,[memory_var/1,memberchk_same_q/2,mvar_new/2, mvar_getsink/2,mvar_setsink/2,dont_care/1,
+  wno_mvars_tst/1,w_mvars/2,memory_sink/1,termsink/1,counter_var/1,sinkbits_to_number/2,  
    anything_once/1,termsource/1,termfilter/1,subsumer_var/1,plvar/1]).
 
 % /devel/LogicmooDeveloperFramework/swipl-devel/library/termsink
@@ -64,7 +64,7 @@
     
 */
 
-:- meta_predicate w_mvars(+,0),do_test_type(1),wno_mvars(0),must_ts(0),test(?).
+:- meta_predicate w_mvars(+,0),do_test_type(1),wno_mvars_tst(0),must_ts(0),test(?).
 :- discontiguous(test/1).
 :- nodebug(termsinks).
 
@@ -113,7 +113,7 @@
 %  ==
 anything_once(Var):- nonvar(Var) ->true; (get_attr(Var,nr,_)->true;put_attr(Var,nr,old_vals([]))).
 
-nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz), \+ memberchk_same(VarValue,Waz),nb_setarg(1,AttValue,[VarValue|Waz]).
+nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz), \+ memberchk_same_q(VarValue,Waz),nb_setarg(1,AttValue,[VarValue|Waz]).
 
 
 %% termsink(-X) is det.
@@ -127,7 +127,7 @@ termsink(X):-mvar_new(X,skipAssign).
 %
 % Base class of var that may have a value
 %
-termsource(X):-mvar_new(X,termSource+scheduleOther+skipAssign+remainVar).
+termsource(X):-mvar_new(X,termSource+scheduleOther+skipAssign). % remainVar
 
 %% termfilter(-X) is det.
 %
@@ -294,7 +294,7 @@ mvar_setsink(Var,New):-
 %
 mvar_new(X,Modes):- notrace(( sinkbits_to_number(Modes+debugSink,Number),!, '$mvar_sinkmode'(X,_Attrs,_M,Number))).
 
-%mvar_new(X,V):-wno_mvars((((get_attr(X,'$sink',VV)->(VV==V->true;(merge_sinkmodes(V,VV,VVV),
+%mvar_new(X,V):-wno_mvars_tst((((get_attr(X,'$sink',VV)->(VV==V->true;(merge_sinkmodes(V,VV,VVV),
 %   put_attr(X,'$sink',VVV)));((var(V)->V=1;true),(sinkbits_to_number(V,VV),put_attr(X,'$sink',VV)))),put_attr(X,'$ident',X)))),!.
 
 new_mvar(X,V):-mvar_new(V,X).
@@ -346,17 +346,19 @@ w_mvars(M,G):- ('$sinkmode'(W,W),merge_sinkmodes(M,W,N),T is N  /\ \ 4096,'$sink
 
 :- module_transparent(w_dbg/1).
 
-wno_mvars(G):-  must('$sinkmode'(W,W))),must((T is W  \/ 4096)), must('$sinkmode'(_,T)), (G*->must('$sinkmode'(_,W));(must('$sinkmode'(_,W)),fail)).
+wno_mvars_tst(G):-  must('$sinkmode'(W,W)),must((T is W  \/ 4096)), 
+ must('$sinkmode'(_,T)), (G*->must('$sinkmode'(_,W));(must('$sinkmode'(_,W)),fail)).
+
 w_mvars(G):-  '$sinkmode'(W,W),T is W   /\ \ 4096, '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
 wno_dbg(G):-  '$sinkmode'(W,W),T is W  /\ \ 16777216 , '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
 w_dbg(G):-  '$sinkmode'(W,W),T is W  \/ 16777216 , '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
 
-vartypes_to_test(F):-wno_mvars((current_predicate(termsink:F/1),functor(P,F,1),predicate_property(P,number_of_clauses(_)),termsink:'$pldoc'(F/1,_,_,_),
+vartypes_to_test(F):-wno_mvars_tst((current_predicate(termsink:F/1),functor(P,F,1),predicate_property(P,number_of_clauses(_)),termsink:'$pldoc'(F/1,_,_,_),
   clause(P,(A,_BODY)),compound(A),A=mvar_new(_,_))).
-vartypes_to_test(new_mvar(Type)):-wno_mvars(( bits_for_sinkmod(ALL),arg(_,ALL,Type))).
+vartypes_to_test(new_mvar(Type)):-wno_mvars_tst(( bits_for_sinkmod(ALL),arg(_,ALL,Type))).
 
 do_test(test_for(Type)):-
-  wno_dbg(wno_mvars(vartypes_to_test(Type))) *-> w_dbg(ignore((w_mvars(do_test_type(Type)),fail))) ; do_test_type(Type).
+  wno_dbg(wno_mvars_tst(vartypes_to_test(Type))) *-> w_dbg(ignore((w_mvars(do_test_type(Type)),fail))) ; do_test_type(Type).
 
 
 init_accumulate(Var,M,P):-put_attr(Var,accume,init_accumulate(Var,M,P)).
@@ -370,7 +372,7 @@ accume_unify_hook(init_accumulate(Var,M,P),Value):- var(Value),!,Value=_.
 accume_unify_hook(accume_value(Var,M,P,Prev),Value):- nonvar(Value),!,show_call(must(call(P, Prev,Value,Combined))),put_attr(Var,accume,accume_value(Var,M,P,Combined)).
 accume_unify_hook(accume_value(Var,_M,P,Prev),Value):- var(Value),!, nonvar(P),
     %% must('$sinkmode'(W,W))),must((T is W  \/ 4096)), must('$sinkmode'(W,T)),
-     must(wno_mvars(Prev=Value)).
+     must(wno_mvars_tst(Prev=Value)).
 
 
 
@@ -406,7 +408,7 @@ print_varinfo(X):-catch((writeq(print_varinfo=X),get_attrs(X,Attrs),writeln(get_
 '$sink':attr_unify_hook(X,Y):- ignore((debug(termsinks,'~N~q.~n',['$sink':attr_unify_hook(mode=X,value=Y)]))).
 
 '$ident':attr_unify_hook(Var,Value):- 
-  wno_mvars((ignore((var(Var),get_attrs(Var,Attribs), 
+  wno_mvars_tst((ignore((var(Var),get_attrs(Var,Attribs), 
    debug(termsinks,'~N~q.~n',['$ident':attr_unify_hook(({Var+Attribs}=Value))]),
    '$sink':call_all_attr_uhooks_early(Var,Attribs,Value))))).
 
@@ -460,12 +462,12 @@ sinkbits_to_number(V,VVV) :- catch(( VVV is V),_,fail),!.
 
 
 
-%% memberchk_same( ?X, :TermY0) is semidet.
+%% memberchk_same_q( ?X, :TermY0) is semidet.
 %
 % Uses =@=/2,  except with variables, it uses ==/2.
 %
-memberchk_same(X, List) :- is_list(List),!, \+ atomic(List), C=..[v|List],!,(var(X)-> (arg(_,C,YY),X==YY) ; (arg(_,C,YY),X =@= YY)),!.
-memberchk_same(X, Ys) :-  nonvar(Ys), var(X)->memberchk_same0(X, Ys);memberchk_same1(X,Ys).
+memberchk_same_q(X, List) :- is_list(List),!, \+ atomic(List), C=..[v|List],!,(var(X)-> (arg(_,C,YY),X==YY) ; (arg(_,C,YY),X =@= YY)),!.
+memberchk_same_q(X, Ys) :-  nonvar(Ys), var(X)->memberchk_same0(X, Ys);memberchk_same1(X,Ys).
 memberchk_same0(X, [Y|Ys]) :-  X==Y  ; (nonvar(Ys),memberchk_same0(X, Ys)).
 memberchk_same1(X, [Y|Ys]) :-  X =@= Y ; (nonvar(Ys),memberchk_same1(X, Ys)).
 
@@ -587,4 +589,5 @@ memory_sink(Var):-mvar_new(Var,[]),put_attr(Var,'_',Var),put_attr(Sink,zar,Sink)
 %:- endif.
 % :- set_sinkmode(-disabledAll).
 :- debug_sinks.
+: -early_sinks.
 
