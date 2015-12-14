@@ -1690,7 +1690,7 @@ isCaughtInOuterQuery(qid_t qid, term_t ball ARG_LD)
 
     while( fr )
     { if ( fr->predicate == catch3 )
-      { term_t fref = consTermRef(fr);
+      { term_t fref  = consTermRef(fr);
 	Word catcher = argFrameP(fr, 1);
 
 	deRef(catcher);
