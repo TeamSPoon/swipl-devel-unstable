@@ -4119,6 +4119,8 @@ b_throw:
   else
     fid = 0;
 
+  fid = outofstack == (Stack)&LD->stacks.local ? (fid_t)0
+					       : PL_open_foreign_frame();
 again:
   SAVE_REGISTERS(qid);
   catchfr_ref = findCatcher(FR, LD->choicepoints, exception_term PASS_LD);
