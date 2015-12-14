@@ -4087,16 +4087,19 @@ VMI(B_THROW, 0, 0, ())
 { term_t catchfr_ref;
   int start_tracer;
   Stack outofstack;
+  int rewritten;
 
   PL_raise_exception(argFrameP(lTop, 0) - (Word)lBase);
   THROW_EXCEPTION;				/* sets origin */
 
 b_throw:
+  rewritten = 0;
   QF  = QueryFromQid(qid);
   aTop = QF->aSave;
   assert(exception_term);
   outofstack = LD->outofstack;
   LD->outofstack = NULL;
+  fid_t fid;
 
   if ( lTop < (LocalFrame)argFrameP(FR, FR->predicate->functor->arity) )
     lTop = (LocalFrame)argFrameP(FR, FR->predicate->functor->arity);
@@ -4111,6 +4114,12 @@ b_throw:
 	  PL_discard_foreign_frame(fid);
 	});
 
+  if ( has_emergency_space(&LD->stacks.local, sizeof(struct localFrame)) )
+    fid = open_foreign_frame(PASS_LD1);
+  else
+    fid = 0;
+
+again:
   SAVE_REGISTERS(qid);
   catchfr_ref = findCatcher(FR, LD->choicepoints, exception_term PASS_LD);
   LOAD_REGISTERS(qid);
@@ -4131,14 +4140,29 @@ b_throw:
 	  LOAD_REGISTERS(qid);
 	});
 
-  if ( debugstatus.suspendTrace == FALSE )
-  { SAVE_REGISTERS(qid);
+  if ( debugstatus.suspendTrace == FALSE && !rewritten++ )
+  { int rc;
+
+    SAVE_REGISTERS(qid);
     exceptionUnwindGC(outofstack);
     LOAD_REGISTERS(qid);
     SAVE_REGISTERS(qid);
-    exception_hook(FR, catchfr_ref PASS_LD);
+    rc = exception_hook(FR, catchfr_ref PASS_LD);
     LOAD_REGISTERS(qid);
+
+    if ( rc && fid )
+    { DEBUG(MSG_THROW,
+	    Sdprintf("Exception was rewritten to: ");
+	    PL_write_term(Serror, exception_term, 1200, 0);
+	    Sdprintf(" (retrying)\n"));
+
+      PL_rewind_foreign_frame(fid);
+      clear((LocalFrame)valTermRef(catchfr_ref), FR_CATCHED);
+      goto again;
+    }
   }
+  if ( fid )
+    PL_close_foreign_frame(fid);
 
 #if O_DEBUGGER
   start_tracer = FALSE;
@@ -4324,7 +4348,7 @@ b_throw:
     if ( (w=uncachableException(exception_term PASS_LD)) )
     { Word p = gTop;
 
-      if ( !hasGlobalSpace(3) )
+      if ( !has_emergency_space(&LD->stacks.global, 3*sizeof(word)) )
 	fatalError("Cannot wrap abort exception\n");
 
       argFrame(lTop, 0) = consPtr(p, TAG_COMPOUND|STG_GLOBAL);
