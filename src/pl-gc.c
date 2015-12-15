@@ -272,7 +272,7 @@ print_addr(Word adr, char *buf)
 { GET_LD
   char *name;
   Word base;
-  static char tmp[256];
+  static char tmp[2560];
 
   if ( !buf )
     buf = tmp;
@@ -287,22 +287,28 @@ print_addr(Word adr, char *buf)
   { name = "trail";
     base = (Word) tBase;
   } else
-  { Ssprintf(buf, "%p", adr);
+  { Ssprintf(buf, "pointer(%p)", adr);
     return buf;
   }
 
-  Ssprintf(buf, "%p=%s(%d)", adr, name, adr-base);
+  Ssprintf(buf, "(%p=%s(%d))", adr, name, adr-base);
+  /* DMILES: this seems to disagree with the print_val(..) by -1 */
   return buf;
 }
 
 
+char* print_val_recurse4(word val, char *buf, int tablevel, int dereflevel);
 char *
-print_val(word val, char *buf)
+print_val_recurse(word val, char *buf, int dereflevel) {
+	return print_val_recurse4( val,buf, 0, dereflevel);
+}
+char*
+print_val_recurse4(word val, char *buf, int tablevel, int dereflevel)
 { GET_LD
   static const char *tag_name[] = { "var", "attvar", "float", "int", "atom",
 				    "string", "term", "ref" };
   static const char *stg_name[] = { "static", "global", "local", "reserved" };
-  static char tmp[256];
+   char tmp[2560];
   char *o;
 
   if ( !buf )
@@ -320,7 +326,8 @@ print_val(word val, char *buf)
   }
 
   if ( isVar(val) )
-  { strcpy(o, "VAR");
+  {  Ssprintf(o, "VAR(%ld)",val);
+    
   } else if ( isTaggedInt(val) )
   { Ssprintf(o, "int(%ld)", valInteger(val));
   } else if ( isAtom(val) )
@@ -341,14 +348,39 @@ print_val(word val, char *buf)
     if ( storage(val) == STG_GLOBAL )
       offset -= gBase - (Word)base_addresses[STG_GLOBAL];
 
+		/* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
+		offset--;
+
+		if( isRef(val) && dereflevel>0 )
+		{
+			Word at = unRef(val);
+			if((void*)at!=(void*)val)
+			{
+				Ssprintf(o, "%s at %s(%ld)\n%\td%s",
+						 tag_name[tag(val)],
+						 stg_name[storage(val) >> 3],
+						 (long)offset,tablevel,
+						 print_val_recurse4(*at,0,tablevel+1, dereflevel-1));
+			} else
+				Ssprintf(o, "LOOPED-REF %s at %s(%ld)",
+						 tag_name[tag(val)],
+						 stg_name[storage(val) >> 3],
+						 (long)offset);
+			{
+			}
+		} else
+		{
     Ssprintf(o, "%s at %s(%ld)",
 	     tag_name[tag(val)],
 	     stg_name[storage(val) >> 3],
 	     (long)offset);
   }
 
+  }
   return buf;
 }
+
+char* print_val(word val, char *buf) { return print_val_recurse(val,buf,1); }
 
 #endif /*O_DEBUG*/
 

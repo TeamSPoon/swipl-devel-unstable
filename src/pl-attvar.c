@@ -106,7 +106,7 @@ SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word name, Word value ARG_LD)
+registerWakeup(Word av, Word vp, Word value ARG_LD)
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
@@ -115,7 +115,7 @@ registerWakeup(Word name, Word value ARG_LD)
   wake = gTop;
   gTop += 4;
   wake[0] = FUNCTOR_wakeup3;
-  wake[1] = needsRef(*name) ? makeRef(name) : *name;
+  wake[1] = needsRef(*vp) ? makeRef(vp) : *vp;
   wake[2] = needsRef(*value) ? makeRef(value) : *value;
   wake[3] = ATOM_nil;
 
@@ -163,7 +163,13 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 void
+#ifndef O_TERMSINK
 assignAttVar(Word av, Word value ARG_LD)
+#define PRE_TRAIL_ATTRS(x) 
+#else
+assignAttVarOriginal(Word av, Word value ARG_LD)
+#endif
+
 { Word a;
 
   assert(isAttVar(*av));
@@ -183,7 +189,7 @@ assignAttVar(Word av, Word value ARG_LD)
   }
 
   a = valPAttVar(*av);
-  registerWakeup(a, value PASS_LD);
+  registerWakeup(av, a, value PASS_LD);
 
   TrailAssignment(av);
   if ( isAttVar(*value) )
@@ -195,6 +201,390 @@ assignAttVar(Word av, Word value ARG_LD)
   return;
 }
 
+
+
+#if O_TERMSINK
+
+
+static void put_att_value(Word vp, atom_t name, Word value ARG_LD);
+static int find_attr(Word av, atom_t name, Word *vp ARG_LD);
+
+
+atom_t attvar_name(Word adr, char* prefix, int offset)
+{ GET_LD
+  static char name[32];
+
+  deRef(adr);
+
+  if (adr > (Word) lBase)
+    Ssprintf(name, "%s_L%ld",prefix, (Word)adr - (Word)lBase);
+  else
+    Ssprintf(name, "%s_G%ld",prefix, (Word)adr - (Word)gBase);
+
+  return PL_new_atom(name);
+}
+
+#ifdef USE_PROPS
+int
+getSinkMode_LD(Word av ARG_LD) {
+	Word w;
+	word v;
+	int i = 0;
+   // if( !isAttVar(*av) ) return(0);
+	if(gvar_value__LD(attvar_name(av,"SinkMode",0),&v PASS_LD)) {
+		if( isTaggedInt(v) ) i = (valInteger(v));
+		if(i>0) return i;
+	}
+	if( !isAttVar(*av) )	return(0);
+	atom_t sinkname = LD->attvar.sinkname;
+	if( sinkname == 0 )	sinkname = LD->attvar.sinkname = PL_new_atom("$sink");
+	if( !find_attr(av,sinkname, &w PASS_LD) ) return(0);
+	v = *w;
+	if( isTaggedInt(v) ) i = (valInteger(v));
+	return i;
+}
+#else
+int
+getSinkMode_LD(Word av ARG_LD) {
+ 
+	word w;
+	if( !isAttVar(*av) ) return(0);
+	if(!gvar_value__LD(attvar_name(av,"SinkMode",0),&w PASS_LD)) {
+       return 0;
+	}
+	if( isTaggedInt(w) ) return(valInteger(w));
+	return(LD->attvar.gsinkmode);
+}
+#endif //USE_PROPS
+void setSinkMode(Word av, int value) {
+GET_LD
+	assert( isTaggedInt(consInt(value)));
+    updateHTable(LD->gvar.nb_vars, 
+      (void*)attvar_name(av,"SinkMode",0),
+				 (void*)consInt(value));
+}
+
+
+char *print_addr(Word adr, char *buf); 
+char *print_val(word val, char *buf); 
+char *print_val_recurse(word val, char *buf, int dereflevel); 
+
+// #define IS_DEBUG_MASK(F) ((F & (1<<24)) != 0)
+
+word deConsted(word d ARG_LD) {
+	if(isRef(d)) {
+	   return d;
+	}
+	if(isVar(d)) {
+		return d;
+	}
+	if(isAttVar(d)) {
+		// we want to get the "value" ?
+		return d;
+	}
+	if(isTerm(d)) {
+		return d;
+	}
+	// we want to make a fake refernce probably
+	return d;
+}
+
+
+bool
+isDontCare_LD(Word value ARG_LD) {	
+ int sinkmode = getSinkMode_LD(value PASS_LD); 
+ return sinkmode = REALLY_DONT_CARE;
+}
+
+static void make_new_attvar(Word p ARG_LD);
+
+/*
+returns 
+*/
+int
+assignAttVar(Word avO, Word valueO, char* info, int reversed, int pleaseTrail ARG_LD) 
+{ Word a;
+  Word oa;
+
+  int sinkmode_outer = LD->attvar.sinkmode;
+  int sinkmode_global = LD->attvar.gsinkmode;
+	Word value = valueO;
+	Word av =avO;
+	deRef(av);
+	deRef(value);
+	if( avO!=av ) {
+		SPVALUE_DEBUG("\t%% DEREF_ATTV  = ",avO, "\n");
+	}
+	if( valueO!=value ) {
+		SPVALUE_DEBUG("\t%% DEREF_VALUE  = ",valueO, "\n");
+	}
+	int sinkmode = getSinkMode(av);
+	if( sinkmode < 0 ) { 
+		sinkmode = sinkmode_global;
+	} else {			
+		LD->attvar.sinkmode = sinkmode;
+	}
+
+  if(!isAttVar(*av) || isRef(*av)  || isRef(*value)  || isVar(*value) || isAttVar(*value) || pleaseTrail)
+  {
+	  SPVALUE("\n\t%% INTERESTING ATTVAR = ",av, " ");
+	  DEBUG_TERMSINK(Sprintf(" From %s\n",info));
+	  SHVALUE("%d",isRef(*av));
+	  SHVALUE("%d",!isAttVar(*av));
+	  SHVALUE("%d",isRef(*value));
+	  SHVALUE("%d",isVar(*value));
+	  SHVALUE("%d",isAttVar(*value));
+	  SPVALUE("\t%% INTERESTING VALUE = ",value, "\n");
+  }
+
+  if( av == value ) {
+		SPVALUE("\n\t%% EQ_ATV assignAttVar ",av, "\n");
+		LD->attvar.sinkmode = sinkmode_outer;
+		return TRUE;
+  }  
+
+  if( *av == *value ) {
+	  SPVALUE("\n\t%% EQU_ATV ",av, "\n");
+	  LD->attvar.sinkmode = sinkmode_outer;
+	  return TRUE;
+  }
+
+  // AllDisabled
+  if((LD->attvar.gsinkmode & 4096) != 0) {
+	  assignAttVarOriginal(av,value PASS_LD);
+	  LD->attvar.sinkmode = sinkmode_outer;
+	  return TRUE;
+  }
+
+
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
+
+  Word origvalue = value;
+  deRef(value);
+  if(value!=origvalue) {
+	///  SPVALUE("\n\t%% VALUECHANGE vin = ",origvalue, "\n");
+	  SPVALUE("\n\t%% VALUECHANGE into = ",value, "\n");
+	   *value = *origvalue;
+  }
+
+
+	DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+	DEBUG_TERMSINK(Sprintf("\n\t%% ENTER_ATV %s\n ",info));
+	SPVALUE(" ",av, "\n");
+	SHVALUE("%d",isRef(*value));
+	SHVALUE("%d",isVar(*value));
+	SHVALUE("%d",sinkmode_global);
+	SHVALUE("%d",sinkmode_outer);
+	SPVALUE("\t  VALUE = ",value,"\n");
+
+
+	
+	SHVALUE("%d",sinkmode);
+
+	
+	/*  for these three values is what constitutes "normal"
+	  the values can be set with sinkmode/2 predicate */
+	DECL_AND_SHOW(remainVar);
+	DECL_AND_SHOW(wakeAssigns);
+	DECL_AND_SHOW(unifyMakesCopy);
+	
+	bool dontTrail = ((sinkmode & 4) != 0);	 /* dontTrail - not sure yet.. perhaps only it early wakeup tells us */
+	bool trailOther = ((sinkmode & 8) != 0);  /* trailOther - not sure yet.. perhaps only it early wakeup tells us */
+	bool skipWakeup = ((sinkmode & 16) != 0); /* calling wakeup early to find out if we maybe care */
+	bool scheduleOther = (((sinkmode & 32) != 0) || ((LD->attvar.gsinkmode & 32) != 0));  
+	bool takeOverReferences = (((sinkmode & 64) != 0) || ((LD->attvar.gsinkmode & 64) != 0)); 
+	bool replaceVars = (((sinkmode & 256) != 0) || ((LD->attvar.gsinkmode & 256) != 0));
+	bool iteratorVar = ((sinkmode & 128) != 0);
+	bool isSpecial = !IS_UNSPECIAL(sinkmode);
+    
+	SHVALUE("%d",dontTrail);
+    DECL_AND_SHOW(evenDuringWakeup);
+
+	SHVALUE("%d",isSpecial);
+	SHVALUE("%d",trailOther);
+	SHVALUE("%d",skipWakeup);
+	SHVALUE("%d",scheduleOther);	
+	SHVALUE("%d",takeOverReferences);
+	SHVALUE("%d",replaceVars);
+	SHVALUE("%d",evenDuringWakeup);
+	SHVALUE("%d",iteratorVar);
+
+	bool otherIsAttvar = isAttVar(*value);
+	bool otherIsPlainVar = isVar(*value);
+    bool skipAssign = wakeAssigns;
+	bool normalVarUnify = otherIsPlainVar && trailOther && !iteratorVar && !isSpecial;
+
+	if(normalVarUnify) {
+		word ourRef = makeRef(av); 
+		Trail(value,ourRef);
+		SPVALUE("\t%% normalVarUnify ",av,"\n");
+		return TRUE;
+	}	
+
+	if( otherIsAttvar ) {
+
+		int otherSinkMode = getSinkMode_LD(value PASS_LD);
+		bool otherTermSource = IS_SINKMODE_FOR(iteratorVar,otherSinkMode);
+		bool otherSkipWakeup =  IS_SINKMODE_FOR(skipWakeup,otherSinkMode);
+		SHVALUE("%d",otherSinkMode);		
+		SHVALUE("%d",otherTermSource);
+		if( value > av && pleaseTrail==0) {
+			SHVALUE("SWAPPPING %d",value > av )
+			LD->attvar.sinkmode = sinkmode_outer;
+			assignAttVar(value,av,"swapped", reversed==0,  0 PASS_LD);
+			return TRUE;
+		}
+		if(otherSkipWakeup) {
+			scheduleOther = FALSE;
+		}
+	}
+
+	a = valPAttVar(*av);
+	bool alreadyDidNormalWakeup = FALSE;
+	bool alreadyTrailedValue = FALSE;
+
+
+	if(iteratorVar && !reversed && otherIsPlainVar) {
+		SPVALUE("\t%% ITERATOR BINDING ",av,"\n");
+		LD->attvar.sinkmode = sinkmode_outer;
+		if(pleaseTrail || trailOther || scheduleOther)
+		{
+			SPVALUE("\t%% TERM_SOURCE TRAILING VAR ",value,"\n");
+			if(!alreadyTrailedValue) TrailAssignment(value);
+		} else {
+			SPVALUE("\t%% TERM_SOURCE TRAILING ANYWAYS ",value,"\n");
+		   if(!alreadyTrailedValue) TrailAssignment(value);
+		}
+		SPVALUE("\t%% ITERATOR WAKEUP ONTO VALUE ",value,"\n");
+		if(!alreadyDidNormalWakeup) registerWakeup(av, a, value PASS_LD);  	
+		return TRUE;
+	} 
+
+
+	if(otherIsPlainVar && !iteratorVar) {
+		if( reversed ) {
+			LD->attvar.sinkmode = sinkmode_outer;
+			if (pleaseTrail || trailOther) {
+				SPVALUE("\t%% COPY TERM_SINK ONTO TrailAssignment REVERSED",value,"\n");
+				if(!alreadyTrailedValue) TrailAssignment(value); alreadyTrailedValue = TRUE;
+			} else {
+				SPVALUE("\t%% COPY TERM_SINK ONTO UNTRAILED REVERSED",value,"\n");
+			}
+			make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
+			deRef(value);
+			setSinkMode(value,sinkmode);
+			Word vp = valPAttVar(*value);
+			PRE_TRAIL_ATTRS(av) {
+			   if(trailOther) TrailAssignment(vp);					/* SHIFT: 1+2 */
+			}
+			*vp = linkVal(a);
+			SPVALUE("\t%% EXIT COPY TERM_SINK REVERSED", value,"\n");
+			return(TRUE);            		
+		} else {
+			LD->attvar.sinkmode = sinkmode_outer;
+			if (pleaseTrail || trailOther) {
+				SPVALUE("\t%% COPY TERM_SINK ONTO TrailAssignment FORWARD",value,"\n");
+				if(!alreadyTrailedValue) TrailAssignment(value); alreadyTrailedValue = TRUE;
+			} else {
+				SPVALUE("\t%% COPY TERM_SINK ONTO UNTRAILED FORWARD",value,"\n");
+			}
+			make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
+			deRef(value);
+			setSinkMode(value,sinkmode);
+			Word vp = valPAttVar(*value);
+			PRE_TRAIL_ATTRS(av) {
+			  // if(trailOther) TrailAssignment(vp);					/* SHIFT: 1+2 */
+			}
+			*vp = linkVal(a);
+			SPVALUE("\t%% EXIT COPY TERM_SINK FORWARD", value,"\n");
+			return(TRUE);
+		}
+	}
+
+   
+
+    if( !skipWakeup ) {
+		SPVALUE("\t%% SCHEDULED WAKEUP valPAttVar(*av) = ",value,"\n");
+		if(!alreadyDidNormalWakeup) {
+			registerWakeup(av, a, value PASS_LD);
+			alreadyDidNormalWakeup = TRUE;
+		}
+	}
+
+	if( trailOther || pleaseTrail ) {
+		if(otherIsPlainVar || otherIsAttvar) {
+			if(!alreadyTrailedValue) TrailAssignment(value); alreadyTrailedValue = TRUE;
+			
+			SPVALUE("\t%% TRAILED trailOther ",value,"\n");
+			pleaseTrail = FALSE;
+		}
+	}	
+
+	if( !dontTrail ) {
+		TrailAssignment(av);
+		SPVALUE("\t%% TRAILED attvar ",av,"\n");
+		dontTrail = TRUE;
+		trailOther = FALSE;
+	}
+
+
+	if(scheduleOther && isAttVar(*value)) {
+		oa = valPAttVar(*value);
+		SPVALUE("\t%% SCHEDULED WAKEUP REVERSED(*value) = ",av,"\n");
+		registerWakeup(value, oa, av PASS_LD);
+	}
+
+	if( remainVar ) {
+		skipAssign = TRUE;
+		if(otherIsPlainVar) {
+
+		} else {
+			if(!alreadyTrailedValue) TrailAssignment(value); alreadyTrailedValue = TRUE;
+			word savevalue = *value;
+			skipAssign = TRUE;
+			setVar(*value);
+			if(savevalue != *value) {
+				SPVALUE("\t%% CONVERTED VALUE ",&savevalue,"");
+				SPVALUE(" into ",value,"\n");
+			}			
+		}
+	}
+
+	if( iteratorVar ) {
+
+		if (otherIsAttvar) {		 
+            SPVALUE("\t%% TERM_SOURCE TO ATTVAR ",value,"\n");
+			LD->attvar.sinkmode = sinkmode_outer;
+			if(!alreadyDidNormalWakeup) registerWakeup(av, a, value PASS_LD);
+		    return TRUE;
+		}
+	}
+
+	if( !skipAssign ) {
+
+		SPVALUE("\t%% ASSIGN *",av," ");SPVALUE(" VALUE ",value,"\n"); 	
+
+		if( isAttVar(*value) ) {
+			DEBUG(1, Sdprintf("Unifying two attvars\n"));
+			*av = makeRef(value);
+		} if( isVar(*value) ) {
+			*av = makeRef(value);
+		} else {		
+			*av	= *value;
+		}
+	} else {
+		SPVALUE("\t%% SKIPPED-ASSIGN ",value,"\n");
+	}
+
+
+	SPVALUE("\t%% EXIT AV = ",av,"\n\n"); 
+    LD->attvar.sinkmode = sinkmode_outer;
+
+	return TRUE;
+}
+
+#endif
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Link known attributes variables into a reference list.
@@ -378,6 +768,7 @@ put_att_value(Word vp, atom_t name, Word value ARG_LD)
   at[2] = linkVal(value);
   at[3] = ATOM_nil;
 
+  PRE_TRAIL_ATTRS(vp)
   TrailAssignment(vp);
   *vp = consPtr(at, TAG_COMPOUND|STG_GLOBAL);
 }
@@ -390,7 +781,8 @@ put_attr(Word av, atom_t name, Word value ARG_LD)
   assert(gTop+5 <= gMax && tTop+2 <= tMax);
 
   if ( find_attr(av, name, &vp PASS_LD) )
-  { TrailAssignment(vp);
+  { PRE_TRAIL_ATTRS(av)
+	TrailAssignment(vp);
     *vp = linkVal(value);
   } else if ( vp )
   { put_att_value(vp, name, value PASS_LD);
@@ -593,6 +985,424 @@ restoreWakeup(wakeup_state *state ARG_LD)
 		 *	     PREDICATES		*
 		 *******************************/
 
+
+#ifdef O_TERMSINK
+
+
+static void
+free_mvar_linked_name(atom_t name)
+{ if(isAtom(name))PL_unregister_atom(name);
+}
+
+
+static void
+free_mvar_linked_value(word value)
+{
+  if ( isAtom(value) )
+    PL_unregister_atom(value);
+  else if ( storage(value) == STG_GLOBAL )
+  { GET_LD
+    LD->gvar.grefs--;
+  }
+}
+
+
+static void
+free_mvar_linked_symbol(void *name, void* value)
+{ free_mvar_linked_value((word)value);
+  free_mvar_linked_name((atom_t)name);
+}
+
+static 
+PRED_IMPL("$sinkmode", 2, dsinkmode, 0) {
+PRED_LD
+    term_t old = A1;
+    term_t new = A2;
+	if( PL_unify_integer(old, (LD->attvar.sinkmode)) ) {
+		int val;
+		if( !PL_get_integer(new, &val) )
+			return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, new));
+		LD->attvar.sinkmode = val;
+		LD->attvar.gsinkmode = val;
+		if ( (val & 512)!=0 ) {
+				LD->slow_unify = (((val & 1024)==0)?TRUE:FALSE);
+		}
+		succeed;
+	}
+	fail;
+}
+
+
+static 
+PRED_IMPL("$mvar_sinkmode", 4, dmvar_sinkmode, 0)
+{
+	PRED_LD
+	Word av, vp;
+
+	if( !hasGlobalSpace(0) )	/* 0 means enough for attvars */
+	{
+		int rc;
+
+		if( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
+			return(raiseStackOverflow(rc));
+	}
+
+	av = valTermRef(A1);
+	Word a2 = valTermRef(A2);
+	deRef(av);
+
+	if( isVar(*av) )
+	{
+		make_new_attvar(av PASS_LD);		/* SHIFT: 3+0 */
+		deRef(av);
+		if( PL_is_variable(A2) )
+		{
+			PL_put_nil(A2);
+			vp = valPAttVar(*av);
+			PRE_TRAIL_ATTRS(av)
+			TrailAssignment(vp);				/* SHIFT: 1+2 */
+			*vp = linkVal(valTermRef(A2));
+		} else
+		{
+			vp = valPAttVar(*av);
+			PRE_TRAIL_ATTRS(av)
+			TrailAssignment(vp);				/* SHIFT: 1+2 */
+			*vp = linkVal(valTermRef(A2));
+		}
+	} else if( !isAttVar(*av) )
+	{
+		return(PL_error("$mvar_sinkmode", 2, NULL, ERR_UNINSTANTIATION, 1, A1));
+	} else
+	{
+		
+		vp = valPAttVar(*av);
+		if( isVar(*a2) )
+		{
+			*a2 = makeRef(vp); /* reference, so we can assign */
+		} else
+		{
+			PRE_TRAIL_ATTRS(av)
+			TrailAssignment(vp);				/* SHIFT: 1+2 */
+			*vp = linkVal(a2);
+		}
+	}
+
+	term_t old = A3;
+	term_t new = A4;
+	int oldval = getSinkMode(av);
+	if( PL_unify_integer(old, oldval) )
+	{
+		int val;
+		if( !PL_get_integer(new, &val) )
+			return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, new));
+		setSinkMode(av,val);
+		succeed;
+	}
+	fail;
+}
+
+static 
+PRED_IMPL("$mvar_sinkmode", 3, dmvar_sinkmode, 0) {
+PRED_LD
+
+
+  Word av = valTermRef(A1);
+
+  deRef(av);
+  if ( isAttVar(*av) )
+  { 
+	  term_t old = A2;
+	  term_t new = A3;
+	  int oldval = getSinkMode(av);
+	  if( PL_unify_integer(old, oldval) ) {
+		  int val;
+		  if( !PL_get_integer(new, &val) )
+			  return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, new));
+		  setSinkMode(av,val);
+		  succeed;
+	  }
+  }
+  fail;
+}
+
+
+
+
+
+int mvar_key(term_t A1, atom_t* name) {
+GET_LD
+	word w;
+    atom_t aname;
+	
+	long lng;
+	void* ptr;
+	if(PL_get_atom(A1,&aname)) {
+		w = (word)aname;
+	} else if(PL_get_pointer(A1,&ptr)) {
+		w = (word)ptr;
+	} else if(PL_get_long(A1,&lng)) {
+		w = (word)lng;
+	} else {
+		Word d = valTermRef(A1);
+		deRef(d);
+		w =(atom_t)(word) *d;
+		if( w==0 ) {
+			w = (word)(void*)d;
+		}
+	}
+	*name = w;
+	if(w==0) return FALSE;
+	assert(w);
+	assert(name);
+	return TRUE;
+}
+
+static int
+mvar_setval(term_t var, term_t value, int backtrackable ARG_LD)
+{ atom_t name;
+  Word p;
+  word w, old;
+
+  
+  if ( !mvar_key(var, &name) )
+    fail;
+
+  word MVAR_UNSET = name;
+
+  p = valTermRef(var);
+  deRef(p);
+  name = *p;
+
+  if ( !LD->gvar.nb_vars )
+  { LD->gvar.nb_vars = newHTable(32);
+    LD->gvar.nb_vars->free_symbol = free_mvar_linked_symbol;
+  }
+
+  if ( !hasGlobalSpace(3) )		/* also ensures trail for */
+  { int rc;				/* TrailAssignment() */
+
+    if ( (rc=ensureGlobalSpace(3, ALLOW_GC)) != TRUE )
+      return raiseStackOverflow(rc);
+  }
+
+  p = valTermRef(value);
+  deRef(p);
+  w = *p;
+
+  if ( canBind(w) )
+  { if ( onStackArea(local, p) )
+    { Word p2 = allocGlobal(1);
+
+      setVar(*p2);
+      w = *p = makeRef(p2);
+      LTrail(p);
+    } else
+    { w = makeRef(p);
+    }
+  }
+
+  if ( !(old = (word)lookupHTable(LD->gvar.nb_vars, (void*)name)) )
+  { addNewHTable(LD->gvar.nb_vars, (void*)name, (void*)MVAR_UNSET);
+    if(isAtom(name))PL_register_atom(name);
+    if(isAtom(MVAR_UNSET))PL_register_atom(MVAR_UNSET);
+    old = MVAR_UNSET;
+  }
+  assert(old);
+
+  if ( w == old )
+    succeed;
+  if ( isAtom(old) )
+    PL_unregister_atom(old);
+
+  if ( backtrackable )
+  { Word p;
+
+    if ( isRef(old) )
+    { p = unRef(old);
+    } else
+    { p = allocGlobal(1);
+      *p = old;
+      freezeGlobal(PASS_LD1);		/* The value location must be */
+      if ( storage(old) != STG_GLOBAL )	/* preserved */
+	LD->gvar.grefs++;
+      updateHTable(LD->gvar.nb_vars, (void*)name, (void*)makeRefG(p));
+    }
+
+    TrailAssignment(p);
+    *p = w;
+  } else
+  { if ( storage(old) == STG_GLOBAL )
+      LD->gvar.grefs--;
+
+    updateHTable(LD->gvar.nb_vars, (void*)name, (void*)w);
+
+    if ( storage(w) == STG_GLOBAL )
+    { freezeGlobal(PASS_LD1);
+      LD->gvar.grefs++;
+    } else if ( isAtom(w) )
+      PL_register_atom(w);
+  }
+
+  succeed;
+}
+
+
+static int
+mvar_getval(term_t var, term_t value, int raise_error ARG_LD)
+{ atom_t name;
+
+  if ( !mvar_key(var, &name) )
+    fail;
+  if ( !hasGlobalSpace(0) )
+  { int rc;
+
+    if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
+      return raiseStackOverflow(rc);
+  }
+
+ if ( LD->gvar.nb_vars )
+    { word w;
+      if ( (w = (word)lookupHTable(LD->gvar.nb_vars, (void*)name)) )
+      { term_t tmp = PL_new_term_ref();
+
+	*valTermRef(tmp) = w;
+	return PL_unify(value, tmp);
+      }
+ }
+ return PL_unify(value, var);
+
+}
+ 
+
+
+static
+PRED_IMPL("mvar_linkval", 2, mvar_linkval, 0)
+{ PRED_LD
+
+  return mvar_setval(A1, A2, FALSE PASS_LD);
+}
+
+
+static
+PRED_IMPL("mvar_getval", 2, mvar_getval, 0)
+{ PRED_LD
+
+  return mvar_getval(A1, A2, TRUE PASS_LD);
+}
+
+
+static
+PRED_IMPL("mvar_setval", 2, mvar_setval, 0)
+{ PRED_LD
+  return mvar_setval(A1, A2, TRUE PASS_LD);
+}
+
+
+static
+PRED_IMPL("mvar_key", 3, mvar_key, 0)
+{ PRED_LD
+	word w;
+    atom_t aname;
+	
+	long lng;
+	void* ptr;
+	if(PL_get_atom(A1,&aname)) {
+		w = (word)aname;
+		Sprintf("as_atom=%s\n",print_val_recurse(w,0,1));
+	} else if(PL_get_pointer(A1,&ptr)) {
+		w = (word)ptr;
+		Sprintf("as_pointer=%s\n",print_val_recurse(w,0,1));
+	} else if(PL_get_long(A1,&lng)) {
+		w = (word)lng;
+		Sprintf("as_long=%s\n",print_val_recurse(w,0,1));
+	} else {
+		Word d = valTermRef(A1);
+		deRef(d);
+		w =(atom_t)(word) *d;
+		if( w==0 ) {
+			w = (word)(void*)d;
+		}
+		Sprintf("*valTermRef(A1)=%s\n",print_val_recurse(w,0,1));
+	}
+	int ok = 0;
+	
+	if(isAtom(w))
+	{
+		ok = PL_unify_atom(A2,(atom_t)w);
+	} else if(isAttVar(w))
+	{
+	   Sprintf("isAttVar\n");
+	}
+	if(!ok) {
+		*valTermRef(A2) = linkVal(&w);
+	}
+	
+	return PL_unify_pointer(A3,(void*)w);
+}
+
+static
+PRED_IMPL("mvar_nb_setval", 2, mvar_nb_setval, 0)
+{ PRED_LD
+
+  return mvar_setval(A1, A2, FALSE PASS_LD);
+}
+
+
+
+static
+PRED_IMPL("mvar_delete", 1, mvar_delete, 0)
+{ PRED_LD
+  atom_t name;
+  if ( !mvar_key(A1, &name) )
+    fail;
+  if ( LD->gvar.nb_vars )
+  { word w;
+    if ( (w = (word)lookupHTable(LD->gvar.nb_vars, (void*)name)) )
+    { deleteHTable(LD->gvar.nb_vars, (void*)name);
+      free_mvar_linked_name(name);
+      free_mvar_linked_value(w);
+    }
+  }
+
+  succeed;
+}
+static
+PRED_IMPL("depth_of_var", 2, depth_of_var, 0) {
+	PRED_LD
+
+  int tmp_debug = GD->debug_level;
+
+	Word v = valTermRef(A1);
+	LocalFrame fr = environment_frame;
+	long l0 = levelFrame(fr)-1;		/* -1: Use my parent as reference */
+
+	int negInfo = -2;
+	{ while(isRef(*(v))) 
+	{
+	    negInfo--;
+		(v) = unRef(*(v)); }}
+		  
+
+	if( onStackArea(local, v) ) {
+		DEBUG_TERMSINK( Sdprintf("Ok, on local stack\n"));
+		while( fr && fr > (LocalFrame)v )
+			fr = parentFrame(fr);
+		if( fr ) {
+			l0 -= levelFrame(fr);
+			return(PL_unify_integer(A2, l0));
+		} else {
+			DEBUG_TERMSINK( Sdprintf("Not on local stack\n"));
+			return(PL_unify_integer(A2, -1));
+		}
+	}
+	DEBUG_TERMSINK(Sdprintf("!onStackArea\n"));
+	return(PL_unify_integer(A2, negInfo));
+	succeed;
+}
+
+
+#endif
+
 static
 PRED_IMPL("attvar", 1, attvar, 0)
 { PRED_LD
@@ -709,6 +1519,8 @@ PRED_IMPL("put_attrs", 2, put_attrs, 0)
   }
 
   vp = valPAttVar(*av);
+  
+  PRE_TRAIL_ATTRS(av)
   TrailAssignment(vp);					/* SHIFT: 1+2 */
   *vp = linkVal(valTermRef(A2));
 
@@ -822,7 +1634,7 @@ PRED_IMPL("$freeze", 2, freeze, 0)
 	gc[0] = FUNCTOR_dand2;
 	gc[1] = linkVal(vp);
 	gc[2] = *goal;
-
+    PRE_TRAIL_ATTRS(v)
 	TrailAssignment(vp);				/* SHIFT: 1+2 */
 	*vp = consPtr(gc, TAG_COMPOUND|STG_GLOBAL);
       } else if ( vp )					/* vp points to [] */
@@ -835,6 +1647,7 @@ PRED_IMPL("$freeze", 2, freeze, 0)
 	at[3] = ATOM_nil;
 
 	assert(*vp == ATOM_nil);
+	PRE_TRAIL_ATTRS(v)
 	TrailAssignment(vp);				/* SHIFT: 1+2 */
 	*vp = consPtr(at, TAG_COMPOUND|STG_GLOBAL);
       } else
@@ -1116,6 +1929,7 @@ PRED_IMPL("$suspend", 3, suspend, PL_FA_TRANSPARENT)
 	t[0] = FUNCTOR_comma2;
 	t[1] = linkVal(ap);
 	t[2] = linkVal(g);
+	PRE_TRAIL_ATTRS(v)
 	TrailAssignment(ap);
 	*ap = consPtr(t, TAG_COMPOUND|STG_GLOBAL);
 
@@ -1366,6 +2180,21 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 		 *******************************/
 
 BeginPredDefs(attvar)
+#ifdef O_TERMSINK
+  PRED_DEF("depth_of_var",    2, depth_of_var,    0)
+  PRED_DEF("$sinkmode",   2, dsinkmode,    0)
+  
+  PRED_DEF("$mvar_sinkmode",   3, dmvar_sinkmode,    0)
+  PRED_DEF("$mvar_sinkmode",   4, dmvar_sinkmode,    0)
+  PRED_DEF("mvar_key",   3, mvar_key,    0)  
+  PRED_DEF("mvar_linkval", 2, mvar_linkval, 0)
+  PRED_DEF("mvar_setval", 2, mvar_setval, 0)
+  PRED_DEF("mvar_nb_setval", 2, mvar_nb_setval, 0)
+  PRED_DEF("mvar_getval", 2, mvar_getval, 0)
+  PRED_DEF("mvar_delete", 1, mvar_delete, 0)
+
+
+#endif
   PRED_DEF("attvar",    1, attvar,    0)
   PRED_DEF("put_attr",  3, put_attr,  0)
   PRED_DEF("get_attr",  3, get_attr,  0)

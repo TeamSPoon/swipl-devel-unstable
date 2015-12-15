@@ -312,6 +312,11 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
    deRef(l);
    deRef(r);
 
+#ifdef O_DONTCARE_TAGS
+   if(DONTCARE_OPTION(variant) && (isDontCare(l) || isDontCare(r))) 
+   return TRUE;
+#endif
+
    wl = *l;
    wr = *r;
 

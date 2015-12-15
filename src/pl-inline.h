@@ -26,6 +26,71 @@
 #define LD LOCAL_LD
 
 
+
+
+
+#ifdef O_TERMSINK
+// TODO move somewhere proper
+#define X_remainVar 0 /* survive bindings to even constants */
+#define X_wakeAssigns 1 /* let $wakeup do our assigments */
+#define X_dontTrail 2 /* dontTrail we are a constant */
+#define X_trailOther 3 /* tail any assignment we are about to make on others */
+#define X_skipWakeup 4 /* calling wakeup early to find out if we maybe care */
+#define X_scheduleOther 5 /* schedule wakeup on other attvars */
+#define X_takeOverRefernces 6 /* attempt to linkval to what we unify */
+#define X_iteratorVar 7 /* call wakeup to deteremine effective values */
+#define X_replaceVars 8 /* when unifying with a variable attempt to replace it  */
+#define X_slowUnify 9 /* direct LD->slow_unify to be true */
+#define X_dontSlowUnify 10 /* direct LD->slow_unify to be optional */
+#define X_evenDuringWakeup 11 /*  if off (default .. term sinking disabled durring calls to $wakeup/3 ) */
+#define X_disableTermSink 12 /*  */
+#define X_eagerALL 13 /* call assignAttVar for all value setting  */
+#define X_eagerSome 14 /* call assignAttVar for some unifications with vars */
+#define X_dontCare_unify 18 /*  dontCare(=) */
+#define X_dontCare_eq 17 /*  dontCare(==) */
+#define X_dontCare_can_unify 16 /*  dontCare(unifiable) */
+#define X_dontCare_variant 19 /*  dontCare(=@=) */
+#define X_dontCare_compare 20 /*  dontCare(compare) */
+#define X_dontInheritGlobal 21
+#define X_dontTrailAttributes 22
+#define X_trailAttributes 23
+#define X_debugSink 24 /*   */
+#define X_allAttvarsAreSinks 25 /*   by defualt convert all attrubted vars to */
+#define X_dontCare_copy_term 26 /*  dontCare(copy_term) */
+#define X_unifyMakesCopy 27
+
+#define REALLY_DONT_CARE  (SINKBIT_VAL(remainVar) & SINKBIT_VAL(wakeAssigns) & SINKBIT_VAL(skipWakeup))
+
+#define UNSPECIAL_MASK  ( SINKBIT_VAL(slowUnify) & SINKBIT_VAL(dontSlowUnify) \
+   & SINKBIT_VAL(evenDuringWakeup) & SINKBIT_VAL(disableTermSink) & SINKBIT_VAL(debugSink))
+
+#define IS_UNSPECIAL(sinkmode)  ((sinkmode & ~UNSPECIAL_MASK)==0)
+
+#define TERMSINK_ENABLED(name) ((LD->attvar.gsinkmode & SINKBIT_VAL(disableTermSink)) == 0) && name
+#define SINKBIT_N(name) X_ ## name
+#define SINKBIT_VAL(name) (1 << SINKBIT_N(name))
+
+#define PRE_TRAIL_ATTRS(av) if(!TERMSINK_ENABLED(IS_SINKMODE_FOR(dontTrailAttributes,getSinkMode(av)))) 
+#define IS_SINKMODE_FOR(name, sinkmode) ((sinkmode & SINKBIT_VAL(name)) != 0)
+#define IS_SINKMODE_GLOBAL(name) IS_SINKMODE_FOR(name,LD->attvar.gsinkmode)
+#define IS_SINKMODE(name) ((IS_SINKMODE_FOR(name,sinkmode) || (!IS_SINKMODE_FOR(dontInheritGlobal,sinkmode) && IS_SINKMODE_GLOBAL(name))))
+#define DECL_AND_GET_BOOL(name) bool name = IS_SINKMODE(name)
+#define EAGER_OPTION(name) TERMSINK_ENABLED(IS_SINKMODE_GLOBAL(name))
+#define DONTCARE_OPTION(name) TERMSINK_ENABLED(IS_SINKMODE_GLOBAL(dontCare_ ## name))
+#define DECL_AND_SHOW(name) DECL_AND_GET_BOOL(name); SHVALUE("%d",name)
+
+char *print_addr(Word adr, char *buf); 
+char *print_val(word val, char *buf); 
+char *print_val_recurse(word val, char *buf, int dereflevel); 
+
+#define IS_DEBUG_MASK(F) ((F & SINKBIT_VAL(debugSink)) != 0)
+#define DEBUG_TERMSINK( DBG ) {if (IS_DEBUG_MASK(LD->attvar.gsinkmode) || IS_DEBUG_MASK(LD->attvar.sinkmode)) { DBG ; }}
+#define SHVALUE( type, name ) if ( (name) > 0 ) DEBUG_TERMSINK({Sdprintf("\t%%\t%s = ",#name); Sdprintf(type,(name)); Sdprintf("\n");})
+#define SPVALUE( txt, addr, ...) DEBUG_TERMSINK({Sdprintf("%s*(%s)=%s", txt,print_addr(addr,0),print_val(*addr, 0));Sdprintf( __VA_ARGS__ );})
+#define SPVALUE_DEBUG( txt, addr, ...) {Sdprintf("%s*(%s)=%s", txt,print_addr(addr,0),print_val(*addr, 0));Sdprintf( __VA_ARGS__ );}
+
+
+#endif
 		 /*******************************
 		 *	 LOCK-FREE SUPPORT	*
 		 *******************************/
@@ -300,7 +365,7 @@ Note that the local stack is always _above_ the global stack.
 static inline void
 Trail__LD(Word p, word v ARG_LD)
 { DEBUG(CHK_SECURE, assert(tTop+1 <= tMax));
-
+  v = deConsted(v PASS_LD);
   if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
     (tTop++)->address = p;
   *p = v;
@@ -312,12 +377,28 @@ bindConst__LD(Word p, word c ARG_LD)
 { DEBUG(CHK_SECURE, assert(hasGlobalSpace(0)));
 
 #ifdef O_ATTVAR
+  c = deConsted(c PASS_LD);
   if ( isVar(*p) )
-  { *p = (c);
+  { 
+  if(isAttVar(c)) {	 
+	  Word C = NULL;
+	    C = &c;
+	   if(C!=NULL)
+	   {
+		   pl_break();
+		   if( assignAttVar(C, p, "c= !!!!!!!! =p",1, 1 PASS_LD)) {
+				return;
+	   }
+	 }
+  }
+
+    *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
-  { assignAttVar(p, &(c) PASS_LD);
+  {
+    assert(isAttVar(*p));
+    assignAttVar(p, &(c), "p = c", 0, 0 PASS_LD);
   }
 #else
   *p = (c);

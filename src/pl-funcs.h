@@ -31,12 +31,15 @@ symbol lookup and relocations.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 /* pl-attvar.c */
-COMMON(void)		assignAttVar(Word av, Word value ARG_LD);
+COMMON(int)		assignAttVar(Word av, Word value, char* info, int wasReverse, int pleaseTrailFlags ARG_LD);
+COMMON(bool) isDontCare_LD(Word value ARG_LD);
+COMMON(int) getSinkMode_LD(Word value ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);
 COMMON(void)		restoreWakeup(wakeup_state *state ARG_LD);
 COMMON(int)		PL_get_attr__LD(term_t t, term_t a ARG_LD);
 COMMON(int)		on_attvar_chain(Word avp);
 COMMON(Word)		alloc_attvar(ARG1_LD);
+COMMON(word)		deConsted(word ARG_LD);
 
 /* pl-gvar.c */
 
