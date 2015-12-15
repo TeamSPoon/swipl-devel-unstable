@@ -27,9 +27,9 @@
     the GNU General Public License.
 */
 :- module(termsink,[memory_var/1,memberchk_same_q/2,mvar_set/2, mvar_getsink/2,mvar_set/2,dont_care/1,
-  wno_mvars/1,w_mvars/1,w_mvars/2,
-  wno_dmvars/1,w_dmvars/1,
-  wno_debug/1,w_debug/1,
+          wno_mvars/1,w_mvars/1,w_mvars/2,
+          wno_dmvars/1,w_dmvars/1,
+          wno_debug/1,w_debug/1,
   termsink/1,termsource/1,
   memory_sink/1,counter_var/1,sinkbits_to_number/2,  
   anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
@@ -55,7 +55,7 @@
 
    O_TERMSINK
          Without this set #define the 
-         Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
+          Attributed variables call $wakeup basically after their identities (the tagged variable) has been 
          removed from the current call (destroyed until unwind).
          So this prevents their destuction until code in $wakeup/3 destroys them
           So the wakeups in attrib_unify_hook/2 decides  (the effective binding)
@@ -247,7 +247,7 @@ nb_var:attrib_unify_hook(N,V):-
 %%  nb_var(+Name,+X) is det.
 %
 % Using prolog variable that is stored as a global Name (for later use)
-%
+% 
 %  like nb_linkvar(+Name,+X)
 %
 %  with the difference that more complex operations are now available at the address 
@@ -260,7 +260,7 @@ nb_var:attrib_unify_hook(N,V):-
 %  ?- nb_var('ForLater',X).
 %  X = 1.
 %
-%
+%  
 % ==
 nb_var(N, X):- termsource(X), nb_linkval(N,X),put_attr(X,nb_var,N),nb_linkval(N,V).
 
