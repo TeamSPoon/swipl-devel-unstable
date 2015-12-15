@@ -216,9 +216,8 @@ Returns one of:
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 #ifdef O_TERMSINK
-#define EAGER_OPTION(O) (((LD->attvar.gsinkmode & 4096) == 0)&&((LD->attvar.gsinkmode & (4096 << O)) != 0 ))
-#define DONTCARE_OPTION(O) EAGER_OPTION(O)
-#define MAY_PASS_REF(T,O) (((LD->attvar.gsinkmode & 4096) == 0) &&((LD->attvar.gsinkmode & 64) != 0 )? DO_PASS_REF(T,O) : T)
+#define MAY_PASS_REF_OLD(T,O) TERMSINK_ENABLED(EAGER_OPTION(takeOverRefernces))?DO_PASS_REF(T,O):T
+#define MAY_PASS_REF(T,O) T 
 #else
 #define MAY_PASS_REF(T,O) T 
 #endif
@@ -227,7 +226,7 @@ Returns one of:
 
 
 #ifdef O_TERMSINK
- #define DO_PASS_REF(T,O)  ((!EAGER_OPTION(1)&&!EAGER_OPTION(2))?( isRef(*T) ? T :  ( isRef(*O) ? O : T)):T)
+ #define DO_PASS_REF(T,O)   (isRef(*T) ? T : ( isRef(*O) ? O : T))
 #else 
  #define DO_PASS_REF(T,O)  O
 #endif
@@ -252,7 +251,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 		deRef(t2); w2 = *t2;
 
 #ifdef O_DONTCARE_TAGS
-		if( DONTCARE_OPTION(5) && (isDontCare(t1) || (isDontCare(t2))) ) continue;
+		if( DONTCARE_OPTION(unify) && (isDontCare(t1) || (isDontCare(t2))) ) continue;
 #endif
 
 		DEBUG(CHK_SECURE, assert(w1 != ATOM_garbage_collected);
@@ -280,11 +279,15 @@ do_unify(Word t1, Word t2 ARG_LD)
 #ifdef O_ATTVAR
 			if( isAttVar(w2 ) ) {
 #ifdef O_ATTVAR_EAGER
-					if( EAGER_OPTION(1) )
+					if( IS_SINKMODE_GLOBAL(eagerALL) )
 					{
 						FAIL_ON_OVERFLOW
-						if( !assignAttVar(t2, t1, "attrBeforeVar: t2==t1", 1 PASS_LD) ) goto out_fail;
+						int result = assignAttVar(t2, t1, "attrBeforeVar: t2==t1",0, 1 PASS_LD);
+						if(result==1) {
 						continue;
+						} else if(result==0) {
+							goto out_fail;
+						} 
 					}
 #endif
 				w2 = makeRef(t2);
@@ -305,14 +308,15 @@ do_unify(Word t1, Word t2 ARG_LD)
 			if( isAttVar(w1) )
 			{
 	#ifdef O_ATTVAR_EAGER
-				if( EAGER_OPTION(2) )
+				if( IS_SINKMODE_GLOBAL(eagerSome) )
 				{
 					FAIL_ON_OVERFLOW
-					if( !assignAttVar(t1, t2, "attrReverseVar: t1==t2", 1 PASS_LD) )
-					{
+					int result = assignAttVar(t1, t2, "attrReverseVar: t1==t2", 1, 1 PASS_LD);
+					if(result==1) {
+						continue;
+					} else if(result==0) {
 						goto out_fail;
 					}
-					continue;
 				}
 	#endif
 				w1 = makeRef(t1);
@@ -326,13 +330,13 @@ do_unify(Word t1, Word t2 ARG_LD)
 		if( isAttVar(w1) )
 		{
 			FAIL_ON_OVERFLOW
-			if(!assignAttVar(t1, MAY_PASS_REF(t2,orig2), "t1==t2", 0  PASS_LD)) goto out_fail; 
+			if(!assignAttVar(t1, MAY_PASS_REF(t2,orig2), "t1==t2", 1, 0  PASS_LD)) goto out_fail; 
 			continue;
 		}
 		if( isAttVar(w2) )
 		{
 			FAIL_ON_OVERFLOW
-			if(!assignAttVar(t2, MAY_PASS_REF(t1,orig1),"t2==t1", 0 PASS_LD)) goto out_fail;
+			if(!assignAttVar(t2, MAY_PASS_REF(t1,orig1),"t2==t1", 0, 0 PASS_LD)) goto out_fail;
 			continue;
 		}
 #endif
@@ -500,7 +504,7 @@ can_unify(Word t1, Word t2, term_t ex)
   fid_t fid;
 
 #ifdef O_DONTCARE_TAGS
-  if(DONTCARE_OPTION(3) && (isDontCare(t1) || isDontCare(t2))) return TRUE;
+  if(DONTCARE_OPTION(can_unify) && (isDontCare(t1) || isDontCare(t2))) return TRUE;
 #endif
   if ( (fid = PL_open_foreign_frame()) )
   { int handle_exception = !ex;
@@ -1652,7 +1656,7 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
     deRef(p2); w2 = *p2;
 
 #ifdef O_DONTCARE_TAGS
-   if(DONTCARE_OPTION(4) && (isDontCare(p1) || isDontCare(p2))) return CMP_EQUAL;
+   if(DONTCARE_OPTION(compare) && (isDontCare(p1) || isDontCare(p2))) return CMP_EQUAL;
 #endif
 
     if ( w1 == w2 )

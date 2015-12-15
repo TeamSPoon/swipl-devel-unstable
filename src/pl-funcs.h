@@ -31,7 +31,7 @@ symbol lookup and relocations.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 /* pl-attvar.c */
-COMMON(int)		assignAttVar(Word av, Word value,char* info, int pleaseTrailFlags ARG_LD);
+COMMON(int)		assignAttVar(Word av, Word value, char* info, int wasReverse, int pleaseTrailFlags ARG_LD);
 COMMON(bool) isDontCare_LD(Word value ARG_LD);
 COMMON(int) getSinkMode_LD(Word value ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);

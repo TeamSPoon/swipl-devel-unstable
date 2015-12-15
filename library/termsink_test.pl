@@ -26,10 +26,16 @@
     invalidate any other reasons why the executable file might be covered by
     the GNU General Public License.
 */
-:- module(termsink_test,[memory_var/1,memberchk_same_q/2,mvar_new/2, mvar_getsink/2,mvar_setsink/2,dont_care/1,
-  wno_mvars_tst/1,w_mvars/2,memory_sink/1,termsink/1,counter_var/1,sinkbits_to_number/2,  
-   anything_once/1,termsource/1,termfilter/1,subsumer_var/1,plvar/1]).
+:- module(termsink,[memory_var/1,memberchk_same_q/2,mvar_set/2, mvar_getsink/2,mvar_set/2,dont_care/1,
+  wno_mvars/1,w_mvars/1,w_mvars/2,
+  wno_dmvars/1,w_dmvars/1,
+  wno_debug/1,w_debug/1,
+  termsink/1,termsource/1,
+  memory_sink/1,counter_var/1,sinkbits_to_number/2,  
+  anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
 
+:- '$sinkmode'(W,4096), asserta(t_l:save_sinkmode(W)).
+ 
 % /devel/LogicmooDeveloperFramework/swipl-devel/library/termsink
 /** <module> Dict utilities
 
@@ -64,7 +70,7 @@
     
 */
 
-:- meta_predicate w_mvars(+,0),do_test_type(1),wno_mvars_tst(0),must_ts(0),test(?).
+:- meta_predicate w_mvars(+,0),do_test_type(1),wno_mvars(0),must_ts(0),test(?).
 :- discontiguous(test/1).
 :- nodebug(termsinks).
 
@@ -102,8 +108,6 @@
 %
 % An attributed variable to never be bound to the same value twice
 %
-% "She'll try anything once"
-%
 %  ==
 %  ?- anything_once(X),member(X,[1,2,3,3,3,1,2,3]).
 %  X = 1;
@@ -120,32 +124,32 @@ nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz), \+ memberchk_sam
 %
 % Base class of var that consumes terms 
 %
-termsink(X):-mvar_new(X,skipAssign).
+termsink(X):-mvar_set(X,termsink).
 
 
 %% termsource(-X) is det.
 %
 % Base class of var that may have a value
 %
-termsource(X):-mvar_new(X,termSource+scheduleOther+skipAssign). % remainVar
+termsource(X):-mvar_set(X,termsource),put_attr(X,'$ident',X).
 
 %% termfilter(-X) is det.
 %
 % Filter that may produce a term (termsource/1)
 %
-termfilter(X):-mvar_new(X,skipAssign+termSource).
+termfilter(X):-mvar_set(X,wakeAssigns+iteratorVar).
 
 %% nb_termfilter(-X) is det.
 %
 % Filters terms but stays unbound even after filtering
 %
-nb_termfilter(X):-mvar_new(X,skipAssign+remainVar).
+nb_termfilter(X):-mvar_set(X,wakeAssigns+remainVar).
 
 %% dont_care(-X) is det.
 %
 % nb_termfilter term filter that will bind with anything and call no wakeups
 %
-dont_care(X):-mvar_new(X,skipWakeup+skipAssign+remainVar-scheduleOther).
+dont_care(X):-mvar_set(X,skipWakeup+wakeAssigns+remainVar-scheduleOther+evenDuringWakeup).
 
 
 %% plvar(-X) is det.
@@ -155,10 +159,9 @@ dont_care(X):-mvar_new(X,skipWakeup+skipAssign+remainVar-scheduleOther).
 % Using a term sink to emulate a current prolog variable (note we cannot use remainVar)
 %
 % ==
-% plvar(X):- termsource(X),put_attr(X,plvar,TS),TS=X.
-% plvar:attr_unify_hook(_,_).
-%  /* if the new value is the same as the old value accept the unification, otherwise fail */
-% plvar:early_unify_hook(Var,OldValue,Value):-  OldValue=Value,put_attr(Var,plvar,Value)
+% plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
+% /* if the new value is the same as the old value accept the unification*/
+% plvar:attrib_unify_hook(binding(Var,Prev),Value):-  (var(Prev)-> put_attr(Var,plvar,binding(Var,Value)); Value=Prev).
 % ==
 %
 % ==
@@ -169,10 +172,15 @@ dont_care(X):-mvar_new(X,skipWakeup+skipAssign+remainVar-scheduleOther).
 % false.
 % ==
 %
-plvar(X):- termsource(X),put_attr(X,plvar,TS),TS=X.
-plvar:attr_unify_hook(_,_).
-% if the new value is the same as the old value accept the unification
-plvar:early_unify_hook(Var,OldValue,Value):-  OldValue=Value,put_attr(Var,plvar,Value).
+/* if the new value is the same as the old value accept the unification*/
+plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
+plvar:attrib_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plvar,binding(Var,Value)).
+
+
+% plvar(X):- termsource(X),put_attr(X,plvar,binding(X,_)).
+% /* if the new value is the same as the old value accept the unification*/
+% plvar:attrib_unify_hook(binding(Var,Prev),Value):-  (var(Prev)-> put_attr(Var,plvar,binding(Var,Value)); Value=Prev).
+
 
 
 %% subsumer_var(-X) is det.
@@ -223,18 +231,18 @@ nb_var:early_unify_hook(_Var,N,V):- nb_setval(N,V).
 %
 % Turn on extreme debugging
 %
-debug_sinks:- set_sinkmode(+debugSink),!.
+debug_sinks:- sinkmode(+debugSink),!.
 
 
-%% set_sinkmode(+Set) is det.
+%% sinkmode(+Set) is det.
 %
 % Set system wide sink modes
 %
 %      containsSlowUnify = WAM needs our help soemtimes
 %      slowUnifyUneeded = If true we dont dont help
 %      twoO48 = bit 2048 
-%      attrReverseVar = Attvar''s control unification with plain variables (Irregardless to whom was created first)
-%      attrBeforeVar  = Attvar''s control unification with plain variables (But abiding by creation order )
+%      eagerSome = Attvar''s control unification with plain variables (Irregardless to whom was created first)
+%      eagerALL  = Attvar''s control unification with plain variables (But abiding by creation order )
 %      dontCare(unifiable) = assume we are 
 %      dontCare(==)  = assume we are 
 %      dontCare(=)   = dont trail undo of some special variables
@@ -244,17 +252,18 @@ debug_sinks:- set_sinkmode(+debugSink),!.
 %   Per variable the default sink modes 
 %
 %      remainVar = after unification stay a variable (even if if we are bound)
-%      skipAssign = allow early_unify_hook/3 to control (instead of =/2)
+%      wakeAssigns = allow early_unify_hook/3 to control (instead of =/2)
 %      dontTrail = this variable need no trailing (non backtrackable)
 %      trailOther =  we anticipate changing something in the value we unify with
 %      skipWakeup = this variable need no calls to $wakeup/3
 %      scheduleOther =  call $wakeup on other attributed variable who bind with us (overrides the stack priority) 
-%      passReferenceToAttvar = this is for when we might create a linkval back to us where unification just happened
-%      termSource = on unification ask attr_unify_hook/2 
+%      takeOverReferences = this is for when we might create a linkval back to us where unification just happened
+%      iteratorVar = on unification ask attr_unify_hook/2 
 %
 %   more to come...
 %
-set_sinkmode(X):- '$sinkmode'(M,M),merge_sinkmodes(X,M,XM),must_ts('$sinkmode'(_,XM)),!,sinkmode,!.
+sinkmode(X):- var(X),!,'$sinkmode'(X,X).
+sinkmode(X):- '$sinkmode'(M,M),merge_sinkmodes(X,M,XM),must_ts('$sinkmode'(_,XM)),!,sinkmode,!.
 
 
 %% sinkmode is det.
@@ -268,10 +277,10 @@ sinkmode:-'$sinkmode'(M,M),any_to_sinkbits(M,B),format('~N~q.~n',[sinkmode(M=B)]
 %
 % Aggressively make attvars unify with non attvars (instead of the other way arround)
 %
-early_sinks:- set_sinkmode(+attrReverseVar+attrBeforeVar+containsSlowUnify).
-
-pass_ref:- set_sinkmode(+passReferenceToAttvar).
-
+early_sinks:- sinkmode(+eagerSome+containsSlowUnify).
+eagerALL:- sinkmode(+eagerALL+containsSlowUnify).
+pass_ref:- sinkmode(+takeOverReferences).
+noearly_sinks:-  sinkmode(-eagerALL-eagerSome).
 %% mvar_getsink(Var,BitsOut)
 %
 % Get a variables sink properties
@@ -279,101 +288,113 @@ pass_ref:- set_sinkmode(+passReferenceToAttvar).
 mvar_getsink(Var,BitsOut):- '$mvar_sinkmode'(Var,Mode,Mode),any_to_sinkbits(Mode,BitsOut).
 
 
-%% mvar_setsink(Var,BitsOut)
+mvar_sinkmode(V,X):-var(X)->mvar_getsink(V,X);mvar_set(V,X).
+mvar_sinkmode(V,X,Y):-mvar_getsink(V,X),mvar_set(V,Y).
+
+%% mvar_set(Var,BitsOut)
 %
 % Set a variables sink properties
 %
-mvar_setsink(Var,New):-
+mvar_set(Var,Modes):-
+  wno_dmvars((notrace(( 
    '$mvar_sinkmode'(Var,Was,Was)->
-       (merge_sinkmodes(Was,New,Change),'$mvar_sinkmode'(Var,_,Change));
-     mvar_new(Var,New).
+       (merge_sinkmodes(Was,Modes,Change),'$mvar_sinkmode'(Var,_,Change));
+   ((must(sinkbits_to_number(Modes,Number)),'$mvar_sinkmode'(Var,att('$ident',Var,[]),_,Number))))))).
 
-%% mvar_setsink(Var,BitsOut)
+%% mvar_set(Var,Bits)
 %
 % Set a variables sink properties
 %
-mvar_new(X,Modes):- notrace(( sinkbits_to_number(Modes+debugSink,Number),!, '$mvar_sinkmode'(X,_Attrs,_M,Number))).
+new_mvar(Bits,Var):-mvar_set(Var,Bits).
 
-%mvar_new(X,V):-wno_mvars_tst((((get_attr(X,'$sink',VV)->(VV==V->true;(merge_sinkmodes(V,VV,VVV),
-%   put_attr(X,'$sink',VVV)));((var(V)->V=1;true),(sinkbits_to_number(V,VV),put_attr(X,'$sink',VV)))),put_attr(X,'$ident',X)))),!.
+bits_for_sinkmode(v(
+      remainVar =bit(0), /* survive bindings to even constants */
+      wakeAssigns =bit(1), /* let $wakeup do our value settings */
+      dontTrail =bit(2), /* dontTrail we are a constant */
+      trailOther =bit(3), /* tail any assignment we are about to make on others */
+      skipWakeup =bit(4), /* we dont need wakeups called */
+      scheduleOther =bit(5), /* schedule wakeup on other attvars */
+      takeOverReferences =bit(6), /* attempt to linkval to what we unify */
+      iteratorVar =bit(7), /* call wakeup to deteremine effective values */
+      replaceVars =bit(8), /* when unifying with a variable attempt to replace it  */
+      containsSlowUnify =bit(9), /* direct LD->slow_unify to be true */
+      dontSlowUnify =bit(10), /* direct LD->slow_unify to be optional */
+      evenDuringWakeup =bit(11), /*  if off (default .. term sinking disabled durring calls to $wakeup/=bit(3), ) */
+      disableTermSink =bit(12), /*  */
+      disabledAll =bit(12), /*  */
+      eagerALL =bit(13), /* call assignAttVar for all value setting  */
+      eagerSome =bit(14), /* call assignAttVar for some unifications with vars */
+      dontCare(unify) =bit(18), /*  dontCare(=) */
+      dontCare(==) =bit(17), /*  dontCare(==) */
+      dontCare(can_unify) =bit(16), /*  dontCare(can_unify) */
+      dontCare(variant) =bit(19), /*  dontCare(=@=) */
+      dontCare(compare) =bit(20), /*  dontCare(compare) */
+      dontInheritGlobal =bit(21),
+      dontTrailAttributes = bit(22),
+      trailAttributes = bit(23),
+      debugSink =bit(24), /*  debugger on  */
+      allAttvarsAreSinks = bit(25),
+         dontCare(copy_term) =bit(26), /*  dontCare(compare) */
+         unifyMakesCopy =bit(27), 
+      termsink=(+remainVar+wakeAssigns+dontTrailAttributes+dontInheritGlobal),
+      termsource=(+remainVar+iteratorVar+scheduleOther+wakeAssigns+dontInheritGlobal)
 
-new_mvar(X,V):-mvar_new(V,X).
-
-bits_for_sinkmod(v(
-      remainVar, % 1
-      skipAssign, % 2
-      dontTrail, % 4
-      trailOther, % 8
-      skipWakeup, % 16
-      scheduleOther, % 32
-      passReferenceToAttvar, % 64
-      termSource, %128
-      is256,
-      containsSlowUnify, % 512
-      slowUnifyUneeded, % 1024
-      twoO48, % 
-      disabledAll,  % 4096
-      attrBeforeVar,  % 8192
-      attrReverseVar,  % 
-      dontCare(unifiable),
-      dontCare(==),
-      dontCare(=), 
-      dontCare(=@=), 
-      debugSink=bit(24)
     )). 
 
 
-%  counter_var(X),X=1,X=2,w_mvars(attrReverseVar+attrBeforeVar+passReferenceToAttvar,X=Y).
+%  counter_var(X),X=1,X=2,w_mvars(eagerSome+eagerALL+takeOverReferences,X=Y).
 
 
 must_ts(G):- G*-> true; throw(must_ts_fail(G)).
 
 :- meta_predicate w_mvars(0).
-:- meta_predicate wno_dbg(0).
-:- meta_predicate w_dbg(+).
+:- meta_predicate wno_mvars(0).
+:- meta_predicate wno_debug(0).
+:- meta_predicate w_debug(+).
 
 /*
 
-?-  counter_var(X),X=1,X=2,w_mvars(attrReverseVar+attrBeforeVar+passReferenceToAttvar+debugSink,X=Y).
+?-  counter_var(X),X=1,X=2,w_mvars(eagerSome+eagerALL+takeOverReferences+debugSink,X=Y).
 
 vs 
 
-?-  counter_var(X),X=1,X=2,w_mvars(attrReverseVar+attrBeforeVar+passReferenceToAttvar+debugSink,X=Y).
+?-  counter_var(X),X=1,X=2,w_mvars(eagerSome+eagerALL+takeOverReferences+debugSink,X=Y).
 
 */
 
-w_mvars(M,G):- ('$sinkmode'(W,W),merge_sinkmodes(M,W,N),T is N  /\ \ 4096,'$sinkmode'(W,T))->call_cleanup(G,'$sinkmode'(_,W)).
+w_mvars(M,G):- ('$sinkmode'(W,W),merge_sinkmodes(M,W,N),T is N  /\ \ 4096,'$sinkmode'(W,T))->mcc(G,'$sinkmode'(_,W)).
 
-:- module_transparent(w_dbg/1).
+:- module_transparent(w_debug/1).
+:- module_transparent(mcc/2).
 
-wno_mvars_tst(G):-  must('$sinkmode'(W,W)),must((T is W  \/ 4096)), 
- must('$sinkmode'(_,T)), (G*->must('$sinkmode'(_,W));(must('$sinkmode'(_,W)),fail)).
+mcc(G,CU):- !, call_cleanup((G),(CU)).
+mcc(G,CU):- G*-> CU ; (once(CU),fail).
 
-w_mvars(G):-  '$sinkmode'(W,W),T is W   /\ \ 4096, '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
-wno_dbg(G):-  '$sinkmode'(W,W),T is W  /\ \ 16777216 , '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
-w_dbg(G):-  '$sinkmode'(W,W),T is W  \/ 16777216 , '$sinkmode'(W,T), call_cleanup(G,'$sinkmode'(_,W)).
+wno_dmvars(G):- wno_mvars(wno_debug(G)).
+w_dmvars(G):- w_mvars(w_debug(G)).
+wno_mvars(G):-  '$sinkmode'(W,W),T is W   /\ \ 4096, '$sinkmode'(_,T), call_cleanup(G,'$sinkmode'(_,W)).
+w_mvars(G):-  '$sinkmode'(W,W),T is W   /\ \ 4096, '$sinkmode'(_,T), call_cleanup(G,'$sinkmode'(_,W)).
+wno_debug(G):-  '$sinkmode'(W,W), T is W /\ \ 16777216 ,  '$sinkmode'(_,T),  call_cleanup(G,'$sinkmode'(_,W)).
+w_debug(G):-  '$sinkmode'(W,W),T is W  \/ 16777216 , '$sinkmode'(_,T), call_cleanup(G,'$sinkmode'(_,W)).
 
-vartypes_to_test(F):-wno_mvars_tst((current_predicate(termsink:F/1),functor(P,F,1),predicate_property(P,number_of_clauses(_)),termsink:'$pldoc'(F/1,_,_,_),
-  clause(P,(A,_BODY)),compound(A),A=mvar_new(_,_))).
-vartypes_to_test(new_mvar(Type)):-wno_mvars_tst(( bits_for_sinkmod(ALL),arg(_,ALL,Type))).
+vartypes_to_test(F):-wno_dmvars((current_predicate(termsink:F/1),functor(P,F,1),predicate_property(P,number_of_clauses(_)),termsink:'$pldoc'(F/1,_,_,_),
+  clause(P,(A,_BODY)),compound(A),A=mvar_set(_,_))).
+vartypes_to_test(new_mvar(Type)):-wno_dmvars(( bits_for_sinkmode(ALL),arg(_,ALL,Type))).
 
 do_test(test_for(Type)):-
-  wno_dbg(wno_mvars_tst(vartypes_to_test(Type))) *-> w_dbg(ignore((w_mvars(do_test_type(Type)),fail))) ; do_test_type(Type).
+  wno_dmvars((vartypes_to_test(Type))) *-> w_debug(ignore((w_mvars(do_test_type(Type)),fail))) ; do_test_type(Type).
 
 
 init_accumulate(Var,M,P):-put_attr(Var,accume,init_accumulate(Var,M,P)).
 
-accume:attr_unify_hook(Prev,Value):-
-  writeq(accume_unify(M,Prev,Value)),nl,
-  accume_unify_hook(Prev,Value).
-
 accume_unify_hook(init_accumulate(Var,M,P),Value):- nonvar(Value),!,put_attr(Var,accume,accume_value(Var,M,P,Value)).
-accume_unify_hook(init_accumulate(Var,M,P),Value):- var(Value),!,Value=_.  
+accume_unify_hook(init_accumulate(_,_,_),Value):- !,var(Value).
 accume_unify_hook(accume_value(Var,M,P,Prev),Value):- nonvar(Value),!,show_call(must(call(P, Prev,Value,Combined))),put_attr(Var,accume,accume_value(Var,M,P,Combined)).
-accume_unify_hook(accume_value(Var,_M,P,Prev),Value):- var(Value),!, nonvar(P),
-    %% must('$sinkmode'(W,W))),must((T is W  \/ 4096)), must('$sinkmode'(W,T)),
-     must(wno_mvars_tst(Prev=Value)).
+accume_unify_hook(accume_value(_Var,_M,P,Prev),Value):- var(Value),!, nonvar(P), must(wno_mvars(Prev=Value)).
 
+accume:attr_unify_hook(Prev,Value):-
+ wno_dmvars(( write_term(accume_unify(Prev,Value),[attributes(portray),ignore_ops(true),quoted(true)]),nl,
+  accume_unify_hook(Prev,Value))).
 
 
 % ?- do_test_type(var).
@@ -383,7 +404,7 @@ do_test_type(Type):- writeln(maplist_local=Type+X),
    call(Type,X),
   maplist_local(=(X),[1,2,3,3,3,1,2,3]),
   writeln(value=X),
-  writeln(value=X),print_varinfo(X).
+  writeln(value=X),var_info(X).
   
 
 do_test_type(Type):- 
@@ -392,31 +413,41 @@ do_test_type(Type):-
       ignore((member(X,[1,2,3,3,3,1,2,3]),writeln(Type=X),
       ignore((get_attrs(X,Ats),writeln(Ats=X))),
       fail)),
-      writeln(value=X))),print_varinfo(X).
-      
+      writeln(value=X))),var_info(X).
 
-maplist_local(G,List):-List==[]->!;(List=[H|T],call(G,H),maplist_local(G,T)).
+tv123(B):-mvar_set(X,B),t123(X).
+t123(X):- print_var(xbefore=X),L=link_term(X,Y,Z),dmsg(before=L),
+  ignore((
+   X=1,X=1,ignore(show_call(X=2)),w_debug(Y=X),w_debug(X=Z),print_var(x=X),
+   print_var(y=Y),print_var(z=Z),ignore(show_call(X=2)),dmsg(each=L),fail)),
+   dmsg(after=L).
 
-print_varinfo(X):-catch((writeq(print_varinfo=X),get_attrs(X,Attrs),writeln(get_attrs=Attrs)),_,true).
+maplist_local(G,List):-List==[]->!;(List=[H|T],must(call(G,H)),maplist_local(G,T)).
 
-'$sink':call_all_attr_uhooks_early(_,[], _).
-'$sink':call_all_attr_uhooks_early(Var,att(Module, AttVal, Rest), Value) :-
-        must(( (current_predicate(Module:early_unify_hook/3)->
-          Module:early_unify_hook(Var, AttVal, Value);true),
-	'$sink':call_all_attr_uhooks_early(Var, Rest, Value))).
+var_info(V):- wno_dmvars(show_var(V)).
+print_var(V):-wno_dmvars(show_var(V)).
+show_var(E):- wno_dmvars((nonvar(E),(N=V)=E, show_var(N,V))),!.
+show_var(V):- wno_dmvars((show_var(var_was,V))).
 
-'$sink':attr_unify_hook(X,Y):- ignore((debug(termsinks,'~N~q.~n',['$sink':attr_unify_hook(mode=X,value=Y)]))).
+show_var(N,V):- wno_dmvars(((((\+ attvar(V)) -> dmsg(N=V); (must(('$mvar_sinkmode'(V,Attrs,C,C),any_to_sinkbits(C,Bits))),dmsg(N=(V={Attrs,C,Bits}))))))).
 
+
+'$source':attr_unify_hook(X,Y):- ignore((debug(termsinks,'~N~q.~n',['$source':attr_unify_hook(X,Y)]))),fail.
+'$source':attr_unify_hook(_,Y):- member(Y,[default1,default2,default3])*->true;true.
+
+contains_bit(Var,Bit):- var(Bit),'$mvar_sinkmode'(Var,M,M),any_to_sinkbits(M,Bits),!,member(Bit,Bits).
+contains_bit(Var,Bit):-'$mvar_sinkmode'(Var,M,M),sinkbits_to_number(Bit,N),!,N is N /\ M.
+
+'$ident':attr_unify_hook(Var,Value):- var(Var),contains_bit(Var,iteratorVar),var(Value),!,member(Value,[default1,default2,default3]).
 '$ident':attr_unify_hook(Var,Value):- 
-  wno_mvars_tst((ignore((var(Var),get_attrs(Var,Attribs), 
-   debug(termsinks,'~N~q.~n',['$ident':attr_unify_hook(({Var+Attribs}=Value))]),
-   '$sink':call_all_attr_uhooks_early(Var,Attribs,Value))))).
+  wno_dmvars((((ignore((var(Var),get_attrs(Var,Attribs), 
+   debug(termsinks,'~N~q.~n',['$ident':attr_unify_hook({var=Var,attribs=Attribs},{value=Value})]))))))).
 
-
+:-  debug(termsinks).
 
 any_to_sinkbits(BitsIn,BitsOut):-  
  sinkbits_to_number(BitsIn,Mode),
-   Bits=[[]],bits_for_sinkmod(MASKS),
+   Bits=[[]],bits_for_sinkmode(MASKS),
  ignore((arg(Arg,MASKS,Mask), 
    (Mask=(N=V)-> (sinkbits_to_number(V,VV) , VV is VV /\ Mode , nb_extend_list(Bits,N),fail) ; 
    (Arg0 is Arg -1, sinkbits_to_number(bit(Arg0),VV) , VV is VV /\ Mode , nb_extend_list(Bits,Mask),fail)))),!,
@@ -449,12 +480,12 @@ sinkbits_to_number(B-A,VVV):- sinkbits_to_number(B,BB),sinkbits_to_number(A,AA),
 sinkbits_to_number(+(Bit),VVV):-sinkbits_to_number((Bit),VVV),!.
 sinkbits_to_number(-(Bit),VVV):-sinkbits_to_number((Bit),V),!,VVV is ( \ V).
 sinkbits_to_number(bit(Bit),VVV):- number(Bit),!,VVV is 2 ^ (Bit).
-sinkbits_to_number(bit(Bit),VVV):-bits_for_sinkmod(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
-sinkbits_to_number(set(Bit),VVV):-bits_for_sinkmod(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
-sinkbits_to_number((Name),VVV):-bits_for_sinkmod(VV),arg(_,VV,Name=Bit),!,must_ts(sinkbits_to_number(Bit,VVV)),!.
+sinkbits_to_number(bit(Bit),VVV):-bits_for_sinkmode(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
+sinkbits_to_number(set(Bit),VVV):-bits_for_sinkmode(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
+sinkbits_to_number((Name),VVV):-bits_for_sinkmode(VV),arg(_,VV,Name=Bit),!,must_ts(sinkbits_to_number(Bit,VVV)),!.
 sinkbits_to_number([A],VVV):-!,sinkbits_to_number(A,VVV).
 sinkbits_to_number([A|B],VVV):-!,merge_sinkmodes(B,A,VVV).
-sinkbits_to_number(Bit,VVV):-bits_for_sinkmod(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
+sinkbits_to_number(Bit,VVV):-bits_for_sinkmode(VV),arg(N,VV,Bit),N0 is N-1,!,sinkbits_to_number(bit(N0),VVV),!.
 sinkbits_to_number(V,VVV) :- catch(( VVV is V),_,fail),!.
 
 
@@ -524,8 +555,11 @@ test(memory_var):- memory_var(X),  ignore((member(X,[1,2,3,3,3,1,2,3]),writeln(m
 %  X = 3;
 %  No.
 %  ==
-% memory_sink(Var):-mvar_new(Sink,[]), put_attr(Sink,zar,Sink),memory_var(Var),Var=Sink.
-memory_sink(Var):-mvar_new(Var,[]),put_attr(Var,'_',Var),put_attr(Sink,zar,Sink),memory_var(Var),Var=Sink.
+% memory_sink(Var):-mvar_set(Sink,[]), put_attr(Sink,zar,Sink),memory_var(Var),Var=Sink.
+memory_sink(Var):-mvar_set(Var,[]),put_attr(Var,'_',Var),put_attr(Sink,zar,Sink),memory_var(Var),Var=Sink.
+
+
+
 
 
 
@@ -576,18 +610,86 @@ memory_sink(Var):-mvar_new(Var,[]),put_attr(Var,'_',Var),put_attr(Sink,zar,Sink)
 
 */
 
+v1(X,V) :- mvar_set(V,X),show_var(V).
+
+
+
+%:- endif.
+
+:- early_sinks.
+% :- early_sinks. 
+% :- eagerALL.
+:- listing(wno_debug).
+
+
+
+% :-'$debuglevel'(_,1).
+
+
+mvar_call(VarFactory,G):-
+   wno_dmvars((term_variables(G,Vs),
+   maplist(VarFactory,Vs))),trace,w_dmvars(G).
+
+
+%% set_unifyp(+Pred,?Var) is det.
+%
+% Create or alter a Prolog variable to have overloaded unification
+%
+% Done with these steps:
+% 1) +termsink = Allow to remain a variable after binding with a nonvar
+% 2) +termsource = Declares the variable to be a value producing iterator
+% 3) Set the unifyp attribute to the Pred.
+set_unifyp(Pred,Var):- wno_dmvars((trace,termsource(Var),put_attr(Var,unifyp,binding(Pred,Var,_Uknown)))).
+
+% Our implimentation of a unifyp variable
+unifyp:attrib_unify_hook(binding(Pred,Var,Prev),Value):-
+        % This is how we produce a binding for +termsource "iterator"
+          (var(Value),nonvar(Prev)) ->  Value=Prev;
+         % same binding (effectively)
+             Value==Prev->true;
+         % unification we will update the internal value
+             Value=Prev->put_attr(Var,plvar,binding(Pred,Var,Value));
+         % Check if out overload was ok
+             call(Pred,Prev,Value) -> true;
+         % Symmetrically if out overload was ok
+             call(Pred,Value,Prev)-> true.
+
+
+
+
+ab(a1,b1).
+ab(a2,b2).
+ab(a3,b3).
+
+xy(x1,y1).
+xy(x2,y2).
+xy(x3,y3).
+
+equals(a1,x1).
+equals(a2,x2).
+equals(a3,x3).
+equals(b1,y1).
+equals(b2,y2).
+equals(b3,y3).
+
+q(A,B):-trace,ab(A,B),xy(A,B).
+
+% label_sources
+
+lv:- mvar_call(set_unifyp(equals),q(A,B)),label_sources(A,B),dmsg(q(A,B)).
+
+:- sinkmode.
+:- eagerALL.
+
+ 
 :- source_location(S,_),prolog_load_context(module,M),
  forall(source_file(M:H,S),
- ignore((functor(H,F,A),
+ ignore((functor(H,F,A),M\=vn,
    \+ predicate_property(M:H,imported_from(_)),
    \+ arg(_,[attr_unify_hook/2,'$pldoc'/4,'$mode'/2,attr_portray_hook/2,attribute_goals/3],F/A),
    \+ atom_concat('_',_,F),
    ignore(((\+ atom_concat('$',_,F),export(F/A)))),
    ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A)))))).
 
-
-%:- endif.
-% :- set_sinkmode(-disabledAll).
-:- debug_sinks.
-: -early_sinks.
+:- (retract(t_l:save_sinkmode(W))->'$sinkmode'(_,W);true).
 

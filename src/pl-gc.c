@@ -291,7 +291,7 @@ print_addr(Word adr, char *buf)
     return buf;
   }
 
-  Ssprintf(buf, "%p=%s(%d)", adr, name, adr-base);
+  Ssprintf(buf, "(%p=%s(%d))", adr, name, adr-base);
   /* DMILES: this seems to disagree with the print_val(..) by -1 */
   return buf;
 }
@@ -349,11 +349,12 @@ print_val_recurse4(word val, char *buf, int tablevel, int dereflevel)
 			offset -= gBase - (Word)base_addresses[STG_GLOBAL];
 
 		/* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
+		offset--;
 
 		if( isRef(val) && dereflevel>0 )
 		{
 			Word at = unRef(val);
-			if(*at!=val)
+			if((void*)at!=(void*)val)
 			{
 				Ssprintf(o, "%s at %s(%ld)\n%\td%s",
 						 tag_name[tag(val)],
@@ -379,7 +380,7 @@ print_val_recurse4(word val, char *buf, int tablevel, int dereflevel)
   return buf;
 }
 
-char* print_val(word val, char *buf) { return print_val_recurse(val,buf,5); }
+char* print_val(word val, char *buf) { return print_val_recurse(val,buf,1); }
 
 #endif /*O_DEBUG*/
 

@@ -415,7 +415,7 @@ copy_term(Word from, Word to, int flags ARG_LD)
       }
       case TAG_ATTVAR:
 #ifdef O_DONTCARE_VARS
-	   if (isDontCare(*from)))
+	   if (DONTCARE_OPTION(copy_term) && isDontCare(*from))
 	   {
 		  *to = *from;
 		  continue;

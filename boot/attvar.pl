@@ -48,10 +48,14 @@ in pl-attvar.c
 %	Called from the kernel if assignments have been made to
 %	attributed variables.
 
-'$wakeup'([]).
-'$wakeup'(wakeup(Attribute, Value, Rest)) :-
+'$wakeup'(L):-
+ '$sinkmode'(W,W),T is W   /\ \ 4096, 
+ setup_call_cleanup('$sinkmode'(_,T), '$wakeup0'(L),'$sinkmode'(_,W)).
+
+'$wakeup0'([]).
+'$wakeup0'(wakeup(Attribute, Value, Rest)) :-
 	call_all_attr_uhooks(Attribute, Value),
-	'$wakeup'(Rest).
+	'$wakeup0'(Rest).
 
 call_all_attr_uhooks([], _).
 call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-

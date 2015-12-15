@@ -223,7 +223,7 @@ PRED_IMPL("notrace", 1, notrace, PL_FA_TRANSPARENT|PL_FA_NOTRACE)
   uintptr_t  skipSave  = debugstatus.skiplevel;
   bool	     traceSave = debugstatus.tracing;
 
-  rval = callProlog(NULL, A1, PL_Q_CATCH_EXCEPTION /*|PL_Q_NODEBUG*/, &ex);
+  rval = callProlog(NULL, A1, PL_Q_CATCH_EXCEPTION |PL_Q_NODEBUG/*|PL_Q_NODEBUG*/, &ex);
 
   debugstatus.skiplevel    = skipSave;
   debugstatus.tracing      = traceSave;

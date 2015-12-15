@@ -313,8 +313,7 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
    deRef(r);
 
 #ifdef O_DONTCARE_TAGS
-  // termsink is really "dont-care"
-   if(((LD->attvar.gsinkmode & 4096) == 0) && ((LD->attvar.gsinkmode & (4096 << 6)) != 0 ) && (isDontCare(l) || isDontCare(r))) 
+   if(DONTCARE_OPTION(variant) && (isDontCare(l) || isDontCare(r))) 
    return TRUE;
 #endif
 
