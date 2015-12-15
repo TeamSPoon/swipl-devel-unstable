@@ -4114,14 +4114,11 @@ b_throw:
 	  PL_discard_foreign_frame(fid);
 	});
 
-<<<<<<< HEAD
   if ( has_emergency_space(&LD->stacks.local, sizeof(struct localFrame)) )
     fid = open_foreign_frame(PASS_LD1);
   else
     fid = 0;
 
-=======
->>>>>>> FIXED: Handle exceptions from prolog_exception_hook/4.  Work in progress.
   fid = outofstack == (Stack)&LD->stacks.local ? (fid_t)0
 					       : PL_open_foreign_frame();
 again:
