@@ -930,14 +930,11 @@ verify_attributes(Var, Other, Gs) :-
         ).
 
 root_rebuild_bdd(Root, Formula) :-
-        (   root_get_formula_bdd(Root, _, _) ->
-            parse_sat(Formula, Sat),
-            sat_bdd(Sat, BDD),
-            is_bdd(BDD),
-            satisfiable_bdd(BDD),
-            root_put_formula_bdd(Root, Formula, BDD)
-        ;   true
-        ).
+        parse_sat(Formula, Sat),
+        sat_bdd(Sat, BDD),
+        is_bdd(BDD),
+        satisfiable_bdd(BDD),
+        root_put_formula_bdd(Root, Formula, BDD).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Support for project_attributes/2.
