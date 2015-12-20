@@ -899,7 +899,7 @@ verify_attributes(Var, Other, Gs) :-
                     sat_roots(Sat, Roots)
                 ;   parse_sat(Other, OtherSat),
                     sat_roots(Sat, Roots),
-                    maplist(root_get_formula_bdd, Roots, Fs, _),
+                    phrase(formulas_(Roots), Fs),
                     foldl(and, Fs, 1, And)
                 ),
                 maplist(del_bdd, Roots),
@@ -908,6 +908,14 @@ verify_attributes(Var, Other, Gs) :-
             )
         ;   Gs = []
         ).
+
+formulas_([]) --> [].
+formulas_([Root|Roots]) -->
+        (   { root_get_formula_bdd(Root, F, _) } ->
+            [F]
+        ;   []
+        ),
+        formulas_(Roots).
 
 root_rebuild_bdd(Root, Formula) :-
         parse_sat(Formula, Sat),
