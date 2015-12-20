@@ -6573,20 +6573,24 @@ goals_entail(Goals, E) :-
    Unification hook and constraint projection
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-attr_unify_hook(clpfd_attr(_,_,_,Dom,Ps), Other) :-
-        (   nonvar(Other) ->
-            (   integer(Other) -> true
-            ;   type_error(integer, Other)
+verify_attributes(Var, Other, Gs) :-
+        (   get_attr(Var, clpfd, clpfd_attr(_,_,_,Dom,Ps)) ->
+            (   nonvar(Other) ->
+                (   integer(Other) -> true
+                ;   type_error(integer, Other)
+                ),
+                domain_contains(Dom, Other),
+                trigger_props(Ps),
+                do_queue
+            ;   fd_get(Other, OD, OPs),
+                domains_intersection(OD, Dom, Dom1),
+                append_propagators(Ps, OPs, Ps1),
+                fd_put(Other, Dom1, Ps1),
+                trigger_props(Ps1),
+                do_queue
             ),
-            domain_contains(Dom, Other),
-            trigger_props(Ps),
-            do_queue
-        ;   fd_get(Other, OD, OPs),
-            domains_intersection(OD, Dom, Dom1),
-            append_propagators(Ps, OPs, Ps1),
-            fd_put(Other, Dom1, Ps1),
-            trigger_props(Ps1),
-            do_queue
+            Gs = [] % maybe use this instead of trigger_props/1
+        ;   Gs = []
         ).
 
 append_propagators(fd_props(Gs0,Bs0,Os0), fd_props(Gs1,Bs1,Os1), fd_props(Gs,Bs,Os)) :-
