@@ -440,6 +440,7 @@ tautology(Sat) :-
                   true)
         ).
 
+%satisfiable_bdd(BDD) :- !, BDD \== 0.
 satisfiable_bdd(BDD) :-
         (   BDD == 0 -> false
         ;   BDD == 1 -> true
@@ -894,50 +895,47 @@ state(S0, S), [S] --> [S0].
    they are unified with anything.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-attr_unify_hook(index_root(I,Root), Other) :-
-        (   integer(Other) ->
-            (   between(0, 1, Other) ->
-                root_get_formula_bdd(Root, Sat, BDD0),
-                bdd_restriction(BDD0, I, Other, BDD),
-                root_put_formula_bdd(Root, Sat, BDD),
-                satisfiable_bdd(BDD)
-            ;   no_truth_value(Other)
+verify_attributes(Var, Other, Gs) :-
+        % format("~w = ~w\n", [Var,Other]),
+        (   get_attr(Var, clpb, index_root(I,Root)) ->
+            (   integer(Other) ->
+                (   between(0, 1, Other) ->
+                    root_get_formula_bdd(Root, Sat, BDD0),
+                    bdd_restriction(BDD0, I, Other, BDD),
+                    root_put_formula_bdd(Root, Sat, BDD),
+                    Gs = [clpb:satisfiable_bdd(BDD)]
+                ;   no_truth_value(Other)
+                )
+            ;   atom(Other) ->
+                root_get_formula_bdd(Root, Sat0, _),
+                Gs = [clpb:root_rebuild_bdd(Root, Sat0)]
+            ;   % due to variable aliasing, any BDDs may become unordered,
+                % so we need to rebuild the new BDD from the conjunction.
+                root_get_formula_bdd(Root, Sat0, _),
+                Sat = Sat0*OtherSat,
+                (   var(Other), var_index_root(Other, _, OtherRoot) ->
+                    root_get_formula_bdd(OtherRoot, OtherSat, _),
+                    And = Sat,
+                    sat_roots(Sat, Roots)
+                ;   parse_sat(Other, OtherSat),
+                    sat_roots(Sat, Roots),
+                    maplist(root_get_formula_bdd, Roots, Fs, _),
+                    foldl(and, Fs, 1, And)
+                ),
+                maplist(del_bdd, Roots),
+                maplist(=(NewRoot), Roots),
+                Gs = [clpb:root_rebuild_bdd(NewRoot, And)]
             )
-        ;   atom(Other) ->
-            root_get_formula_bdd(Root, Sat0, _),
-            parse_sat(Sat0, Sat),
-            sat_bdd(Sat, BDD),
-            root_put_formula_bdd(Root, Sat0, BDD),
-            is_bdd(BDD),
-            satisfiable_bdd(BDD)
-        ;   % due to variable aliasing, any BDDs may now be unordered,
-            % so we need to rebuild the new BDD from the conjunction.
-            root_get_formula_bdd(Root, Sat0, _),
-            Sat = Sat0*OtherSat,
-            (   var(Other), var_index_root(Other, _, OtherRoot),
-                OtherRoot \== Root ->
-                root_get_formula_bdd(OtherRoot, OtherSat, _),
-                parse_sat(Sat, Sat1),
-                sat_bdd(Sat1, BDD1),
-                And = Sat,
-                sat_roots(Sat, Roots)
-            ;   parse_sat(Other, OtherSat),
-                sat_roots(Sat, Roots),
-                maplist(root_rebuild_bdd, Roots),
-                roots_and(Roots, 1-1, And-BDD1)
-            ),
-            maplist(del_bdd, Roots),
-            maplist(=(NewRoot), Roots),
-            root_put_formula_bdd(NewRoot, And, BDD1),
-            is_bdd(BDD1),
-            satisfiable_bdd(BDD1)
+        ;   Gs = []
         ).
 
-root_rebuild_bdd(Root) :-
-        (   root_get_formula_bdd(Root, F0, _) ->
-            parse_sat(F0, Sat),
+root_rebuild_bdd(Root, Formula) :-
+        (   root_get_formula_bdd(Root, _, _) ->
+            parse_sat(Formula, Sat),
             sat_bdd(Sat, BDD),
-            root_put_formula_bdd(Root, F0, BDD)
+            is_bdd(BDD),
+            satisfiable_bdd(BDD),
+            root_put_formula_bdd(Root, Formula, BDD)
         ;   true
         ).
 
