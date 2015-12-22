@@ -3381,11 +3381,6 @@ trigger_props(fd_props(Gs,Bs,Os), X) :-
         ;   true
         ).
 
-trigger_props(fd_props(Gs,Bs,Os)) :-
-        trigger_props_(Gs),
-        trigger_props_(Bs),
-        trigger_props_(Os).
-
 trigger_props_([]).
 trigger_props_([P|Ps]) :- trigger_prop(P), trigger_props_(Ps).
 
@@ -3402,6 +3397,30 @@ trigger_prop(Propagator) :-
             ;   push_queue(Propagator, 1)
             )
         ).
+
+all_propagators(fd_props(Gs,Bs,Os)) -->
+        propagators_(Gs),
+        propagators_(Bs),
+        propagators_(Os).
+
+propagators_([]) --> [].
+propagators_([P|Ps]) --> propagator_(P), propagators_(Ps).
+
+propagator_(Propagator) -->
+        { propagator_state(Propagator, State) },
+        (   { State == dead } -> []
+        ;   { get_attr(State, clpfd_aux, queued) } -> []
+        ;   { b_getval('$clpfd_current_propagator', C), C == State } -> []
+        ;   % passive
+            % format("triggering: ~w\n", [Propagator]),
+            { put_attr(State, clpfd_aux, queued) },
+            (   { arg(1, Propagator, C),
+                  functor(C, F, _), global_constraint(F) } ->
+                { push_queue(Propagator, 2) }
+            ;   [clpfd:activate_propagator(Propagator)]
+            )
+        ).
+
 
 kill(State) :- del_attr(State, clpfd_aux), State = dead.
 
@@ -6574,20 +6593,19 @@ goals_entail(Goals, E) :-
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 verify_attributes(Var, Other, Gs) :-
-        (   get_attr(Var, clpfd, clpfd_attr(_,_,_,Dom,Ps)) ->
+        (   get_attr(Var, clpfd, clpfd_attr(_,_,_,Dom,Ps0)) ->
             (   nonvar(Other) ->
                 (   integer(Other) -> true
                 ;   type_error(integer, Other)
                 ),
                 domain_contains(Dom, Other),
-                trigger_props(Ps)
+                Ps = Ps0
             ;   fd_get(Other, OD, OPs),
                 domains_intersection(OD, Dom, Dom1),
-                append_propagators(Ps, OPs, Ps1),
-                fd_put(Other, Dom1, Ps1),
-                trigger_props(Ps1)
+                append_propagators(Ps0, OPs, Ps),
+                fd_put(Other, Dom1, Ps)
             ),
-            Gs = [clpfd:do_queue]
+            phrase(all_propagators(Ps), Gs, [clpfd:do_queue])
         ;   Gs = []
         ).
 
