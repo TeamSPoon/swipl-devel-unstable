@@ -6580,16 +6580,14 @@ verify_attributes(Var, Other, Gs) :-
                 ;   type_error(integer, Other)
                 ),
                 domain_contains(Dom, Other),
-                trigger_props(Ps),
-                do_queue
+                trigger_props(Ps)
             ;   fd_get(Other, OD, OPs),
                 domains_intersection(OD, Dom, Dom1),
                 append_propagators(Ps, OPs, Ps1),
                 fd_put(Other, Dom1, Ps1),
-                trigger_props(Ps1),
-                do_queue
+                trigger_props(Ps1)
             ),
-            Gs = [] % maybe use this instead of trigger_props/1
+            Gs = [clpfd:do_queue]
         ;   Gs = []
         ).
 
