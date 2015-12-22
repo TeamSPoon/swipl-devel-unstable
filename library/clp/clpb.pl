@@ -893,15 +893,10 @@ verify_attributes(Var, Other, Gs) :-
                 % after the unification is in place
                 root_get_formula_bdd(Root, Sat0, _),
                 Sat = Sat0*OtherSat,
-                (   var(Other), var_index_root(Other, _, OtherRoot) ->
-                    root_get_formula_bdd(OtherRoot, OtherSat, _),
-                    And = Sat,
-                    sat_roots(Sat, Roots)
-                ;   parse_sat(Other, OtherSat),
-                    sat_roots(Sat, Roots),
-                    phrase(formulas_(Roots), Fs),
-                    foldl(and, Fs, 1, And)
-                ),
+                parse_sat(Other, OtherSat),
+                sat_roots(Sat, Roots),
+                phrase(formulas_(Roots), Fs),
+                foldl(and, Fs, 1, And),
                 maplist(del_bdd, Roots),
                 maplist(=(NewRoot), Roots),
                 Gs = [clpb:root_rebuild_bdd(NewRoot, And)]
@@ -921,8 +916,8 @@ root_rebuild_bdd(Root, Formula) :-
         parse_sat(Formula, Sat),
         sat_bdd(Sat, BDD),
         is_bdd(BDD),
-        satisfiable_bdd(BDD),
-        root_put_formula_bdd(Root, Formula, BDD).
+        root_put_formula_bdd(Root, Formula, BDD),
+        satisfiable_bdd(BDD).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Support for project_attributes/2.
