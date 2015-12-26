@@ -153,6 +153,7 @@ handy for it someone wants to add a data type to the system.
 #define O_CLAUSEGC		1
 #define O_ATTVAR		1
 #define O_CALL_RESIDUE		1
+#define O_VERIFY_ATTRIBUTES 1
 #define O_GVAR			1
 #define O_CYCLIC		1
 

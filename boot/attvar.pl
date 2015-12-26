@@ -43,15 +43,58 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
+/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
+:- multifile attributes:modules_with_attributes/1.
+:- dynamic attributes:modules_with_attributes/1.
+attributes:modules_with_attributes([]).
+
+       /*******************************
+       *         HOOKS              *
+       *******************************/
+
+system:attr_unify_hook(_AttrValue, _Value).
+system:verify_attributes(_Var, _Value, []).
+
+
 %%	'$wakeup'(+List)
 %
-%	Called from the kernel if assignments have been made to
+%	Called from the kernel if assignments will be made to
 %	attributed variables.
 
-'$wakeup'([]).
-'$wakeup'(wakeup(Attribute, Value, Rest)) :-
+'$wakeup'([]):-!.
+'$wakeup'(wakeup(M, Var, Attribute, Value, Rest)) :-
+	attributes:modules_with_attributes(Mods), !,
+	do_verify_attributes([M|Mods], Var, Attribute, Value, Goals),
+	(attvar(Var)->'$attvar_assign'(Var,Value);true),      /* requires O_VERIFY_ATTRIBUTES */
 	call_all_attr_uhooks(Attribute, Value),
+	call_goals(M,Goals),
 	'$wakeup'(Rest).
+        
+'$wakeup'(G):- call(G).
+
+
+call_goals(_M,[]):-!.
+call_goals(M,[G]):-!, M:call(G).
+call_goals(M,[G|Gs]):- M:call(G),call_goals(M,Gs).
+
+
+% calls it where modules have defined an attribute and then possibly in the callers module
+% Allow someone who binds this Var to move us onto the next stage 
+% In fact, they do not even need to use the original value
+do_verify_attributes(_WasInM,Var,_Attrs,_Value,[]) :- \+ attvar(Var),!.
+do_verify_attributes(WasInM,Var, att(Module, _AttVal, Rest), Value, GoalsOut) :-  !,
+    Module:verify_attributes(Var, Value, Goals1),
+    '$delete'(WasInM,Module,TODO),
+    do_verify_attributes(TODO, Var,  Rest, Value, Goals2),
+    '$append'(Goals1,Goals2,GoalsOut).
+% Call verify_attributes/3 in rest of modules
+do_verify_attributes([],_Var, _Attrs, _Value, []):-!.
+do_verify_attributes([Module|MORE], Var, [], Value, GoalsOut):- 
+   Module:verify_attributes(Var, Value, Goals1),
+   do_verify_attributes(MORE, Var, [], Value, Goals2),
+    '$append'(Goals1,Goals2,GoalsOut).
+
+
 
 call_all_attr_uhooks([], _).
 call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-

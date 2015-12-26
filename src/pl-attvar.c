@@ -106,18 +106,20 @@ SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word name, Word value ARG_LD)
+registerWakeup(Word name, Word attrs, Word value ARG_LD)
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
-  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+  assert(gTop+8 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-  gTop += 4;
-  wake[0] = FUNCTOR_wakeup3;
-  wake[1] = needsRef(*name) ? makeRef(name) : *name;
-  wake[2] = needsRef(*value) ? makeRef(value) : *value;
-  wake[3] = ATOM_nil;
+  gTop += 6;
+  wake[0] = PL_new_functor(ATOM_wakeup,5);  /*was wake[0] = FUNCTOR_wakeup3;*/
+  wake[1] = contextModule(environment_frame)->name;
+  wake[2] = needsRef(*name) ? makeRef(name) : *name;
+  wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
+  wake[4] = needsRef(*value) ? makeRef(value) : *value;
+  wake[5] = ATOM_nil;
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -126,7 +128,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-    *tail = makeRef(wake+3);
+    *tail = makeRef(wake+5);
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -135,7 +137,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-    *tail = makeRef(wake+3);
+    *tail = makeRef(wake+5);
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -182,8 +184,16 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
+#ifdef O_VERIFY_ATTRIBUTES
+  if(LD->attvar.currentAttvar!=av) 
+  {
+#endif
   a = valPAttVar(*av);
-  registerWakeup(a, value PASS_LD);
+  registerWakeup(av, a, value PASS_LD);
+#ifdef O_VERIFY_ATTRIBUTES
+      return;
+  }
+#endif
 
   TrailAssignment(av);
   if ( isAttVar(*value) )
@@ -1361,6 +1371,24 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
+#ifdef O_VERIFY_ATTRIBUTES
+static
+PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
+{ PRED_LD
+    Word av = valTermRef(A1);
+    deRef(av);
+    Word was = LD->attvar.currentAttvar;
+    LD->attvar.currentAttvar = av;
+    int ret = PL_unify(A1,A2);
+    LD->attvar.currentAttvar = was;
+    if (ret!=1 && ret!=0)
+    {
+        return ret;
+    }
+    succeed;
+}
+#endif /*O_VERIFY_ATTRIBUTES*/
+
 		 /*******************************
 		 *	    REGISTRATION	*
 		 *******************************/
@@ -1380,6 +1408,9 @@ BeginPredDefs(attvar)
   PRED_DEF("$attvars_after_choicepoint", 2, attvars_after_choicepoint, 0)
   PRED_DEF("$call_residue_vars_start", 0, call_residue_vars_start, 0)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
+#endif
+#ifdef O_VERIFY_ATTRIBUTES
+  PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
 #endif
 EndPredDefs
 
