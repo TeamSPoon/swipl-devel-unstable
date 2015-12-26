@@ -84,6 +84,7 @@ system:verify_attributes(_Var, _Value, []).
 %
 %       Assignment happens in '$attvar_assign'/2
 %
+
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
 	attributes:modules_with_attributes(AttsMods), 
@@ -98,7 +99,8 @@ system:verify_attributes(_Var, _Value, []).
 call_goals(_,[]):- !.
 call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
 call_goals(_, (M:G)):- !,call_goals(M,G).
-call_goals(M,[G|Gs]):-   call_goals(M,G),call_goals(M,Gs).
+call_goals(M,[G|Gs]):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(M,G):- M:G.
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
