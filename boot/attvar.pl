@@ -88,12 +88,12 @@ system:verify_attributes(_Var, _Value, []).
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
 	attributes:modules_with_attributes(AttsMods), 
-        '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
+    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
 	do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
 	(attvar(Var)->'$attvar_assign'(Var,Value);true),
-        call_all_attr_uhooks(Att3s, Value),        
-        '$wakeup'(Rest),
-        call_goals(UnifyAtMod,Goals).
+    call_all_attr_uhooks(Att3s, Value),        
+    '$wakeup'(Rest),
+    call_goals(UnifyAtMod,Goals).
           
 
 call_goals(_,[]):- !.
