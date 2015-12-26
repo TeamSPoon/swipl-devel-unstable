@@ -60,37 +60,43 @@ system:verify_attributes(_Var, _Value, []).
 %
 %	Called from the kernel if assignments will be made to
 %	attributed variables.
-
+%       current code requires O_VERIFY_ATTRIBUTES (In C)
+%
+%       Assignment happens in '$attvar_assign'/2
+%
 '$wakeup'([]).
-'$wakeup'(wakeup(M, Var, Attribute, Value, Rest)) :-
-	attributes:modules_with_attributes(Mods), !,
-	do_verify_attributes([M|Mods], Var, Attribute, Value, Goals),
-	(attvar(Var)->'$attvar_assign'(Var,Value);true),      /* requires O_VERIFY_ATTRIBUTES */
-	call_all_attr_uhooks(Attribute, Value),
-        '$wakeup'(Rest),
-        call_goals(M,Goals).
-
-
+'$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
+	attributes:modules_with_attributes(AttsMods), 
+        '$delete'(AttsMods,UnifyAtMod,RestAttsMods), !,
+	do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
+	(attvar(Var)->'$attvar_assign'(Var,Value);true),
+	call_all_attr_uhooks(Att3s, Value),
+        % DMiles wonders if call_goals/2 should be before attr_unify_hook/2
+        % DMiles Thinks this is fine for now
+        call_goals(M,Goals), 
+        '$wakeup'(Rest).
+          
 
 call_goals(_,[]):-!.
 call_goals(M,(G,Gs)):-!,call_goals(M,G),call_goals(M,Gs).
 call_goals(_,(M:G)):-!, call_goals(M,G).
 call_goals(M,[G|Gs]):-!,call_goals(M,G),call_goals(M,Gs).
 
-
-% calls it where modules have defined an attribute and then possibly in the callers module
-% Allow someone who binds this Var to move us onto the next stage 
-% In fact, they do not even need to use the original value
-do_verify_attributes(_WasInM,Var,_Attrs,_Value,[]) :- \+ attvar(Var),!.
-do_verify_attributes(WasInM,Var, att(Module, _AttVal, Rest), Value, (Module:Goals1,Goals2)) :-  !,
+%$ do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
+% calls verify_attributes/3 where modules have 
+%  1) Modules that have defined an attribute in Att3s
+%  2) The caller''s module (Head of AttsModules)
+%  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
+do_verify_attributes(_AttsModules,Var,_Att3s,_Value,[]) :- \+ attvar(Var),!.
+do_verify_attributes(AttsModules,Var, att(Module, _AttVal, Rest), Value, (Module:Goals1,Goals2)) :-  !,
     Module:verify_attributes(Var, Value, Goals1),
-    '$delete'(WasInM,Module,TODO),
-    do_verify_attributes(TODO, Var,  Rest, Value, Goals2).
+    '$delete'(AttsModules,Module,RemainingMods),
+    do_verify_attributes(RemainingMods, Var,  Rest, Value, Goals2).
 % Call verify_attributes/3 in rest of modules
-do_verify_attributes([],_Var, _Attrs, _Value, []):-!.
-do_verify_attributes([Module|MORE], Var, [], Value, (Module:Goals1,Goals2)):- 
+do_verify_attributes([],_Var, _Att3s, _Value, []):-!.
+do_verify_attributes([Module|AttsModules], Var, [], Value, (Module:Goals1,Goals2)):- 
    Module:verify_attributes(Var, Value, Goals1),
-   do_verify_attributes(MORE, Var, [], Value, Goals2).
+   do_verify_attributes(AttsModules, Var, [], Value, Goals2).
    
 
 
