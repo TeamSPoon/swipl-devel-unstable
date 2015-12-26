@@ -74,7 +74,7 @@ system:attr_unify_hook(_AttrValue, _Value).
 % ==
 %  attr_unify_hook/2 is provided by both SWI and YAP
 %
-
+system:verify_attributes(_Var, _Value, []).
 
 %%	'$wakeup'(+List)
 %
@@ -87,14 +87,14 @@ system:attr_unify_hook(_AttrValue, _Value).
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
 	attributes:modules_with_attributes(AttsMods), 
-        '$delete'(AttsMods,UnifyAtMod,RestAttsMods), !,
+        '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
 	do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
 	(attvar(Var)->'$attvar_assign'(Var,Value);true),
-	call_all_attr_uhooks(Att3s, Value),
-        % DMiles wonders if call_goals/2 should be before attr_unify_hook/2
-        % DMiles Thinks this is fine for now
-        call_goals(M,Goals), 
-        '$wakeup'(Rest).
+        call_all_attr_uhooks(Att3s, Value),        
+   % DMiles wonders if call_goals/2 should be before attr_unify_hook/2
+   % DMiles Thinks this is fine for now
+        '$wakeup'(Rest),
+        call_goals(UnifyAtMod,Goals).
           
 
 call_goals(_,[]):-!.
