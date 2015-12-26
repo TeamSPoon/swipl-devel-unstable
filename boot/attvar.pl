@@ -91,16 +91,14 @@ system:verify_attributes(_Var, _Value, []).
 	do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
 	(attvar(Var)->'$attvar_assign'(Var,Value);true),
         call_all_attr_uhooks(Att3s, Value),        
-   % DMiles wonders if call_goals/2 should be before attr_unify_hook/2
-   % DMiles Thinks this is fine for now
         '$wakeup'(Rest),
         call_goals(UnifyAtMod,Goals).
           
 
-call_goals(_,[]):-!.
-call_goals(M,(G,Gs)):-!,call_goals(M,G),call_goals(M,Gs).
-call_goals(_,(M:G)):-!, call_goals(M,G).
-call_goals(M,[G|Gs]):-!,call_goals(M,G),call_goals(M,Gs).
+call_goals(_,[]):- !.
+call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(_, (M:G)):- !,call_goals(M,G).
+call_goals(M,[G|Gs]):-   call_goals(M,G),call_goals(M,Gs).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
@@ -116,6 +114,7 @@ do_verify_attributes(AttsModules,Var, att(Module, _AttVal, Rest), Value, (Module
     Module:verify_attributes(Var, Value, Goals1),
     '$delete'(AttsModules,Module,RemainingMods),
     do_verify_attributes(RemainingMods, Var,  Rest, Value, Goals2).
+
 % Call verify_attributes/3 in rest of modules
 do_verify_attributes([],_Var, _Att3s, _Value, []):-!.
 do_verify_attributes([Module|AttsModules], Var, [], Value, (Module:Goals1,Goals2)):- 
