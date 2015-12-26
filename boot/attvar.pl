@@ -53,7 +53,27 @@ attributes:modules_with_attributes([]).
        *******************************/
 
 system:attr_unify_hook(_AttrValue, _Value).
-system:verify_attributes(_Var, _Value, []).
+
+%%  Module:verify_attributes(+Var, +Value, -Goals)
+%  
+% Called *before* Var has actually been bound to Value. If it fails,
+% the unification is deemed to have failed. It may succeed nondeterminately, 
+% in which case the unification might backtrack to give another answer.
+% It is expected to return, in Goals, a list of goals to be called after Var has
+% been bound to Value.
+%
+%  This predicate is called in each module that contains an attribute declaration.
+%
+% For cases in which look like:
+% ==
+% mod:verify_attributes(Var,Value,[]):- get_attrs(Var,mod,Atts),some_code(Atts,Value).
+% ==
+% it can in some cases be more efficient to avoid this extra get_attrs/3 call.
+% ==
+%  mod:attr_unify_hook(Atts,Value):- some_code(Atts,Value).
+% ==
+%  attr_unify_hook/2 is provided by both SWI and YAP
+%
 
 
 %%	'$wakeup'(+List)
@@ -82,11 +102,15 @@ call_goals(M,(G,Gs)):-!,call_goals(M,G),call_goals(M,Gs).
 call_goals(_,(M:G)):-!, call_goals(M,G).
 call_goals(M,[G|Gs]):-!,call_goals(M,G),call_goals(M,Gs).
 
-%$ do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
-% calls verify_attributes/3 where modules have 
+%% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
+%
+% calls  Module:verify_attributes/3 
+%
 %  1) Modules that have defined an attribute in Att3s
 %  2) The caller''s module (Head of AttsModules)
 %  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
+%
+%  
 do_verify_attributes(_AttsModules,Var,_Att3s,_Value,[]) :- \+ attvar(Var),!.
 do_verify_attributes(AttsModules,Var, att(Module, _AttVal, Rest), Value, (Module:Goals1,Goals2)) :-  !,
     Module:verify_attributes(Var, Value, Goals1),
