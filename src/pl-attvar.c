@@ -103,16 +103,26 @@ which must run in constant space.
 	loop :- freeze(X, true), X = a, loop.
 
 SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
+ if O_VERIFY_ATTRIBUTES then: Caller must ensure 8 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
+#ifdef O_VERIFY_ATTRIBUTES
 registerWakeup(Word name, Word attrs, Word value ARG_LD)
+#else
+registerWakeup(Word name, Word value ARG_LD)
+#endif
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
+#ifdef O_VERIFY_ATTRIBUTES
   assert(gTop+8 <= gMax && tTop+4 <= tMax);
+#else
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+#endif
 
   wake = gTop;
+#ifdef O_VERIFY_ATTRIBUTES
   gTop += 6;
   wake[0] = FUNCTOR_wakeup5;
   wake[1] = contextModule(environment_frame)->name;
@@ -120,6 +130,13 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
   wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
   wake[5] = ATOM_nil;
+#else
+  gTop += 4;
+  wake[0] = FUNCTOR_wakeup3;
+  wake[1] = needsRef(*name);
+  wake[2] = needsRef(*value);
+  wake[3] = ATOM_nil;
+#endif
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -128,7 +145,11 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
+#ifdef O_VERIFY_ATTRIBUTES
     *tail = makeRef(wake+5);
+#else
+    *tail = makeRef(wake+3);
+#endif
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -137,7 +158,11 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
+#ifdef O_VERIFY_ATTRIBUTES
     *tail = makeRef(wake+5);
+#else
+    *tail = makeRef(wake+3);
+#endif
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -170,9 +195,10 @@ assignAttVar(Word av, Word value ARG_LD)
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
- /* let registerWakeup sanity check gTop we still might TrailAssignment() 1+2 */
-#ifndef O_VERIFY_ATTRIBUTES_LEAN
-  assert(gTop+1 <= gMax && tTop+2 <= tMax);
+#ifdef O_VERIFY_ATTRIBUTES
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+#else
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
 #endif
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
@@ -187,28 +213,19 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
-#ifdef O_VERIFY_ATTRIBUTES
-  if(LD->attvar.currently_assigning!=av) 
-  {
-#endif
+
   a = valPAttVar(*av);
   registerWakeup(av, a, value PASS_LD);
   
-#ifdef O_VERIFY_ATTRIBUTES
-      return;
-  }
-#endif
-
-  /* prolog trails our assigments now (during wakeup)*/
-#ifndef O_VERIFY_ATTRIBUTES_LEAN
+#ifndef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign */
   TrailAssignment(av);
-#endif
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else
     *av = *value;
+#endif
 
   return;
 }

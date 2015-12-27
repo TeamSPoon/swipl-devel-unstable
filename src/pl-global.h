@@ -411,9 +411,6 @@ struct PL_local_data
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
-#ifdef O_VERIFY_ATTRIBUTES
-    Word currently_assigning;  /* Check unify had succeeded, now only assign */
-#endif
   } attvar;
 #endif
 
