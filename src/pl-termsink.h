@@ -125,6 +125,8 @@ char *print_val_recurse(word val, char *buf, int dereflevel);
 #endif
 
 
+#define TERMSINK_SKIP_HIDDEN(ATTRS) ATTRS
+
 #define BIT_ON(BIT,VALUE) ( ((int)1)<<BIT & VALUE)!=0
 #define WHY_BIT(when,what) ( WHEN_ ## when * 16 +  WHAT_ ## what  )
 #define WHY_CALLING(when,what,l2r) CACHED_ATOM(LD->termsink.callbacknames,  WHAT_ ## what , #what ) ,  CACHED_ATOM(LD->termsink.modenames,  HOW_ ## when ## _ ## l2r  , #when "_" #l2r )

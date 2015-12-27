@@ -248,8 +248,8 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
 #ifdef O_TERMSINK
       MAYBE_IMPL(override,equal,l,r);
 #endif
-      l = valPAttVar(wl);
-      r = valPAttVar(wr);
+      l = TERMSINK_SKIP_HIDDEN(valPAttVar(wl));
+      r = TERMSINK_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -368,8 +368,8 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
 #ifdef O_TERMSINK
           MAYBE_IMPL(override,variant,l,r)
 #endif
-      l = valPAttVar(wl);
-      r = valPAttVar(wr);
+      l = TERMSINK_SKIP_HIDDEN(valPAttVar(wl));
+      r = TERMSINK_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -461,8 +461,8 @@ again:
 #ifdef O_TERMSINK
        MAYBE_IMPL(override,variant,p1,p2)
 #endif
-      p1 = valPAttVar(*p1);
-      p2 = valPAttVar(*p2);
+      p1 = TERMSINK_SKIP_HIDDEN(valPAttVar(*p1));
+      p2 = TERMSINK_SKIP_HIDDEN(valPAttVar(*p2));
       goto again;
     case TAG_ATOM:
       return FALSE;

@@ -1900,7 +1900,14 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
     deRef(av);
     Word was = LD->attvar.currently_assigning;
     LD->attvar.currently_assigning = av;
+#ifdef O_TERMSINK
+    Word value = valTermRef(A2);
+    deRef(value);
+    int ret = 1;
+    assignAttVar(av,value PASS_LD);
+#else
     int ret = PL_unify(A1,A2);
+#endif
     LD->attvar.currently_assigning = was;
     if (ret!=1 && ret!=0)
     {

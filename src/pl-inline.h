@@ -323,6 +323,7 @@ bindConst__LD(Word p, word c ARG_LD)
        {
           int rc= unifyAttVar(&(c), p, WHY_CALLING( eager , bind_const, rl ) PASS_LD); 
           if(rc==1) return;   
+          assert(rc!=FALSE);
        }
 #endif
     *p = (c);
@@ -330,7 +331,8 @@ bindConst__LD(Word p, word c ARG_LD)
       (tTop++)->address = p;
   } else
   { int rc = unifyAttVar(p, &(c), WHY_CALLING( normal , unify, lr ) PASS_LD);
-    assert(rc==1);
+    if(rc==1) return;
+    assert(rc!=FALSE);
 	return;
   }
 #else
