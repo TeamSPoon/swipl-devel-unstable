@@ -94,10 +94,12 @@ system:verify_attributes(_Var, _Value, []).
    (attvar(Var)->'$attvar_assign'(Var,Value);true),
    call_all_attr_uhooks(Att3s, Value),
    '$wakeup'(Rest),
-   call_goal_list(UnifyAtMod,Goals).
+   calls_in_module(Goals, UnifyAtMod).
 
-call_goal_list(_,[]):- !.
-call_goal_list(M,[G|Gs]):- !, M:call(G),call_goal_list(M,Gs).
+calls_in_module([], _).
+calls_in_module([G|Gs], M):-
+        M:call(G),
+        calls_in_list(Gs, M).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
