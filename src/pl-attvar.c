@@ -1387,6 +1387,7 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
+    Word av = valTermRef(A1); deRef(av);
 #ifdef O_TERMSINK
     if (isAtom(*av))
     {
@@ -1397,7 +1398,6 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
         }
     }
 #endif
-    Word av = valTermRef(A1); deRef(av);
     if (!isAttVar(*av)) succeed;
     Word value = valTermRef(A2); deRef(value);
     TrailAssignment(av);
