@@ -192,7 +192,7 @@ handy for it someone wants to add a data type to the system.
 */
 
 #define O_TERMSINK 1
-// #undef O_TERMSINK
+/* #undef O_TERMSINK */
 #undef O_DONTCARE_TAGS
 #undef O_ATTVAR_EAGER
 

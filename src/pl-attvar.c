@@ -175,38 +175,52 @@ assignAttVar(Word av, Word value ARG_LD)
   assert(isAttVar(*av));
   assert(!isRef(*value));
  /* let registerWakeup sanity check gTop we still might TrailAssignment() 1+2 */
-#ifndef O_VERIFY_ATTRIBUTES_LEAN
+#ifndef O_VERIFY_ATTRIBUTES
   assert(gTop+1 <= gMax && tTop+2 <= tMax);
 #endif
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
+#ifdef O_TERMSINK
+  int sinkmode = getSinkMode(av);
+  bool peer_wakeup = IS_SINKMODE(peer_wakeup);
+  bool no_wakeup   = IS_SINKMODE(no_wakeup);
+#endif
+
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
       av = value;
       value = tmp;
-    } else if ( av == value )
+    } else if ( av == value ) {
+#ifdef O_TERMSINK
+        if (peer_wakeup && !no_wakeup)        
+           registerWakeup(av, valPAttVar(*av), av PASS_LD);        
+#endif
       return;
+    }
   }
 
-#ifdef O_VERIFY_ATTRIBUTES
-  if(LD->attvar.currently_assigning!=av) 
-  {
-#endif
+#ifndef O_TERMSINK
   a = valPAttVar(*av);
   registerWakeup(av, a, value PASS_LD);
-  
-#ifdef O_VERIFY_ATTRIBUTES
-      return;
+#else
+  if (!no_wakeup) registerWakeup(av, valPAttVar(*av), value PASS_LD);
+  if ( isAttVar(*value) ) 
+  {
+    /* both attvars will get a wakeup */
+     bool peer_asks_please_no_wakeup = IS_SINKMODE_FOR(getSinkMode(value),no_wakeup);
+     if (peer_wakeup && !peer_asks_please_no_wakeup) registerWakeup(value, valPAttVar(*value), av PASS_LD);
   }
+#endif /*O_TERMSINK*/
+
+#ifdef O_VERIFY_ATTRIBUTES
+  /* wakeup/1 trails and makes our assigments now thru $attvar_assign */
+      return;
 #endif
 
-  /* prolog trails our assigments now (during wakeup)*/
-#ifndef O_VERIFY_ATTRIBUTES_LEAN
   TrailAssignment(av);
-#endif
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
@@ -1388,7 +1402,8 @@ static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1); deRef(av);
-#ifdef O_TERMSINK
+/*
+#ifdef O_TERMSINK    
     if (isAtom(*av))
     {
         av = key_to_attvar(*av);
@@ -1398,8 +1413,17 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
         }
     }
 #endif
+*/
     if (!isAttVar(*av)) succeed;
+    int sinkmode = getSinkMode(av);
+    if (IS_SINKMODE(no_bind)) succeed;
     Word value = valTermRef(A2); deRef(value);
+    if(value==av) succeed;
+    if (isVar(*value))
+    {
+        Trail(value, makeRef(av));
+        succeed;
+    }
     TrailAssignment(av);
     *av = needsRef(*value) ? makeRef(value) : *value;
     succeed;
@@ -1451,90 +1475,6 @@ Word visible_attrs(Word origl, atom_t name ARG_LD)
     }       
 }
 
-atom_t attvar_key(Word adr)
-{
-	GET_LD
-	static char name[32];
-	assert(adr);
-	deRef(adr);
-	if(isAtom(*adr)) return (atom_t)*adr;
-	if(!isAttVar(*adr)) return 0;
-	/*assert(isAttVar(*adr));*/
-#ifdef NON_SANE_KEYS
-	return (atom_t)adr;
-#endif
-	atom_t w;
-	if ( (w = (atom_t)lookupHTable(LD->termsink.v2a, (void*)adr)) )
-	{
-		if( isAtom(w) ) return(w);
-	}
-
-	if(adr > (Word) lBase)
-		Ssprintf(name, "_L%ld",(Word)adr - (Word)lBase);
-	else
-		Ssprintf(name, "_G%ld",(Word)adr - (Word)gBase);
-
-	w = PL_new_atom(name);
-	updateHTable(LD->termsink.v2a, (void*)adr,(void*)w);
-	updateHTable(LD->termsink.a2v, (void*)w,(void*)adr);
-	return(w);
-}
-
-Word key_to_attvar(atom_t adr)
-{
-	GET_LD
-	assert(adr);
-#ifdef NON_SANE_KEYS
-	return (Word)adr;
-#endif
-	assert(isAtom(adr));
-	Word w;
-	if(LD->termsink.a2v)
-	{
-		if ( (w = (Word)lookupHTable(LD->termsink.a2v, (void*)adr)) )
-		{
-			if( isAttVar(*w) ) return(w);
-            DEBUG_ADDRLN("Found in HT ",w);
-		}
-	}
-	return NULL;
-}
-
-int pl_get_attvar_key(term_t A1, atom_t * name) {
-GET_LD
-	word w;
-
-    atom_t aname;	
-	long lng;
-	void* ptr;
-	if(PL_get_atom(A1,&aname)) {
-		assert(aname);
-		*name = aname;
-		/*DEBUG_TERMSINK((Sprintf("as_atom=%s\n",print_val_recurse(w,0,1))))*/
-		return TRUE;
-	} else if(PL_get_pointer(A1,&ptr)) {
-		w = (word)ptr;
-		DEBUG_TERMSINK((Sprintf("as_pointer=%s\n",print_val_recurse(w,0,1))))
-	} else if(PL_get_long(A1,&lng)) {
-		w = (word)lng;
-		DEBUG_TERMSINK((Sprintf("as_long=%s\n",print_val_recurse(w,0,1))))
-	} else {
-		Word d = valTermRef(A1);
-		deRef(d);
-		if(isAttVar(*d))
-		{
-			*name = attvar_key(d);
-			return TRUE;
-		}
-		DEBUG_TERMSINK((Sprintf("*valTermRef(A1)=%s\n",print_val_recurse(*d,0,1))))
-		w = *d;
-	}	
-	if(w==0) return FALSE;
-	assert(name);
-    *name = attvar_key((Word)(word)w);
-	return TRUE;
-}
-
 
 /*
  Returns
@@ -1542,32 +1482,10 @@ GET_LD
 int
 getSinkMode__LD(Word av ARG_LD)
 {
-	if ( !LD->termsink.sinkvars ) {
-		if( !isAttVar(*av) &&  !isAtom(*av) ) return(0);
-		return(LD->termsink.gsinkmode);
-	}
-
-	atom_t name;
-	word w;
-	deRef(av);
-	if(isAtom(*av))
-	{
-		name = *av;
-	} else if(isAttVar(*av))
-	{
-		name = attvar_key(av);
-	} else return(0);
-
     Word found;
-    if (LD->termsink.hidden_prop && find_attr(av,LD->termsink.hidden_prop,&found PASS_LD)) {
+    if (LD->termsink.hidden_prop && find_attr(av, LD->termsink.hidden_prop,&found PASS_LD)) {
        return valInt(*found);
     }
-
-	if ( (w = (word)lookupHTable(LD->termsink.sinkvars, (void*)name)) )
-	{
-        // We are using TAG_INTEGER mainly for a magic
-		if(isInteger(w))return valInt(w);
-	}
 	return(LD->termsink.gsinkmode);
 }
 
@@ -1575,32 +1493,12 @@ getSinkMode__LD(Word av ARG_LD)
 void setSinkMode__LD(Word av, int value ARG_LD)
 {
     word wvalue = consInt(value);
-    if (value!=0)
-    {
-        updateHTable(LD->termsink.sinkvars,
-                     (void*)attvar_key(av),
-                     (void*)wvalue);
-        if ((value & SINKBIT_VAL(uses_eager))!=0) LD->termsink.eager_vars=1;
-    } if(LD->termsink.sinkvars)
-        deleteHTable(LD->termsink.sinkvars, (void*)attvar_key(av));
-    Word vp;
-    if(LD->termsink.hidden_prop && find_attr(av, LD->termsink.hidden_prop, &vp PASS_LD)) {
-        *vp = wvalue;
-    }
+    put_attr(av,LD->termsink.hidden_prop,&wvalue PASS_LD);
 }
 
 
 void setupTermsinks(ARG1_LD)
 {
-	if ( LD->termsink.sinkvars )
-		destroyHTable(LD->termsink.sinkvars);
-	if ( LD->termsink.a2v )
-		destroyHTable(LD->termsink.a2v);
-	if ( LD->termsink.v2a )
-		destroyHTable(LD->termsink.v2a);
-	LD->termsink.a2v = newHTable(32);
-	LD->termsink.v2a = newHTable(32);
-	LD->termsink.sinkvars = newHTable(32);
     LD->attvar.currently_assigning = NULL;
     LD->termsink.gsinkmode = 0;
 	LD->termsink.eager_vars = 0;
@@ -1610,13 +1508,15 @@ void setupTermsinks(ARG1_LD)
 }
 
 /*
+
   Presently never called 
 
  WE RETURN
 
- 0 = Failed
- 1 = Success
+  0 = Failed
+  1 = Success
  -1 = nothing done
+
 */
 int
 overloadAttVar(Word av, Word value, atom_t origin, atom_t mode ARG_LD) {
@@ -1664,293 +1564,19 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW,
 int
 unifyAttVar(Word avO, Word valueO, atom_t origin, atom_t mode ARG_LD)
 {
-    Word a;
-    int ret;
-
-    bool wakeupScheduled = FALSE;
-    bool assignCompleted = FALSE;
-
-
     Word av = avO;      deRef(av);
     Word value = valueO; deRef(value);
 
-    word sinkmode = getSinkMode(av);
-    if (!BIT_ON(X_no_inherit, sinkmode))
+    if (origin==ATOM_unify)
     {
-        sinkmode |= LD->termsink.gsinkmode;
+        assignAttVar(av,value PASS_LD);
+        return 1;
     }
-
-    bool debug_extreme = IS_SINKMODE_FOR(sinkmode,debug_extreme) || IS_SINKMODE_GLOBAL(debug_extreme);
-
-#if defined(O_DEBUG) || defined(O_MAINTENANCE)
-    if (debug_extreme)
+    else
     {
-        /* DMILES JUST LEARNING */
-        /* the *O values are for later when we might maniplate the refs passed along from do_unify() */
-        if( avO!=av )
-        {
-            DEBUG_ADDR("\t%% DEREF_ATTV ",avO, " ");
-            DEBUG_ADDR(" BECAME ",av, " ");
-            DEBUG_WORD(" LINKVAL ",linkVal(avO),"\n");
-        }
-        if( valueO!=value )
-        {
-            DEBUG_ADDR("\t%% DEREF_VALUE ",valueO, " ");
-            DEBUG_ADDR(" BECAME ",value, " ");
-            DEBUG_WORD(" LINKVAL ",linkVal(valueO),"\n");
-        }
-
-	}
-#endif /*#if defined(O_DEBUG) || defined(O_MAINTENANCE)*/
-
-    assert(isAttVar(*av));
-    assert(!isRef(*value));
-    assert(gTop+7 <= gMax && tTop+6 <= tMax);
-
-    DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
-
-    if (!origin) origin = LD->termsink.callbacknames[0];
-    if (!mode) mode = LD->termsink.modenames[0];
-
-    /* all these expand to zero code without debug turned on */
-    DECL_AND_SHOW(debug_attvars);
-    debug_attvars |= debug_extreme;
-    DEBUG_ADDRLN("\n\t%% ENTER ATTVAR = ",av);
-    DEBUG_ADDRLN("\n\t%% ORIGIN = ",&origin);
-    DEBUG_ADDRLN("\n\t%% MODE = ",&mode);
-
-    DEBUG_TERMSINK( if (onGlobalArea(av)) Sprintf("     onGlobalArea(av)== 1\n"); else if (onStack(local,av)) Sprintf("     onStack(local,av)== 1\n") )
-    DEBUG_TYPE("%d",isRef(*av));
-    DEBUG_TYPE("%d",!isAttVar(*av));
-    DEBUG_TYPE("%d",LD->termsink.gsinkmode);
-    DEBUG_TYPE("%d",sinkmode);
-    /* except decl and show still decls*/
-    DECL_AND_SHOW(disabled);
-    DECL_AND_SHOW(no_bind);
-	DECL_AND_SHOW(no_trail);
-	DECL_AND_SHOW(no_wakeup);
-
-	DECL_AND_SHOW(peer_trail);
-	DECL_AND_SHOW(peer_wakeup);
-	DECL_AND_SHOW(on_unify_keep_vars);
-    DECL_AND_SHOW(on_unify_replace);
-    DECL_AND_SHOW(no_inherit);
-    DECL_AND_SHOW(uses_eager);
-    DEBUG_ADDRLN("\t%% VALUE = ",value);
-    DEBUG_TERMSINK( if (onGlobalArea(value)) Sprintf("     onGlobalArea(value)== 1\n"); else if (onStack(local,value)) Sprintf("     onStack(local,value)== 1\n") )
-    DEBUG_TYPE("%d",isRef(*value));
-    DEBUG_TYPE("%d",isVar(*value));
-    DEBUG_TYPE("%d",isAttVar(*value));
-
-    bool isSpecial = no_bind | no_trail | no_wakeup | on_unify_keep_vars | on_unify_replace | uses_eager;
-	DEBUG_TYPE("%d",isSpecial);
-
-    bool isAssigningAttvar = LD->attvar.currently_assigning == av;
-
-    DEBUG_TYPE("%d",isAssigningAttvar);
-
-    if(isAssigningAttvar) {
-        disabled = TRUE;
-        isSpecial = FALSE;
-        no_bind = FALSE;
-       // no_wakeup = TRUE;
-        no_trail = TRUE;
-        on_unify_keep_vars = on_unify_replace = uses_eager = FALSE;
+        return overloadAttVar(av,value,origin,mode PASS_LD);
     }
-
-    bool normalVarUnify = isVar(*value) &&  onStack(local, value) && (disabled && !isSpecial);
-    DEBUG_TYPE("%d",normalVarUnify);
-
-
-    if ( !hasGlobalSpace(0) )
-    { int rc;
-
-      if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-        return raiseStackOverflow(rc);
-    }
-
-    if(normalVarUnify)
-    {
-        DEBUG_ADDRLN("\t%% NORMAL VAR UNIFY ", value);
-        Trail(value,makeRefG(av));
-        ret = TRUE;
-        goto exit;
-    }
-
-    a = valPAttVar(*av);
-
-	bool isSelf = (av == value);
-
-    if (!no_wakeup)
-	{
-        if (isSelf) peer_wakeup = FALSE;
-        registerWakeup(av, a, value PASS_LD);
-        wakeupScheduled = TRUE;
-    }
-
-    if (!no_trail)
-    {
-        if (isSelf) peer_trail = FALSE;
-        TrailAssignment(av);
-    }
-
-    if (peer_trail) TrailAssignment(value);
-
-    if ((uses_eager && origin!=ATOM_unify) || on_unify_replace || debug_extreme )
-    {
-        DEBUG_TERMSINK(PL_backtrace(1,SYSTEM_MODE));
-    }
-
-	bool treatAsConst = TRUE;
-    if( isAttVar(*value) )
-    {
-
-        if (isSelf)
-        {
-			/* TODO (dmiles notes):
-			  figure this out later if verify_attributes/3 or other hooks should
-			   still get called.
-			  (note dif:dif/2 would like to know about this)
-				*/
-            if (!wakeupScheduled && !disabled)
-            {
-                if(peer_wakeup) {
-                    registerWakeup(av, a, value PASS_LD);
-                    wakeupScheduled = TRUE;
-                }
-            }
-			ret = TRUE;
-			goto exit;
-		}
-
-		int peer_sinkmode = getSinkMode(value);
-
-		bool peer_asks_please_no_wakeup = IS_SINKMODE_FOR(peer_sinkmode,no_wakeup);
-		
-		treatAsConst = FALSE;
-        DEBUG(1, Sdprintf("Unifying two attvars\n"));
-        if (peer_wakeup)
-        {
-			treatAsConst = FALSE;
-            Word vp = valPAttVar(*value);
-            if(!(peer_asks_please_no_wakeup))
-            {
-                DEBUG_ADDRLN("\t%% WAKING OTHER ", value);
-                registerWakeup(value, vp, av PASS_LD);
-            } else
-			{
-				DEBUG_ADDRLN("\t%% peer_asks_please_no_wakeup ", value);
-            }
-        }
-        if (!assignCompleted && disabled)
-        {
-            DEBUG_ADDRLN("\t%% REPLACING THIS WITH OTHER ", value);
-            *av = makeRef(value);
-            assignCompleted = TRUE;
-            ret = TRUE;
-            goto exit;
-        }
-		if( value > av )
-		{  /* TODO (dmiles notes): point in one dirrection
-
-			  So that the attvar referencers (say the avO vs valueO) or
-			  finding the first time the attvars appear in the local stack and compare those. So,,
-			  (during *this* unify operation and not based on creation time time reflected allong GlobalArea)
-					*/
-		   if(!peer_wakeup && !peer_asks_please_no_wakeup)
-		   {
-			   DEBUG_ADDRLN("\t%% SWAPPING THIS WITH OTHER ", value);
-			   return(unifyAttVar(value,av,origin, mode PASS_LD));
-		   }
-		}
-    } else if(isVar(*value))
-    {
-		treatAsConst = FALSE;
-        if (on_unify_replace && !on_unify_keep_vars)
-        {        
-            if (onStack(local, value))
-            {
-                DEBUG_ADDRLN("\t%% GOING INSIDE OF VAR ", value);
-                *value = makeRef(av);
-                assignCompleted = TRUE;
-                ret = TRUE;
-                goto exit;
-            }
-            assert(onStack(global, value));
-            treatAsConst = TRUE;
-        }
-
-        if (on_unify_keep_vars)
-        {
-			DEBUG_ADDRLN("\t%% TREAT VAR JUST LIKE ANY CONSTANT (on_unify_keep_vars)", value);
-			treatAsConst = TRUE;
-		}
-    }
-
-    /* treatAsConst means that var and attvars are expected to unify as a normal plain value */
-    if (treatAsConst)
-    {
-        if (on_unify_replace)
-        {
-           assert(onStack(local, value)||onStack(global, value));
-            if (!wakeupScheduled)
-            {
-                registerWakeup(av, a, value PASS_LD);
-               wakeupScheduled = TRUE;
-           }
-           DEBUG_ADDRLN("\t%% TAKEOVER CONST REF ", value);
-           *valueO = makeRef(av);
-           assignCompleted = TRUE;  /* the assign isnt complete yet it is set up to happen in wakeup */
-           ret = TRUE;
-           goto exit;
-        }
-    }
-
-    /* so far nothing has happened that would make us belive unification has take place */
-    if(!assignCompleted)
-    {
-        if(isVar(*value))
-        {
-           DEBUG_ADDRLN("\t%% TRAILING THIS ONTO VAR ", value);
-           if (peer_trail) {
-               /* peer_trail  peer has already been trailed */
-               *value = makeRef(av);
-           } else
-           {
-               Trail(value,makeRef(av));
-           }
-
-           assignCompleted = TRUE;
-           ret = TRUE;
-           goto exit;
-        }
-        if(no_bind)
-        {
-            DEBUG_ADDRLN("\t%% REMAINS VAR ", value);
-            assignCompleted = TRUE;
-            goto exit;
-        } else
-        {
-            DEBUG_ADDRLN("\t%% BECOMING VALUE ", value);
-            *av = *value;
-            assignCompleted = TRUE;
-            goto exit;
-        }
-    }
-
-exit:
-#ifdef O_DEBUG
-    if (debug_attvars)
-    {
-        DEBUG_TYPE("%d",assignCompleted);
-        DEBUG_TYPE("%d",wakeupScheduled);
-        DEBUG_TYPE_PRINT("%d",ret);
-        DEBUG_ADDRLN("\t%% EXIT AV = ",av,"\n\n");
-    }
-#endif
-    return(ret);
 }
-
 
 static
 PRED_IMPL("$attvar_default", 2, dattvar_default, 0)
@@ -1980,39 +1606,80 @@ PRED_IMPL("$attvar_default", 2, dattvar_default, 0)
     fail;
 }
 
-
+/*
+ $attvar_assign(+Var,+Value,+Trail,+Forced)
+*/
 static
-PRED_IMPL("$attvar_overriding", 3, dattvar_overriding, 0)
-{ PRED_LD
-    atom_t adr;
-	return((pl_get_attvar_key(A1,&adr) && _PL_unify_atomic(A2,adr) && PL_unify_integer(A3,getSinkMode(&adr))));
-}
-
-static
-PRED_IMPL("$attvar_override", 2, dattvar_override, 0)
+PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
 {
     PRED_LD
-
-	int value;
-	if( !PL_get_integer(A2, &value) )
-		return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, A2));
-
-    Word av = valTermRef(A1);
-    deRef(av);
-    if( isVar(*av) )
+    Word av = valTermRef(A1); deRef(av);  
+    int forced;
+    if (!PL_get_bool(A4,&forced)) forced=0;
+    int trailed;
+    if (!PL_get_bool(A3,&trailed)) trailed=0;
+    Word value = valTermRef(A2); deRef(value);
+    if (isVar(*av))
     {
-        if( !hasGlobalSpace(0) )    /* 0 means enough for attvars */
-        { int rc;
-            if( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-                return(raiseStackOverflow(rc));
-        }
-        make_new_attvar(av PASS_LD);        /* SHIFT: 3+0 */
-        deRef(av);
+        if (trailed)
+        {
+            if (av==value)
+            {
+                if (onGlobalArea(av))
+                {
+                    TrailAssignment(av);
+                } else
+                {
+                    LTrail(av);
+                }
+                succeed;
+            }
+            Trail(av, linkVal(value));
+            succeed;
+        } else
+        {
+            if (av==value)succeed;
+            *av = linkVal(value);
+            succeed;
+        }        
     }
-    setSinkMode(av,value);
-    succeed;
-}
+    if (!isAttVar(*av))
+    {
+        if (!forced) PL_warning("not a variable");
+        succeed;
+    }
+    if (trailed) TrailAssignment(av);
+    if (av==value)succeed;
+    if (!forced)
+    {
+        int sinkmode = getSinkMode(av);
+        if (IS_SINKMODE(no_bind)) succeed;
+    }
+    if (isVar(*value))
+    {
+        if (trailed)
+        {
+            if (onGlobalArea(value))
+            {
+                TrailAssignment(value);
+            } else
+            {
+                LTrail(av);
+            }
+        }
+        *value = makeRef(av);
+        succeed;
+    } else if (isAttVar(*value))
+    {
+        *av = makeRef(value);
+        succeed;
+    } else
+    {
+        *av = *value;
+        succeed;
+    }
 
+}
 
 static
 PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0) {
@@ -2073,9 +1740,8 @@ BeginPredDefs(attvar)
 #endif
 #ifdef O_TERMSINK
   PRED_DEF("$attvar_default",   2, dattvar_default,    0)
+  PRED_DEF("$attvar_assign", 4, dattvar_assign, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
-  PRED_DEF("$attvar_override",   2, dattvar_override,    0)
-  PRED_DEF("$attvar_overriding",   3, dattvar_overriding,    0)
 #endif
 EndPredDefs
 

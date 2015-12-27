@@ -420,9 +420,6 @@ struct PL_local_data
 #ifdef O_TERMSINK
   struct {
     int gsinkmode;  /* Global default sink mode of system */
-	Table sinkvars;		/* table of sinkvardata (or at least tell us it worth searching for it)*/
-	Table v2a;  	/* table of vars2atoms (or at least tell us it worth searching for it)*/
-	Table a2v; 
     atom_t modenames[6];    
 	atom_t callbacknames[10];
     int eagermodes[32];  /* Override normal system */

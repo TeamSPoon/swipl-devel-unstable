@@ -94,6 +94,7 @@
 #define IS_SINKMODE_FOR(modebits, name) ((modebits & SINKBIT_VAL(name)) != 0)
 #define IS_SINKMODE_GLOBAL(name) IS_SINKMODE_FOR(LD->termsink.gsinkmode,name)
 #define IS_SINKMODE(name) ((IS_SINKMODE_FOR(sinkmode ,name) || ((!IS_SINKMODE_FOR(sinkmode, no_inherit)) && IS_SINKMODE_GLOBAL(name))))
+#define IS_SINKMODE(name) ((IS_SINKMODE_FOR(sinkmode ,name) || ((!IS_SINKMODE_FOR(sinkmode, no_inherit)) && IS_SINKMODE_GLOBAL(name))))
 #define DECL_AND_GET_BOOL(name) bool name = IS_SINKMODE(name)
 #define DECL_AND_SHOW(name) DECL_AND_GET_BOOL(name); DEBUG_TYPE0(name)
 #define DEBUG_TYPE0(name) DEBUG_TYPE("%d",name)
@@ -124,7 +125,6 @@ char *print_val_recurse(word val, char *buf, int dereflevel);
 #define SHOW_IF_DBG(name,val) (val)
 #endif
 
-Word key_to_attvar(atom_t adr);
 Word visible_attrs(Word origl, atom_t name ARG_LD);
 
 #define TERMSINK_SKIP_HIDDEN(X) visible_attrs(X,LD->termsink.hidden_prop PASS_LD)
@@ -139,8 +139,8 @@ Word visible_attrs(Word origl, atom_t name ARG_LD);
 #define WHY_CALLING(when,what,l2r) CACHED_ATOM(LD->termsink.callbacknames,  WHAT_ ## what , #what ) ,  CACHED_ATOM(LD->termsink.modenames,  HOW_ ## when ## _ ## l2r  , #when "_" #l2r )
 #define CACHED_ATOM(array,index,value) (isAtom(array[index])?array[index]:(array[index] = PL_new_atom(value)))
 
-#define IS_OVERLOAD_GLOBAL_VAR(when,what,var) ((tag(*var) == TAG_ATTVAR && (( LD->termsink.eagermodes[WHY_BIT(when,what)] != 0 || \
-       (LD->termsink.eager_vars > 0 && BIT_ON( X_uses_eager , getSinkMode(var)))))))
+#define IS_OVERLOAD_GLOBAL_VAR(when,what,var) (((tag(*var) == TAG_ATTVAR && (( LD->termsink.eagermodes[WHY_BIT(when,what)] != 0 || \
+       (LD->termsink.eager_vars > 0 && BIT_ON( X_uses_eager , getSinkMode(var))))))))
 
 /* FALSE mean we let the code below do its thing we may decide to return GLOBAL_OVERFLOW and such as well as TRUE*/
 #define MAYBE_IMPL(when, what ,l,r) \
