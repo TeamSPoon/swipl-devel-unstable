@@ -114,7 +114,7 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
 
   wake = gTop;
   gTop += 6;
-  wake[0] = PL_new_functor(ATOM_wakeup,5);  /*was wake[0] = FUNCTOR_wakeup3;*/
+  wake[0] = FUNCTOR_wakeup5;
   wake[1] = contextModule(environment_frame)->name;
   wake[2] = needsRef(*name) ? makeRef(name) : *name;
   wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
