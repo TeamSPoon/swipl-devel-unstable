@@ -94,7 +94,12 @@ system:verify_attributes(_Var, _Value, []).
    '$attvar_assign'(Var,Value),
    call_all_attr_uhooks(Att3s, Value),
    '$wakeup'(Rest),
-   maplist(call, Goals).
+   calls_in_module(Goals, UnifyAtMod).
+
+calls_in_module([], _).
+calls_in_module([G|Gs], M):-
+        M:call(G),
+        calls_in_module(Gs, M).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
