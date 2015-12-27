@@ -99,7 +99,7 @@ system:verify_attributes(_Var, _Value, []).
 calls_in_module([], _).
 calls_in_module([G|Gs], M):-
         M:call(G),
-        calls_in_list(Gs, M).
+        calls_in_module(Gs, M).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
