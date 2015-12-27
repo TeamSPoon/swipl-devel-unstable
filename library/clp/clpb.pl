@@ -440,7 +440,6 @@ tautology(Sat) :-
                   true)
         ).
 
-%satisfiable_bdd(BDD) :- !, BDD \== 0.
 satisfiable_bdd(BDD) :-
         (   BDD == 0 -> false
         ;   BDD == 1 -> true
@@ -895,8 +894,8 @@ verify_attributes(Var, Other, Gs) :-
                 Sat = Sat0*OtherSat,
                 parse_sat(Other, OtherSat),
                 sat_roots(Sat, Roots),
-                phrase(formulas_(Roots), Fs),
-                foldl(and, Fs, 1, And),
+                phrase(formulas_(Roots), [F|Fs]),
+                foldl(and, Fs, F, And),
                 maplist(del_bdd, Roots),
                 maplist(=(NewRoot), Roots),
                 Gs = [root_rebuild_bdd(NewRoot, And)]
