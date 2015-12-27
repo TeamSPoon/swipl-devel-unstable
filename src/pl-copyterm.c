@@ -414,6 +414,13 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	continue;
       }
       case TAG_ATTVAR:
+#ifdef O_DONTCARE_VARS
+	   if (DONTCARE_OPTION(copy_term) && isDontCare(*from))
+	   {
+		  *to = *from;
+		  continue;
+	   }
+#endif
 	if ( flags&COPY_ATTRS )
 	{ Word p = valPAttVar(*from);
 
@@ -426,6 +433,9 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	    { rc = GLOBAL_OVERFLOW;
 	      goto out;
 	    }
+#ifdef O_TERM_SINK
+      	setTermSink(p, getTermSink(from));
+#endif
 	    TrailCyclic(p PASS_LD);
 	    TrailCyclic(from PASS_LD);
 	    *from = consPtr(attr, STG_GLOBAL|TAG_ATTVAR);

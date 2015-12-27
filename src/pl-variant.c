@@ -230,7 +230,12 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     wr = *r;
 
     if ( tag(wl) != tag(wr) )
+    {
+#ifdef O_TERMSINK
+      MAYBE_IMPL(eager,equal,l,r);
+#endif
       return FALSE;
+    }
 
     if ( tag(wl) == TAG_VAR )
     { if ( l != r )		/* identity test on variables */
@@ -239,7 +244,11 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
+    {
+#ifdef O_TERMSINK
+      MAYBE_IMPL(override,equal,l,r);
+#endif
+      l = valPAttVar(wl);
       r = valPAttVar(wr);
       goto attvar;
     }
@@ -312,11 +321,20 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
    deRef(l);
    deRef(r);
 
+#ifdef O_DONTCARE_TAGS
+   if(DONTCARE_OPTION(variant) && (isDontCare(l) || isDontCare(r))) return TRUE;
+#endif
+
    wl = *l;
    wr = *r;
 
    if ( tag(wl) != tag(wr) )
+   {
+#ifdef O_TERMSINK
+     MAYBE_IMPL(eager,variant,l,r)
+#endif
      return FALSE;
+   }
 
    if ( tag(wl) == TAG_VAR )
    { int i, j, m, n;
@@ -346,7 +364,11 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
+    { 
+#ifdef O_TERMSINK
+          MAYBE_IMPL(override,variant,l,r)
+#endif
+      l = valPAttVar(wl);
       r = valPAttVar(wr);
       goto attvar;
     }
@@ -425,12 +447,20 @@ PRED_IMPL("=@=", 2, variant, 0)
   if ( *p1 == *p2 )                     /* same term */
     return TRUE;
   if ( tag(*p1) != tag(*p2) )           /* different type */
+    {
+#ifdef O_TERMSINK
+     MAYBE_IMPL(eager,variant,p1,p2)
+#endif
     return FALSE;
+    }
 again:
   switch(tag(*p1))                      /* quick tests */
   { case TAG_VAR:
       return TRUE;
     case TAG_ATTVAR:
+#ifdef O_TERMSINK
+       MAYBE_IMPL(override,variant,p1,p2)
+#endif
       p1 = valPAttVar(*p1);
       p2 = valPAttVar(*p2);
       goto again;

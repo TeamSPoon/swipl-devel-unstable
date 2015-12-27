@@ -1210,6 +1210,9 @@ emptyStacks(void)
 #ifdef O_VERIFY_ATTRIBUTES
     LD->attvar.currently_assigning = 0;
 #endif
+#ifdef O_TERMSINK
+     setupTermsinks(PASS_LD1);	
+#endif
 #ifdef O_GVAR
     destroyGlobalVars();
 #endif
@@ -1496,6 +1499,10 @@ of work to do.
 void
 freePrologLocalData(PL_local_data_t *ld)
 { int i;
+
+#ifdef O_TERMSINK
+	setupTermsinks(ld);
+#endif
 
   discardBuffer(&ld->fli._discardable_buffer);
 

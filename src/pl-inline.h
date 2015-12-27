@@ -25,6 +25,10 @@
 #undef LD
 #define LD LOCAL_LD
 
+#ifdef O_TERMSINK
+#include "pl-termsink.h"		/* A new datatype that is based on an attvar */
+#endif
+
 
 		 /*******************************
 		 *	 LOCK-FREE SUPPORT	*
@@ -313,11 +317,21 @@ bindConst__LD(Word p, word c ARG_LD)
 
 #ifdef O_ATTVAR
   if ( isVar(*p) )
-  { *p = (c);
+  {
+#ifdef O_TERMSINK /* O_EAGER_ATTVAR = doubt this will be needed but want to mark it at least */
+    if(IS_OVERLOAD_GLOBAL_VAR(eager,bind_const,&c))
+       {
+          int rc= unifyAttVar(&(c), p, WHY_CALLING( eager , bind_const, rl ) PASS_LD); 
+          if(rc==1) return;   
+       }
+#endif
+    *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
-  { assignAttVar(p, &(c) PASS_LD);
+  { int rc = unifyAttVar(p, &(c), WHY_CALLING( normal , unify, lr ) PASS_LD);
+    assert(rc==1);
+	return;
   }
 #else
   *p = (c);

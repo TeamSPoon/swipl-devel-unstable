@@ -31,6 +31,18 @@ symbol lookup and relocations.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 /* pl-attvar.c */
+
+#ifdef O_TERMSINK
+COMMON(int) getSinkMode__LD(Word av ARG_LD);
+COMMON(void) setSinkMode__LD(Word av, int value ARG_LD);
+COMMON(void) setupTermsinks(ARG1_LD);
+COMMON(int)	unifyAttVar(Word av, Word value, atom_t origin, atom_t why ARG_LD);
+COMMON(int)	overloadAttVar(Word av, Word value, atom_t origin, atom_t why ARG_LD);
+#endif
+
+#ifdef O_DONTCARE_TAGS
+COMMON(bool) isDontCare__LD(Word value ARG_LD);
+#endif
 COMMON(void)		assignAttVar(Word av, Word value ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);
 COMMON(void)		restoreWakeup(wakeup_state *state ARG_LD);

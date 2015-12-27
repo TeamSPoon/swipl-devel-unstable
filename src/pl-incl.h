@@ -158,6 +158,44 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
+
+/*
+
+   Some experiments ongoing
+
+   O_TERMSINK
+         Attributed variables call $wakeup basically after their identities have been 
+         removed from the current call So now the wakeups like attrib_unify_hook/2 can decide 
+         the effective binding of this.  Sometimes keep the attributed variable unbound despite
+         being unified with a term?!? (This is what Tarau's EmtpySinks do!)
+         requires O_ATTVAR
+
+   O_ATTVAR_EAGER
+        Notice potential comparisons eagerly, for example instead of being put into Variables.. 
+        in do_unify(..)  the L or R side of the unify might decide.. or Before/After.
+        So the above wakeups decide maybe if a binding will put into the variable instead of the attributed variable
+         (Maybe allow to run code early enough the attributed variables binding is decided by attrib_unify_hook  )
+
+   O_DONTCARE_TAGS
+       We can test the implications of using variables that need no trail/undo/copy_term that claim to 
+       unify with everything and remains free afterwards Currently this is implemented 
+        using termsink to see if it is correctly operating (semantically as well).  
+       eventually this would not be an attributed variable and notice since it is single Var that is tested via C's == 
+     
+
+   With any of the above set the system still operates as normal
+              until the user invokes  '$sinkmode'/2 to 
+              with $sinkmode unset tryings to keep cost more than 
+              if( (LD->attrvar.gsinkmode & SOME_OPTION) != 0) ...
+  
+    
+*/
+
+#define O_TERMSINK 1
+#undef O_DONTCARE_TAGS
+#undef O_ATTVAR_EAGER
+
+
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
 #endif
@@ -2314,6 +2352,9 @@ decrease).
 #include "os/pl-files.h"		/* File management */
 #include "os/pl-string.h"		/* Basic string functions */
 #include "pl-ressymbol.h"		/* Meta atom handling */
+#ifdef O_TERMSINK
+#include "pl-termsink.h"		/* A new datatype that is based on an attvar */
+#endif
 
 #ifdef ATOMIC_INC
 #define ATOMIC_REFERENCES 1		/* Use atomic +/- for atom references */

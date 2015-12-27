@@ -287,22 +287,40 @@ print_addr(Word adr, char *buf)
   { name = "trail";
     base = (Word) tBase;
   } else
-  { Ssprintf(buf, "%p", adr);
+  { Ssprintf(buf, "reserved(%p)", adr);
     return buf;
   }
 
+/* DMILES: this seems to disagree with the print_val(..) by -1 */
+#ifdef O_TERMSINK
+  Ssprintf(buf, "%s(%d)", name, adr-base);
+#else
   Ssprintf(buf, "%p=%s(%d)", adr, name, adr-base);
+#endif /* O_TERMSINK */
   return buf;
 }
 
 
+
+#ifdef O_TERMSINK
+char* print_val_recurse4(word val, char *buf, int tablevel, int dereflevel);
+char* print_val_recurse(word val, char *buf, int dereflevel) { 	return print_val_recurse4( val,buf, 0, dereflevel);}
+char* print_val(word val, char *buf) { return print_val_recurse(val,buf,1); }
+char* print_val_recurse4(word val, char *buf, int tablevel, int dereflevel)
+#else
 char *
 print_val(word val, char *buf)
+#endif /* O_TERMSINK */
+
 { GET_LD
   static const char *tag_name[] = { "var", "attvar", "float", "int", "atom",
 				    "string", "term", "ref" };
-  static const char *stg_name[] = { "static", "global", "local", "reserved" };
+  static const char *stg_name[] = { "static", "g", "l", "reserved" };
+#ifdef O_TERMSINK
+  static char tmp[512];
+#else
   static char tmp[256];
+#endif /* O_TERMSINK */
   char *o;
 
   if ( !buf )
@@ -341,10 +359,44 @@ print_val(word val, char *buf)
     if ( storage(val) == STG_GLOBAL )
       offset -= gBase - (Word)base_addresses[STG_GLOBAL];
 
+#ifndef O_TERMSINK
     Ssprintf(o, "%s at %s(%ld)",
 	     tag_name[tag(val)],
 	     stg_name[storage(val) >> 3],
 	     (long)offset);
+#else
+
+		/* DMILES: the above offset seems to disagree with the print_addr(..) by +1 */
+		offset--;
+
+		if( isRef(val) && dereflevel>0 )
+		{
+            Word at = unRef(val);
+			if((void*)at!=(void*)val)
+			{ 
+				Ssprintf(o, "*%s(%ld)->{%s ->%\td%s}",
+						 stg_name[storage(val) >> 3],
+						 (long)offset,
+						 tag_name[tag(val)],
+					     tablevel,
+						 print_val_recurse4(*at,0,tablevel+1, dereflevel-1));
+			} else
+				Ssprintf(o, "LOOPED-REF %s at %s(%ld)",
+						 tag_name[tag(val)],
+						 stg_name[storage(val) >> 3],
+						 (long)offset);
+			{
+			}
+		} 
+		else
+		{
+		    Ssprintf(o, "%s(%ld)->{%s}",
+			     stg_name[storage(val) >> 3],
+					 (long)offset,
+					 tag_name[tag(val)]);
+         }
+
+#endif /* O_TERMSINK */
   }
 
   return buf;

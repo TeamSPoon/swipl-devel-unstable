@@ -417,6 +417,20 @@ struct PL_local_data
   } attvar;
 #endif
 
+#ifdef O_TERMSINK
+  struct {
+    int gsinkmode;  /* Global default sink mode of system */
+	Table sinkvars;		/* table of sinkvardata (or at least tell us it worth searching for it)*/
+	Table v2a;  	/* table of vars2atoms (or at least tell us it worth searching for it)*/
+	Table a2v; 
+    atom_t modenames[6];    
+	atom_t callbacknames[10];
+    int eagermodes[32];  /* Override normal system */
+	int eager_vars;  /* > 0  if any attvars need to checked for changes in unification order or term producing */
+    functor_t callback5;
+  } termsink;
+#endif
+
   struct
   { term_t	dummy;			/* see trimStacks() */
   } trim;

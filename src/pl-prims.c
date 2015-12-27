@@ -195,7 +195,11 @@ does undo bindings and should be used   by  foreign predicates. See also
 unify_ptrs().
 
 Unification depends on the datatypes available in the system and will in
-general need updating if new types are added.  It should be  noted  that
+general need updating if new types are added.  
+
+  For example:  unifyAttVar();
+
+It should be  noted  that
 unify()  is  not  the only place were unification happens.  Other points
 are:
 
@@ -224,8 +228,14 @@ do_unify(Word t1, Word t2 ARG_LD)
   do
   { word w1, w2;
 
+   Word r1 = t1;
+   Word r2 = t2;
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
+
+#ifdef O_DONTCARE_TAGS
+		if( DONTCARE_OPTION(unify) && (isDontCare(t1) || (isDontCare(t2)))) continue;
+#endif
 
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
@@ -250,7 +260,17 @@ do_unify(Word t1, Word t2 ARG_LD)
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w2 ) )
+       {	 
+    #ifdef O_TERMSINK
+            if( IS_OVERLOAD_GLOBAL_VAR(eager, unify , t2) )
+            { rc = unifyAttVar(r2, r1, WHY_CALLING( eager , unify , rl ) PASS_LD);
+			  if(rc == 1) continue;
+			  if(rc < 1 ) goto out_fail;
+			  // 2 = we skipped trying (so the normal code can do it (though this would be rare here))
+            }
+    #endif
 	w2 = makeRef(t2);
+      }
   #endif
       Trail(t1, w2);
       continue;
@@ -262,7 +282,17 @@ do_unify(Word t1, Word t2 ARG_LD)
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w1) )
+       {
+    #ifdef O_TERMSINK
+	   	   if( IS_OVERLOAD_GLOBAL_VAR(eager, unify , t1) )
+           {  rc = unifyAttVar(r1, r2, WHY_CALLING( eager , unify , lr ) PASS_LD);
+			  if(rc == 1) continue;
+			  if(rc < 1 ) goto out_fail;
+			  // 2 = we skipped trying (so the normal code can do it (though this would be rare here))
+      	   }
+    #endif
 	w1 = makeRef(t1);
+      }
   #endif
       Trail(t2, w1);
       continue;
@@ -443,6 +473,10 @@ bool
 can_unify(Word t1, Word t2, term_t ex)
 { GET_LD
   fid_t fid;
+
+#ifdef O_DONTCARE_TAGS
+  if(DONTCARE_OPTION(can_unify) && (isDontCare(t1) || isDontCare(t2))) return TRUE;
+#endif
 
   if ( (fid = PL_open_foreign_frame()) )
   { int handle_exception = !ex;
@@ -1593,6 +1627,9 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
     deRef(p1); w1 = *p1;
     deRef(p2); w2 = *p2;
 
+#ifdef O_DONTCARE_TAGS
+   if(DONTCARE_OPTION(compare) && (isDontCare(p1) || isDontCare(p2))) return CMP_EQUAL;
+#endif
     if ( w1 == w2 )
     { if ( isVar(w1) )
 	goto cmpvars;
@@ -2178,6 +2215,12 @@ void
 unify_vp(Word vp, Word val ARG_LD)
 { deRef(val);
 
+   if(IS_OVERLOAD_GLOBAL_VAR(eager,unify_vp,vp)) 
+	  {
+	    int  rc = unifyAttVar(vp, val, WHY_CALLING(eager,unify_vp,lr) PASS_LD);
+		if(rc == 1) return;
+	  }
+
   if ( isVar(*val) )
   { if ( val < vp )
     { *vp = makeRef(val);
@@ -2187,7 +2230,12 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { *vp = makeRef(val);
+  { if(IS_OVERLOAD_GLOBAL_VAR(override,unify_vp,val)) 
+	  {
+	    int  rc = unifyAttVar(val, vp, WHY_CALLING(override,unify_vp,rl) PASS_LD);
+		if(rc == 1) return;
+	  }
+	  *vp = makeRef(val);
   } else
     *vp = *val;
 }
