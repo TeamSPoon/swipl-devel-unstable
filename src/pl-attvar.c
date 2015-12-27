@@ -1383,16 +1383,11 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
-    Word av = valTermRef(A1);
-    deRef(av);
-    Word was = LD->attvar.currently_assigning;
-    LD->attvar.currently_assigning = av;
-    int ret = PL_unify(A1,A2);
-    LD->attvar.currently_assigning = was;
-    if (ret!=1 && ret!=0)
-    {
-        return ret;
-    }
+    Word av = valTermRef(A1); deRef(av);
+    if (!isAttVar(*av)) succeed;
+    Word value = valTermRef(A2); deRef(value);
+    TrailAssignment(av);
+    *av = needsRef(*value) ? makeRef(value) : *value;
     succeed;
 }
 #endif /*O_VERIFY_ATTRIBUTES*/

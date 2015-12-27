@@ -89,9 +89,9 @@ system:verify_attributes(_Var, _Value, []).
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
    attributes:modules_with_attributes(AttsMods), 
-   '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
-   do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals ,[]),
-   (attvar(Var)->'$attvar_assign'(Var,Value);true),
+   '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
+   do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
+   '$attvar_assign'(Var,Value),
    call_all_attr_uhooks(Att3s, Value),
    '$wakeup'(Rest),
    maplist(call, Goals).
@@ -102,16 +102,17 @@ system:verify_attributes(_Var, _Value, []).
 %
 %  1) Modules that have defined an attribute in Att3s
 %  2) The caller''s module (Head of AttsModules)
-%  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
-%
+%  3) remaining modules that have defined attributes on some variable 
+%  (Tail of AttsModules) These wil be maintained from library/atts.pl
 %  
-do_verify_attributes(_, Var, _ , _) --> {\+ attvar(Var),!}.
-do_verify_attributes(Mods,Var,[],Value)--> !, do_verify_attributes_rest(Mods,Var,Value).
-do_verify_attributes(AttsModules, Var, att(Module, _AttVal, Rest), Value) --> 
+do_verify_attributes(_, _, Var , _) --> {\+ attvar(Var),!}.
+do_verify_attributes(att(Module, _AttVal, Rest), AttsModules, Var, Value) --> 
         { Module:verify_attributes(Var, Value, Goals),
           '$delete'(AttsModules,Module,RemainingMods) },
         goals_with_module(Goals, Module),
-        do_verify_attributes(RemainingMods, Var,  Rest, Value).
+        do_verify_attributes(Rest, RemainingMods, Var, Value).
+do_verify_attributes([],RemainingMods,Var,Value) --> 
+        do_verify_attributes_rest(RemainingMods,Var,Value).
 
 % Call verify_attributes/3 in rest of modules
 do_verify_attributes_rest([],_Var, _Value) --> [].
@@ -127,7 +128,10 @@ call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
 	call_all_attr_uhooks(Rest, Value).
 
 goals_with_module([], _) --> [].
-goals_with_module([G|Gs], M) --> [M:G], goals_with_module(Gs, M).
+goals_with_module([G|Gs], M) --> 
+    {strip_module(G,_,GS),
+     (G == GS -> MG = M:G ; MG = G)},
+     [MG], goals_with_module(Gs, M).
 
 
 %%	uhook(+AttributeName, +AttributeValue, +Value)
