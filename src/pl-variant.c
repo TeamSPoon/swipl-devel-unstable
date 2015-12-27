@@ -189,6 +189,8 @@ univ(word t, Word d, Word *a ARG_LD)
   *a = f->arguments;
 }
 
+
+
 static inline void
 reset_terms(node * r)
 { *(r->bp)  =  r->orig;

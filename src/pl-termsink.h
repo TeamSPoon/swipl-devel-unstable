@@ -124,8 +124,15 @@ char *print_val_recurse(word val, char *buf, int dereflevel);
 #define SHOW_IF_DBG(name,val) (val)
 #endif
 
+Word key_to_attvar(atom_t adr);
+Word visible_attrs(Word origl, atom_t name ARG_LD);
 
-#define TERMSINK_SKIP_HIDDEN(ATTRS) ATTRS
+#define TERMSINK_SKIP_HIDDEN(X) visible_attrs(X,LD->termsink.hidden_prop PASS_LD)
+/* defined in pl-termsink.h sometimes .. it attempts 
+ to peel off the outermost attribute if it is in the termsink module */
+/* #ifndef TERMSINK_SKIP_HIDDEN
+#define TERMSINK_SKIP_HIDDEN(X) X
+#endif*/
 
 #define BIT_ON(BIT,VALUE) ( ((int)1)<<BIT & VALUE)!=0
 #define WHY_BIT(when,what) ( WHEN_ ## when * 16 +  WHAT_ ## what  )

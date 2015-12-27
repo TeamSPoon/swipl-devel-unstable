@@ -330,10 +330,14 @@ bindConst__LD(Word p, word c ARG_LD)
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
-  { int rc = unifyAttVar(p, &(c), WHY_CALLING( normal , unify, lr ) PASS_LD);
+  { 
+#ifdef O_TERMSINK /* O_EAGER_ATTVAR = doubt this will be needed but want to mark it at least */
+    int rc = unifyAttVar(p, &(c), WHY_CALLING( normal , unify, lr ) PASS_LD);
     if(rc==1) return;
     assert(rc!=FALSE);
-	return;
+#endif
+    assignAttVar(p, &(c) PASS_LD);
+    return;
   }
 #else
   *p = (c);

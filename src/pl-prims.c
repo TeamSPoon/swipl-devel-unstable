@@ -859,7 +859,7 @@ term_size(Word p, size_t max ARG_LD)
       break;
 
     if ( isAttVar(*t) )
-    { Word p = valPAttVar(*t);
+    { Word p = TERMSINK_SKIP_HIDDEN(valPAttVar(*t));
 
       assert(onGlobalArea(p));
       pushWorkAgenda(&agenda, 1, p);
@@ -2215,11 +2215,14 @@ void
 unify_vp(Word vp, Word val ARG_LD)
 { deRef(val);
 
+#ifdef O_TERMSINK
    if(IS_OVERLOAD_GLOBAL_VAR(eager,unify_vp,vp)) 
 	  {
 	    int  rc = unifyAttVar(vp, val, WHY_CALLING(eager,unify_vp,lr) PASS_LD);
 		if(rc == 1) return;
+        assert(rc > 1);
 	  }
+#endif
 
   if ( isVar(*val) )
   { if ( val < vp )
@@ -2230,11 +2233,15 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { if(IS_OVERLOAD_GLOBAL_VAR(override,unify_vp,val)) 
+  {   
+#ifdef O_TERMSINK
+      if(IS_OVERLOAD_GLOBAL_VAR(override,unify_vp,val)) 
 	  {
 	    int  rc = unifyAttVar(val, vp, WHY_CALLING(override,unify_vp,rl) PASS_LD);
 		if(rc == 1) return;
+        assert(rc > 1);
 	  }
+#endif
 	  *vp = makeRef(val);
   } else
     *vp = *val;
@@ -2840,7 +2847,7 @@ term_variables_loop(term_agenda *agenda, size_t maxcount, int flags ARG_LD)
 
       if ( flags & TV_ATTVAR )
       { if ( isAttVar(w) )
-	{ Word p2 = valPAttVar(w);
+	{ Word p2 = TERMSINK_SKIP_HIDDEN(valPAttVar(w));
 
 	  if ( ++count > maxcount )
 	    return count;

@@ -38,6 +38,7 @@ COMMON(void) setSinkMode__LD(Word av, int value ARG_LD);
 COMMON(void) setupTermsinks(ARG1_LD);
 COMMON(int)	unifyAttVar(Word av, Word value, atom_t origin, atom_t why ARG_LD);
 COMMON(int)	overloadAttVar(Word av, Word value, atom_t origin, atom_t why ARG_LD);
+COMMON(Word) visible_attrs(Word av, atom_t hidden_prop ARG_LD);
 #endif
 
 #ifdef O_DONTCARE_TAGS

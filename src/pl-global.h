@@ -428,6 +428,7 @@ struct PL_local_data
     int eagermodes[32];  /* Override normal system */
 	int eager_vars;  /* > 0  if any attvars need to checked for changes in unification order or term producing */
     functor_t callback5;
+    atom_t hidden_prop;
   } termsink;
 #endif
 
