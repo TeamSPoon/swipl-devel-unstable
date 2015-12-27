@@ -94,12 +94,7 @@ system:verify_attributes(_Var, _Value, []).
    (attvar(Var)->'$attvar_assign'(Var,Value);true),
    call_all_attr_uhooks(Att3s, Value),
    '$wakeup'(Rest),
-   calls_in_module(Goals, UnifyAtMod).
-
-calls_in_module([], _).
-calls_in_module([G|Gs], M):-
-        M:call(G),
-        calls_in_module(Gs, M).
+   maplist(call, Goals).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
@@ -115,14 +110,14 @@ do_verify_attributes(Mods,Var,[],Value)--> !, do_verify_attributes_rest(Mods,Var
 do_verify_attributes(AttsModules, Var, att(Module, _AttVal, Rest), Value) --> 
         { Module:verify_attributes(Var, Value, Goals),
           '$delete'(AttsModules,Module,RemainingMods) },
-        list(Goals),
+        goals_with_module(Goals, Module),
         do_verify_attributes(RemainingMods, Var,  Rest, Value).
 
 % Call verify_attributes/3 in rest of modules
 do_verify_attributes_rest([],_Var, _Value) --> [].
 do_verify_attributes_rest([Module|AttsModules], Var, Value) -->
         { Module:verify_attributes(Var, Value, Goals) },
-        list(Goals),
+        goals_with_module(Goals, Module),
         do_verify_attributes_rest(AttsModules, Var, Value).
 
 
@@ -130,6 +125,9 @@ call_all_attr_uhooks([], _).
 call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
 	uhook(Module, AttVal, Value),
 	call_all_attr_uhooks(Rest, Value).
+
+goals_with_module([], _) --> [].
+goals_with_module([G|Gs], M) --> [M:G], goals_with_module(Gs, M).
 
 
 %%	uhook(+AttributeName, +AttributeValue, +Value)
