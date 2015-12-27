@@ -3329,7 +3329,7 @@ retry:
 
 	if ( isTrailVal(p) )
 	{
-       bool isNonDelayed = (LD->attvar.currentAttvar == trailValP(p));
+       bool isNonDelayed = (LD->attvar.currently_assigning == trailValP(p));
        /* in the case of a non-delayed assignment we have trailed the attvar unless O_VERIFY_ATTRIBUTES_LEAN */
        if (isNonDelayed)
        {

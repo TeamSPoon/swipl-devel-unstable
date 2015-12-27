@@ -412,7 +412,7 @@ struct PL_local_data
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
 #ifdef O_VERIFY_ATTRIBUTES
-    Word currentAttvar;
+    Word currently_assigning;  /* Check unify had succeeded, now only assign */
 #endif
   } attvar;
 #endif
