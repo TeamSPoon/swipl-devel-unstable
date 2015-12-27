@@ -102,4 +102,4 @@
 	url = ../packages-cql.git
 [submodule "packages/sinkvars"]
 	path = packages/sinkvars
-	url = https::/github.com/logicmoo/sinkvars
+	url = https://github.com/logicmoo/sinkvars.git
