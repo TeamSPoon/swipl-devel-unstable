@@ -1386,11 +1386,7 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #ifdef O_VERIFY_ATTRIBUTES
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
-{
-    PRED_LD
-    Word av = valTermRef(A1);
-    deRef(av);
-
+{ PRED_LD
 #ifdef O_TERMSINK
     if (isAtom(*av))
     {
@@ -1401,22 +1397,13 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
         }
     }
 #endif
-    if (!isAttVar(*av))
-    {
-        succeed;
-    }
-    Word value = valTermRef(A2);
-    deRef(value);
-    if (!needsRef(*value))
-    {
-        TrailAssignment(av);
-        *av = *value;
-        succeed;
-    } 
-    if(av==value) succeed;
+    Word av = valTermRef(A1); deRef(av);
+    if (!isAttVar(*av)) succeed;
+    Word value = valTermRef(A2); deRef(value);
     TrailAssignment(av);
-    *av = makeRef(value);
-    succeed;   
+    *av = needsRef(*value) ? makeRef(value) : *value;
+    succeed;
+
 }
 #endif /*O_VERIFY_ATTRIBUTES*/
 

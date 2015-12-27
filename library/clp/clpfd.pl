@@ -6605,7 +6605,7 @@ verify_attributes(Var, Other, Gs) :-
                 append_propagators(Ps0, OPs, Ps),
                 fd_put(Other, Dom1, Ps)
             ),
-            phrase(all_propagators(Ps), Gs, [clpfd:do_queue])
+            phrase(all_propagators(Ps), Gs, [do_queue])
         ;   Gs = []
         ).
 
