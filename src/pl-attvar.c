@@ -170,7 +170,10 @@ assignAttVar(Word av, Word value ARG_LD)
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
-  assert(gTop+7 <= gMax && tTop+6 <= tMax);
+ /* let registerWakeup sanity check gTop we still might TrailAssignment() 1+2 */
+#ifndef O_VERIFY_ATTRIBUTES_LEAN
+  assert(gTop+1 <= gMax && tTop+2 <= tMax);
+#endif
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
@@ -190,12 +193,17 @@ assignAttVar(Word av, Word value ARG_LD)
 #endif
   a = valPAttVar(*av);
   registerWakeup(av, a, value PASS_LD);
+  
 #ifdef O_VERIFY_ATTRIBUTES
       return;
   }
 #endif
 
+  /* prolog trails our assigments now (during wakeup)*/
+#ifndef O_VERIFY_ATTRIBUTES_LEAN
   TrailAssignment(av);
+#endif
+
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
