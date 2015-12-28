@@ -424,7 +424,8 @@ Word
 alloc_attvar(ARG1_LD)
 { 
 #ifdef O_UNDOABLE_ATTVARS
-  Word gp = allocGlobalNoShift(4);
+ /* I know that I cant change in mid-air but wanted ot be able to start off setting in C instead of prolog */
+  Word gp = allocGlobalNoShift(LD->attvar.undo_enabled?4:3);
 #else
   Word gp = allocGlobalNoShift(3);
 #endif
