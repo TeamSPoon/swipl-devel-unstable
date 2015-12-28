@@ -1426,6 +1426,10 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1); deRef(av);
     if (!isAttVar(*av)) succeed;
+ #ifdef O_TERMSINK
+    int sinkmode = getSinkMode(av);
+    if (IS_SINKMODE(no_bind)) succeed;
+ #endif
     Word value = valTermRef(A2); deRef(value);
     TrailAssignment(av);
     *av = needsRef(*value) ? makeRef(value) : *value;
@@ -1595,6 +1599,11 @@ PRED_IMPL("$attvar_default", 2, dattvar_default, 0)
 
 /*
  $attvar_assign(+Var,+Value,+Trail,+Forced)
+
+  Called from prolog is user code believes assignment was valid
+
+  Occurs checking has already taken place (if enabled)
+
 */
 static
 PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
@@ -1608,10 +1617,14 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
     Word value = valTermRef(A2); deRef(value);
     if (isVar(*av))
     {
+        if(!forced) {
+            PL_warning("$attvar_assign/4 - is assigning a plain VAR");
+        }
         if (trailed)
         {
             if (av==value)
             {
+                /*assume  $attvar_assign(Var,Var,true,_) means $trail(Var)*/
                 if (onGlobalArea(av))
                 {
                     TrailAssignment(av);
@@ -1632,18 +1645,23 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
     }
     if (!isAttVar(*av))
     {
-        if (!forced) PL_warning("not a variable");
+        if (!forced) PL_warning("$attvar_assign/4 - not an attvar nothing happens");
         succeed;
     }
-    if (trailed) TrailAssignment(av);
-    if (av==value)succeed;
+    if (av==value) {
+        /*assume  $attvar_assign(Var,Var,true,_) means $trail(Var)*/
+        if (trailed) TrailAssignment(av);
+        succeed;
+    }
+    int sinkmode = getSinkMode(av);
     if (!forced)
     {
-        int sinkmode = getSinkMode(av);
         if (IS_SINKMODE(no_bind)) succeed;
     }
+    /* av is a attvar */
     if (isVar(*value))
     {
+        /* we put the av into the var */
         if (trailed)
         {
             if (onGlobalArea(value))
@@ -1651,7 +1669,7 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
                 TrailAssignment(value);
             } else
             {
-                LTrail(av);
+                LTrail(value);
             }
         }
         *value = makeRef(av);
