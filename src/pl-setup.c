@@ -1208,7 +1208,10 @@ emptyStacks(void)
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 #ifdef O_TERMSINK
-     setupTermsinks(PASS_LD1);	
+    setupTermsinks(PASS_LD1);	
+#endif
+#ifdef O_VERIFY_ATTRIBUTES
+    LD->attvar.currently_assigning = PL_new_term_ref();
 #endif
 #ifdef O_GVAR
     destroyGlobalVars();
