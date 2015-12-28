@@ -3329,36 +3329,33 @@ retry:
 
 	if ( isTrailVal(p) )
 	{
-
 #ifndef O_VERIFY_ATTRIBUTES
       assert(isAttVar(trailVal(p)));
 
-       tt--;				/* re-insert the attvar */
-      *tt->address = trailVal(p);
+	  tt--;				/* re-insert the attvar */
+	  *tt->address = trailVal(p);
 #endif
+	  tt--;				/* restore tail of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
 
-       tt--;				/* restore tail of wakeup list */
-       p = tt->address;
-       if ( isTrailVal(p) )
-       { tt--;
-         *tt->address = trailVal(p);
-       } else
-       { setVar(*p);
-       }
-
-       tt--;				/* restore head of wakeup list */
-       p = tt->address;
-       if ( isTrailVal(p) )
-       { tt--;
-         *tt->address = trailVal(p);
-       } else
-       { setVar(*p);
-       }
-
+	  tt--;				/* restore head of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
 
 	  assert(tt>=mt);
 	}
-      }
+   }
       gTop = gp;			/* may not have used all space */
       tTop = m.trailtop;
 

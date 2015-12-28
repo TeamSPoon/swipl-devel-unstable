@@ -133,8 +133,8 @@ registerWakeup(Word name, Word value ARG_LD)
 #else
   gTop += 4;
   wake[0] = FUNCTOR_wakeup3;
-  wake[1] = needsRef(*name);
-  wake[2] = needsRef(*value);
+  wake[1] = needsRef(*name) ? makeRef(name) : *name;
+  wake[2] = needsRef(*value) ? makeRef(value) : *value;
   wake[3] = ATOM_nil;
 #endif
 
