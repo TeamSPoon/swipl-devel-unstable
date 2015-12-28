@@ -1501,7 +1501,6 @@ void setSinkMode__LD(Word av, int value ARG_LD)
 
 void setupTermsinks(ARG1_LD)
 {
-    LD->attvar.currently_assigning = NULL;
     LD->termsink.gsinkmode = 0;
 	LD->termsink.eager_vars = 0;
     LD->termsink.hidden_prop = PL_new_atom("termsink");
@@ -1541,7 +1540,6 @@ unifyAttVar(Word avO, Word valueO, atom_t origin, atom_t mode ARG_LD)
     }
 
     wakeup_state wstate;
-    if (LD->attvar.currently_assigning) return -1;
     int res = -1;
     if (saveWakeup(&wstate, TRUE PASS_LD))
     {
