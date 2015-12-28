@@ -3355,7 +3355,7 @@ retry:
 
 	  assert(tt>=mt);
 	}
-   }
+      }
       gTop = gp;			/* may not have used all space */
       tTop = m.trailtop;
 
