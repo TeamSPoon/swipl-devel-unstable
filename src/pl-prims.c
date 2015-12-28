@@ -266,7 +266,7 @@ do_unify(Word t1, Word t2 ARG_LD)
             { rc = unifyAttVar(r2, r1, WHY_CALLING( eager , unify , rl ) PASS_LD);
 			  if(rc == 1) continue;
 			  if(rc < 1 ) goto out_fail;
-			  // 2 = we skipped trying (so the normal code can do it (though this would be rare here))
+              assert(!O_TERMSINK);
             }
     #endif
 	w2 = makeRef(t2);
@@ -288,7 +288,7 @@ do_unify(Word t1, Word t2 ARG_LD)
            {  rc = unifyAttVar(r1, r2, WHY_CALLING( eager , unify , lr ) PASS_LD);
 			  if(rc == 1) continue;
 			  if(rc < 1 ) goto out_fail;
-			  // 2 = we skipped trying (so the normal code can do it (though this would be rare here))
+			  assert(!O_TERMSINK);
       	   }
     #endif
 	w1 = makeRef(t1);

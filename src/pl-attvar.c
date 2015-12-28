@@ -217,7 +217,7 @@ assignAttVar(Word av, Word value ARG_LD)
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
 #ifdef O_VERIFY_ATTRIBUTES 
-  bool is_assigning = valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av;
+  bool is_assigning = (valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av);
 #endif
 
 #ifdef O_TERMSINK
@@ -233,11 +233,12 @@ assignAttVar(Word av, Word value ARG_LD)
       value = tmp;
     } else if ( av == value ) {
 #ifdef O_TERMSINK
-        if (!is_assigning & (peer_wakeup && !no_wakeup))
+        if (!is_assigning && peer_wakeup && !no_wakeup)
            registerWakeup(av, valPAttVar(*av), av PASS_LD);        
 #endif
       return;
     }
+  }
 
 #ifdef O_VERIFY_ATTRIBUTES
   if(!is_assigning) 
@@ -260,6 +261,7 @@ assignAttVar(Word av, Word value ARG_LD)
 #ifdef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign/4 */
   return;
   }
+ 
 #endif
 
 #ifdef O_TERMSINK
@@ -1456,23 +1458,23 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 static
 PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
 { PRED_LD
+    Word av = valTermRef(A1); deRef(av);
+    if (!canBind(*av)) succeed;
+    int no_trail;
+    if (!PL_get_bool(A3,&no_trail)) no_trail=0;
 #ifdef O_TERMSINK
     int forced;
     if (!PL_get_bool(A4,&forced)) forced=0;
     if (!forced) 
     {
          int sinkmode = getSinkMode(av);
-         IS_SINKMODE(no_bind)) succeed;
+         if(IS_SINKMODE(no_bind)) succeed;
     }
 #endif
-    int no_trail;
-    if (!PL_get_bool(A3,&no_trail)) no_trail=0;
     switch (LD->prolog_flag.occurs_check)
     {
         case OCCURS_CHECK_FALSE:
             {
-                Word av = valTermRef(A1); deRef(av);
-                if (!canBind(*av)) return succeed;
                 Word value = valTermRef(A2); deRef(value);
                 if (!no_trail) TrailAssignment(av);
                 *av = needsRef(*value) ? makeRef(value) : *value;
@@ -1481,7 +1483,6 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
         case OCCURS_CHECK_TRUE: 
         case OCCURS_CHECK_ERROR:
             {
-                if(!PL_is_variable(A1)) succeed;        
                 term_t saved = PL_new_term_ref();
                 PL_put_term(saved,LD->attvar.currently_assigning);
                 PL_put_term(LD->attvar.currently_assigning,A1);
@@ -1490,13 +1491,11 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
                 return ret;
             }
         default:
-            assert(0);
+            assert(!O_VERIFY_ATTRIBUTES);
             fail;
     }
 }
 #endif /*O_VERIFY_ATTRIBUTES*/
-
-#ifdef O_TERMSINK
 
 #ifdef O_DONTCARE_TAGS
 bool
@@ -1506,6 +1505,8 @@ isDontCare__LD(Word value ARG_LD) {
 }
 #endif
 
+
+#ifdef O_TERMSINK
 
 Word visible_attrs(Word origl, atom_t name ARG_LD)
 {
@@ -1547,16 +1548,10 @@ getSinkMode__LD(Word av ARG_LD)
 {
     Word found;
     if (LD->termsink.hidden_prop && find_attr(av, LD->termsink.hidden_prop,&found PASS_LD)) {
+       assert(isInteger(*found));
        return valInt(*found);
     }
 	return(LD->termsink.gsinkmode);
-}
-
-
-void setSinkMode__LD(Word av, int value ARG_LD)
-{
-    word wvalue = consInt(value);
-    put_attr(av,LD->termsink.hidden_prop,&wvalue PASS_LD);
 }
 
 
@@ -1564,7 +1559,7 @@ void setupTermsinks(ARG1_LD)
 {
     LD->termsink.gsinkmode = 0;
 	LD->termsink.eager_vars = 0;
-    LD->termsink.hidden_prop = PL_new_atom("termsink");
+    LD->termsink.hidden_prop = PL_new_atom("fluent_vars");
     LD->termsink.callback5 = PL_new_functor(ATOM_call,5);
     int i=32; while(i-->0) LD->termsink.eagermodes[i]=0;
 }

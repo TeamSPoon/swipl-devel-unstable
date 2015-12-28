@@ -43,6 +43,7 @@ COMMON(Word) visible_attrs(Word av, atom_t hidden_prop ARG_LD);
 #ifdef O_DONTCARE_TAGS
 COMMON(bool) isDontCare__LD(Word value ARG_LD);
 #endif
+
 COMMON(void)		assignAttVar(Word av, Word value ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);
 COMMON(void)		restoreWakeup(wakeup_state *state ARG_LD);

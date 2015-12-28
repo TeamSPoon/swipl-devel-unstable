@@ -194,7 +194,11 @@ handy for it someone wants to add a data type to the system.
 /* #undef O_TERMSINK */
 #undef O_DONTCARE_TAGS
 #undef O_ATTVAR_EAGER
-
+#ifdef O_TERMSINK
+    #ifndef O_VERIFY_ATTRIBUTES
+    #define O_VERIFY_ATTRIBUTES 1
+    #endif
+#endif
 
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
