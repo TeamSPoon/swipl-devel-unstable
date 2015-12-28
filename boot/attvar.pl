@@ -91,10 +91,15 @@ system:verify_attributes(_Var, _Value, []).
    attributes:modules_with_attributes(AttsMods), 
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
    do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
-   '$wakeup'(Rest),
    '$attvar_assign'(Var,Value),   
    call_all_attr_uhooks(Att3s, Value),
-   maplist(call, Goals).
+   '$wakeup'(Rest),
+   calls_in_module(Goals, UnifyAtMod).
+
+calls_in_module([], _).
+calls_in_module([G|Gs], M):-
+        M:call(G),
+        calls_in_module(Gs, M).
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %

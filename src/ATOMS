@@ -1008,7 +1008,11 @@ F undefinterc		4
 F unify_determined	2
 F uninstantiation_error	1
 F var			1
+#ifdef O_VERIFY_ATTRIBUTES
 F wakeup		5
+#else
+F wakeup		3
+#endif
 F warning		3
 F xor			2
 F xpceref		1

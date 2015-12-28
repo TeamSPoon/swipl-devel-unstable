@@ -440,7 +440,6 @@ tautology(Sat) :-
                   true)
         ).
 
-%satisfiable_bdd(BDD) :- !, BDD \== 0.
 satisfiable_bdd(BDD) :-
         (   BDD == 0 -> false
         ;   BDD == 1 -> true
@@ -882,12 +881,12 @@ verify_attributes(Var, Other, Gs) :-
                     root_get_formula_bdd(Root, Sat, BDD0),
                     bdd_restriction(BDD0, I, Other, BDD),
                     root_put_formula_bdd(Root, Sat, BDD),
-                    Gs = [clpb:satisfiable_bdd(BDD)]
+                    Gs = [satisfiable_bdd(BDD)]
                 ;   no_truth_value(Other)
                 )
             ;   atom(Other) ->
                 root_get_formula_bdd(Root, Sat0, _),
-                Gs = [clpb:root_rebuild_bdd(Root, Sat0)]
+                Gs = [root_rebuild_bdd(Root, Sat0)]
             ;   % due to variable aliasing, any BDDs may become unordered,
                 % so we need to rebuild the new BDD from the conjunction
                 % after the unification is in place
@@ -895,11 +894,11 @@ verify_attributes(Var, Other, Gs) :-
                 Sat = Sat0*OtherSat,
                 parse_sat(Other, OtherSat),
                 sat_roots(Sat, Roots),
-                phrase(formulas_(Roots), Fs),
-                foldl(and, Fs, 1, And),
+                phrase(formulas_(Roots), [F|Fs]),
+                foldl(and, Fs, F, And),
                 maplist(del_bdd, Roots),
                 maplist(=(NewRoot), Roots),
-                Gs = [clpb:root_rebuild_bdd(NewRoot, And)]
+                Gs = [root_rebuild_bdd(NewRoot, And)]
             )
         ;   Gs = []
         ).

@@ -3384,37 +3384,29 @@ retry:
 
 	if ( isTrailVal(p) )
 	{
-       bool isNonDelayed = (LD->attvar.currently_assigning == trailValP(p));
-       /* in the case of a non-delayed assignment we have trailed the attvar unless O_VERIFY_ATTRIBUTES_LEAN */
-       if (isNonDelayed)
-       {
-#ifndef O_VERIFY_ATTRIBUTES_LEAN
-          assert(isAttVar(trailVal(p)));
+#ifndef O_VERIFY_ATTRIBUTES
+      assert(isAttVar(trailVal(p)));
 
-           tt--;				/* re-insert the attvar */
-          *tt->address = trailVal(p);
+	  tt--;				/* re-insert the attvar */
+	  *tt->address = trailVal(p);
 #endif
-       } else /* otherwise (delayed) = we will have only trailed our request for wakeup */
-       {
-           tt--;				/* restore tail of wakeup list */
-           p = tt->address;
-           if ( isTrailVal(p) )
-           { tt--;
-             *tt->address = trailVal(p);
-           } else
-           { setVar(*p);
-           }
+	  tt--;				/* restore tail of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
 
-           tt--;				/* restore head of wakeup list */
-           p = tt->address;
-           if ( isTrailVal(p) )
-           { tt--;
-             *tt->address = trailVal(p);
-           } else
-           { setVar(*p);
-           }
-       }
-
+	  tt--;				/* restore head of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
 
 	  assert(tt>=mt);
 	}

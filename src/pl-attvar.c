@@ -107,16 +107,26 @@ which must run in constant space.
 	loop :- freeze(X, true), X = a, loop.
 
 SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
+ if O_VERIFY_ATTRIBUTES then: Caller must ensure 8 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
+#ifdef O_VERIFY_ATTRIBUTES
 registerWakeup(Word name, Word attrs, Word value ARG_LD)
+#else
+registerWakeup(Word name, Word value ARG_LD)
+#endif
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
+#ifdef O_VERIFY_ATTRIBUTES
   assert(gTop+8 <= gMax && tTop+4 <= tMax);
+#else
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+#endif
 
   wake = gTop;
+#ifdef O_VERIFY_ATTRIBUTES
   gTop += 6;
   wake[0] = FUNCTOR_wakeup5;
   wake[1] = contextModule(environment_frame)->name;
@@ -124,6 +134,13 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
   wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
   wake[5] = ATOM_nil;
+#else
+  gTop += 4;
+  wake[0] = FUNCTOR_wakeup3;
+  wake[1] = needsRef(*name) ? makeRef(name) : *name;
+  wake[2] = needsRef(*value) ? makeRef(value) : *value;
+  wake[3] = ATOM_nil;
+#endif
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -132,7 +149,11 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
+#ifdef O_VERIFY_ATTRIBUTES
     *tail = makeRef(wake+5);
+#else
+    *tail = makeRef(wake+3);
+#endif
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -141,7 +162,11 @@ registerWakeup(Word name, Word attrs, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
+#ifdef O_VERIFY_ATTRIBUTES
     *tail = makeRef(wake+5);
+#else
+    *tail = makeRef(wake+3);
+#endif
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -174,9 +199,10 @@ assignAttVar(Word av, Word value ARG_LD)
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
- /* let registerWakeup sanity check gTop we still might TrailAssignment() 1+2 */
-#ifndef O_VERIFY_ATTRIBUTES
-  assert(gTop+1 <= gMax && tTop+2 <= tMax);
+#ifdef O_VERIFY_ATTRIBUTES
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+#else
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
 #endif
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
@@ -214,12 +240,8 @@ assignAttVar(Word av, Word value ARG_LD)
      if (peer_wakeup && !peer_asks_please_no_wakeup) registerWakeup(value, valPAttVar(*value), av PASS_LD);
   }
 #endif /*O_TERMSINK*/
-
-#ifdef O_VERIFY_ATTRIBUTES
-  /* wakeup/1 trails and makes our assigments now thru $attvar_assign */
-      return;
-#endif
-
+  
+#ifndef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign */
   TrailAssignment(av);
 
   if ( isAttVar(*value) )
@@ -227,6 +249,7 @@ assignAttVar(Word av, Word value ARG_LD)
     *av = makeRef(value);
   } else
     *av = *value;
+#endif
 
   return;
 }
@@ -1402,32 +1425,11 @@ static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1); deRef(av);
-/*
-#ifdef O_TERMSINK    
-    if (isAtom(*av))
-    {
-        av = key_to_attvar(*av);
-        if (av==NULL)
-        {
-            succeed;
-        }
-    }
-#endif
-*/
     if (!isAttVar(*av)) succeed;
-    int sinkmode = getSinkMode(av);
-    if (IS_SINKMODE(no_bind)) succeed;
     Word value = valTermRef(A2); deRef(value);
-    if(value==av) succeed;
-    if (isVar(*value))
-    {
-        Trail(value, makeRef(av));
-        succeed;
-    }
     TrailAssignment(av);
     *av = needsRef(*value) ? makeRef(value) : *value;
     succeed;
-
 }
 #endif /*O_VERIFY_ATTRIBUTES*/
 
