@@ -91,9 +91,9 @@ system:verify_attributes(_Var, _Value, []).
    attributes:modules_with_attributes(AttsMods), 
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
    do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
-   '$attvar_assign'(Var,Value),
-   call_all_attr_uhooks(Att3s, Value),
+   '$attvar_assign'(Var,Value,false,false),
    '$wakeup'(Rest),
+   call_all_attr_uhooks(Att3s, Value),
    calls_in_module(Goals, UnifyAtMod).
 
 calls_in_module([], _).

@@ -108,7 +108,7 @@ SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
 
 static void
 #ifdef O_VERIFY_ATTRIBUTES
-registerWakeup(Word name, Word attrs, Word value ARG_LD)
+registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
 #else
 registerWakeup(Word name, Word value ARG_LD)
 #endif
@@ -126,7 +126,7 @@ registerWakeup(Word name, Word value ARG_LD)
   gTop += 6;
   wake[0] = FUNCTOR_wakeup5;
   wake[1] = contextModule(environment_frame)->name;
-  wake[2] = needsRef(*name) ? makeRef(name) : *name;
+  wake[2] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
   wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
   wake[5] = ATOM_nil;
@@ -188,6 +188,12 @@ function. If you change this you must also adjust unifiable/3.
 
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+static inline Word
+valTermDeRefP(term_t r ARG_LD)
+{ Word p = valTermRef(r);
+  deRef(p);
+  return p;
+}
 
 void
 assignAttVar(Word av, Word value ARG_LD)
@@ -204,6 +210,10 @@ assignAttVar(Word av, Word value ARG_LD)
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
+#ifdef O_VERIFY_ATTRIBUTES 
+  bool is_assigning = valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av;
+#endif
+
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
@@ -213,19 +223,26 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
+#ifdef O_VERIFY_ATTRIBUTES
+  if(!is_assigning) 
+  {
+#endif
 
   a = valPAttVar(*av);
   registerWakeup(av, a, value PASS_LD);
-  
-#ifndef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign */
-  TrailAssignment(av);
+
+#ifdef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign/4 */
+  return;
+  }
+#endif
+
+    TrailAssignment(av);
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else
     *av = *value;
-#endif
 
   return;
 }
@@ -1397,15 +1414,40 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 
 
 #ifdef O_VERIFY_ATTRIBUTES
-static
-PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
+
+/*
+$attvar_assign(+Var,+Value,+Untrailed,+Forced).
+Last two values are leveraged in termsink patch (this might still have usages)
+*/
+static 
+PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
 { PRED_LD
-    Word av = valTermRef(A1); deRef(av);
-    if (!isAttVar(*av)) succeed;
-    Word value = valTermRef(A2); deRef(value);
-    TrailAssignment(av);
-    *av = needsRef(*value) ? makeRef(value) : *value;
-    succeed;
+    switch (LD->prolog_flag.occurs_check)
+    {
+        case OCCURS_CHECK_FALSE:
+            {
+                Word av = valTermRef(A1); deRef(av);
+                if (!canBind(*av)) succeed;
+                Word value = valTermRef(A2); deRef(value);
+                TrailAssignment(av);
+                *av = needsRef(*value) ? makeRef(value) : *value;
+                succeed;   
+            }
+        case OCCURS_CHECK_TRUE: 
+        case OCCURS_CHECK_ERROR:
+            {
+                if(!PL_is_variable(A1)) succeed;        
+                term_t saved = PL_new_term_ref();
+                PL_put_term(saved,LD->attvar.currently_assigning);
+                PL_put_term(LD->attvar.currently_assigning,A1);
+                int ret = PL_unify(A1,A2);
+                PL_put_term(LD->attvar.currently_assigning,saved);
+                return ret;
+            }
+        default:
+            assert(0);
+            fail;
+    }
 }
 #endif /*O_VERIFY_ATTRIBUTES*/
 
@@ -1430,7 +1472,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
 #ifdef O_VERIFY_ATTRIBUTES
-  PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+  PRED_DEF("$attvar_assign", 4, dattvar_assign, 0)
 #endif
 EndPredDefs
 
