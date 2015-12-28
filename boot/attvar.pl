@@ -88,7 +88,8 @@ system:verify_attributes(_Var, _Value, []).
 
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
-   attributes:modules_with_attributes(AttsMods), 
+   % format(user_error,'~N~q~n',[wakeup(UnifyAtMod, Var, Att3s, Value, Rest)]),flush_output(user_error),
+   attributes:modules_with_attributes(AttsMods),
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
    do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
    '$attvar_assign'(Var,Value,false,false),
@@ -110,7 +111,7 @@ calls_in_module([G|Gs], M):-
 %  3) remaining modules that have defined attributes on some variable 
 %  (Tail of AttsModules) These wil be maintained from library/atts.pl
 %  
-do_verify_attributes(_, _, Var , _) --> {\+ attvar(Var),!}.
+do_verify_attributes(_, _, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
 do_verify_attributes(att(Module, _AttVal, Rest), AttsModules, Var, Value) --> 
         { Module:verify_attributes(Var, Value, Goals),
           '$delete'(AttsModules,Module,RemainingMods) },
