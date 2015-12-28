@@ -1210,6 +1210,10 @@ emptyStacks(void)
 #ifdef O_VERIFY_ATTRIBUTES
     LD->attvar.currently_assigning = PL_new_term_ref();
 #endif
+#ifdef O_UNDOABLE_ATTVARS
+    LD->attvar.undos = PL_new_term_ref();
+    LD->attvar.undo_enabled = 0; /* 0 = use prev methodology  1 = use new methodology */
+#endif
 #ifdef O_GVAR
     destroyGlobalVars();
 #endif

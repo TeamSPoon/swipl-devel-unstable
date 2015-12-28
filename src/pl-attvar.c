@@ -173,6 +173,8 @@ registerWakeup(Word name, Word value ARG_LD)
 		 *	     ASSIGNMENT		*
 		 *******************************/
 
+
+#ifndef O_VERIFY_ATTRIBUTES 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 assignAttVar(Word var, Word value)		(var := value)
 
@@ -188,31 +190,16 @@ function. If you change this you must also adjust unifiable/3.
 
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-static inline Word
-valTermDeRefP(term_t r ARG_LD)
-{ Word p = valTermRef(r);
-  deRef(p);
-  return p;
-}
-
 void
-assignAttVar(Word av, Word value ARG_LD)
+assignAttVar(Word av, Word value ARG_LD) /* original upstream */
 { Word a;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
-#ifdef O_VERIFY_ATTRIBUTES
-  assert(gTop+6 <= gMax && tTop+4 <= tMax);
-#else
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
-#endif
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
-
-#ifdef O_VERIFY_ATTRIBUTES 
-  bool is_assigning = valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av;
-#endif
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -223,21 +210,10 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
-#ifdef O_VERIFY_ATTRIBUTES
-  if(!is_assigning) 
-  {
-#endif
-
   a = valPAttVar(*av);
-  registerWakeup(av, a, value PASS_LD);
+  registerWakeup(a, value PASS_LD);
 
-#ifdef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign/4 */
-  return;
-  }
-#endif
-
-    TrailAssignment(av);
-
+  TrailAssignment(av);
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
@@ -247,6 +223,188 @@ assignAttVar(Word av, Word value ARG_LD)
   return;
 }
 
+#else /*O_VERIFY_ATTRIBUTES*/
+
+static inline Word
+valTermDeRefP(term_t r ARG_LD)
+{ Word p = valTermRef(r);
+  deRef(p);
+  return p;
+}
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+assignAttVar(Word var, Word value)		(var := value)
+
+Assign  value  to  the  given  attributed    variable,   adding  a  term
+wake(Attribute, Value, Tail) to the global variable resembling the goals
+that should be awoken.
+
+Before calling, av *must* point to   a  dereferenced attributed variable
+and value to a legal value.
+
+The predicate unifiable/3 relies on  the   trailed  pattern left by this
+function. If you change this you must also adjust unifiable/3.
+
+SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+void
+assignAttVar_Verify_Attributes(Word av, Word value ARG_LD)
+{ Word a;
+
+  assert(isAttVar(*av));
+  assert(!isRef(*value));
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
+  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+
+  bool is_assigning = valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av;
+
+  if ( isAttVar(*value) )
+  { if ( value > av )
+    { Word tmp = av;
+      av = value;
+      value = tmp;
+    } else if ( av == value )
+    {
+        return;
+    }
+  }
+
+    if (!is_assigning)
+    {
+        a = valPAttVar(*av);
+        registerWakeup(av, a, value PASS_LD);
+        return;
+    }
+
+   TrailAssignment(av);
+
+  if ( isVar(*value) )
+  { *av = makeRef(value);
+  } else if ( isAttVar(*value) )
+  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    *av = makeRef(value);
+  } else
+    *av = *value;
+
+  return;
+}
+
+#ifdef O_UNDOABLE_ATTVARS
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+assignAttVar(Word var, Word value)		(var := value)
+
+Assign  value  to  the  given  attributed    variable,   adding  a  term
+wake(Attribute, Value, Tail) to the global variable resembling the goals
+that should be awoken.
+
+Before calling, av *must* point to   a  dereferenced attributed variable
+and value to a legal value.
+
+The predicate unifiable/3 relies on  the   trailed  pattern left by this
+function. If you change this you must also adjust unifiable/3.
+
+SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+void
+assignAttVar(Word av, Word value ARG_LD)
+{ Word a;
+
+ if( LD->attvar.undo_enabled == 0) 
+ {
+     assignAttVar_Verify_Attributes(av,value PASS_LD);
+     return;
+ }
+
+  assert(isAttVar(*av));
+  assert(!isRef(*value));
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
+  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+
+  if ( isAttVar(*value) )
+  { if ( value > av )
+    { Word tmp = av;
+      av = value;
+      value = tmp;
+    } else if ( av == value )
+      return;
+  }
+  
+  a = valPAttVar(*av);
+
+  /*
+  Word attvar_attrs = a;
+  Word free_cell = ((Word)(attvar_attrs+1));
+  Word old_top = (LD->stacks.global.top);
+  */
+  TrailAssignment(av);
+
+/*
+   Which does...
+
+    Word old_top = gTop;
+    gTop++;
+    *old_top = *av;				which save the old_top on the global
+    (tTop++)->address = av;
+    (tTop++)->address = tagTrailPtr(old_top);
+*/
+  /*
+  Thus:
+  assert((*(old_top+1) == *av));
+  assert(  (old_top+2)->address == av));
+  assert(  (old_top+3)->address == tagTrailPtr(old_top)));
+  */
+
+  /* TODO insert code to make free_cell brilliant like
+    A)  *free_cell = (word)(Word)((old_top+3)->address); 
+       sort of tricky but sounds usefull
+
+    or use a proxyVar
+
+    B)  proxyVar = valTermDeRefP(PL_new_term_ref());
+    or 
+    C)  proxyVar = AllocGlobal(1); setVar(*proxyVar);
+     see the next set of comments
+   
+     */
+  registerWakeup(av, a, value PASS_LD);
+
+  if ( isAttVar(*value) )
+  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    *av = makeRef(value);
+  } else if ( isVar(*value) )
+  { /* !LD->attvar.undo_enabled = means we are doing nothing wierd therefore*/
+      if(!LD->attvar.undo_enabled) 
+      {   Trail(value,makeRef(av));  /* this what we interupted do_unify from doing */
+      } else 
+      {
+          /* we could do something interesting here :
+            Such as placement of a proxyVar into the var  ?
+            Perhaps when we make a attvar we'd also create one simple Var (proxyVar) pointed to by free_cell? that we use for whenever unification happens
+            instead of binding this var we bind our proxyVar. Cyclic checking and inner arg assigmnets are vetted agaisnt the proxyVar ?
+            Once it is bound, we can tell so, (our freecell in not ==Zero) our behaviour in the next unify we should attempt to act 
+            a little like unifination.  This means we will probly need to return TRUE/FALSE again.
+            All Up above we should have call TrailAssignment(proxyVar);
+            the undo can setVar(*proxyVar) without converting us to a plain variable again
+
+            but until this is hammered out we stick with the known method
+             */
+          Trail(value,makeRef(av));
+      }    
+  } else
+  {
+    /* again we should be soiling our proxyVar not ourselves!*/
+    *av = *value;
+  }
+
+  return;
+}
+#endif /*O_UNDOABLE_ATTVARS*/
+#endif /*O_VERIFY_ATTRIBUTES*/
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Link known attributes variables into a reference list.
@@ -264,12 +422,20 @@ link_attvar(ARG1_LD)
 
 Word
 alloc_attvar(ARG1_LD)
-{ Word gp = allocGlobalNoShift(3);
+{ 
+#ifdef O_UNDOABLE_ATTVARS
+  Word gp = allocGlobalNoShift(4);
+#else
+  Word gp = allocGlobalNoShift(3);
+#endif
 
   if ( gp )
   { register_attvar(&gp[0] PASS_LD);
     gp[1] = consPtr(&gp[2], TAG_ATTVAR|STG_GLOBAL);
     gp[2] = ATOM_nil;
+#ifdef O_UNDOABLE_ATTVARS
+    gp[3] = 0; /*gp[1];*/ /* tracker cell */
+#endif
     return &gp[1];
   }
 
@@ -1438,9 +1604,12 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
             {
                 if(!PL_is_variable(A1)) succeed;        
                 term_t saved = PL_new_term_ref();
+                int undo_enabled = LD->attvar.undo_enabled;
+                LD->attvar.undo_enabled = 0;
                 PL_put_term(saved,LD->attvar.currently_assigning);
                 PL_put_term(LD->attvar.currently_assigning,A1);
                 int ret = PL_unify(A1,A2);
+                LD->attvar.undo_enabled = undo_enabled;
                 PL_put_term(LD->attvar.currently_assigning,saved);
                 return ret;
             }
@@ -1450,6 +1619,18 @@ PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
     }
 }
 #endif /*O_VERIFY_ATTRIBUTES*/
+
+#ifdef O_UNDOABLE_ATTVARS
+/* disable/reenable the tracker code .. just so we can build 
+  .prc before the first assert()
+  -1 = use prev methodolgy  0 = use prev prev methodology  1 = use new methodology 
+  ?- '$undo_enable'(1). */
+static 
+PRED_IMPL("$undo_enable", 1, dundo_enable, 0)
+{ PRED_LD
+   return PL_get_integer(A1,&LD->attvar.undo_enabled);
+}
+#endif
 
 		 /*******************************
 		 *	    REGISTRATION	*
@@ -1473,6 +1654,9 @@ BeginPredDefs(attvar)
 #endif
 #ifdef O_VERIFY_ATTRIBUTES
   PRED_DEF("$attvar_assign", 4, dattvar_assign, 0)
+#endif
+#ifdef O_UNDOABLE_ATTVARS
+  PRED_DEF("$undo_enable", 1, dundo_enable, 0)
 #endif
 EndPredDefs
 

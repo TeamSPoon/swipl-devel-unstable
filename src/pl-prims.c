@@ -249,8 +249,17 @@ do_unify(Word t1, Word t2 ARG_LD)
 	continue;
       }
   #ifdef O_ATTVAR
-      if ( isAttVar(w2 ) )
+      if ( isAttVar(w2 ) ) {
+      #ifdef O_UNDOABLE_ATTVARS
+          /* we may need to dig in here with our proxy reference .. that code will be in assignAttVar() */
+          if(LD->attvar.undo_enabled)
+          {
+              assignAttVar(t2, t1 PASS_LD);
+              continue;
+          }
+      #endif
 	w2 = makeRef(t2);
+      }
   #endif
       Trail(t1, w2);
       continue;
@@ -262,7 +271,17 @@ do_unify(Word t1, Word t2 ARG_LD)
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w1) )
+      {
+     #ifdef O_UNDOABLE_ATTVARS
+          /* we may need to dig in here with our proxy reference .. that code will be in assignAttVar() */
+          if(LD->attvar.undo_enabled)
+          {
+              assignAttVar(t1, t2 PASS_LD);
+              continue;
+          }
+     #endif
 	w1 = makeRef(t1);
+       }
   #endif
       Trail(t2, w1);
       continue;

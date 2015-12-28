@@ -414,6 +414,10 @@ struct PL_local_data
 #ifdef O_VERIFY_ATTRIBUTES
     term_t  currently_assigning;
 #endif
+#ifdef O_UNDOABLE_ATTVARS
+    term_t  undos;
+    int  undo_enabled; /* disable/reenable the tracker code .. just so we can bootstrap ! */
+#endif
   } attvar;
 #endif
 
