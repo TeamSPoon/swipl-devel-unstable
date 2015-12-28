@@ -189,8 +189,6 @@ univ(word t, Word d, Word *a ARG_LD)
   *a = f->arguments;
 }
 
-
-
 static inline void
 reset_terms(node * r)
 { *(r->bp)  =  r->orig;
@@ -249,9 +247,12 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     {
 #ifdef O_TERMSINK
       MAYBE_IMPL(override,equal,l,r);
-#endif
       l = TERMSINK_SKIP_HIDDEN(valPAttVar(wl));
       r = TERMSINK_SKIP_HIDDEN(valPAttVar(wr));
+#else
+      l = valPAttVar(wl);
+      r = valPAttVar(wr);
+#endif
       goto attvar;
     }
 
@@ -368,10 +369,13 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
     if ( tag(wl) == TAG_ATTVAR )
     { 
 #ifdef O_TERMSINK
-          MAYBE_IMPL(override,variant,l,r)
-#endif
+      MAYBE_IMPL(override,variant,l,r)
       l = TERMSINK_SKIP_HIDDEN(valPAttVar(wl));
       r = TERMSINK_SKIP_HIDDEN(valPAttVar(wr));
+#else
+      l = valPAttVar(wl);
+      r = valPAttVar(wr);
+#endif
       goto attvar;
     }
 
@@ -461,10 +465,14 @@ again:
       return TRUE;
     case TAG_ATTVAR:
 #ifdef O_TERMSINK
-       MAYBE_IMPL(override,variant,p1,p2)
-#endif
+      MAYBE_IMPL(override,variant,p1,p2)
       p1 = TERMSINK_SKIP_HIDDEN(valPAttVar(*p1));
       p2 = TERMSINK_SKIP_HIDDEN(valPAttVar(*p2));
+#else      
+      p1 = valPAttVar(*p1);
+      p2 = valPAttVar(*p2);
+#endif
+
       goto again;
     case TAG_ATOM:
       return FALSE;

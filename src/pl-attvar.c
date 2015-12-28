@@ -1509,40 +1509,6 @@ void setupTermsinks(ARG1_LD)
     int i=32; while(i-->0) LD->termsink.eagermodes[i]=0;
 }
 
-/*
-
-  Presently never called 
-
- WE RETURN
-
-  0 = Failed
-  1 = Success
- -1 = nothing done
-
-*/
-int
-overloadAttVar(Word av, Word value, atom_t origin, atom_t mode ARG_LD) {
-  wakeup_state wstate;
-  if (LD->attvar.currently_assigning) return -1;
-  int res = -1;
-  if ( saveWakeup(&wstate, TRUE PASS_LD) ) {
-      term_t t = PL_new_term_ref();
-      term_t a = PL_new_term_refs(5);
-      if(PL_cons_functor_v(t,LD->termsink.callback5,a)) {
-          *valTermRef(a++)= mode;
-          *valTermRef(a++)= origin;
-          *valTermRef(a++)= needsRef(*av) ? makeRef(av) : *av;
-          *valTermRef(a++)= needsRef(*value) ? makeRef(value) : *value;
-          if(!(PL_call(t,contextModule(environment_frame)) && PL_get_integer(a,&res))) {
-              res = -1;
-          }
-      }
-      restoreWakeup(&wstate PASS_LD);
-  }
-  return res;
-}
-
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 unifyAttVar(Word var, Word value, atom_t caller, atom_t mode )		(var := value)
 
@@ -1562,7 +1528,6 @@ function. If you change this you must also adjust unifiable/3.
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW,
   Failed (presently no code is designed to handle this failure)
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
 int
 unifyAttVar(Word avO, Word valueO, atom_t origin, atom_t mode ARG_LD)
 {
@@ -1574,11 +1539,33 @@ unifyAttVar(Word avO, Word valueO, atom_t origin, atom_t mode ARG_LD)
         assignAttVar(av,value PASS_LD);
         return 1;
     }
-    else
+
+    wakeup_state wstate;
+    if (LD->attvar.currently_assigning) return -1;
+    int res = -1;
+    if (saveWakeup(&wstate, TRUE PASS_LD))
     {
-        return overloadAttVar(av,value,origin,mode PASS_LD);
+        term_t t = PL_new_term_ref();
+        term_t a = PL_new_term_refs(5);
+        if (PL_cons_functor_v(t,LD->termsink.callback5,a))
+        {
+            *valTermRef(a++)= mode;
+            *valTermRef(a++)= origin;
+            *valTermRef(a++)= needsRef(*av) ? makeRef(av) : *av;
+            *valTermRef(a++)= needsRef(*value) ? makeRef(value) : *value;
+            if (!(PL_call(t,contextModule(environment_frame)) && PL_get_integer(a,&res)))
+            {
+                res = -1;
+            }
+        }
+        restoreWakeup(&wstate PASS_LD);
     }
+    return res;
 }
+
+
+
+
 
 static
 PRED_IMPL("$attvar_default", 2, dattvar_default, 0)

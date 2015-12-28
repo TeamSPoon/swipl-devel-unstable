@@ -1221,21 +1221,7 @@ reclaim_attvars(Word after ARG_LD)
     if ( isVar(w) )
       LD->attvar.attvars = NULL;
     else
-	{ 
-#ifdef O_TERMSINK
-        Word avp0 = LD->attvar.attvars+1;
-		if(isAttVar(*avp0))
-		{
-			setSinkMode(avp0,0);
-		} else if(isAttVar((word)avp0))
-		{
-            /*supposed to fail*/
-			assert(isAttVar(*avp0));
-		}
-		
-#endif
       LD->attvar.attvars = unRef(w);
-	}
   }
 }
 #endif

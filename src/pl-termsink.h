@@ -39,11 +39,11 @@
 #define X_disabled 0 /* Usualy for enable the interp to run recurvely not calling $wakeup (implies no_inherit) so that C may do our assigments instead of $wakeup */
 #define X_no_bind 1 /* This tells C, even when asked, to not do bindings (yet) */
 #define X_no_trail 2 /* Do not bother to trail the attvars previous value */
-#define X_no_wakeup 3 /* This tells C, even when asked, to not call $wakup/1  */
-#define X_peer_trail 4 /* Trail any assignment we are about to make on variables */
+#define X_no_wakeup 3 /* This tells C, it can skip calling $wakup/1  */
+#define X_peer_trail 4 /* Trail any assignment we are about to make on other variables */
 #define X_peer_wakeup 5 /* schedule wakeup on other attvar peers we unify with */
 #define X_on_unify_keep_vars 6 /* when unifying with a variable call $wakeup/1 instead of being put inside the other variable (our verify_attributes may, in this case, label that other var) */
-#define X_on_unify_replace 7 /* unify doesnt replace the attvar.. bu thte otehr way arround */
+#define X_on_unify_replace 7 /* unify doesnt replace the attvar.. bu thte other way arround */
 #define X_no_inherit 8 /* this term sink doest not inherit the global flags */
 #define X_uses_eager 9 /* this variable would like a chance to implement term comparison operators */ 
 #define X_debug_attvars 10 /* print extra debug for ourselves */
@@ -144,8 +144,8 @@ Word visible_attrs(Word origl, atom_t name ARG_LD);
 
 /* FALSE mean we let the code below do its thing we may decide to return GLOBAL_OVERFLOW and such as well as TRUE*/
 #define MAYBE_IMPL(when, what ,l,r) \
-   if(IS_OVERLOAD_GLOBAL_VAR(when,what,l)) { int subsink =  overloadAttVar(l,r,WHY_CALLING(when, what ,lr) PASS_LD); if(subsink>-1) return subsink; } else \
-   if(IS_OVERLOAD_GLOBAL_VAR(when,what,r)) { int subsink =  overloadAttVar(r,l,WHY_CALLING(when, what ,rl) PASS_LD); if(subsink>-1) return subsink; } 
+   if(IS_OVERLOAD_GLOBAL_VAR(when,what,l)) { int subsink =  unifyAttVar(l,r,WHY_CALLING(when, what ,lr) PASS_LD); if(subsink>-1) return subsink; } else \
+   if(IS_OVERLOAD_GLOBAL_VAR(when,what,r)) { int subsink =  unifyAttVar(r,l,WHY_CALLING(when, what ,rl) PASS_LD); if(subsink>-1) return subsink; } 
 
 
 #endif /*PL_TERMSINK_H_INCLUDED*/

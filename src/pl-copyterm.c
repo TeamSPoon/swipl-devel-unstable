@@ -433,9 +433,6 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	    { rc = GLOBAL_OVERFLOW;
 	      goto out;
 	    }
-#ifdef O_TERM_SINK
-      	setTermSink(p, getTermSink(from));
-#endif
 	    TrailCyclic(p PASS_LD);
 	    TrailCyclic(from PASS_LD);
 	    *from = consPtr(attr, STG_GLOBAL|TAG_ATTVAR);
