@@ -85,18 +85,19 @@ system:verify_attributes(_Var, _Value, []).
 %
 
 '$wakeup'([]).
-'$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
-  % format(user_error,'~N~q~n',[wakeup(UnifyAtMod, Var, Att3s, Value, Rest)]),flush_output(user_error),
-   do_verify_attributes(Att3s, Var, Value, Goals ,[]),
-   '$attvar_assign'(Var,Value),!,
+'$wakeup'(wakeup(Var, Att3s, Value, Rest)) :-
+  % format(user_error,'~N~q~n',[wakeup(Var, Att3s, Value, Rest)]),flush_output(user_error),
+  (Var==Value -> true ;
+    do_verify_attributes(Att3s, Var, Value, Goals ,[])),
    '$wakeup'(Rest),
+   '$attvar_assign'(Var,Value),
    call_all_attr_uhooks(Att3s, Value),
-   calls_in_module(Goals, UnifyAtMod).
+   calls_in_module(Goals).
 
-calls_in_module([], _).
-calls_in_module([G|Gs], M):-
-        M:call(G),
-        calls_in_module(Gs, M).
+calls_in_module([]).
+calls_in_module([G|Gs]):-
+        call(G),
+        calls_in_module(Gs).
 
 %% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
@@ -108,8 +109,8 @@ calls_in_module([G|Gs], M):-
 %  
 %  We could perhaps use term_expansion to "monitor" and make a list of those 
 %  Defining verify_attributes/3 and put them in the list if we wanted SICStus style.
-%  
-do_verify_attributes(_, _, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
+%
+do_verify_attributes(_, _, Var , Value) --> {\+ attvar(Var),!,Var=Value}.  
 do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) --> 
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
