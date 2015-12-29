@@ -110,12 +110,12 @@ calls_in_module([G|Gs]):-
 %  We could perhaps use term_expansion to "monitor" and make a list of those 
 %  Defining verify_attributes/3 and put them in the list if we wanted SICStus style.
 %
-do_verify_attributes(_, _, Var , Value) --> {\+ attvar(Var),!,Var=Value}.  
-do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) --> 
+do_verify_attributes([],_,_) --> [].
+do_verify_attributes(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.  
+do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) -->
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
         do_verify_attributes(Rest, Var, Value).
-do_verify_attributes([],Var,Value) --> [].
 
 
 call_all_attr_uhooks([], _).

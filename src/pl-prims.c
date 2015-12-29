@@ -373,97 +373,31 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
   }
   if (rc==TRUE)
   {
-      if(old_gTop != gTop) 
-      { /* Wakeup happened */
-#ifdef NEVER_EVER
-    /* here we will scan to hunt down and undo any attvars found */
-              { TrailEntry tt = tTop;
-            
-            
-                if ( tt > mt )
-                { ssize_t needed = (tt-mt)*6+1;
-                  Word list, gp, tail;
-            
-                  if ( !hasGlobalSpace(needed) )	/* See (*) */
-                  { int rc = overflowCode(needed);
-            
-            	Undo(m);
-            	DiscardMark(m);
-            	rc = makeMoreStackSpace(rc, ALLOW_GC|ALLOW_SHIFT);
-            	if ( rc )
-            	  goto retry;
-            	return FALSE;
-                  }
-            
-                  DiscardMark(m);
-                  tail = list = gTop;
-                  gp = list+1;
-            
-                  *list = ATOM_nil;
-                  while(--tt >= mt)
-                  { Word p = tt->address;
-            
-            	*tail = consPtr(&gp[0], TAG_COMPOUND|STG_GLOBAL);
-            	gp[0] = FUNCTOR_dot2;
-            	gp[1] = consPtr(&gp[3], TAG_COMPOUND|STG_GLOBAL);
-            	gp[2] = ATOM_nil;
-            	tail = &gp[2];
-            	gp[3] = FUNCTOR_equals2;
-            	if ( isTrailVal(p) )
-            	{ Word p2 = tt[-1].address;
-            	  gp[4] = makeRef(p2);
-            	  gp[5] = *p2;
-            	} else
-            	{ gp[5] = *p;
-            	  assert(onGlobalArea(p));
-            	  gp[4] = makeRefG(p);
-            	  setVar(*p);
-            	}
-            	gp += 6;
-            
-            	if ( isTrailVal(p) )
-            	{ assert(isAttVar(trailVal(p)));
-            
-            	  tt--;				/* re-insert the attvar */
-            	  *tt->address = trailVal(p);
-            
-            	  tt--;				/* restore tail of wakeup list */
-            	  p = tt->address;
-            	  if ( isTrailVal(p) )
-            	  { tt--;
-            	    *tt->address = trailVal(p);
-            	  } else
-            	  { setVar(*p);
-            	  }
-            
-            	  tt--;				/* restore head of wakeup list */
-            	  p = tt->address;
-            	  if ( isTrailVal(p) )
-            	  { tt--;
-            	    *tt->address = trailVal(p);
-            	  } else
-            	  { setVar(*p);
-            	  }
-            
-            	  assert(tt>=mt);
-            	}
-                  }
-                  gTop = gp;			/* may not have used all space */
-                  tTop = m.trailtop;
-            
-                  rc = PL_unify(pushWordAsTermRef(list), subst);
-                  popTermRef();
-            
-                  return rc;
-                } else
-                { DiscardMark(m);
-                  return PL_unify_atom(subst, ATOM_nil);
+        if (old_gTop != gTop)
+        { /* Wakeup happened */
+#ifdef IS_JANS
+            /* here we will scan to hunt down and undo any attvars found */
+            { TrailEntry tt = tTop;
+                while (--tt >= mt)
+                {
+                    Word p = tt->address;
+                    if (isTrailVal(p))
+                    {
+                       if(!isAttVar(trailVal(p)) continue;
+
+                        tt--;       /* re-insert the attvar */
+                        *tt->address = trailVal(p);
+                        tt->address = NULL;
+                        (tt+1)->address = NULL;
+
+                        tt--;       /* skip tail of wakeup list */
+                        tt--;       /* skip head of wakeup list */
+
+                        assert(tt>=mt);
+                    }
                 }
-              } else
-              { return FALSE;
-              }
 #endif
-      }
+            }
   }
   return rc;
 }
