@@ -84,46 +84,51 @@ system:verify_attributes(_Var, _Value, []).
 %       Assignment happens in '$attvar_assign'/2
 %
 '$wakeup'(G):-do_wokens(G,Goals,[]),
-  %  format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
+   % format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
    map_goals(Goals).
 
 do_wokens([]) --> [].
 do_wokens(wakeup(Var, Att3s, Value, Rest)) -->
   % {format(user_error,'~N~q~n',[do_woken(Var, Att3s, Value)]),flush_output(user_error)},
-   ['$attvar_assign'(Var,Value)],
    do_verify_attributes(Att3s, Var, Value),
-   do_wokens(Rest),   
-   [call_all_attr_uhooks(Att3s, Value)].
-
+   {'$attvar_assign'(Var,Value)},  
+   do_wokens(Rest),
+   [call_defrosts(Att3s, Value)].
 
 map_goals([]).
 map_goals([G|Gs]):-
         call(G),
         map_goals(Gs).
 
+
+:- asserta((
+   test:verify_attributes(X, Value, [format('~N~q, ~n',[goal_for(Name)])]) :-
+     sformat(Name,'~q',X), get_attr(X, test, Attr),
+    format('~Nverifying: ~q = ~q (attr: ~q),~n', [Name,Value,Attr]))).
+
+:- asserta((test:attr_unify_hook(Attr,Value):-format('~N~q.~n',[test:uhook(Attr,Value)]))).
+
+
 %% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
 % calls  Module:verify_attributes/3
 %
-%  1) Modules that have defined an attribute in Att3s
+%  1) Only Modules that have an attribute in the var presently
 %
 %  We do not call on all modules defining verify_attributes/3
 %
-%  We could perhaps use term_expansion to "monitor" and make a list of those
-%  Defining verify_attributes/3 and put them in the list if we wanted SICStus style.
-%
-do_verify_attributes([],_,_) --> [].
 do_verify_attributes(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
 do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) -->
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
         do_verify_attributes(Rest, Var, Value).
+do_verify_attributes([],_,_) --> [].
 
 
-call_all_attr_uhooks([], _).
-call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
+call_defrosts([], _).
+call_defrosts(att(Module, AttVal, Rest), Value) :-
 	uhook(Module, AttVal, Value),
-	call_all_attr_uhooks(Rest, Value).
+	call_defrosts(Rest, Value).
 
 goals_with_module([], _) --> [].
 goals_with_module([G|Gs], M) -->
@@ -348,3 +353,50 @@ frozen_residuals('$and'(X,Y), V) --> !,
 	frozen_residuals(Y, V).
 frozen_residuals(X, V) -->
 	[ freeze(V, X) ].
+
+/*
+
+I am being dense here.. but don't understand what the term expansion should look like?
+
+
+system:term_expansion(
+    (To:attr_unify_hook(Attr,Value):-Body),
+    (To:verify_attributes(Var,Value,[From:Body]):-get_attr(Var,To,Attr))
+      ):- prolog_load_context(module,From).
+
+system:term_expansion(
+    (attr_unify_hook(Attr,Value):-Body),
+    (verify_attributes(Var,Value,[From:Body]):-get_attr(Var,From,Attr))
+      ):- prolog_load_context(module,From).
+
+However, the above cannot work since it ignores cuts.
+
+
+
+But if the intent was to use something like this..
+
+To:verify_attributes(Var,Value,[To:attr_unify_hook(Attr,Value)]) :- get_attrs(Var,To,Attr).
+
+Then we need to keep track of them so we don''t make more than one per module.
+(that is we to only create that first time we see it per module) (and keep track of this in a dynamic predicate)
+
+This goes back to my reasoning why I dislike this "emulation" route.. we cannot gain anything from this and lose performance and more can go wrong.
+
+
+system:term_expansion((To:attr_unify_hook(_,_):-_),Result):- make_stub_for_module(To,Result).
+
+system:term_expansion(attr_unify_hook(_,_):-_),Result):-
+   prolog_load_context(module,From),
+    make_attribute_to_module(From,Result).
+
+:- dynamic(attributes:attribute_has_stub/1).
+
+attribute_has_stub
+
+make_stub_for_attribute(To,(:-true)):- attributes:attribute_has_stub(To),!.
+make_stub_for_attribute(To,
+  (To:verify_attributes(Var,Value,[To:attr_unify_hook(Attr,Value)]) :- get_attrs(Var,To,Attr))
+  ):- assert(attributes:attribute_has_stub(To)).
+
+
+*/
