@@ -249,17 +249,8 @@ do_unify(Word t1, Word t2 ARG_LD)
 	continue;
       }
   #ifdef O_ATTVAR
-      if ( isAttVar(w2 ) ) {
-      #ifdef O_UNDOABLE_ATTVARS
-          /* we may need to dig in here with our proxy reference .. that code will be in assignAttVar() */
-          if(LD->attvar.undo_enabled)
-          {
-              assignAttVar(t2, t1 PASS_LD);
-              continue;
-          }
-      #endif
+      if ( isAttVar(w2 ) )
 	w2 = makeRef(t2);
-      }
   #endif
       Trail(t1, w2);
       continue;
@@ -271,17 +262,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w1) )
-      {
-     #ifdef O_UNDOABLE_ATTVARS
-          /* we may need to dig in here with our proxy reference .. that code will be in assignAttVar() */
-          if(LD->attvar.undo_enabled)
-          {
-              assignAttVar(t1, t2 PASS_LD);
-              continue;
-          }
-     #endif
 	w1 = makeRef(t1);
-       }
   #endif
       Trail(t2, w1);
       continue;
@@ -293,7 +274,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2 PASS_LD);
+      assignAttVar(t1, t2, FALSE PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -301,7 +282,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1 PASS_LD);
+      assignAttVar(t2, t1, FALSE PASS_LD);
       continue;
     }
   #endif
@@ -369,20 +350,121 @@ out_fail:
   return rc;
 }
 
-
+/* This adds wakeups to attvars rather than binding them */
 static int
 raw_unify_ptrs(Word t1, Word t2 ARG_LD)
-{ switch(LD->prolog_flag.occurs_check)
+{ int rc;
+  Word old_gTop = gTop;
+  TrailEntry old_tt = tTop;
+
+  switch(LD->prolog_flag.occurs_check)
   { case OCCURS_CHECK_FALSE:
-      return do_unify(t1, t2 PASS_LD);
+      rc = do_unify(t1, t2 PASS_LD);
+      break;
     case OCCURS_CHECK_TRUE:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      break;
     case OCCURS_CHECK_ERROR:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      break;
     default:
       assert(0);
       fail;
   }
+  if (rc==TRUE)
+  {
+      if(old_gTop != gTop) 
+      { /* Wakeup happened */
+#ifdef NEVER_EVER
+              { TrailEntry tt = tTop;
+            
+            
+                if ( tt > mt )
+                { ssize_t needed = (tt-mt)*6+1;
+                  Word list, gp, tail;
+            
+                  if ( !hasGlobalSpace(needed) )	/* See (*) */
+                  { int rc = overflowCode(needed);
+            
+            	Undo(m);
+            	DiscardMark(m);
+            	rc = makeMoreStackSpace(rc, ALLOW_GC|ALLOW_SHIFT);
+            	if ( rc )
+            	  goto retry;
+            	return FALSE;
+                  }
+            
+                  DiscardMark(m);
+                  tail = list = gTop;
+                  gp = list+1;
+            
+                  *list = ATOM_nil;
+                  while(--tt >= mt)
+                  { Word p = tt->address;
+            
+            	*tail = consPtr(&gp[0], TAG_COMPOUND|STG_GLOBAL);
+            	gp[0] = FUNCTOR_dot2;
+            	gp[1] = consPtr(&gp[3], TAG_COMPOUND|STG_GLOBAL);
+            	gp[2] = ATOM_nil;
+            	tail = &gp[2];
+            	gp[3] = FUNCTOR_equals2;
+            	if ( isTrailVal(p) )
+            	{ Word p2 = tt[-1].address;
+            	  gp[4] = makeRef(p2);
+            	  gp[5] = *p2;
+            	} else
+            	{ gp[5] = *p;
+            	  assert(onGlobalArea(p));
+            	  gp[4] = makeRefG(p);
+            	  setVar(*p);
+            	}
+            	gp += 6;
+            
+            	if ( isTrailVal(p) )
+            	{ assert(isAttVar(trailVal(p)));
+            
+            	  tt--;				/* re-insert the attvar */
+            	  *tt->address = trailVal(p);
+            
+            	  tt--;				/* restore tail of wakeup list */
+            	  p = tt->address;
+            	  if ( isTrailVal(p) )
+            	  { tt--;
+            	    *tt->address = trailVal(p);
+            	  } else
+            	  { setVar(*p);
+            	  }
+            
+            	  tt--;				/* restore head of wakeup list */
+            	  p = tt->address;
+            	  if ( isTrailVal(p) )
+            	  { tt--;
+            	    *tt->address = trailVal(p);
+            	  } else
+            	  { setVar(*p);
+            	  }
+            
+            	  assert(tt>=mt);
+            	}
+                  }
+                  gTop = gp;			/* may not have used all space */
+                  tTop = m.trailtop;
+            
+                  rc = PL_unify(pushWordAsTermRef(list), subst);
+                  popTermRef();
+            
+                  return rc;
+                } else
+                { DiscardMark(m);
+                  return PL_unify_atom(subst, ATOM_nil);
+                }
+              } else
+              { return FALSE;
+              }
+#endif
+      }
+  }
+  return rc;
 }
 
 
@@ -3347,13 +3429,11 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{
-#ifndef O_VERIFY_ATTRIBUTES
-      assert(isAttVar(trailVal(p)));
+	{ assert(isAttVar(trailVal(p)));
 
 	  tt--;				/* re-insert the attvar */
 	  *tt->address = trailVal(p);
-#endif
+
 	  tt--;				/* restore tail of wakeup list */
 	  p = tt->address;
 	  if ( isTrailVal(p) )

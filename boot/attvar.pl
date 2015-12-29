@@ -81,18 +81,14 @@ system:verify_attributes(_Var, _Value, []).
 %	Called from the kernel if assignments will be made to
 %	attributed variables.
 %
-%       Current code requires O_VERIFY_ATTRIBUTES (In C)
-%
 %       Assignment happens in '$attvar_assign'/2
 %
 
 '$wakeup'([]).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
-   % format(user_error,'~N~q~n',[wakeup(UnifyAtMod, Var, Att3s, Value, Rest)]),flush_output(user_error),
-   attributes:modules_with_attributes(AttsMods),
-   '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
-   do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
-   '$attvar_assign'(Var,Value,false,false),
+  % format(user_error,'~N~q~n',[wakeup(UnifyAtMod, Var, Att3s, Value, Rest)]),flush_output(user_error),
+   do_verify_attributes(Att3s, Var, Value, Goals ,[]),
+   '$attvar_assign'(Var,Value),!,
    '$wakeup'(Rest),
    call_all_attr_uhooks(Att3s, Value),
    calls_in_module(Goals, UnifyAtMod).
@@ -102,30 +98,23 @@ calls_in_module([G|Gs], M):-
         M:call(G),
         calls_in_module(Gs, M).
 
-%% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
+%% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
 % calls  Module:verify_attributes/3 
 %
 %  1) Modules that have defined an attribute in Att3s
-%  2) The caller''s module (Head of AttsModules)
-%  3) remaining modules that have defined attributes on some variable 
-%  (Tail of AttsModules) These wil be maintained from library/atts.pl
+%   
+%  We do not call on all modules defining verify_attributes/3
+%  
+%  We could perhaps use term_expansion to "monitor" and make a list of those 
+%  Defining verify_attributes/3 and put them in the list if we wanted SICStus style.
 %  
 do_verify_attributes(_, _, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
-do_verify_attributes(att(Module, _AttVal, Rest), AttsModules, Var, Value) --> 
-        { Module:verify_attributes(Var, Value, Goals),
-          '$delete'(AttsModules,Module,RemainingMods) },
-        goals_with_module(Goals, Module),
-        do_verify_attributes(Rest, RemainingMods, Var, Value).
-do_verify_attributes([],RemainingMods,Var,Value) --> 
-        do_verify_attributes_rest(RemainingMods,Var,Value).
-
-% Call verify_attributes/3 in rest of modules
-do_verify_attributes_rest([],_Var, _Value) --> [].
-do_verify_attributes_rest([Module|AttsModules], Var, Value) -->
+do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) --> 
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
-        do_verify_attributes_rest(AttsModules, Var, Value).
+        do_verify_attributes(Rest, Var, Value).
+do_verify_attributes([],Var,Value) --> [].
 
 
 call_all_attr_uhooks([], _).
