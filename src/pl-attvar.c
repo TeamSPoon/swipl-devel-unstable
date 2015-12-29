@@ -197,8 +197,11 @@ assignAttVar(Word av, Word value, bool no_wakeup, bool no_bind ARG_LD)
   TrailAssignment(av);
   DiscardMark(m);
 
-  if ( needsRef(*value) )   // In case binding was requested from a plain old variable
+  if ( isAttVar(*value) )   
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    *av = makeRef(value);
+  } else if ( isVar(*value) )   /* In case binding was requested from a plain old variable */
+  { DEBUG(1, Sdprintf("Unifying attvar with plain var\n"));
     *av = makeRef(value);
   } else
     *av = *value;
