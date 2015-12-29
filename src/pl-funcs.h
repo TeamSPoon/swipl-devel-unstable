@@ -31,7 +31,7 @@ symbol lookup and relocations.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 /* pl-attvar.c */
-COMMON(void)		assignAttVar(Word av, Word value, bool no_wakeup ARG_LD);
+COMMON(void)		assignAttVar(Word av, Word value, bool no_wakeup, bool no_bind ARG_LD);
 COMMON(int)		saveWakeup(wakeup_state *state, int forceframe ARG_LD);
 COMMON(void)		restoreWakeup(wakeup_state *state ARG_LD);
 COMMON(int)		PL_get_attr__LD(term_t t, term_t a ARG_LD);

@@ -84,7 +84,7 @@ system:verify_attributes(_Var, _Value, []).
 %       Assignment happens in '$attvar_assign'/2
 %
 '$wakeup'(G):-do_wokens(G,Goals,[]),
-   format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
+  %  format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
    map_goals(Goals).
 
 do_wokens([]) --> [].
