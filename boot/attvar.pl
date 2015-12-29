@@ -101,14 +101,6 @@ map_goals([G|Gs]):-
         map_goals(Gs).
 
 
-:- asserta((
-   test:verify_attributes(X, Value, [format('~N~q, ~n',[goal_for(Name)])]) :-
-     sformat(Name,'~q',X), get_attr(X, test, Attr),
-    format('~Nverifying: ~q = ~q (attr: ~q),~n', [Name,Value,Attr]))).
-
-:- asserta((test:attr_unify_hook(Attr,Value):-format('~N~q.~n',[test:uhook(Attr,Value)]))).
-
-
 %% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
 % calls  Module:verify_attributes/3
@@ -356,7 +348,7 @@ frozen_residuals(X, V) -->
 
 /*
 
-I am being dense here.. but don't understand what the term expansion should look like?
+Don't understand what the term expansion should look like?
 
 
 system:term_expansion(
