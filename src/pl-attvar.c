@@ -106,41 +106,23 @@ which must run in constant space.
 
 	loop :- freeze(X, true), X = a, loop.
 
-SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
- if O_VERIFY_ATTRIBUTES then: Caller must ensure 8 global and 4 trail-cells
+SHIFT-SAFE: Caller must ensure 7 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-#ifdef O_VERIFY_ATTRIBUTES
 registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
-#else
-registerWakeup(Word name, Word value ARG_LD)
-#endif
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
-#ifdef O_VERIFY_ATTRIBUTES
-  assert(gTop+8 <= gMax && tTop+4 <= tMax);
-#else
-  assert(gTop+6 <= gMax && tTop+4 <= tMax);
-#endif
+  assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-#ifdef O_VERIFY_ATTRIBUTES
-  gTop += 6;
-  wake[0] = FUNCTOR_wakeup5;
-  wake[1] = contextModule(environment_frame)->name;
-  wake[2] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
-  wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
-  wake[4] = needsRef(*value) ? makeRef(value) : *value;
-  wake[5] = ATOM_nil;
-#else
-  gTop += 4;
-  wake[0] = FUNCTOR_wakeup3;
-  wake[1] = needsRef(*name) ? makeRef(name) : *name;
-  wake[2] = needsRef(*value) ? makeRef(value) : *value;
-  wake[3] = ATOM_nil;
-#endif
+  gTop += 5;
+  wake[0] = FUNCTOR_wakeup4;
+  wake[1] = makeRef(attvar);
+  wake[2] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
+  wake[3] = needsRef(*value) ? makeRef(value) : *value;
+  wake[4] = ATOM_nil;
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -149,11 +131,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-#ifdef O_VERIFY_ATTRIBUTES
-    *tail = makeRef(wake+5);
-#else
-    *tail = makeRef(wake+3);
-#endif
+    *tail = makeRef(wake+4);
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -162,11 +140,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-#ifdef O_VERIFY_ATTRIBUTES
-    *tail = makeRef(wake+5);
-#else
-    *tail = makeRef(wake+3);
-#endif
+    *tail = makeRef(wake+4);
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -187,95 +161,54 @@ that should be awoken.
 Before calling, av *must* point to   a  dereferenced attributed variable
 and value to a legal value.
 
-The predicate unifiable/3 relies on  the   trailed  pattern left by this
-function. If you change this you must also adjust unifiable/3.
+no_wakeup - default should be FALSE (the only code callinbg this with TRUE is $attvar_assign/2)
+
+The predicate unifiable/3 and raw_unify_ptrs() relies on  the   trailed  pattern left by this
+function. If you change this you must also adjust unifiable/3 and raw_unify_ptrs()
 
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-#ifdef O_VERIFY_ATTRIBUTES
-static inline Word
-valTermDeRefP(term_t r ARG_LD)
-{ Word p = valTermRef(r);
-  deRef(p);
-  return p;
-}
-#endif
 
 void
-assignAttVar(Word av, Word value ARG_LD)
+assignAttVar(Word av, Word value, bool no_wakeup, bool no_bind ARG_LD)
 { Word a;
+  mark m;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
-#ifdef O_VERIFY_ATTRIBUTES
-  assert(gTop+6 <= gMax && tTop+4 <= tMax);
-#else
-  assert(gTop+7 <= gMax && tTop+6 <= tMax);
-#endif
+  assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
-
-#ifdef O_VERIFY_ATTRIBUTES 
-  bool is_assigning = (valTermDeRefP(LD->attvar.currently_assigning PASS_LD)==av);
-#endif
-
-#ifdef O_TERMSINK
-  int sinkmode = getSinkMode(av);
-  bool peer_wakeup = IS_SINKMODE(peer_wakeup);
-  bool no_wakeup   = IS_SINKMODE(no_wakeup);
-#endif
 
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
       av = value;
       value = tmp;
-    } else if ( av == value ) {
-#ifdef O_TERMSINK
-        if (!is_assigning && peer_wakeup && !no_wakeup)
-           registerWakeup(av, valPAttVar(*av), av PASS_LD);        
-#endif
+    } else if ( av == value )
       return;
     }
+
+  if(!no_wakeup)
+  { a = valPAttVar(*av);
+    registerWakeup(av, a, value PASS_LD);
   }
 
-#ifdef O_VERIFY_ATTRIBUTES
-  if(!is_assigning) 
-  {
-#endif
+  if (no_bind) return;
 
-#ifndef O_TERMSINK
-  a = valPAttVar(*av);
-  registerWakeup(av, a, value PASS_LD);
-#else
-  if (!no_wakeup) registerWakeup(av, valPAttVar(*av), value PASS_LD);
-  if ( isAttVar(*value) ) 
-  {
-    /* both attvars will get a wakeup */
-     bool peer_asks_please_no_wakeup = IS_SINKMODE_FOR(getSinkMode(value),no_wakeup);
-     if (peer_wakeup && !peer_asks_please_no_wakeup) registerWakeup(value, valPAttVar(*value), av PASS_LD);
-  }
-#endif
-
-#ifdef O_VERIFY_ATTRIBUTES /* now happens in $wakeup/1 with call to $attvar_assign/4 */
-  return;
-  }
- 
-#endif
-
-#ifdef O_TERMSINK
-  if(!IS_SINKMODE(no_trail)) TrailAssignment(av);
-  unify_vp(av, value PASS_LD);
-#else
+  Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
+  DiscardMark(m);
 
-  if ( isAttVar(*value) )
+  if ( isAttVar(*value) )   
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    *av = makeRef(value);
+  } else if ( isVar(*value) )   /* In case binding was requested from a plain old variable */
+  { DEBUG(1, Sdprintf("Assigning attvar with plain var\n"));
     *av = makeRef(value);
   } else
     *av = *value;
-#endif
 
   return;
 }
@@ -1446,56 +1379,21 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
-#ifdef O_VERIFY_ATTRIBUTES
 /*
- $attvar_assign(+Var,+Value,+NoTrail,+Forced)
-
-  Called from prolog is user code believes assignment was valid
-
-  Occurs checking must take place (if enabled)
-
+$attvar_assign(+Var,+Value).
 */
 static
-PRED_IMPL("$attvar_assign", 4, dattvar_assign, 0)
+PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1); deRef(av);
+    /* profiling this next line saved 12% time doing this in C rather than a
+    check from prolog */
     if (!canBind(*av)) succeed;
-    int no_trail;
-    if (!PL_get_bool(A3,&no_trail)) no_trail=0;
-#ifdef O_TERMSINK
-    int forced;
-    if (!PL_get_bool(A4,&forced)) forced=0;
-    if (!forced) 
-    {
-         int sinkmode = getSinkMode(av);
-         if(IS_SINKMODE(no_bind)) succeed;
-    }
-#endif
-    switch (LD->prolog_flag.occurs_check)
-    {
-        case OCCURS_CHECK_FALSE:
-            {
-                Word value = valTermRef(A2); deRef(value);
-                if (!no_trail) TrailAssignment(av);
-                *av = needsRef(*value) ? makeRef(value) : *value;
-                succeed;   
-            }
-        case OCCURS_CHECK_TRUE: 
-        case OCCURS_CHECK_ERROR:
-            {
-                term_t saved = PL_new_term_ref();
-                PL_put_term(saved,LD->attvar.currently_assigning);
-                PL_put_term(LD->attvar.currently_assigning,A1);
-                int ret = PL_unify(A1,A2);
-                PL_put_term(LD->attvar.currently_assigning,saved);
-                return ret;
-            }
-        default:
-            assert(!O_VERIFY_ATTRIBUTES);
-            fail;
-    }
+    Word value = valTermRef(A2); deRef(value);
+    assignAttVar(av, value, TRUE, FALSE PASS_LD);
+    succeed;
 }
-#endif /*O_VERIFY_ATTRIBUTES*/
+
 
 #ifdef O_DONTCARE_TAGS
 bool
@@ -1699,9 +1597,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_start", 0, call_residue_vars_start, 0)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
-#ifdef O_VERIFY_ATTRIBUTES
-  PRED_DEF("$attvar_assign", 4, dattvar_assign, 0)
-#endif
+  PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
 #ifdef O_TERMSINK
   PRED_DEF("$attvar_default",   2, dattvar_default,    0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)

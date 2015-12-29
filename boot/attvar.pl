@@ -43,7 +43,7 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
+/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */
 :- multifile attributes:modules_with_attributes/1.
 :- dynamic attributes:modules_with_attributes/1.
 attributes:modules_with_attributes([]).
@@ -55,9 +55,9 @@ attributes:modules_with_attributes([]).
 system:attr_unify_hook(_AttrValue, _Value).
 
 %%  Module:verify_attributes(+Var, +Value, -Goals)
-%  
+%
 % Called *before* Var has actually been bound to Value. If it fails,
-% the unification is deemed to have failed. It may succeed nondeterminately, 
+% the unification is deemed to have failed. It may succeed nondeterminately,
 % in which case the unification might backtrack to give another answer.
 % It is expected to return, in Goals, a list of goals to be called after Var has
 % been bound to Value.
@@ -81,59 +81,57 @@ system:verify_attributes(_Var, _Value, []).
 %	Called from the kernel if assignments will be made to
 %	attributed variables.
 %
-%       Current code requires O_VERIFY_ATTRIBUTES (In C)
-%
 %       Assignment happens in '$attvar_assign'/2
 %
+'$wakeup'(G):-do_wokens(G,Goals,[]),
+   % format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
+   map_goals(Goals).
 
-'$wakeup'([]).
-'$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
-   attributes:modules_with_attributes(AttsMods), 
-   '$delete'(AttsMods,UnifyAtMod,RestAttsMods),
-   do_verify_attributes(Att3s, [UnifyAtMod|RestAttsMods], Var, Value, Goals ,[]),
-   '$attvar_assign'(Var,Value,false,false),
-   '$wakeup'(Rest),
-   call_all_attr_uhooks(Att3s, Value),
-   calls_in_module(Goals, UnifyAtMod).
+do_wokens([]) --> [].
+do_wokens(wakeup(Var, Att3s, Value, Rest)) -->
+  % {format(user_error,'~N~q~n',[do_woken(Var, Att3s, Value)]),flush_output(user_error)},
+   do_verify_attributes(Att3s, Var, Value),
+   {'$attvar_assign'(Var,Value)},  
+   do_wokens(Rest),
+   [call_defrosts(Att3s, Value)].
 
-calls_in_module([], _).
-calls_in_module([G|Gs], M):-
-        M:call(G),
-        calls_in_module(Gs, M).
+map_goals([]).
+map_goals([G|Gs]):-
+        call(G),
+        map_goals(Gs).
 
-%% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
+
+:- asserta((
+   test:verify_attributes(X, Value, [format('~N~q, ~n',[goal_for(Name)])]) :-
+     sformat(Name,'~q',X), get_attr(X, test, Attr),
+    format('~Nverifying: ~q = ~q (attr: ~q),~n', [Name,Value,Attr]))).
+
+:- asserta((test:attr_unify_hook(Attr,Value):-format('~N~q.~n',[test:uhook(Attr,Value)]))).
+
+
+%% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
-% calls  Module:verify_attributes/3 
+% calls  Module:verify_attributes/3
 %
-%  1) Modules that have defined an attribute in Att3s
-%  2) The caller''s module (Head of AttsModules)
-%  3) remaining modules that have defined attributes on some variable 
-%  (Tail of AttsModules) These wil be maintained from library/atts.pl
-%  
-do_verify_attributes(_, _, Var , _) --> {\+ attvar(Var),!}.
-do_verify_attributes(att(Module, _AttVal, Rest), AttsModules, Var, Value) --> 
-        { Module:verify_attributes(Var, Value, Goals),
-          '$delete'(AttsModules,Module,RemainingMods) },
-        goals_with_module(Goals, Module),
-        do_verify_attributes(Rest, RemainingMods, Var, Value).
-do_verify_attributes([],RemainingMods,Var,Value) --> 
-        do_verify_attributes_rest(RemainingMods,Var,Value).
-
-% Call verify_attributes/3 in rest of modules
-do_verify_attributes_rest([],_Var, _Value) --> [].
-do_verify_attributes_rest([Module|AttsModules], Var, Value) -->
+%  1) Only Modules that have an attribute in the var presently
+%
+%  We do not call on all modules defining verify_attributes/3
+%
+do_verify_attributes(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
+do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) -->
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
-        do_verify_attributes_rest(AttsModules, Var, Value).
+        do_verify_attributes(Rest, Var, Value).
+do_verify_attributes([],_,_) --> [].
 
 
-call_all_attr_uhooks([], _).
-call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
+call_defrosts([], _).
+call_defrosts(att(Module, AttVal, Rest), Value) :-
 	uhook(Module, AttVal, Value),
-	call_all_attr_uhooks(Rest, Value).
+	call_defrosts(Rest, Value).
 
 goals_with_module([], _) --> [].
-goals_with_module([G|Gs], M) --> 
+goals_with_module([G|Gs], M) -->
     {strip_module(G,_,GS),
      (G == GS -> MG = M:G ; MG = G)},
      [MG], goals_with_module(Gs, M).
@@ -355,3 +353,50 @@ frozen_residuals('$and'(X,Y), V) --> !,
 	frozen_residuals(Y, V).
 frozen_residuals(X, V) -->
 	[ freeze(V, X) ].
+
+/*
+
+I am being dense here.. but don't understand what the term expansion should look like?
+
+
+system:term_expansion(
+    (To:attr_unify_hook(Attr,Value):-Body),
+    (To:verify_attributes(Var,Value,[From:Body]):-get_attr(Var,To,Attr))
+      ):- prolog_load_context(module,From).
+
+system:term_expansion(
+    (attr_unify_hook(Attr,Value):-Body),
+    (verify_attributes(Var,Value,[From:Body]):-get_attr(Var,From,Attr))
+      ):- prolog_load_context(module,From).
+
+However, the above cannot work since it ignores cuts.
+
+
+
+But if the intent was to use something like this..
+
+To:verify_attributes(Var,Value,[To:attr_unify_hook(Attr,Value)]) :- get_attrs(Var,To,Attr).
+
+Then we need to keep track of them so we don''t make more than one per module.
+(that is we to only create that first time we see it per module) (and keep track of this in a dynamic predicate)
+
+This goes back to my reasoning why I dislike this "emulation" route.. we cannot gain anything from this and lose performance and more can go wrong.
+
+
+system:term_expansion((To:attr_unify_hook(_,_):-_),Result):- make_stub_for_module(To,Result).
+
+system:term_expansion(attr_unify_hook(_,_):-_),Result):-
+   prolog_load_context(module,From),
+    make_attribute_to_module(From,Result).
+
+:- dynamic(attributes:attribute_has_stub/1).
+
+attribute_has_stub
+
+make_stub_for_attribute(To,(:-true)):- attributes:attribute_has_stub(To),!.
+make_stub_for_attribute(To,
+  (To:verify_attributes(Var,Value,[To:attr_unify_hook(Attr,Value)]) :- get_attrs(Var,To,Attr))
+  ):- assert(attributes:attribute_has_stub(To)).
+
+
+*/

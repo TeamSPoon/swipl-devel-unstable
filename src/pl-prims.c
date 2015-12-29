@@ -195,11 +195,7 @@ does undo bindings and should be used   by  foreign predicates. See also
 unify_ptrs().
 
 Unification depends on the datatypes available in the system and will in
-general need updating if new types are added.  
-
-  For example:  unifyAttVar();
-
-It should be  noted  that
+general need updating if new types are added.  It should be  noted  that
 unify()  is  not  the only place were unification happens.  Other points
 are:
 
@@ -304,7 +300,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2 PASS_LD);
+      assignAttVar(t1, t2, FALSE, FALSE PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -312,7 +308,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1 PASS_LD);
+      assignAttVar(t2, t1, FALSE, FALSE PASS_LD);
       continue;
     }
   #endif
@@ -380,20 +376,59 @@ out_fail:
   return rc;
 }
 
-
+/* This adds wakeups to attvars rather than binding them */
 static int
 raw_unify_ptrs(Word t1, Word t2 ARG_LD)
-{ switch(LD->prolog_flag.occurs_check)
+{ int rc;
+  Word old_gTop = gTop;
+  TrailEntry mt = tTop;
+
+  switch(LD->prolog_flag.occurs_check)
   { case OCCURS_CHECK_FALSE:
-      return do_unify(t1, t2 PASS_LD);
+      rc = do_unify(t1, t2 PASS_LD);
+      break;
     case OCCURS_CHECK_TRUE:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      break;
     case OCCURS_CHECK_ERROR:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      break;
     default:
       assert(0);
       fail;
   }
+
+  /* Any attvar wakeup terms pushed to the global stack? */
+  if ( rc == TRUE && old_gTop != gTop )
+  { TrailEntry tt = tTop;
+    TrailEntry ot;
+
+    /* restore the attvars */
+    while (--tt >= mt)
+    { Word p = tt->address;
+
+      if ( isTrailVal(p) )
+      { word v = trailVal(p);
+	tt--;
+	if ( isAttVar(v) )
+	{ *tt->address = v;
+	  tt->address = NULL;
+	  tt[1].address = NULL;
+	}
+      }
+    }
+
+    /* remove the entries from the trail */
+    for(tt=mt, ot=mt, mt=tTop; tt < mt; )
+    { if ( tt->address )
+	*ot++ = *tt++;
+      else
+	tt++;
+    }
+    tTop = ot;
+  }
+
+  return rc;
 }
 
 
@@ -3383,13 +3418,11 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{
-#ifndef O_VERIFY_ATTRIBUTES
-      assert(isAttVar(trailVal(p)));
+	{ assert(isAttVar(trailVal(p)));
 
 	  tt--;				/* re-insert the attvar */
 	  *tt->address = trailVal(p);
-#endif
+
 	  tt--;				/* restore tail of wakeup list */
 	  p = tt->address;
 	  if ( isTrailVal(p) )
