@@ -371,34 +371,37 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
       assert(0);
       fail;
   }
-  if (rc==TRUE)
-  {
-        if (old_gTop != gTop)
-        { /* Wakeup happened */
-#ifdef IS_JANS
-            /* here we will scan to hunt down and undo any attvars found */
-            { TrailEntry tt = tTop;
-                while (--tt >= mt)
-                {
-                    Word p = tt->address;
-                    if (isTrailVal(p))
-                    {
-                       if(!isAttVar(trailVal(p)) continue;
 
-                        tt--;       /* re-insert the attvar */
-                        *tt->address = trailVal(p);
-                        tt->address = NULL;
-                        (tt+1)->address = NULL;
+  /* Any attvar wakeup terms pushed to the global stack? */
+  if ( rc == TRUE && old_gTop != gTop )
+  { TrailEntry tt = tTop;
+    TrailEntry ot;
 
-                        tt--;       /* skip tail of wakeup list */
-                        tt--;       /* skip head of wakeup list */
+    /* restore the attvars */
+    while (--tt >= mt)
+    { Word p = tt->address;
 
-                        assert(tt>=mt);
-                    }
-                }
-#endif
-            }
+      if ( isTrailVal(p) )
+      { word v = trailVal(p);
+	tt--;
+	if ( isAttVar(v) )
+	{ *tt->address = v;
+	  tt->address = NULL;
+	  tt[1].address = NULL;
+	}
+      }
+    }
+
+    /* remove the entries from the trail */
+    for(tt=mt, ot=mt, mt=tTop; tt < mt; )
+    { if ( tt->address )
+	*ot++ = *tt++;
+      else
+	tt++;
+    }
+    tTop = ot;
   }
+
   return rc;
 }
 

@@ -115,7 +115,7 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
   wake = gTop;
   gTop += 5;
   wake[0] = FUNCTOR_wakeup4;
-  wake[1] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
+  wake[1] = makeRef(attvar);
   wake[2] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[3] = needsRef(*value) ? makeRef(value) : *value;
   wake[4] = ATOM_nil;
@@ -168,6 +168,7 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 void
 assignAttVar(Word av, Word value, bool no_wakeup ARG_LD)
 { Word a;
+  mark m;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
@@ -190,7 +191,10 @@ assignAttVar(Word av, Word value, bool no_wakeup ARG_LD)
     registerWakeup(av, a, value PASS_LD);
   }
 
+  Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
+  DiscardMark(m);
+
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
@@ -1369,7 +1373,7 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 /*
 $attvar_assign(+Var,+Value).
 */
-static 
+static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1); deRef(av);
@@ -1378,7 +1382,7 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
     if (!canBind(*av)) succeed;
     Word value = valTermRef(A2); deRef(value);
     assignAttVar(av, value, TRUE PASS_LD);
-    succeed;   
+    succeed;
 }
 
 

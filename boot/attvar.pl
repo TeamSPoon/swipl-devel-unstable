@@ -43,7 +43,7 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
+/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */
 :- multifile attributes:modules_with_attributes/1.
 :- dynamic attributes:modules_with_attributes/1.
 attributes:modules_with_attributes([]).
@@ -55,9 +55,9 @@ attributes:modules_with_attributes([]).
 system:attr_unify_hook(_AttrValue, _Value).
 
 %%  Module:verify_attributes(+Var, +Value, -Goals)
-%  
+%
 % Called *before* Var has actually been bound to Value. If it fails,
-% the unification is deemed to have failed. It may succeed nondeterminately, 
+% the unification is deemed to have failed. It may succeed nondeterminately,
 % in which case the unification might backtrack to give another answer.
 % It is expected to return, in Goals, a list of goals to be called after Var has
 % been bound to Value.
@@ -86,7 +86,7 @@ system:verify_attributes(_Var, _Value, []).
 
 '$wakeup'([]).
 '$wakeup'(wakeup(Var, Att3s, Value, Rest)) :-
-  % format(user_error,'~N~q~n',[wakeup(Var, Att3s, Value, Rest)]),flush_output(user_error),
+  format(user_error,'~N~q~n',[wakeup(Var, Att3s, Value, Rest)]),
   (Var==Value -> true ;
     do_verify_attributes(Att3s, Var, Value, Goals ,[])),
    '$wakeup'(Rest),
@@ -101,17 +101,17 @@ calls_in_module([G|Gs]):-
 
 %% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
-% calls  Module:verify_attributes/3 
+% calls  Module:verify_attributes/3
 %
 %  1) Modules that have defined an attribute in Att3s
-%   
+%
 %  We do not call on all modules defining verify_attributes/3
-%  
-%  We could perhaps use term_expansion to "monitor" and make a list of those 
+%
+%  We could perhaps use term_expansion to "monitor" and make a list of those
 %  Defining verify_attributes/3 and put them in the list if we wanted SICStus style.
 %
 do_verify_attributes([],_,_) --> [].
-do_verify_attributes(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.  
+do_verify_attributes(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
 do_verify_attributes(att(Module, _AttVal, Rest), Var, Value) -->
         { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
@@ -124,7 +124,7 @@ call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
 	call_all_attr_uhooks(Rest, Value).
 
 goals_with_module([], _) --> [].
-goals_with_module([G|Gs], M) --> 
+goals_with_module([G|Gs], M) -->
     {strip_module(G,_,GS),
      (G == GS -> MG = M:G ; MG = G)},
      [MG], goals_with_module(Gs, M).
