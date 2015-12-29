@@ -83,21 +83,23 @@ system:verify_attributes(_Var, _Value, []).
 %
 %       Assignment happens in '$attvar_assign'/2
 %
+'$wakeup'(G):-do_wokens(G,Goals,[]),
+   format(user_error,'~N',[]),portray_clause(user_error,(G:-Goals)),flush_output(user_error),
+   map_goals(Goals).
 
-'$wakeup'([]).
-'$wakeup'(wakeup(Var, Att3s, Value, Rest)) :-
-  format(user_error,'~N~q~n',[wakeup(Var, Att3s, Value, Rest)]),
-  (Var==Value -> true ;
-    do_verify_attributes(Att3s, Var, Value, Goals ,[])),
-   '$wakeup'(Rest),
-   '$attvar_assign'(Var,Value),
-   call_all_attr_uhooks(Att3s, Value),
-   calls_in_module(Goals).
+do_wokens([]) --> [].
+do_wokens(wakeup(Var, Att3s, Value, Rest)) -->
+  % {format(user_error,'~N~q~n',[do_woken(Var, Att3s, Value)]),flush_output(user_error)},
+   ['$attvar_assign'(Var,Value)],
+   do_verify_attributes(Att3s, Var, Value),
+   do_wokens(Rest),   
+   [call_all_attr_uhooks(Att3s, Value)].
 
-calls_in_module([]).
-calls_in_module([G|Gs]):-
+
+map_goals([]).
+map_goals([G|Gs]):-
         call(G),
-        calls_in_module(Gs).
+        map_goals(Gs).
 
 %% do_verify_attributes(+Att3s, +Var, +Value, -Goals) is nondet.
 %
