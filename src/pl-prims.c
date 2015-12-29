@@ -355,7 +355,7 @@ static int
 raw_unify_ptrs(Word t1, Word t2 ARG_LD)
 { int rc;
   Word old_gTop = gTop;
-  TrailEntry old_tt = tTop;
+  TrailEntry mt = tTop;
 
   switch(LD->prolog_flag.occurs_check)
   { case OCCURS_CHECK_FALSE:
@@ -376,6 +376,7 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
       if(old_gTop != gTop) 
       { /* Wakeup happened */
 #ifdef NEVER_EVER
+    /* here we will scan to hunt down and undo any attvars found */
               { TrailEntry tt = tTop;
             
             
