@@ -1489,7 +1489,7 @@ unifyAttVar(Word avO, Word valueO, atom_t origin, atom_t mode ARG_LD)
 
     if (origin==ATOM_unify)
     {
-        assignAttVar(av,value PASS_LD);
+        assignAttVar(av,value,FALSE, FALSE PASS_LD);
         return 1;
     }
 
