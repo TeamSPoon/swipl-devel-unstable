@@ -3262,13 +3262,13 @@ also needs support in garbageCollect() and growStacks().
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static bool
-unify_all_trail_ptrs(Word t1, Word t2, mark *m, int unbind_attvars ARG_LD)
+unify_all_trail_ptrs(Word t1, Word t2, mark *m ARG_LD)
 { for(;;)
   { int rc;
 
     Mark(*m);
     LD->mark_bar = NO_MARK_BAR;
-    rc = raw_unify_ptrs(t1, t2, unbind_attvars PASS_LD);
+    rc = raw_unify_ptrs(t1, t2, FALSE/*Keep attvars bound*/ PASS_LD);
     if ( rc == TRUE )			/* Terms unified */
     { return rc;
     } else if ( rc == FALSE )		/* Terms did not unify */
@@ -3325,7 +3325,7 @@ unifiable(term_t t1, term_t t2, term_t subst ARG_LD)
 
 retry:
   if ( unify_all_trail_ptrs(valTermRef(t1),	/* can do shift/gc */
-			    valTermRef(t2), &m, FALSE/*dont undo attvars*/ PASS_LD) )
+			    valTermRef(t2), &m PASS_LD) )
   { TrailEntry tt = tTop;
     TrailEntry mt = m.trailtop;
 
