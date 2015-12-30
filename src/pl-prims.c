@@ -3367,10 +3367,12 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{ assert(isAttVar(trailVal(p)));
-
-	  tt--;				/* re-insert the attvar */
-	  *tt->address = trailVal(p);
+	{ 
+        /*assert(isAttVar(trailVal(p)));*/
+ 
+	  /*tt--;*/				/* re-insert the attvar */
+        /* Cannot reinset.. it has been removed */
+	  /**tt->address = trailVal(p);*/
 
 	  tt--;				/* restore tail of wakeup list */
 	  p = tt->address;
