@@ -1642,15 +1642,15 @@ clpb_atom_var(Atom, Var) :-
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 :- public
-        clpb_hash:attr_unify_hook/2,
+        clpb_hash:verify_attributes/3,
         clpb_bdd:attribute_goals//1,
         clpb_hash:attribute_goals//1,
-        clpb_omit_boolean:attr_unify_hook/2,
+        clpb_omit_boolean:verify_attributes/3,
         clpb_omit_boolean:attribute_goals//1,
-        clpb_atom:attr_unify_hook/2,
+        clpb_atom:verify_attributes/3,
         clpb_atom:attribute_goals//1.
 
-clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
+clpb_hash:verify_attributes(_,_, []).  % this unification is always admissible
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    If a universally quantified variable is unified to a Boolean value,
@@ -1658,9 +1658,9 @@ clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
    it is false.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-clpb_atom:attr_unify_hook(_, _) :- false.
+clpb_atom:verify_attributes(_, _, [false]).
 
-clpb_omit_boolean:attr_unify_hook(_,_).
+clpb_omit_boolean:verify_attributes(_, _, []).
 
 clpb_bdd:attribute_goals(_)          --> [].
 clpb_hash:attribute_goals(_)         --> [].
