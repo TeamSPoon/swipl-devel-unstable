@@ -182,11 +182,14 @@ suspend_list([V=W|Unifier],Goal) :-
 	),
 	suspend_list(Unifier,Goal).
 
-attr_unify_hook(call(Goal), Other) :-
-	(   get_attr(Other, when, call(GOTher))
-	->  del_attr(Other, when),
-	    Goal, GOTher
-	;   Goal
+verify_attributes(Var, Other, Gs) :-
+	(   get_attr(Var, when, call(Goal))
+	->  (	get_attr(Other, when, call(GoalOther))
+	    ->	del_attr(Other, when),
+		Gs = [Goal,GoalOther]
+	    ;	Gs = [Goal]
+	    )
+	;   Gs = []
 	).
 
 
