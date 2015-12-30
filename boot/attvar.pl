@@ -61,6 +61,8 @@ in pl-attvar.c
 
 system:verify_attributes(_Var, _Value, []).
 
+%smsg(H:-B):-!, format(user_error,'~N~p~n',[H:-B]),flush_output(user_error).
+%smsg(Msg):-format(user_error,'~N~q~n',[Msg]),flush_output(user_error).
 
 
        /*******************************
@@ -76,7 +78,7 @@ system:verify_attributes(_Var, _Value, []).
 %
 '$wakeup'(Wakes):-
         collect_all_va_goal_lists(Wakes,Goals,[]),              
-        smsg(Wakes:-Goals), % usefull for seeing va groups  
+        % smsg(Wakes:-Goals), % usefull for seeing va groups  
         map_goals(Goals).
 
 
@@ -84,9 +86,6 @@ map_goals([]).
 map_goals([G|Gs]):-
         call(G),
         map_goals(Gs).
-
-smsg(H:-B):-!, format(user_error,'~N~p~n',[H:-B]),flush_output(user_error).
-smsg(Msg):-format(user_error,'~N~q~n',[Msg]),flush_output(user_error).
 
 %%	collect_all_va_goal_lists(+KernelWakeups,//)
 %
@@ -97,7 +96,7 @@ smsg(Msg):-format(user_error,'~N~q~n',[Msg]),flush_output(user_error).
 %
 collect_all_va_goal_lists([]) --> [].
 collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
-        {smsg(do_woken(Var, Att3s, Value))},
+        % {smsg(do_woken(Var, Att3s, Value))},
         ['$attvar_assign'(Var,Value)],
 	collect_va_goal_list(Att3s, Var, Value),
         collect_all_va_goal_lists(Rest).
@@ -110,9 +109,10 @@ collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
 % Durring this process, modules may remove and change each others attributes
 % Goals are collected per nondet success of 
 collect_va_goal_list(_, Var , Value) --> {\+ attvar(Var),!,Var=Value}.
-collect_va_goal_list(att(Module, _AttVal, Rest), Var, Value) -->
-        { Module:verify_attributes(Var, Value, Goals) },        
+collect_va_goal_list(att(Module, AttVal, Rest), Var, Value) -->
+        { Module:verify_attributes(Var, Value, Goals) },
         goals_with_module(Goals, Module),
+        % [Module:attr_unify_hook(AttVal,Value)],
         collect_va_goal_list(Rest, Var, Value).
 collect_va_goal_list([],_,_) --> [].
 
@@ -128,33 +128,41 @@ goals_with_module([G|Gs], M) -->
 %%	add_verify_to_attr_unify_hook(+Mod)
 %
 %	Add a call stub between attr_unify_hook/2
-%		and verify_attrbutes/3.
+%		and verify_attributes/3.
 %
 %	This predicate only adds on stub per attribute name.
 %
 % ==
 %	Mod:verify_attributes(Var,Value, [Mod:attr_unify_hook(Attr,Value)]):- 
-%				get_attrs(Var,Mod,Attr)
+%				get_attr(Var,Mod,Attr)
 % ==
 
 add_verify_to_attr_unify_hook(Mod):-
-	predicate_property(Mod:verify_attrbutes(_,_,_),defined),!.
+	predicate_property(Mod:verify_attributes(_,_,_), defined), 
+        \+ predicate_property(Mod:verify_attributes(_,_,_), imported_from(_)),!.
+        % smsg(found(Mod:verify_attributes)),listing(Mod:verify_attributes(_,_,_)).
 add_verify_to_attr_unify_hook(Mod):-
 	prolog_load_context(file, File),
 	prolog_load_context(term_position, Pos),
 	stream_position_data(line_count, Pos, Line),
-        % multifile(Mod:(verify_attributes/3)),
+        multifile(Mod:(verify_attributes/3)),
         '$store_clause'('$source_location'(File, Line):
-        (Mod:verify_attributes(Var,Value,[attr_unify_hook(Attr,Value)])
-            :- get_attrs(Var,Mod,Attr)), File).
+            (Mod:verify_attributes(Var,Value,[attr_unify_hook(Attr,Value)])
+              :- get_attr(Var,Mod,Attr)), File).
+        % smsg(made(Mod:verify_attributes/3)),listing(Mod:verify_attributes/3).
 
 
 % Gleans needed attr_unify_hook/2 from sources (and needs to fail)
-system:term_expansion(attr_unify_hook(_,_), _) :-
-        prolog_load_context(module,M), 
-        add_verify_to_attr_unify_hook(M),fail.
-system:term_expansion(M:attr_unify_hook(_,_), _) :-
-	add_verify_to_attr_unify_hook(M),fail.
+system:term_expansion(attr_unify_hook(_,_), _):- 
+        prolog_load_context(module,Mod),
+        add_verify_to_attr_unify_hook(Mod),fail.
+system:term_expansion(Mod:attr_unify_hook(_,_), _):-
+	add_verify_to_attr_unify_hook(Mod),fail.
+system:term_expansion((attr_unify_hook(_,_):-_), _):- 
+        prolog_load_context(module,Mod),
+        add_verify_to_attr_unify_hook(Mod),fail.
+system:term_expansion((Mod:attr_unify_hook(_,_):-_), _):- 
+	add_verify_to_attr_unify_hook(Mod),fail.
 
 
 
