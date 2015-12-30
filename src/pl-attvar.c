@@ -166,7 +166,7 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 void
-assignAttVar(Word av, Word value, bool no_wakeup, bool no_bind ARG_LD)
+assignAttVar(Word av, Word value, int flags ARG_LD)
 { Word a;
   mark m;
 
@@ -186,12 +186,12 @@ assignAttVar(Word av, Word value, bool no_wakeup, bool no_bind ARG_LD)
       return;
   }
 
-  if(!no_wakeup)
+  if(flags & ATT_WAKEUP)
   { a = valPAttVar(*av);
     registerWakeup(av, a, value PASS_LD);
   }
 
-  if (no_bind) return;
+  if(!(flags & ATT_BIND)) return;
 
   Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
@@ -1386,7 +1386,7 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
     check from prolog */
     if (!canBind(*av)) succeed;
     Word value = valTermRef(A2); deRef(value);
-    assignAttVar(av, value, TRUE, FALSE PASS_LD);
+    assignAttVar(av, value, ATT_BIND PASS_LD);
     succeed;
 }
 

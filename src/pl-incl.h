@@ -1993,6 +1993,12 @@ typedef struct
 	  } \
 	}
 
+		 /*******************************
+		 *	      ATTVAR ASSIONMENT		*
+		 *******************************/
+
+#define ATT_WAKEUP    0x1
+#define ATT_BIND      0x2
 
 		 /*******************************
 		 *	      WAKEUP		*
