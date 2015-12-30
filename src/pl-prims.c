@@ -352,7 +352,7 @@ out_fail:
 
 /* This adds wakeups to attvars rather than binding them */
 static int
-raw_unify_ptrs(Word t1, Word t2 ARG_LD)
+raw_unify_ptrs(Word t1, Word t2, int unbind_attvars  ARG_LD)
 { int rc;
   Word old_gTop = gTop;
   TrailEntry mt = tTop;
@@ -372,6 +372,10 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
       fail;
   }
 
+  if (!unbind_attvars)
+  {
+      return rc;
+  }
   /* Any attvar wakeup terms pushed to the global stack? */
   if ( rc == TRUE && old_gTop != gTop )
   { TrailEntry tt = tTop;
@@ -446,7 +450,7 @@ unify_ptrs(Word t1, Word t2, int flags ARG_LD)
 { for(;;)
   { int rc;
 
-    rc = raw_unify_ptrs(t1, t2 PASS_LD);
+    rc = raw_unify_ptrs(t1, t2, TRUE/* = please unbind_attvars*/  PASS_LD);
     if ( rc >= 0 )
       return rc;
 
@@ -3258,13 +3262,13 @@ also needs support in garbageCollect() and growStacks().
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static bool
-unify_all_trail_ptrs(Word t1, Word t2, mark *m ARG_LD)
+unify_all_trail_ptrs(Word t1, Word t2, mark *m, int unbind_attvars ARG_LD)
 { for(;;)
   { int rc;
 
     Mark(*m);
     LD->mark_bar = NO_MARK_BAR;
-    rc = raw_unify_ptrs(t1, t2 PASS_LD);
+    rc = raw_unify_ptrs(t1, t2, unbind_attvars PASS_LD);
     if ( rc == TRUE )			/* Terms unified */
     { return rc;
     } else if ( rc == FALSE )		/* Terms did not unify */
@@ -3321,7 +3325,7 @@ unifiable(term_t t1, term_t t2, term_t subst ARG_LD)
 
 retry:
   if ( unify_all_trail_ptrs(valTermRef(t1),	/* can do shift/gc */
-			    valTermRef(t2), &m PASS_LD) )
+			    valTermRef(t2), &m, FALSE/*dont undo attvars*/ PASS_LD) )
   { TrailEntry tt = tTop;
     TrailEntry mt = m.trailtop;
 
@@ -3367,12 +3371,10 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{ 
-        /*assert(isAttVar(trailVal(p)));*/
+	{ assert(isAttVar(trailVal(p)));
  
-	  /*tt--;*/				/* re-insert the attvar */
-        /* Cannot reinset.. it has been removed */
-	  /**tt->address = trailVal(p);*/
+	  tt--;			/* re-insert the attvar */
+	  *tt->address = trailVal(p);
 
 	  tt--;				/* restore tail of wakeup list */
 	  p = tt->address;
