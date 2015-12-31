@@ -153,6 +153,7 @@ add_verify_to_attr_unify_hook(Mod):-
 
 
 % Gleans needed attr_unify_hook/2 from sources (and needs to fail)
+% this could be one clause easily but was thinking about the later indexabilty
 system:term_expansion(attr_unify_hook(_,_), _):- 
         prolog_load_context(module,Mod),
         add_verify_to_attr_unify_hook(Mod),fail.
