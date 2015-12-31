@@ -166,13 +166,9 @@ system:term_expansion((Mod:attr_unify_hook(_,_):-_), _):-
 	add_verify_to_attr_unify_hook(Mod),fail.
 
 
-
-/* "Cleanup Prolog part in boot/attvar.pl, including proper handling of freeze. Possibly move this out."
-  Freeze Below is to be moved out to a differnt file .. 
-  For a short day or so we
-  have it converted to attr_unify_hook/2 as our 
-  first case of the above stub */
-
+		 /************
+		 *  FREEZE   *
+		 *************/
 
 freeze:verify_attributes(Var, Other, Gs) :-
 	(   get_attr(Var, freeze, Goal)
