@@ -173,13 +173,17 @@ system:term_expansion((Mod:attr_unify_hook(_,_):-_), _):-
   first case of the above stub */
 
 
-freeze:attr_unify_hook(Goal, Y) :- 
-	(   attvar(Y)
-	->  (   get_attr(Y, freeze, G2)
-	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
-	    ;	put_attr(Y, freeze, Goal)
+freeze:verify_attributes(Var, Other, Gs) :-
+	(   get_attr(Var, freeze, Goal)
+	->  (	attvar(Other)
+	    ->	(   get_attr(Other, freeze, G2)
+		->  put_attr(Other, freeze, '$and'(G2, Goal))
+		;   put_attr(Other, freeze, Goal)
+		),
+		Gs = []
+	    ;	Gs = [unfreeze(Goal)]
 	    )
-	;   unfreeze(Goal)
+	;   Gs = []
 	).
 
 
