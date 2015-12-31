@@ -59,7 +59,7 @@ in pl-attvar.c
 % This predicate is called on each of variables'' attributes each from their
 % own Module
 
-system:verify_attributes(_Var, _Value, []).
+% system:verify_attributes(_Var, _Value, []).
 
 %smsg(H:-B):-!, format(user_error,'~N~p~n',[H:-B]),flush_output(user_error).
 %smsg(Msg):-format(user_error,'~N~q~n',[Msg]),flush_output(user_error).
