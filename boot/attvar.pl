@@ -181,7 +181,7 @@ freeze:verify_attributes(Var, Other, Gs) :-
 		;   put_attr(Other, freeze, Goal)
 		),
 		Gs = []
-	    ;	Gs = [unfreeze(Goal)]
+	    ;	Gs = ['$attvar':unfreeze(Goal)]
 	    )
 	;   Gs = []
 	).
