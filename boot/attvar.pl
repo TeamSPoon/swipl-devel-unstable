@@ -65,9 +65,9 @@ in pl-attvar.c
 %smsg(Msg):-format(user_error,'~N~q~n',[Msg]),flush_output(user_error).
 
 
-       /*******************************
-       *         Wakeup              *
-       *******************************/
+   /*******************************
+   *         Wakeup              *
+   *******************************/
 
 %%	'$wakeup'(+List)
 %
@@ -125,45 +125,39 @@ goals_with_module([G|Gs], M) -->
 
 
 
-%%	add_verify_to_attr_unify_hook(+Mod)
-%
-%	Add a call stub between attr_unify_hook/2
-%		and verify_attributes/3.
-%
-%	This predicate only adds on stub per attribute name.
-%
-% ==
-%	Mod:verify_attributes(Var,Value, [Mod:attr_unify_hook(Attr,Value)]):- 
-%				get_attr(Var,Mod,Attr)
-% ==
+        /*******************************
+        *         ATTR UNIFY HOOK      *
+        *******************************/
 
-add_verify_to_attr_unify_hook(Mod):-
-	predicate_property(Mod:verify_attributes(_,_,_), defined), 
-        \+ predicate_property(Mod:verify_attributes(_,_,_), imported_from(_)),!.
-        % smsg(found(Mod:verify_attributes)),listing(Mod:verify_attributes(_,_,_)).
-add_verify_to_attr_unify_hook(Mod):-
-	prolog_load_context(file, File),
-	prolog_load_context(term_position, Pos),
-	stream_position_data(line_count, Pos, Line),
-        multifile(Mod:(verify_attributes/3)),
-        '$store_clause'('$source_location'(File, Line):
-            (Mod:verify_attributes(Var,Value,[attr_unify_hook(Attr,Value)])
-              :- get_attr(Var,Mod,Attr)), File).
-        % smsg(made(Mod:verify_attributes/3)),listing(Mod:verify_attributes/3).
+% This section adds a term expansion that searches modules for attr_unify_hook/2s
+% when it finds the first occurence in any module it prepends the below that Term
+%
+% Mod:verify_attributes(Var,Value,
+%        [Mod:attr_unify_hook(Attr,Value)]):-
+%          get_attr(Var,Mod,Attr)
 
+req_unify_hook(_,Mod:AHook,VHook):- atom(Mod),!,
+       req_unify_hook(Mod,AHook,VHook).
+req_unify_hook(Mod,Comp,VHook):-
+        compound(Comp),
+        (Comp=attr_unify_hook(_,_) ->
+          (VHook = Mod:
+           (verify_attributes(Var,Value,
+              [attr_unify_hook(Attr,Value)]):-
+                 get_attr(Var,Mod,Attr))) ;
+          (arg(_,Comp,AHook),req_unify_hook(Mod,AHook,VHook))).
 
-% Gleans needed attr_unify_hook/2 from sources (and needs to fail)
-% this could be one clause easily but was thinking about the later indexabilty
-system:term_expansion(attr_unify_hook(_,_), _):- 
+has_unify_hook(Mod):-
+	predicate_property(Mod:verify_attributes(_,_,_), defined),
+        \+ predicate_property(Mod:verify_attributes(_,_,_), imported_from(_)).
+
+% Gleans needed attr_unify_hook/2 from sources (prepends on first)
+system:term_expansion(Term, Into):-
         prolog_load_context(module,Mod),
-        add_verify_to_attr_unify_hook(Mod),fail.
-system:term_expansion(Mod:attr_unify_hook(_,_), _):-
-	add_verify_to_attr_unify_hook(Mod),fail.
-system:term_expansion((attr_unify_hook(_,_):-_), _):- 
-        prolog_load_context(module,Mod),
-        add_verify_to_attr_unify_hook(Mod),fail.
-system:term_expansion((Mod:attr_unify_hook(_,_):-_), _):- 
-	add_verify_to_attr_unify_hook(Mod),fail.
+        req_unify_hook(Mod,Term,To:Hook) ->
+          ( \+ has_unify_hook(To),
+             Into = [To:Hook,Term]).
+
 
 
 		 /************
