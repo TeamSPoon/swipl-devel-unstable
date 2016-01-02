@@ -274,7 +274,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2, ATT_BIND|ATT_WAKEUP PASS_LD);
+      assignAttVar(t1, t2, ATT_UNIFY PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -282,7 +282,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1, ATT_BIND|ATT_WAKEUP PASS_LD);
+      assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
   #endif

@@ -1997,8 +1997,9 @@ typedef struct
 		 *	      ATTVAR ASSIONMENT		*
 		 *******************************/
 
-#define ATT_WAKEUP    0x1
-#define ATT_BIND      0x2
+#define ATT_WAKEBINDS   0x1
+#define ATT_ASSIGNONLY  0x2
+#define ATT_UNIFY       0x4
 
 		 /*******************************
 		 *	      WAKEUP		*

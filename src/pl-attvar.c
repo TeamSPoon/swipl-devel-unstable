@@ -186,12 +186,12 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
       return;
   }
 
-  if(flags & ATT_WAKEUP)
+  if(!(flags & ATT_ASSIGNONLY))
   { a = valPAttVar(*av);
     registerWakeup(av, a, value PASS_LD);
   }
 
-  if(!(flags & ATT_BIND)) return;
+  if(flags & ATT_WAKEBINDS) return;
 
   Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
@@ -1381,12 +1381,14 @@ $attvar_assign(+Var,+Value).
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
-    Word av = valTermRef(A1); deRef(av);
-    /* profiling this next line saved 12% time doing this in C rather than a
-    check from prolog */
-    if (!canBind(*av)) succeed;
-    Word value = valTermRef(A2); deRef(value);
-    assignAttVar(av, value, ATT_BIND PASS_LD);
+
+    Word value, av = valTermRef(A1); deRef(av);
+    if(isAttVar(*av)) 
+    { deRef2(valTermRef(A2),value);
+      assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
+    } else 
+    { unify_vp(av,valTermRef(A2) PASS_LD);
+    }
     succeed;
 }
 
