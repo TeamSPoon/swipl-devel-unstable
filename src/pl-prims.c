@@ -227,6 +227,7 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
+    if(IS_FLUENT_OVERRIDE(unify,t1,t2)) continue; /* this for on_unify_keep_vars "unify" */
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
 	    assert(w2 != ATOM_garbage_collected);

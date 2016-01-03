@@ -1191,6 +1191,10 @@ emptyStacks(void)
     LD->attvar.gc_attvars = PL_new_term_ref();
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
+
+#ifdef O_FLUENT
+    setupFluents(PASS_LD1);	
+#endif
 #ifdef O_GVAR
     destroyGlobalVars();
 #endif

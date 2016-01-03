@@ -166,8 +166,7 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 
 void
 assignAttVar(Word av, Word value, int flags ARG_LD)
-{ Word a;
-  mark m;
+{ mark m;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
@@ -176,27 +175,48 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
+  /* ifdef O_FLUENT would be too confusing here */
+
+  bool is_self = FALSE;
+  bool other_fluent = FALSE;
   if ( isAttVar(*value) )
-  { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
-    } else if ( av == value )
+  { if ( value > av ) /* newest first */
+    { assignAttVar(value,av,flags PASS_LD);
       return;
+    } else if ( av == value ) 
+        is_self = TRUE;
+    other_fluent = TRUE;
   }
 
+  int fbs = getFluentMode(av);
+  if(IS_FLUENT(fbs,no_bind)) flags |= ATT_WAKEBINDS;
+  if(IS_FLUENT(fbs,no_wakeup)) flags |= ATT_ASSIGNONLY;
+
   if( !(flags & ATT_ASSIGNONLY) )
-  { a = valPAttVar(*av);
-    registerWakeup(av, a, value PASS_LD);
+  { registerWakeup(av, valPAttVar(*av), value PASS_LD);
   }
 
   if ( (flags&ATT_WAKEBINDS) )
     return;
 
-  Mark(m);		/* must be trailed, even if above last choice */
-  LD->mark_bar = NO_MARK_BAR;
+ if((flags & ATT_UNIFY) || !IS_FLUENT(fbs,no_trail))
+ { Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
   DiscardMark(m);
+ }
+
+ if(is_self)
+    return;
+
+ if(other_fluent && !is_self && IS_FLUENT(fbs,peer_wakeup))
+ { registerWakeup(value, valPAttVar(*value), av PASS_LD);    
+    if (flags & ATT_UNIFY) /* <- We like move in groups of Sixes */
+    { Mark(m);
+      TrailAssignment(value); 
+      DiscardMark(m);
+    }
+ }
+  
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
@@ -1395,6 +1415,161 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   return TRUE;
 }
 
+#ifdef O_FLUENT
+
+/* When a Fluent is created it is most often the first attribute 
+ This is used as a way to hide attributes in term comparison to get 
+ some modules the opertunity to not confuse =@= this happens with 
+  FLUENT_SKIP_HIDDEN(..)
+*/
+Word attrs_after(Word origl, atom_t name ARG_LD)
+{  Word n,l;
+  if(!name) return origl;
+  deRef2(origl,l);
+  for (;;)
+  { if (!isTerm(*l)) return origl;
+    Functor f = valueTerm(*l);
+    if (f->definition != FUNCTOR_att3) return origl;
+    deRef2(&f->arguments[0],n);
+    deRef2(&f->arguments[2],l); 
+    if (*n == name) return l;
+  }
+}
+
+/*
+ Returns the "fbs" attvar property (supposed to be a small int)
+ Ideally fluents will have them at the begining
+*/
+int
+getFluentMode__LD(Word av ARG_LD)
+{ Word found;
+   if (!LD->fluent_vars.fbs_atom || !find_attr(av, LD->fluent_vars.fbs_atom,&found PASS_LD) || !isInteger(*found))
+        return LD->fluent_vars.attvar_default;
+   int value = valInt(*found);
+   if(value==0||IS_FLUENT(value,disabled)) return LD->fluent_vars.attvar_default;
+   if(IS_FLUENT(value,no_inherit) || IS_FLUENT(FLUENT_GLOBALLY,no_inherit)) return(value);
+   return (value | FLUENT_GLOBALLY);
+}
+
+/*
+ called during initPrologStacks from emptyStacks
+ gvars reset there so seemed a good place
+*/
+void setupFluents(ARG1_LD)
+{ LD->fluent_vars.attvar_default = 0;
+  FLUENT_GLOBALLY = 0;
+  LD->fluent_vars.fluent_count = 0;
+  PL_register_atom(LD->fluent_vars.fbs_atom = PL_new_atom("$fbs"));
+}
+
+/*
+ This is schedules a pending Wakeup    
+*/
+int
+scheduleFluent(atom_t method, Word attvar, Word value ARG_LD)
+{
+    static predicate_t pred;
+    wakeup_state wstate;
+    int rc;
+    int fbs = getFluentMode(attvar);
+    assert(fbs==FLUENT_CURRENT);     /* verify the cache might one day be usable */
+
+    bool return_wake = IS_FLUENT(fbs,return_wake);
+    bool nonimmediate = IS_FLUENT(fbs,nonimmediate);
+    if (nonimmediate)
+        registerWakeup(attvar, &method, value PASS_LD);
+
+    if (return_wake)
+    {
+        term_t ex = PL_new_term_ref();
+        rc = foreignWakeup(ex PASS_LD);
+        if (!PL_is_variable(ex)) 
+            PL_throw(ex);
+        if (rc != TRUE)
+            return rc;
+    }
+
+    if (nonimmediate) 
+        return rc;
+
+    /* could do this thru wake up but using call mechinism */
+    if (!pred)
+        pred = _PL_predicate("fluent_hook", 4, "$fbs",
+                             &pred);
+
+    if (!saveWakeup(&wstate, TRUE PASS_LD))
+        return FALSE;
+    /* restoreWakeup should free */
+    term_t av = PL_new_term_refs(4);
+    *valTermRef(av) = method;
+    *valTermRef(av+1) = makeRef(attvar);
+    *valTermRef(av+2) = linkVal(value);
+    int was = FLUENT_GLOBALLY;
+    FLUENT_GLOBALLY |= FLUENT_disabled;
+    rc = PL_call_predicate(NULL, 
+                           PL_Q_PASS_EXCEPTION, pred, av);
+    FLUENT_GLOBALLY = was;
+    if (rc == TRUE)
+    {
+        if (!PL_get_integer(av+3,&rc))
+        {
+            rc = FALSE;
+        }
+    }
+    restoreWakeup(&wstate PASS_LD);
+    return rc;
+}
+
+
+static
+PRED_IMPL("$fluent_default", 4, dfluent_default, 0)
+{ PRED_LD
+    if((!PL_unify_integer(A1,FLUENT_GLOBALLY)||
+        !PL_unify_integer(A3,LD->fluent_vars.attvar_default))) fail;
+    if( !PL_get_integer(A4, &LD->fluent_vars.attvar_default)) 
+        return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, A4));
+    int value;
+    if( !PL_get_integer(A2, &value) ) 
+        return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, A2));
+    /* Uses the check_vmi bit to say that vmi_ok bit is meaningfull or not */
+    if(IS_FLUENT(value,check_vmi)) LD->slow_unify = IS_FLUENT(value,vmi_ok) ? FALSE : TRUE;
+    LD->fluent_vars.fluent_count= IS_FLUENT(value, disabled)?0:1;
+    FLUENT_GLOBALLY = value;
+    succeed;
+}
+
+/* For a heuristic used elsewhere from fluents */
+static
+PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
+{ PRED_LD
+
+	Word v = valTermRef(A1);
+    LocalFrame fr = environment_frame;
+    long l0 = levelFrame(fr)-1;     /* -1: Use my parent as reference */
+
+    int negInfo = -2;
+    { while(isRef(*(v)))
+      { negInfo--;
+        (v) = unRef(*(v)); }}
+
+    if( onStackArea(local, v) ) 
+     { DEBUG(1, Sdprintf("Ok, on local stack\n"));
+        while( fr && fr > (LocalFrame)v )
+            fr = parentFrame(fr);
+        if( fr )
+        { l0 -= levelFrame(fr);
+            return(PL_unify_integer(A2, l0));
+        } else 
+        { DEBUG(1,Sdprintf("Not on local stack\n"));
+          return(PL_unify_integer(A2, -1));
+        }
+    }
+    DEBUG(1,Sdprintf("!onStackArea\n"));
+    return(PL_unify_integer(A2, negInfo));
+    succeed;
+}
+
+#endif /*O_FLUENT*/
 
 		 /*******************************
 		 *	    REGISTRATION	*
@@ -1417,6 +1592,10 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+#ifdef O_FLUENT
+  PRED_DEF("$fluent_default",   4, dfluent_default,    0)
+  PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
+#endif
 EndPredDefs
 
 #endif /*O_ATTVAR*/

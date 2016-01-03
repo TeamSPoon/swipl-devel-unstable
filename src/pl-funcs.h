@@ -38,6 +38,13 @@ COMMON(int)		PL_get_attr__LD(term_t t, term_t a ARG_LD);
 COMMON(int)		on_attvar_chain(Word avp);
 COMMON(Word)		alloc_attvar(ARG1_LD);
 
+#ifdef O_FLUENT
+COMMON(int) getFluentMode__LD(Word av ARG_LD);
+COMMON(void) setupFluents(ARG1_LD);
+COMMON(Word) attrs_after(Word av, atom_t hidden_prop ARG_LD);
+COMMON(int) scheduleFluent(atom_t hookName, Word attvar, Word value ARG_LD);
+#endif
+
 /* pl-gvar.c */
 
 COMMON(void)		destroyGlobalVars();

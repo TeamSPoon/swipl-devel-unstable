@@ -156,6 +156,9 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
+#define O_FLUENT 1
+/* #undef O_FLUENT */
+
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
 #endif
@@ -1997,11 +2000,76 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
-/* assignAttVar() flags */
-#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
-#define ATT_WAKEBINDS   0x1			/* bindConst() */
-#define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
+#define ATT_WAKEBINDS   0x1
+#define ATT_ASSIGNONLY  0x2
+#define ATT_UNIFY       0x4
 
+
+		 /*******************************
+		 *	      FLUENTS           	*
+		 *******************************/
+
+#ifdef O_FLUENT
+
+/* fbs = 20 FluentBitS: these bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
+#define FLUENT_no_bind              0x0001 /* C should let wakeup/1 do binding */
+#define FLUENT_no_wakeup            0x0002 /* C should skip scheduling a $wakeup/1  */
+#define FLUENT_mid_unify            0x0004 /* do_unify() has called unify */
+#define FLUENT_peer_wakeup          0x0008 /* attempt to schedule a wakeup on other attvar peers we unify with */
+#define FLUENT_peer_trail           0x0010 /* Those scheduled peers should trail assignment */
+#define FLUENT_on_unify_keep_vars   0x0020 /* whenever unifying with a plain variable send the variable to $wakeup/1 as the value */
+#define FLUENT_unify                0x0020 /* SAME AS ABOVE used in do_unify()*/
+#define FLUENT_on_unify_replace__NC 0x0040 /* UNUSED unify replace */
+#define FLUENT_no_trail             0x0080 /* Do not bother to trail the previous value */
+
+/* schedule wakeup and can_unify for remote remote terms */
+#define FLUENT_colon_eq         0x0100 /* override(unify_vp) like on_unify_keep_vars except happens in unify_vp() */
+#define FLUENT_bind             0x0200 /* override(bind_const) like on_unify_keep_vars except happens in bindConst() */
+#define FLUENT_strict_equal     0x0400 /* Allows Fluents to implement their own "structurally equivalence" */
+#define FLUENT_at_equals        0x0800 /* Allows Fluents to implement their own "variant"-ness */
+#define FLUENT_no_inherit       0x1000 /* This Fluent doest not inherit from "fluent_default" flags (otherwise they are or-ed) */
+#define FLUENT_copy_term__NC    0x2000 /* UNUSED override(copy_term) would allow Fluents to implement their own copy.. (for constants like EmptySinkFluents) */
+#define FLUENT_compare__NC      0x4000 /* UNUSED override(compare) would allow Fluents to decide their non-standard ordering against each other */
+#define FLUENT_disabled         0x8000 /* Treat this Fluent as a plain attributed variable (allow the system to operate recusively.. implies no_inherit)  */
+#define FLUENT_check_vmi      0x010000 /* LD->slow_unify might need tp be true for us to work (mostly for testing) */
+#define FLUENT_vmi_ok         0x030000 /* LD->slow_unify is/was not needed */
+#define FLUENT_return_wake    0x040000 /* run foreignWakeup before returning */
+#define FLUENT_nonimmediate   0x080000 /* run immediatly */
+#define FLUENT_spy            0x100000 /* spy on this fluent  */
+#define FLUENT_debug          0x100000 /* spy on this fluent  */
+
+#define IS_FLUENT_OVERRIDE(why,t1,t2) \
+ (((IS_FLUENT_VAR( why , t2) ? scheduleFluent(ATOM_ ## why, t2, t1 PASS_LD) : \
+   (IS_FLUENT_VAR( why , t1) ? scheduleFluent(ATOM_ ## why, t1, t2 PASS_LD) : 0))))
+
+#define FLUENT_CHECK_OVERRIDE(why,t1,t2) {int ret = IS_FLUENT_OVERRIDE(why,t1,t2); if(ret==1) return ret;}
+
+#define IS_FLUENT(modebits, option) ((modebits & FLUENT_ ## option) != 0)
+#define IS_FLUENT_VAR(option,var) (((tag(*var) == TAG_ATTVAR && LD->fluent_vars.fluent_count > 0 && IS_FLUENT((FLUENT_CURRENT=getFluentMode(var)),option))))
+
+#define FLUENT_GLOBALLY LD->fluent_vars.fluent_default
+#define FLUENT_CURRENT LD->fluent_vars.fluent_current
+
+/*
+ Only when "$fbs" is present as an attribute:
+   A feature for prolog programmers who want to hide their attributes from value 
+  based term comparisons like "=@=" and "=="  
+  They do so by put_attrs/2 their attrbute "imhiden" as parent of "fbs" like:
+      att(imhiden,value,att('$fbs',0,VisibleAtts)) to hide them. 
+  ( "$fbs" attribute is also hidden. )
+  */
+#define FLUENT_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,LD->fluent_vars.fbs_atom PASS_LD)
+
+#else /*!O_FLUENT*/
+
+#define IS_FLUENT(modebits, option) (0)
+#define IS_FLUENT_VAR(option,var) (0)
+#define IS_FLUENT_OVERRIDE(why,t1,t2) (0)
+#define FLUENT_CHECK_OVERRIDE(why,t1,t2)
+#define FLUENT_SKIP_HIDDEN(ValPAttVar) ValPAttVar
+
+
+#endif
 
 		 /*******************************
 		 *	      WAKEUP		*

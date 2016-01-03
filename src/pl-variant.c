@@ -229,6 +229,8 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     wl = *l;
     wr = *r;
 
+    FLUENT_CHECK_OVERRIDE(strict_equal,l,r);
+
     if ( tag(wl) != tag(wr) )
       return FALSE;
 
@@ -239,8 +241,8 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
-      r = valPAttVar(wr);
+    { l = FLUENT_SKIP_HIDDEN(valPAttVar(wl));
+      r = FLUENT_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -312,6 +314,8 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
    deRef(l);
    deRef(r);
 
+   FLUENT_CHECK_OVERRIDE(at_equals,l,r);
+
    wl = *l;
    wr = *r;
 
@@ -346,8 +350,8 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
-      r = valPAttVar(wr);
+    { l = FLUENT_SKIP_HIDDEN(valPAttVar(wl));
+      r = FLUENT_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -424,6 +428,9 @@ PRED_IMPL("=@=", 2, variant, 0)
 
   if ( *p1 == *p2 )                     /* same term */
     return TRUE;
+
+  FLUENT_CHECK_OVERRIDE(at_equals,p1,p2);
+
   if ( tag(*p1) != tag(*p2) )           /* different type */
     return FALSE;
 again:
@@ -431,8 +438,9 @@ again:
   { case TAG_VAR:
       return TRUE;
     case TAG_ATTVAR:
-      p1 = valPAttVar(*p1);
-      p2 = valPAttVar(*p2);
+      p1 = FLUENT_SKIP_HIDDEN(valPAttVar(*p1));
+      p2 = FLUENT_SKIP_HIDDEN(valPAttVar(*p2));
+
       goto again;
     case TAG_ATOM:
       return FALSE;

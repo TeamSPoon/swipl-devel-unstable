@@ -414,6 +414,16 @@ struct PL_local_data
   } attvar;
 #endif
 
+#ifdef O_FLUENT
+  struct {
+    atom_t fbs_atom;    /* the atom_t 'fbs' used as attribute module by system */
+    int attvar_default; /* Default flags for attvars in system almost always = 0 */
+    int fluent_default; /* Global default flags for fluent system Default == 0 */
+    int fluent_current; /* flags for current fluent () */
+	int fluent_count;   /* 0 == skip all fluent based code (performance comparisons testing and when system is not being used) */
+  } fluent_vars;
+#endif
+
   struct
   { term_t	dummy;			/* see trimStacks() */
   } trim;

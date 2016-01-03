@@ -313,7 +313,8 @@ bindConst__LD(Word p, word c ARG_LD)
 
 #ifdef O_ATTVAR
   if ( isVar(*p) )
-  { *p = (c);
+  { if(IS_FLUENT_OVERRIDE(bind,p,&(c))) return;
+    *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
