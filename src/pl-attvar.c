@@ -199,6 +199,15 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   if ( (flags&ATT_WAKEBINDS) )
     return;
 
+ /*
+  This condition intends to state: 
+     Dont trail this if stop_fluent/1 has been called 
+     However, if called from do_unify() trail this anyways regardless
+
+      (since this needs trailed to be for some code like =/2 to 
+       do it's unbinding)
+     
+  */
  if((flags & ATT_UNIFY) || !IS_FLUENT(fbs,no_trail))
  { Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
@@ -210,7 +219,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
  if(other_fluent && !is_self && IS_FLUENT(fbs,peer_wakeup))
  { registerWakeup(value, valPAttVar(*value), av PASS_LD);    
-    if (flags & ATT_UNIFY) /* <- We like move in groups of Sixes */
+    if (flags & ATT_UNIFY) /* <- Move in groups of 3(*2)s for unifiable/3 */
     { Mark(m);
       TrailAssignment(value); 
       DiscardMark(m);
@@ -223,7 +232,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     *av = makeRef(value);
   } else if ( isVar(*value) )
   { DEBUG(1, Sdprintf("Assigning attvar with plain var\n"));
-    *av = makeRef(value);			/* JW: Does this happen? */
+  *av = makeRef(value);			/* JW: Does this happen? 
+                                  DM: presently '$attvar_assign'/2 "can" do it, simular to problems described in demo_nb_linkval/0.
+                                    the semantics on backtracking to a point before creating the Var are poorly defined.
+                                    But will it do it?  No, because the code (and in Fluent as well) that is 'capable'  
+                                    never needs to untrail the Var before its creation */
   } else
     *av = *value;
 
