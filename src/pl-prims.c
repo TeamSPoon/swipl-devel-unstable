@@ -350,32 +350,33 @@ out_fail:
   return rc;
 }
 
-/* This adds wakeups to attvars rather than binding them */
-static int
-raw_unify_ptrs(Word t1, Word t2, int unbind_attvars  ARG_LD)
-{ int rc;
-  Word old_gTop = gTop;
-  TrailEntry mt = tTop;
 
-  switch(LD->prolog_flag.occurs_check)
+static int
+raw_unify_ptrs_no_unbind(Word t1, Word t2  ARG_LD)
+{ switch( LD->prolog_flag.occurs_check )
   { case OCCURS_CHECK_FALSE:
-      rc = do_unify(t1, t2 PASS_LD);
-      break;
+      return do_unify(t1, t2 PASS_LD);
     case OCCURS_CHECK_TRUE:
-      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
       break;
     case OCCURS_CHECK_ERROR:
-      rc = unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
       break;
     default:
       assert(0);
       fail;
   }
+}
 
-  if (!unbind_attvars)
-  {
-      return rc;
-  }
+/* This adds wakeups to attvars rather than binding them */
+static int
+raw_unify_ptrs(Word t1, Word t2 ARG_LD)
+{ int rc;
+  Word old_gTop = gTop;
+  TrailEntry mt = tTop;
+
+  rc = raw_unify_ptrs_no_unbind(t1, t2 PASS_LD);
+
   /* Any attvar wakeup terms pushed to the global stack? */
   if ( rc == TRUE && old_gTop != gTop )
   { TrailEntry tt = tTop;
@@ -450,7 +451,7 @@ unify_ptrs(Word t1, Word t2, int flags ARG_LD)
 { for(;;)
   { int rc;
 
-    rc = raw_unify_ptrs(t1, t2, TRUE/* = please unbind_attvars*/  PASS_LD);
+    rc = raw_unify_ptrs(t1, t2 PASS_LD);
     if ( rc >= 0 )
       return rc;
 
@@ -3268,7 +3269,7 @@ unify_all_trail_ptrs(Word t1, Word t2, mark *m ARG_LD)
 
     Mark(*m);
     LD->mark_bar = NO_MARK_BAR;
-    rc = raw_unify_ptrs(t1, t2, FALSE/*Keep attvars bound*/ PASS_LD);
+    rc = raw_unify_ptrs_no_unbind(t1, t2 PASS_LD);
     if ( rc == TRUE )			/* Terms unified */
     { return rc;
     } else if ( rc == FALSE )		/* Terms did not unify */
@@ -3372,7 +3373,7 @@ retry:
 
 	if ( isTrailVal(p) )
 	{ assert(isAttVar(trailVal(p)));
- 
+
 	  tt--;			/* re-insert the attvar */
 	  *tt->address = trailVal(p);
 
