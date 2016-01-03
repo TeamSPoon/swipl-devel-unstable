@@ -1994,12 +1994,14 @@ typedef struct
 	}
 
 		 /*******************************
-		 *	      ATTVAR ASSIONMENT		*
+		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
-#define ATT_WAKEBINDS   0x1
-#define ATT_ASSIGNONLY  0x2
-#define ATT_UNIFY       0x4
+/* assignAttVar() flags */
+#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
+#define ATT_WAKEBINDS   0x1			/* bindConst() */
+#define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
+
 
 		 /*******************************
 		 *	      WAKEUP		*
