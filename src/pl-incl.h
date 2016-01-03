@@ -2022,9 +2022,12 @@ typedef struct
 #define FLUENT_on_unify_replace__NC 0x0040 /* UNUSED unify replace */
 #define FLUENT_no_trail             0x0080 /* Do not bother to trail the previous value */
 
+ /* The implementation impact of the Fluent patch is to allow the attvar interface
+         to "marry off" plain prolog variables to bindings of its choosing.
+         This means it needs that variable as param value of the wakeup */
 /* schedule wakeup and can_unify for remote remote terms */
-#define FLUENT_colon_eq         0x0100 /* override(unify_vp) like on_unify_keep_vars except happens in unify_vp() */
-#define FLUENT_bind             0x0200 /* override(bind_const) like on_unify_keep_vars except happens in bindConst() */
+#define FLUENT_colon_eq         0x0100 /* prioritize attvars over plain vars in unify_vp() like on_unify_keep_vars  */
+#define FLUENT_bind             0x0200 /* as above but in (bind_const) like on_unify_keep_vars except happens in bindConst() */
 #define FLUENT_strict_equal     0x0400 /* Allows Fluents to implement their own "structurally equivalence" */
 #define FLUENT_at_equals        0x0800 /* Allows Fluents to implement their own "variant"-ness */
 #define FLUENT_no_inherit       0x1000 /* This Fluent doest not inherit from "fluent_default" flags (otherwise they are or-ed) */
@@ -2034,7 +2037,7 @@ typedef struct
 #define FLUENT_check_vmi      0x010000 /* LD->slow_unify might need tp be true for us to work (mostly for testing) */
 #define FLUENT_vmi_ok         0x030000 /* LD->slow_unify is/was not needed */
 #define FLUENT_return_wake    0x040000 /* run foreignWakeup before returning */
-#define FLUENT_nonimmediate   0x080000 /* run immediatly */
+#define FLUENT_nonimmediate   0x080000 /* run from registerWakeup */
 #define FLUENT_spy            0x100000 /* spy on this fluent  */
 #define FLUENT_debug          0x100000 /* spy on this fluent  */
 
