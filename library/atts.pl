@@ -66,11 +66,9 @@ new_attribute(At,Mod) :- (protobute(Mod:At) -> true; assertz(protobute(Mod:At)))
 % ?- m1:put_atts(Var,+a(x1,y1)).
 % put_attr(Var, m1, [a(x1, y1)]).
 %
-% ?- m1:put_atts(V,+a(x1,y1)),m1:put_atts(V,+b(x1,y1)),rtrace(m1:put_atts(V,-a(_,_))),m2:put_atts(V,+b(x2,y2)).
+% ?- m1:put_atts(V,+a(x1,y1)),m1:put_atts(V,+b(x1,y1)),m1:put_atts(V,-a(_,_)),m2:put_atts(V,+b(x2,y2)).
 % put_attr(V, m1, [b(x1, y1)]),
 % put_attr(V, m2, [b(x2, y2)]) .
-%
-
 
 put_atts(Var,M:Atts):- at_put(Var,M,Atts).
 
