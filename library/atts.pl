@@ -52,6 +52,15 @@
 
 :- dynamic protobute/1.
 
+%%    attribute(+AttributeSpec).
+%
+% :- attribute AttributeSpec,..., AttributeSpec.
+%
+% where each AttributeSpec has the form Functor/Arity.
+% Having declared some attribute names, these attributes can be added, 
+% updated and deleted from unbound variables using the following two predicates 
+%(get_atts/2 and put_atts/2) defined in the module atts. 
+% For each declared attribute name, any variable can have at most one such attribute (initially it has none).
 'attribute'(M:V):- new_attribute(V,M),!.
 
 new_attribute(V,M) :- var(V), !, throw(error(instantiation_error,'attribute'(M:V))).
@@ -62,6 +71,23 @@ new_attribute(Na/Ar,Mod) :- functor(At,Na,Ar), (protobute(Mod:At) -> true; asser
 new_attribute(Mod:ANY,_) :- new_attribute(ANY,Mod).
 new_attribute(At,Mod) :- (protobute(Mod:At) -> true; assertz(protobute(Mod:At))).
 
+%%    put_atts(+Var, +AccessSpec)
+%
+% Sets the attributes of Var according to AccessSpec.
+%
+% Non-variable terms in Var cause a type error. 
+%  if curent_prolog_flag(atts_compat,xsb).
+%
+% The effect of put_atts/2 are undone on backtracking. 
+% (prefix + may be dropped for convenience).
+% The prefixes of AccessSpec have the following meaning:
+%  +(Attribute):
+%     The corresponding actual attribute is set to Attribute. If the actual attribute was already present, it is simply replaced.
+%  -(Attribute):
+%     The corresponding actual attribute is removed. If the actual attribute is already absent, nothing happens.
+%
+%  Should we ignore The arguments of Attribute, only the name and arity are relevant? Currently coded to
+%
 % ==
 % ?- m1:put_atts(Var,+a(x1,y1)).
 % put_attr(Var, m1, [a(x1, y1)]).
@@ -73,6 +99,26 @@ new_attribute(At,Mod) :- (protobute(Mod:At) -> true; assertz(protobute(Mod:At)))
 put_atts(Var,M:Atts):- at_put(Var,M,Atts).
 
 
+%%    get_atts(+Var, ?AccessSpec) 
+%
+% Gets the attributes of Var according to AccessSpec. 
+%  If AccessSpec is unbound, it will be bound to a list of all set attributes of Var. 
+%
+% Non-variable terms in Var cause a type error. 
+%  if curent_prolog_flag(atts_compat,xsb).
+%
+% AccessSpec is either +(Attribute), -(Attribute), or a list of such 
+% (prefix + may be dropped for convenience).
+%
+% The prefixes in the AccessSpec have the following meaning:
+%  +(Attribute):
+%     The corresponding actual attribute must be present and is unified with Attribute.
+%  -(Attribute):
+%     The corresponding actual attribute must be absent.
+%
+%  Should we ignore The arguments of Attribute are ignored, only the name and arity are relevant?
+%   yes = XSB_compat, no = less control and perf
+%
 % ==
 % ?- m1:put_atts(Var,+a(x1,y1)),m1:get_atts(Var,-missing(x1,y1)).
 % put_attr(Var, m1, [a(x1, y1)]).
@@ -83,8 +129,8 @@ put_atts(Var,M:Atts):- at_put(Var,M,Atts).
 % ==
 % TODO/QUESTION  user:get_atts(Var,Atts) ->  ??? only attributes in 'user' or all attributes??? Attr=[m1:...]
 
-
 get_atts(Var,M:Atts):- at_get(Var,M,Atts).
+
 
 at_exist(_A,_At):- current_prolog_flag(atts_declared,auto),!.
 at_exist(M,At):- \+ \+ assertion(protobute(M:At)).

@@ -235,8 +235,9 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   *av = makeRef(value);			/* JW: Does this happen? 
                                   DM: presently '$attvar_assign'/2 "can" do it, simular to problems described in demo_nb_linkval/0.
                                     the semantics on backtracking to a point before creating the Var are poorly defined.
-                                    But will it do it?  No, because the code (and in Fluent as well) that is 'capable'  
-                                    never needs to untrail the Var before its creation */
+                                    But will it do it?  No, because the code (and in Fluent system as well) though 'capable',  
+                                    never needs to untrail to before the Var's creation because the attvar will have been undone 
+                                      from holding that reference by the time we untrail the plain var*/
   } else
     *av = *value;
 
