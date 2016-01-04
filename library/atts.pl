@@ -41,13 +41,13 @@
 % Users might need to read docs to decided they rather have auto?
 :- set_prolog_flag(atts_declared,true).
 % What is all this fuss about?
-% We need some answer to what happens when ?- user:put_atts(Var,-(a(1))).
-% if a/1 is declared in one module at least we have some sense
+% We need some answer to what happens when ?- user:put_atts(Var,+a(1)).
+% if attibute a/1 is declared in one module at least we have some sense
 % Still doesnt solve the problem when if a/1 is declared in several modules
 % Should we use the import_module/2 Dag?
 % Still doesnt solve the problem when if a/1 is declared only in one unseen module!
-% Though every option is simple to implement, it should be left only to users to decide with flags/options
-% and not those editing these files.  We should only have say for the default.
+% Though every option is simple to implement, it should be left to programmers to decide with flags/options
+% and not left just to those editing these files.  Still we need to pick a default.
 
 
 :- dynamic protobute/1.
@@ -71,6 +71,7 @@ new_attribute(At,Mod) :- (protobute(Mod:At) -> true; assertz(protobute(Mod:At)))
 % put_attr(V, m2, [b(x2, y2)]) .
 
 put_atts(Var,M:Atts):- at_put(Var,M,Atts).
+
 
 % ==
 % ?- m1:put_atts(Var,+a(x1,y1)),m1:get_atts(Var,-missing(x1,y1)).
