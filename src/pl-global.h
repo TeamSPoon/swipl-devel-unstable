@@ -414,14 +414,16 @@ struct PL_local_data
   } attvar;
 #endif
 
-#ifdef O_FLUENT
+#ifdef O_MATTS
   struct {
     atom_t fbs_atom;    /* the atom_t 'fbs' used as attribute module by system */
+    atom_t compare_atom;
+    // atom_t _atom;
     int attvar_default; /* Default flags for attvars in system almost always = 0 */
-    int fluent_default; /* Global default flags for fluent system Default == 0 */
-    int fluent_current; /* flags for current fluent () */
-	int fluent_count;   /* 0 == skip all fluent based code (performance comparisons testing and when system is not being used) */
-  } fluent_vars;
+    int matts_default; /* Global default flags for matts system Default == 0 */
+    int matts_current; /* flags for current matts () */
+	int matts_count;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+  } meta_atts;
 #endif
 
   struct

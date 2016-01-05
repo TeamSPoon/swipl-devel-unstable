@@ -156,8 +156,8 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
-#define O_FLUENT 1
-/* #undef O_FLUENT */
+#define O_MATTS 1
+/* #undef O_MATTS */
 
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
@@ -2006,52 +2006,52 @@ typedef struct
 
 
 		 /*******************************
-		 *	      FLUENTS           	*
+		 *	      MATTSS           	*
 		 *******************************/
 
-#ifdef O_FLUENT
+#ifdef O_MATTS
 
-/* fbs = 20 FluentBitS: these bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
-#define FLUENT_no_bind              0x0001 /* C should let wakeup/1 do binding */
-#define FLUENT_no_wakeup            0x0002 /* C should skip scheduling a $wakeup/1  */
-#define FLUENT_mid_unify            0x0004 /* do_unify() has called unify */
-#define FLUENT_peer_wakeup          0x0008 /* attempt to schedule a wakeup on other attvar peers we unify with */
-#define FLUENT_peer_trail           0x0010 /* Those scheduled peers should trail assignment */
-#define FLUENT_on_unify_keep_vars   0x0020 /* whenever unifying with a plain variable send the variable to $wakeup/1 as the value */
-#define FLUENT_unify                0x0020 /* SAME AS ABOVE used in do_unify()*/
-#define FLUENT_on_unify_replace__NC 0x0040 /* UNUSED unify replace */
-#define FLUENT_no_trail             0x0080 /* Do not bother to trail the previous value */
+/* fbs = 20 MetaAttsBitS: these bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
+#define MATTS_no_bind              0x0001 /* C should let wakeup/1 do binding */
+#define MATTS_no_wakeup            0x0002 /* C should skip scheduling a $wakeup/1  */
+#define MATTS_mid_unify            0x0004 /* do_unify() has called unify */
+#define MATTS_peer_wakeup          0x0008 /* attempt to schedule a wakeup on other attvar peers we unify with */
+#define MATTS_peer_trail           0x0010 /* Those scheduled peers should trail assignment */
+#define MATTS_on_unify_keep_vars   0x0020 /* whenever unifying with a plain variable send the variable to $wakeup/1 as the value */
+#define MATTS_unify                0x0020 /* SAME AS ABOVE used in do_unify()*/
+#define MATTS_on_unify_replace__NC 0x0040 /* UNUSED unify replace */
+#define MATTS_no_trail             0x0080 /* Do not bother to trail the previous value */
 
- /* The implementation impact of the Fluent patch is to allow the attvar interface
+ /* The implementation impact of the MetaAtts patch is to allow the attvar interface
          to "marry off" plain prolog variables to bindings of its choosing.
          This means it needs that variable as param value of the wakeup */
 /* schedule wakeup and can_unify for remote remote terms */
-#define FLUENT_colon_eq         0x0100 /* prioritize attvars over plain vars in unify_vp() like on_unify_keep_vars  */
-#define FLUENT_bind             0x0200 /* as above but in (bind_const) like on_unify_keep_vars except happens in bindConst() */
-#define FLUENT_strict_equal     0x0400 /* Allows Fluents to implement their own "structurally equivalence" */
-#define FLUENT_at_equals        0x0800 /* Allows Fluents to implement their own "variant"-ness */
-#define FLUENT_no_inherit       0x1000 /* This Fluent doest not inherit from "fluent_default" flags (otherwise they are or-ed) */
-#define FLUENT_copy_term__NC    0x2000 /* UNUSED override(copy_term) would allow Fluents to implement their own copy.. (for constants like EmptySinkFluents) */
-#define FLUENT_compare__NC      0x4000 /* UNUSED override(compare) would allow Fluents to decide their non-standard ordering against each other */
-#define FLUENT_disabled         0x8000 /* Treat this Fluent as a plain attributed variable (allow the system to operate recusively.. implies no_inherit)  */
-#define FLUENT_check_vmi      0x010000 /* LD->slow_unify might need tp be true for us to work (mostly for testing) */
-#define FLUENT_vmi_ok         0x030000 /* LD->slow_unify is/was not needed */
-#define FLUENT_return_wake    0x040000 /* run foreignWakeup before returning */
-#define FLUENT_nonimmediate   0x080000 /* run from registerWakeup */
-#define FLUENT_spy            0x100000 /* spy on this fluent  */
-#define FLUENT_debug          0x100000 /* spy on this fluent  */
+#define MATTS_colon_eq         0x0100 /* prioritize attvars over plain vars in unify_vp() like on_unify_keep_vars  */
+#define MATTS_bind             0x0200 /* as above but in (bind_const) like on_unify_keep_vars except happens in bindConst() */
+#define MATTS_strict_equal     0x0400 /* strict_equal Allows MetaAttss to implement their own 'structurally equivalence' calling isometric/2 */
+#define MATTS_at_equals        0x0800 /* Allows MetaAttss to implement their own 'variant'-ness calling instance_handler/3 */
+#define MATTS_no_inherit       0x1000 /* This MetaAtts doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define MATTS_copy_term        0x2000 /* copy_handler/2 See http://eclipseclp.org/doc/userman/umsroot100.html#metahandlers attvars to implement their own copy.. (for constants like EmptySinkMetaAttss) */
+#define MATTS_compare          0x4000 /* instance_handler/3 See the above URL override(compare) with would allow MetaAttss to decide their non-standard ordering against each other */
+#define MATTS_disabled         0x8000 /* Treat this MetaAtts as a plain attributed variable (allow the system to operate recusively.. implies no_inherit)  */
+#define MATTS_check_vmi      0x010000 /* LD->slow_unify might need tp be true for us to work (mostly for testing) */
+#define MATTS_vmi_ok         0x030000 /* LD->slow_unify is/was not needed */
+#define MATTS_return_wake    0x040000 /* run foreignWakeup before returning */
+#define MATTS_nonimmediate   0x080000 /* run from registerWakeup */
+#define MATTS_spy            0x100000 /* spy on this matts  */
+#define MATTS_debug          0x100000 /* spy on this matts  */
 
-#define IS_FLUENT_OVERRIDE(why,t1,t2) \
- (((IS_FLUENT_VAR( why , t2) ? scheduleFluent(ATOM_ ## why, t2, t1 PASS_LD) : \
-   (IS_FLUENT_VAR( why , t1) ? scheduleFluent(ATOM_ ## why, t1, t2 PASS_LD) : 0))))
+#define IS_MATTS_OVERRIDE(what,t1,t2,rc) \
+ (((IS_MATTS_VAR( what , t2) ? scheduleMetaAtts(ATOM_ ## what, t2, t1,rc PASS_LD) : \
+   (IS_MATTS_VAR( what , t1) ? scheduleMetaAtts(ATOM_ ## what, t1, t2,rc PASS_LD) : 0))))
 
-#define FLUENT_CHECK_OVERRIDE(why,t1,t2) {int ret = IS_FLUENT_OVERRIDE(why,t1,t2); if(ret==1) return ret;}
+#define MATTS_CHECK_OVERRIDE(what,t1,t2) {int ret; if(IS_MATTS_OVERRIDE(what,t1,t2,&ret)) return ret;}
 
-#define IS_FLUENT(modebits, option) ((modebits & FLUENT_ ## option) != 0)
-#define IS_FLUENT_VAR(option,var) (((tag(*var) == TAG_ATTVAR && LD->fluent_vars.fluent_count > 0 && IS_FLUENT((FLUENT_CURRENT=getFluentMode(var)),option))))
+#define IS_MATTS(modebits, option) ((modebits & MATTS_ ## option) != 0)
+#define IS_MATTS_VAR(option,var) (((tag(*var) == TAG_ATTVAR && LD->meta_atts.matts_count > 0 && IS_MATTS((MATTS_CURRENT=getMAttsFlags(var)),option))))
 
-#define FLUENT_GLOBALLY LD->fluent_vars.fluent_default
-#define FLUENT_CURRENT LD->fluent_vars.fluent_current
+#define MATTS_GLOBALLY LD->meta_atts.matts_default
+#define MATTS_CURRENT LD->meta_atts.matts_current
 
 /*
  Only when "$fbs" is present as an attribute:
@@ -2061,15 +2061,15 @@ typedef struct
       att(imhiden,value,att('$fbs',0,VisibleAtts)) to hide them. 
   ( "$fbs" attribute is also hidden. )
   */
-#define FLUENT_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,LD->fluent_vars.fbs_atom PASS_LD)
+#define MATTS_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,LD->meta_atts.fbs_atom PASS_LD)
 
-#else /*!O_FLUENT*/
+#else /*!O_MATTS*/
 
-#define IS_FLUENT(modebits, option) (0)
-#define IS_FLUENT_VAR(option,var) (0)
-#define IS_FLUENT_OVERRIDE(why,t1,t2) (0)
-#define FLUENT_CHECK_OVERRIDE(why,t1,t2)
-#define FLUENT_SKIP_HIDDEN(ValPAttVar) ValPAttVar
+#define IS_MATTS(modebits, option) (0)
+#define IS_MATTS_VAR(option,var) (0)
+#define IS_MATTS_OVERRIDE(what,t1,t2,rc) (0)
+#define MATTS_CHECK_OVERRIDE(what,t1,t2,rc)
+#define MATTS_SKIP_HIDDEN(ValPAttVar) ValPAttVar
 
 
 #endif

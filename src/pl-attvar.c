@@ -175,22 +175,22 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-  /* ifdef O_FLUENT would be too confusing here */
+  /* ifdef O_MATTS would be too confusing here */
 
   bool is_self = FALSE;
-  bool other_fluent = FALSE;
+  bool other_matts = FALSE;
   if ( isAttVar(*value) )
   { if ( value > av ) /* newest first */
     { assignAttVar(value,av,flags PASS_LD);
       return;
     } else if ( av == value ) 
         is_self = TRUE;
-    other_fluent = TRUE;
+    other_matts = TRUE;
   }
 
-  int fbs = getFluentMode(av);
-  if(IS_FLUENT(fbs,no_bind)) flags |= ATT_WAKEBINDS;
-  if(IS_FLUENT(fbs,no_wakeup)) flags |= ATT_ASSIGNONLY;
+  int fbs = getMAttsFlags(av);
+  if(IS_MATTS(fbs,no_bind)) flags |= ATT_WAKEBINDS;
+  if(IS_MATTS(fbs,no_wakeup)) flags |= ATT_ASSIGNONLY;
 
   if( !(flags & ATT_ASSIGNONLY) )
   { registerWakeup(av, valPAttVar(*av), value PASS_LD);
@@ -201,14 +201,14 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
  /*
   This condition intends to state: 
-     Dont trail this if stop_fluent/1 has been called 
+     Dont trail this if stop_matts/1 has been called 
      However, if called from do_unify() trail this anyways regardless
 
       (since this needs trailed to be for some code like =/2 to 
        do it's unbinding)
      
   */
- if((flags & ATT_UNIFY) || !IS_FLUENT(fbs,no_trail))
+ if((flags & ATT_UNIFY) || !IS_MATTS(fbs,no_trail))
  { Mark(m);		/* must be trailed, even if above last choice */
   TrailAssignment(av);
   DiscardMark(m);
@@ -217,7 +217,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
  if(is_self)
     return;
 
- if(other_fluent && !is_self && IS_FLUENT(fbs,peer_wakeup))
+ if(other_matts && !is_self && IS_MATTS(fbs,peer_wakeup))
  { registerWakeup(value, valPAttVar(*value), av PASS_LD);    
     if (flags & ATT_UNIFY) /* <- Move in groups of 3(*2)s for unifiable/3 */
     { Mark(m);
@@ -235,7 +235,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   *av = makeRef(value);			/* JW: Does this happen? 
                                   DM: presently '$attvar_assign'/2 "can" do it, simular to problems described in demo_nb_linkval/0.
                                     the semantics on backtracking to a point before creating the Var are poorly defined.
-                                    But will it do it?  No, because the code (and in Fluent system as well) though 'capable',  
+                                    But will it do it?  No, because the code (and in MetaAtts system as well) though 'capable',  
                                     never needs to untrail to before the Var's creation because the attvar will have been undone 
                                       from holding that reference by the time we untrail the plain var*/
   } else
@@ -1429,12 +1429,12 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   return TRUE;
 }
 
-#ifdef O_FLUENT
+#ifdef O_MATTS
 
-/* When a Fluent is created it is most often the first attribute 
+/* When a MetaAtts is created it is most often the first attribute 
  This is used as a way to hide attributes in term comparison to get 
  some modules the opertunity to not confuse =@= this happens with 
-  FLUENT_SKIP_HIDDEN(..)
+  MATTS_SKIP_HIDDEN(..)
 */
 Word attrs_after(Word origl, atom_t name ARG_LD)
 {  Word n,l;
@@ -1452,44 +1452,50 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 
 /*
  Returns the "fbs" attvar property (supposed to be a small int)
- Ideally fluents will have them at the begining
+ Ideally mattss will have them at the begining
 */
 int
-getFluentMode__LD(Word av ARG_LD)
+getMAttsFlags__LD(Word av ARG_LD)
 { Word found;
-   if (!LD->fluent_vars.fbs_atom || !find_attr(av, LD->fluent_vars.fbs_atom,&found PASS_LD) || !isInteger(*found))
-        return LD->fluent_vars.attvar_default;
+   if (!LD->meta_atts.fbs_atom || !find_attr(av, LD->meta_atts.fbs_atom,&found PASS_LD) || !isInteger(*found))
+        return LD->meta_atts.attvar_default;
    int value = valInt(*found);
-   if(value==0||IS_FLUENT(value,disabled)) return LD->fluent_vars.attvar_default;
-   if(IS_FLUENT(value,no_inherit) || IS_FLUENT(FLUENT_GLOBALLY,no_inherit)) return(value);
-   return (value | FLUENT_GLOBALLY);
+   if(value==0||IS_MATTS(value,disabled)) return LD->meta_atts.attvar_default;
+   if(IS_MATTS(value,no_inherit) || IS_MATTS(MATTS_GLOBALLY,no_inherit)) return(value);
+   return (value | MATTS_GLOBALLY);
 }
 
 /*
  called during initPrologStacks from emptyStacks
  gvars reset there so seemed a good place
 */
-void setupFluents(ARG1_LD)
-{ LD->fluent_vars.attvar_default = 0;
-  FLUENT_GLOBALLY = 0;
-  LD->fluent_vars.fluent_count = 0;
-  PL_register_atom(LD->fluent_vars.fbs_atom = PL_new_atom("$fbs"));
+void setupMAtts(ARG1_LD)
+{ LD->meta_atts.attvar_default = 0;
+  MATTS_GLOBALLY = 0;
+  LD->meta_atts.matts_count = 0;
+  PL_register_atom(LD->meta_atts.fbs_atom = PL_new_atom("$matts"));
+  PL_register_atom(LD->meta_atts.compare_atom = PL_new_atom("compare"));
 }
 
 /*
- This is schedules a pending Wakeup    
+ This is runs a meta_attribute hook
+
+ Returns TRUE if a hook was implemetented 
+
+ retresult is the hooks return result
+
 */
 int
-scheduleFluent(atom_t method, Word attvar, Word value ARG_LD)
+scheduleMetaAtts(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 {
     static predicate_t pred;
     wakeup_state wstate;
     int rc;
-    int fbs = getFluentMode(attvar);
-    assert(fbs==FLUENT_CURRENT);     /* verify the cache might one day be usable */
+    int fbs = getMAttsFlags(attvar);
+    assert(fbs==MATTS_CURRENT);     /* verify the cache might one day be usable */
 
-    bool return_wake = IS_FLUENT(fbs,return_wake);
-    bool nonimmediate = IS_FLUENT(fbs,nonimmediate);
+    bool return_wake = IS_MATTS(fbs,return_wake);
+    bool nonimmediate = IS_MATTS(fbs,nonimmediate);
     if (nonimmediate)
         registerWakeup(attvar, &method, value PASS_LD);
 
@@ -1499,16 +1505,23 @@ scheduleFluent(atom_t method, Word attvar, Word value ARG_LD)
         rc = foreignWakeup(ex PASS_LD);
         if (!PL_is_variable(ex)) 
             PL_throw(ex);
-        if (rc != TRUE)
-            return rc;
+        if (rc != TRUE) 
+        { if(retresult) 
+            *retresult = rc;
+        /* propigate our failure */
+          return TRUE;
+        }
+        /* move onto the hook */
     }
 
-    if (nonimmediate) 
+    if (nonimmediate)
+    {
         return rc;
+    }
 
-    /* could do this thru wake up but using call mechinism */
+    /* do this using call mechanism */
     if (!pred)
-        pred = _PL_predicate("fluent_hook", 4, "$fbs",
+        pred = _PL_predicate("matts_hook", 4, "$matts",
                              &pred);
 
     if (!saveWakeup(&wstate, TRUE PASS_LD))
@@ -1518,16 +1531,17 @@ scheduleFluent(atom_t method, Word attvar, Word value ARG_LD)
     *valTermRef(av) = method;
     *valTermRef(av+1) = makeRef(attvar);
     *valTermRef(av+2) = linkVal(value);
-    int was = FLUENT_GLOBALLY;
-    FLUENT_GLOBALLY |= FLUENT_disabled;
+    int was = MATTS_GLOBALLY;
+    MATTS_GLOBALLY |= MATTS_disabled;
     rc = PL_call_predicate(NULL, 
                            PL_Q_PASS_EXCEPTION, pred, av);
-    FLUENT_GLOBALLY = was;
+    MATTS_GLOBALLY = was;
     if (rc == TRUE)
-    {
-        if (!PL_get_integer(av+3,&rc))
-        {
-            rc = FALSE;
+    { if (!PL_get_integer(av+3,&rc))
+      { rc = FALSE;
+      } else
+       { if(retresult)
+            *retresult = rc;
         }
     }
     restoreWakeup(&wstate PASS_LD);
@@ -1536,23 +1550,23 @@ scheduleFluent(atom_t method, Word attvar, Word value ARG_LD)
 
 
 static
-PRED_IMPL("$fluent_default", 4, dfluent_default, 0)
+PRED_IMPL("$matts_default", 4, dmatts_default, 0)
 { PRED_LD
-    if((!PL_unify_integer(A1,FLUENT_GLOBALLY)||
-        !PL_unify_integer(A3,LD->fluent_vars.attvar_default))) fail;
-    if( !PL_get_integer(A4, &LD->fluent_vars.attvar_default)) 
+    if((!PL_unify_integer(A1,MATTS_GLOBALLY)||
+        !PL_unify_integer(A3,LD->meta_atts.attvar_default))) fail;
+    if( !PL_get_integer(A4, &LD->meta_atts.attvar_default)) 
         return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, A4));
     int value;
     if( !PL_get_integer(A2, &value) ) 
         return(PL_error(NULL, 0, NULL, ERR_DOMAIN, ATOM_integer, A2));
     /* Uses the check_vmi bit to say that vmi_ok bit is meaningfull or not */
-    if(IS_FLUENT(value,check_vmi)) LD->slow_unify = IS_FLUENT(value,vmi_ok) ? FALSE : TRUE;
-    LD->fluent_vars.fluent_count= IS_FLUENT(value, disabled)?0:1;
-    FLUENT_GLOBALLY = value;
+    if(IS_MATTS(value,check_vmi)) LD->slow_unify = IS_MATTS(value,vmi_ok) ? FALSE : TRUE;
+    LD->meta_atts.matts_count= IS_MATTS(value, disabled)?0:1;
+    MATTS_GLOBALLY = value;
     succeed;
 }
 
-/* For a heuristic used elsewhere from fluents */
+/* For a heuristic used elsewhere from mattss */
 static
 PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
 { PRED_LD
@@ -1583,7 +1597,7 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
     succeed;
 }
 
-#endif /*O_FLUENT*/
+#endif /*O_MATTS*/
 
 		 /*******************************
 		 *	    REGISTRATION	*
@@ -1606,8 +1620,8 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
-#ifdef O_FLUENT
-  PRED_DEF("$fluent_default",   4, dfluent_default,    0)
+#ifdef O_MATTS
+  PRED_DEF("$matts_default",   4, dmatts_default,    0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
 #endif
 EndPredDefs

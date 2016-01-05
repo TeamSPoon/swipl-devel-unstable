@@ -1192,8 +1192,8 @@ emptyStacks(void)
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 
-#ifdef O_FLUENT
-    setupFluents(PASS_LD1);	
+#ifdef O_MATTS
+    setupMAtts(PASS_LD1);	
 #endif
 #ifdef O_GVAR
     destroyGlobalVars();

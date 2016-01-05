@@ -227,7 +227,12 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-    if(IS_FLUENT_OVERRIDE(unify,t1,t2)) continue; /* this for on_unify_keep_vars "unify" */
+    if(IS_MATTS_OVERRIDE(unify,t1,t2,&rc))
+    {
+        if (rc==TRUE) continue;
+        goto out_fail;
+         /* this for on_unify_keep_vars "unify" */
+    }
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
 	    assert(w2 != ATOM_garbage_collected);
@@ -1643,7 +1648,7 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
 	goto cmpvars;
       continue;
     }
-
+    
     t1 = tag(w1);
     t2 = tag(w2);
 
@@ -1665,6 +1670,11 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
 	  return rc;
 	}
       }
+
+    int retcode;
+    if(IS_MATTS_OVERRIDE(compare,p1,p2,&retcode))
+    { return retcode; 
+    }
 
       if ( t1 > TAG_ATTVAR || t2 > TAG_ATTVAR )
 	return t1 < t2 ? CMP_LESS : CMP_GREATER;
@@ -2222,6 +2232,8 @@ PRED_IMPL("arg", 3, arg, PL_FA_NONDETERMINISTIC)
 void
 unify_vp(Word vp, Word val ARG_LD)
 { deRef(val);
+
+  if(IS_MATTS_OVERRIDE(colon_eq,vp,val,0)) return;
 
   if ( isVar(*val) )
   { if ( val < vp )
