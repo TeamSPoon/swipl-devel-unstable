@@ -2022,17 +2022,17 @@ typedef struct
 #define MATTS_on_unify_replace__NC 0x0040 /* UNUSED unify replace */
 #define MATTS_no_trail             0x0080 /* Do not bother to trail the previous value */
 
- /* The implementation impact of the MetaAtts patch is to allow the attvar interface
+ /* The implementation impact of the Fluents patch is to allow the attvar interface
          to "marry off" plain prolog variables to bindings of its choosing.
          This means it needs that variable as param value of the wakeup */
-/* schedule wakeup and can_unify for remote remote terms */
+/* schedule wakeup and can_unifys */
 #define MATTS_colon_eq         0x0100 /* prioritize attvars over plain vars in unify_vp() like on_unify_keep_vars  */
 #define MATTS_bind             0x0200 /* as above but in (bind_const) like on_unify_keep_vars except happens in bindConst() */
-#define MATTS_strict_equal     0x0400 /* strict_equal Allows MetaAttss to implement their own 'structurally equivalence' calling isometric/2 */
-#define MATTS_at_equals        0x0800 /* Allows MetaAttss to implement their own 'variant'-ness calling instance_handler/3 */
+#define MATTS_strict_equal     0x0400 /* strict_equal Allows MetaAtts to implement their own 'structurally equivalence' calling isometric/2 */
+#define MATTS_at_equals        0x0800 /* Allows programers to implement their own 'variant'-ness calling instance_handler/3 */
 #define MATTS_no_inherit       0x1000 /* This MetaAtts doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-#define MATTS_copy_term        0x2000 /* copy_handler/2 See http://eclipseclp.org/doc/userman/umsroot100.html#metahandlers attvars to implement their own copy.. (for constants like EmptySinkMetaAttss) */
-#define MATTS_compare          0x4000 /* instance_handler/3 See the above URL override(compare) with would allow MetaAttss to decide their non-standard ordering against each other */
+#define MATTS_copy_term        0x2000 /* copy_term copy_handler/2 See http://eclipseclp.org/doc/userman/umsroot100.html#metahandlers attvars to implement their own copy.. (for constants like EmptySinkMetaAtts) */
+#define MATTS_compare          0x4000 /* instance_handler/3 See the above URL override(compare) with would allow MetaAtts to decide their non-standard ordering against each other */
 #define MATTS_disabled         0x8000 /* Treat this MetaAtts as a plain attributed variable (allow the system to operate recusively.. implies no_inherit)  */
 #define MATTS_check_vmi      0x010000 /* LD->slow_unify might need tp be true for us to work (mostly for testing) */
 #define MATTS_vmi_ok         0x030000 /* LD->slow_unify is/was not needed */
