@@ -43,55 +43,47 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-%%	'$wakeup'(+List)
+%%	'$wakeup'(Goal)
 %
 %	Called from the kernel if assignments will be made to attributed
 %	variables.
 %
-%       Assignment happens in '$attvar_assign'/2
+%       Assignment happens in 'wakeup'/4
 
-'$wakeup'(Wakes):-
-        collect_all_va_goal_lists(Wakes, Goals, []),
-        map_goals(Goals).
+'$wakeup'(G):- call(G).
 
-map_goals([]).
-map_goals([G|Gs]):-
-	call(G),
-	map_goals(Gs).
 
-%%	collect_all_va_goal_lists(+KernelWakeups)//
+           /*******************************
+           *	  VERIFY ATTRIBUTES	*
+           *******************************/
+
+%%	wakeup(+Att3s, +Next, +Var, +Value)
 %
-%	Run the verify_attributes/3 unify hook for attributes on Attvar
-
-collect_all_va_goal_lists([]) --> [].
-collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
-        ['$attvar_assign'(Var,Value)],
-	collect_va_goal_list(Att3s, Var, Value),
-        collect_all_va_goal_lists(Rest).
-
-
-%%	collect_va_goal_list(+Att3s, +Var, +Value, -Goals)
+%	Called from the kernel if assignments will be made to attributed
+%	variables.
 %
-%	Calls Module:verify_attributes/3 for each `Module` for which Var
+%	First calls Module:verify_attributes/3 for each `Module` for which Var
 %	has an attribute. During this process,   modules  may remove and
 %	change each others attributes.
+%
+%	Next bind the Var to Value
+%
+%	Finally call post binding closures/hooks.
 
-collect_va_goal_list(att(Module, _AttVal, Rest), Var, Value) -->
-	(   { attvar(Var) }
-	->  { Module:verify_attributes(Var, Value, Goals) },
-	    goals_with_module(Goals, Module)
-	;   []
-	),
-        collect_va_goal_list(Rest, Var, Value).
-collect_va_goal_list([],_,_) --> [].
+wakeup(att(Module, _AttVal, Rest), Next, Var, Value):-
+        attvar(Var),!,
+        Module:verify_attributes(Var, Value, Goals),
+        wakeup(Rest, Next, Var, Value),
+        goals_with_module(Goals,Module).
+wakeup(_, Next,Var, Value):-
+        '$attvar_assign'(Var,Value),
+        call(Next).
 
 
-goals_with_module([], _) --> [].
-goals_with_module([G|Gs], M) -->
-	{ strip_module(M:G, M2, GS) },
-	[M2:GS],
+goals_with_module([G|Gs], M):- !,
+        M:call(G),
 	goals_with_module(Gs, M).
-
+goals_with_module(_,_).
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*

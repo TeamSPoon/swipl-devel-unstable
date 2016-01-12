@@ -156,6 +156,11 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
+#define O_UNDO_HOOK 1
+#undef O_UNDO_HOOK
+#define O_ATT_INNERTERM_WAKEUPS 1
+#undef O_ATT_INNERTERM_WAKEUPS
+
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
 #endif
@@ -1999,9 +2004,12 @@ typedef struct
 		 *******************************/
 
 /* assignAttVar() flags */
-#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
-#define ATT_WAKEBINDS   0x1			/* bindConst() */
-#define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
+#define ATT_WAKEBINDS   	0x01			/* bindConst() */
+#define ATT_ASSIGNONLY  	0x02			/* '$attvar_assign'/2 */
+#define ATT_UNIFY       	0x04			/* unify: assign and wakeup */
+
+
+#define ATT_LD(X) LD->attvar. X
 
 
 		 /*******************************

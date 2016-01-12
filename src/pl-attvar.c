@@ -106,19 +106,43 @@ SHIFT-SAFE: Caller must ensure 7 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
+appendWakeup(Word wake, int len, int alert_flags ARG_LD);
+
+void
+registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
-  Word tail = valTermRef(LD->attvar.tail);
+
+  if(ATT_LD(no_wakeups)) return; 
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
   gTop += 5;
-  wake[0] = FUNCTOR_wakeup4;
-  wake[1] = makeRef(attvar);
-  wake[2] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
-  wake[3] = needsRef(*value) ? makeRef(value) : *value;
-  wake[4] = ATOM_nil;
+  wake[0] = wakeup_type;
+  wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
+  wake[2] = ATOM_true;
+  wake[3] = makeRef(attvar);
+  wake[4] = needsRef(*value) ? makeRef(value) : *value;
+  appendWakeup(wake, 2, TRUE PASS_LD);
+}
+
+void
+scheduleWakeup(word g, int alert_flags ARG_LD)
+{ Word wake;
+
+  wake = gTop;
+  gTop += 3;
+  wake[0] = FUNCTOR_comma2;
+  wake[1] = g;
+  wake[2] = ATOM_true;
+  appendWakeup(wake, 2, alert_flags PASS_LD);
+}
+
+
+
+static void
+appendWakeup(Word wake, int len, int alert_flags ARG_LD)
+{ Word tail = valTermRef(LD->attvar.tail);
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -127,8 +151,8 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-    *tail = makeRef(wake+4);
-    DEBUG(1, Sdprintf("appended to wakeup\n"));
+    *tail = makeRef(wake+len);
+    DEBUG(MSG_WAKEUPS, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
 
@@ -136,9 +160,9 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-    *tail = makeRef(wake+4);
-    LD->alerted |= ALERT_WAKEUP;
-    DEBUG(1, Sdprintf("new wakeup\n"));
+    *tail = makeRef(wake+len);
+    if (alert_flags) LD->alerted |= ALERT_WAKEUP;
+    DEBUG(MSG_WAKEUPS, Sdprintf("new wakeup alerted=%d\n", alert_flags));
   }
 }
 
@@ -151,7 +175,7 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
 assignAttVar(Word var, Word value)		(var := value)
 
 Assign  value  to  the  given  attributed    variable,   adding  a  term
-wake(Attribute, Value, Tail) to the global variable resembling the goals
+wake(Attributes, Tail, Var, Value) to the global variable resembling the goals
 that should be awoken.
 
 Before calling, av *must* point to   a  dereferenced attributed variable
@@ -166,15 +190,14 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 
 void
 assignAttVar(Word av, Word value, int flags ARG_LD)
-{ Word a;
-  mark m;
+{ mark m;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -186,8 +209,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   }
 
   if( !(flags & ATT_ASSIGNONLY) )
-  { a = valPAttVar(*av);
-    registerWakeup(av, a, value PASS_LD);
+  {   registerWakeup(FUNCTOR_wakeup4, av, valPAttVar(*av), value PASS_LD);
   }
 
   if ( (flags&ATT_WAKEBINDS) )
@@ -198,16 +220,22 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   TrailAssignment(av);
   DiscardMark(m);
 
+
   if ( isAttVar(*value) )
-  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else if ( isVar(*value) )
-  { DEBUG(1, Sdprintf("Assigning attvar with plain var\n"));
-    *av = makeRef(value);			/* JW: Does this happen? */
+  { 
+     if( (flags & ATT_ASSIGNONLY) )
+     { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
+    *av = makeRef(value);			/* JW: Does this happen? */ 
+  } else
+     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting attvar into plain var\n"));
+       Trail(value, makeRef(av));
+     }
   } else
     *av = *value;
 
-  return;
 }
 
 
@@ -541,14 +569,14 @@ saveWakeup(wakeup_state *state, int forceframe ARG_LD)
     { state->flags |= WAKEUP_STATE_WAKEUP;
       s = PL_new_term_refs(2);
 
-      DEBUG(1, pl_writeln(LD->attvar.head));
+      DEBUG(MSG_WAKEUPS, pl_writeln(LD->attvar.head));
 
       *valTermRef(s+0) = *h;
       setVar(*h);
       h = valTermRef(LD->attvar.tail);
       *valTermRef(s+1) = *h;
       setVar(*h);
-      DEBUG(1, Sdprintf("Saved wakeup to %p\n", valTermRef(s)));
+      DEBUG(MSG_WAKEUPS, Sdprintf("Saved wakeup to %p\n", valTermRef(s)));
     }
 
     return TRUE;
@@ -575,7 +603,7 @@ restore_wakeup(Word p ARG_LD)
 { *valTermRef(LD->attvar.head) = p[0];
   *valTermRef(LD->attvar.tail) = p[1];
 
-  DEBUG(1, pl_writeln(LD->attvar.head));
+  DEBUG(MSG_WAKEUPS, pl_writeln(LD->attvar.head));
 }
 
 
@@ -1376,9 +1404,11 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
-/** '$attvar_assign'(+Var, +Value) is det.
-*/
 
+/**
+ *  attvar_assign(+Var, +Value) is det.
+ *    Is attv_unify/2 from XSB-Prolog
+*/
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
@@ -1393,6 +1423,60 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   }
 
   return TRUE;
+}
+
+
+static
+PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
+{ PRED_LD
+  int ret = PL_unify(A1,LD->attvar.head) && PL_unify(A2,LD->attvar.tail-2);
+  return ret;
+}
+
+static
+PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
+{ PRED_LD
+    if(PL_is_variable(A1))
+    { PL_put_term(LD->attvar.head,A1);
+      PL_put_term(LD->attvar.tail,A2);
+    } else
+    { PL_put_term(LD->attvar.head,A1);
+      if(PL_is_compound(LD->attvar.tail-2))
+      { PL_put_term(LD->attvar.tail-2,A2);
+      } else
+          PL_put_term(LD->attvar.tail,A2);
+      LD->alerted |= ALERT_WAKEUP;
+    }
+  return TRUE;
+}
+
+static
+PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
+{ PRED_LD
+  Word g;
+  if ( !hasGlobalSpace(6) )		/* 0 means enough for attvars */
+  { int rc;
+
+    if ( (rc=ensureGlobalSpace(6, ALLOW_GC)) != TRUE )
+      return raiseStackOverflow(rc);
+  }
+
+  g = valTermRef(A1);
+  deRef(g);
+  if ( !isTerm(*g) || functorTerm(*g) != FUNCTOR_colon2 )
+  { Word t = gTop;
+    term_t g2 = PL_new_term_ref();
+
+    gTop += 3;
+
+    t[0] = FUNCTOR_colon2;
+    t[1] = contextModule(PL__ctx->engine->environment)->name;
+    t[2] = linkVal(g);
+    g = valTermRef(g2);
+      *g = consPtr(t, STG_GLOBAL|TAG_COMPOUND);
+  }
+   scheduleWakeup(*g, TRUE PASS_LD);
+   return TRUE;
 }
 
 
@@ -1417,6 +1501,9 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+  PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
+  PRED_DEF("$set_delayed", 2, dset_delayed, 0)
+  PRED_DEF("$get_delayed", 2, dget_delayed, 0)
 EndPredDefs
 
 #endif /*O_ATTVAR*/

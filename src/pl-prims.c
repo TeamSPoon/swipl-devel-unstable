@@ -358,10 +358,8 @@ raw_unify_ptrs_no_unbind(Word t1, Word t2  ARG_LD)
       return do_unify(t1, t2 PASS_LD);
     case OCCURS_CHECK_TRUE:
       return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
-      break;
     case OCCURS_CHECK_ERROR:
       return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
-      break;
     default:
       assert(0);
       fail;
@@ -3387,24 +3385,6 @@ retry:
 	  tt--;			/* re-insert the attvar */
 	  *tt->address = trailVal(p);
 
-	  tt--;				/* restore tail of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
-
-	  tt--;				/* restore head of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
-
 	  assert(tt>=mt);
 	}
       }
@@ -3428,8 +3408,13 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-
-  return unifiable(A1, A2, A3 PASS_LD);
+   /*we must keep room on the global stack
+    creating global terms we promise never to use*/
+    int was_no_wakeups = ATT_LD(no_wakeups);
+    ATT_LD(no_wakeups) = TRUE;
+    int rc = unifiable(A1, A2, A3 PASS_LD);
+    ATT_LD(no_wakeups) = was_no_wakeups;
+    return rc;
 }
 
 
