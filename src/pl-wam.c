@@ -2738,7 +2738,8 @@ resumebreak:
 Attributed variable handling
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 wakeup:
-  DEBUG(1, Sdprintf("Activating wakeup\n"));
+  LD->alerted &= ~ALERT_WAKEUP;
+  DEBUG(MSG_WAKEUPS, Sdprintf("Activating wakeup\n"));
   NFR = lTop;
   setNextFrameFlags(NFR, FR);
   SAVE_REGISTERS(qid);

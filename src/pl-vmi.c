@@ -111,8 +111,7 @@ code into functions.
 #ifdef O_ATTVAR
 #define CHECK_WAKEUP \
 	if ( unlikely(LD->alerted & ALERT_WAKEUP) ) \
-	{ LD->alerted &= ~ALERT_WAKEUP; \
-	  if ( *valTermRef(LD->attvar.head) ) \
+	{ if ( *valTermRef(LD->attvar.head) ) \
 	    goto wakeup; \
 	}
 #else
@@ -1972,8 +1971,7 @@ VMI(I_EXITFACT, 0, 0, ())
   exit_checking_wakeup:
 #ifdef O_ATTVAR
     if ( LD->alerted & ALERT_WAKEUP )
-    { LD->alerted &= ~ALERT_WAKEUP;
-
+    { 
       if ( *valTermRef(LD->attvar.head) )
       { PC = SUPERVISOR(exit);
 	goto wakeup;
@@ -4708,7 +4706,7 @@ frame.
       if(arity==1)
         { if(isAttVar(*args))
             { functor_t alt_functor = getMetaOverride(valPAttVar(*args),functor);
-              if(alt_functor) functor = alt_functor;
+              if(alt_functor!=alt_functor) functor = alt_functor;
             }
         }
 #endif
