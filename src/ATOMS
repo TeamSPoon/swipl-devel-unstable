@@ -157,7 +157,7 @@ A cycles		"cycles"
 A cyclic_term		"cyclic_term"
 A dand			"$and"
 A date			"date"
-A datts			"$atts"
+A dmeta			"$meta"
 A db_reference		"db_reference"
 A dc_call_prolog	"$c_call_prolog"
 A dcall			"<meta-call>"
@@ -415,7 +415,6 @@ A message_queue		"message_queue"
 A message_queue_property "message_queue_property"
 A meta_argument		"meta_argument"
 A meta_argument_specifier "meta_argument_specifier"
-A meta_hook	"meta_hook"
 A meta_predicate	"meta_predicate"
 A min			"min"
 A min_free		"min_free"
@@ -787,7 +786,6 @@ F atom			1
 F att			3
 F backslash		1
 F bar			2
-F meta_hook			4
 F bitor			2
 F bom			1
 F brace_term_position	3
@@ -839,6 +837,7 @@ F gdiv			2
 F getbit		2
 F divide		2
 F dmessage_queue	1
+F dmeta			4
 F dmutex		1
 F domain_error		2
 F dot			2

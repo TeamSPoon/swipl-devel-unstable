@@ -412,16 +412,10 @@ struct PL_local_data
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
     int		no_wakeups;  /* >0 Dont register wakeups (also to prevent recursion later in next patch) */
-  } attvar;
-#endif
-
 #ifdef O_METATERM
-  struct {
-    int attvar_default; /* Default flags for attvars in system almost always = 0 */
-    int matts_default; /* Global default flags for meta-atts system Default == 0 */
-    int matts_current; /* flags for current matts () */
-	int matts_count;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
-  } meta_atts;
+    int     matts_flags;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+#endif
+  } attvar;
 #endif
 
   struct

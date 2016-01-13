@@ -1625,6 +1625,22 @@ true:
 
 normal_call:
 
+#ifdef O_METATERM 
+    if(METATERM_ENABLED)/* check attvar meta hooks */
+    { size_t current_arity = ((Definition)DEF)->functor->arity;
+      if (current_arity > 0)
+      { Word arg, ARG = ARGP - current_arity;
+        for(; current_arity-- > 0;)
+        { deRef2(ARG++, arg);
+          if(isAttVar(*arg))
+          { functor_t current_functor = ((Definition)DEF)->functor->functor;
+            functor_t alt_functor = getMetaOverride(arg,current_functor PASS_LD);
+            if(alt_functor && alt_functor!=current_functor) 
+            { DEBUG(MSG_WAKEUPS, Sdprintf("swapping functors for attvar .. "));
+              DEF = lookupDefinition(alt_functor, resolveModule(0));
+              break;
+            }}}}}
+#endif
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -4699,18 +4715,10 @@ frame.
     }
 
     ARGP = argFrameP(NFR, 0);
-    
+
     for(; arity-- > 0; ARGP++, args++)
-    { *ARGP = linkVal(args);
-#ifdef O_METATERM_VMI /* check attvar hook */
-      if(arity==1)
-        { if(isAttVar(*args))
-            { functor_t alt_functor = getMetaOverride(valPAttVar(*args),functor);
-              if(alt_functor!=alt_functor) functor = alt_functor;
-            }
-        }
-#endif
-     }
+      *ARGP = linkVal(args);
+    
   }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -

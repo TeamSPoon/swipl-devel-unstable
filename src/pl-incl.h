@@ -159,11 +159,8 @@ handy for it someone wants to add a data type to the system.
 
 #define O_METATERM 1
 /*#undef O_METATERM*/
-
 #define O_UNDO_HOOK 1
 #undef O_UNDO_HOOK
-#define O_ATT_INNERTERM_WAKEUPS 1
-#undef O_ATT_INNERTERM_WAKEUPS
 
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
@@ -2020,99 +2017,21 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#ifdef O_METATERM
-
-#define WAKEUP_PAUSED (ATT_LD(pause_wakeups)>0 || (ATT_LD(skip_wakeups)>0 && (ATT_LD(skip_wakeups)-->0)))
-//#define WAKEUP_PAUSE(n) if(n) ATT_LD(pause_wakeups)++; else if(ATT_LD(pause_wakeups)>0) ATT_LD(pause_wakeups)--
-#define WAKEUP_SKIP(n) ATT_LD(skip_wakeups)=n
-
-#define WAKEUP_PAUSE(n)
-//#define WAKEUP_SKIP(n) 
-
-/* fbs = 20 MetatermBitS: these bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
-#define METATERM_NORMAL                 0x0000
-
-#define METATERM_mid_wakebinds          0x0001 /* called from bindConst()   C should let wakeup/1 do binding with $attvar_assign/2 */ 
-#define METATERM_mid_assignonly         0x0002 /* called from $attvar_assign/2 thus C should bind the attvar niavely */ 
-#define METATERM_no_wakeup              0x0002 /* C should skip scheduling a wakeup/1 */ 
-#define METATERM_mid_unify              0x0004 /* called from do_unify() it means that C must undo the bindings before calling wakeup/1 */ 
-#define METATERM_noswap                 0x0008 /* dont change the order of vars */ 
-#define METATERM_keep_vars               0x0010 /* whenever unifying with a plain variable send the variable to $wakeup/1 as a value thus  allowing the attribute variable to choose assignment */ 
-#define METATERM_peer_wakeup            0x0020 /* attempt to schedule a wakeup on other attvar peers we unify with */ 
-#define METATERM_peer_trail             0x0040 /* When a peer is scheduled via peer_wakeup  trail that peers assignment first */ 
-#define METATERM_no_trail               0x0080 /* Do not bother to trail the previous value unless for do_unify() */ 
-#define METATERM_no_bind                0x0100 /* the stop() method has been called */ 
-
-
- /* The implementation impact of the Fluents patch is to allow the attvar interface
-         to "marry off" plain prolog variables to bindings of its choosing.
-         This means it needs that variable as param value of the wakeup */
-/* schedule wakeup and can_unifys */
-#define METATERM_bind              0x0200 /* code that binds this metaterm needs hooked */
-#define METATERM_compare           0x0400 /* strict_equal Allows Metaterm to implement their own 'structurally equivalence' ==/2 */
-#define METATERM_compare_instances 0x0800 /* instance_handler/3 See the above URL override(compare) with would allow Metaterm to decide their non-standard ordering against each other */
-#define METATERM_at_equals         0x1000 /* Allows programers to implement their own 'variant'-ness calling instance_handler/3 */
-#define METATERM_copy_term         0x2000 /* copy_term copy_handler/2 See http://eclipseclp.org/doc/userman/umsroot100.html#metahandlers attvars to implement their own copy.. (for constants like EmptySinkMetaterm) */
-#define METATERM_copy_term_nat     0x2000 /* copy_term copy_handler/2 See http://eclipseclp.org/doc/userman/umsroot100.html#metahandlers attvars to implement their own copy.. (for constants like EmptySinkMetaterm) */
-#define METATERM_test_unify        0x4000 /* test_unify */
-#define METATERM_disabled          0x8000 /* Treat this Metaterm as a plain attributed variable (allow the system to operate recusively.. implies no_inherit)  */
-#define METATERM_pre_unify        0x10000 /* pre_unify unify_vp */
-#define METATERM_undo            0x020000 /* Has undo closure */
-#define METATERM_debug           0x040000 /* spy on this matts  */
-#define METATERM_no_inherit      0x080000 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-
-
-
-
-
-#define METATERM_HOOK(what,t1,t2,rc) METATERM_HOOK_A(what,what, t1,t2,rc)
-
-#define METATERM_HOOK_A(what,cb, t1,t2,rc) \
-   (IS_META_VAR( t1, what ) ? scheduleMetaterm(ATOM_ ## cb, &t1, &t2, FALSE, rc PASS_LD) : \
-   (IS_META_VAR( t2, what ) ? scheduleMetaterm(ATOM_ ## cb, &t2, &t1, FALSE, rc PASS_LD) : \
-   (IS_META_ALL( what )     ? scheduleMetaterm(ATOM_ ## cb, &t1, &t2, FALSE, rc PASS_LD) : 0)))
-
-#define METATERM_HOOK_D(what, t1, t2, f, rc) \
-   (IS_META_VAR_D(t1, what) ? scheduleMetaterm(ATOM_ ## what, &t1, &t2, f, rc PASS_LD) : \
-   (IS_META_VAR_D(t2, what) ? scheduleMetaterm(ATOM_ ## what, &t2, &t1, f, rc PASS_LD) : \
-   (IS_META_ALL( what )     ? scheduleMetaterm(ATOM_ ## what, &t1, &t2, f, rc PASS_LD) : 0)))
-
-
-#define METATERM_CHECK_OVERRIDE(what,t1,t2) {int retcode; if(METATERM_HOOK(what,t1,t2,&retcode)) return retcode;}
-
-#define IS_MATTR(modebits, option) ((modebits & METATERM_ ## option) != 0)
-#define IS_META_ALL(option) IS_MATTR(LD->meta_atts.attvar_default, option)
-#define IS_META_VAR(var,option)   (((tag(*var) == TAG_ATTVAR && LD->meta_atts.matts_count > 0 && IS_MATTR((METATERM_CURRENT=getMetaFlags(var,METATERM_NORMAL)),option))))
-#define IS_META_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && LD->meta_atts.matts_count > 0 && IS_MATTR((METATERM_CURRENT=getMetaFlags(var,METATERM_no_inherit)),option))))
-
-#define METATERM_APPLY(attvar,change)   {int waz = getMetaFlags(attvar,METATERM_no_inherit);if(waz>0)setMetaFlags(attvar,waz change);}
-
-#define METATERM_GLOBALLY LD->meta_atts.matts_default
-#define METATERM_CURRENT LD->meta_atts.matts_current
-
 /*
- Only when "$atts" is present as an attribute:
+ Only when "$meta" is present as an attribute:
    A feature for prolog programmers who want to hide their attributes from value 
   based term comparisons like "=@=" and "=="  
-  They do so by put_attrs/2 their attrbute "imhiden" as parent of "$atts" like:
-      att(imhiden,value,att('$atts',0,VisibleAtts)) to hide them. 
-  ( "$atts" attribute is also hidden. )
+  They do so by put_attrs/2 their attrbute "imhiden" as parent of "$meta" like:
+      att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
+  ( "$meta" attribute is also hidden. )
 
   */
-#define METATERM_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,ATOM_datts PASS_LD)
-
-#else /*!O_METATERM*/
-
-#define IS_MATTR(modebits, option) (0)
-#define IS_META_VAR(option,var) (0)
+#define METATERM_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,ATOM_dmeta PASS_LD)
+#define METATERM_OVERIDES(var,functor) (functor != getMetaOverride(av,functor PASS_LD))
 #define METATERM_HOOK(what,t1,t2,rc) (0)
 #define METATERM_HOOK_A(what,atom,t1,t2,rc) (0)
-#define METATERM_CHECK_OVERRIDE(what,t1,t2)
-#define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
-#define METATERM_APPLY(var, option)
-
-
-#endif
+#define METATERM_ENABLED (LD->attvar.matts_flags > 0)
+/*#define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar*/
 
 		 /*******************************
 		 *	      WAKEUP		*

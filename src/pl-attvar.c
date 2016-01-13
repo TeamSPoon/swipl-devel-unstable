@@ -123,7 +123,7 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   wake[2] = ATOM_true;
   wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; /* in case we are using this interface for other means */
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
-  METATERM_APPLY(attvar, | METATERM_disabled);
+  /*METATERM_APPLY(attvar, | METATERM_disabled);*/
   appendWakeup(wake, 2, TRUE PASS_LD);
 }
 
@@ -200,10 +200,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-#ifdef O_METATERM 
-  int fbs = getMetaFlags(av, METATERM_NORMAL);
-  if(!IS_MATTR(flags,disabled)) flags |= fbs;
-#endif
+
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
@@ -219,24 +216,27 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( (flags&ATT_WAKEBINDS) )
     return;
+
+#ifdef O_METATERM
+  if (METATERM_OVERIDES(av,FUNCTOR_equals2)) return;
+#endif
  
- if (!IS_MATTR(flags,no_trail))
- {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
- }
+ 
 
-
-    if (IS_MATTR(flags,no_bind)) return;
+#ifdef O_METATERM
+  if (METATERM_OVERIDES(av,FUNCTOR_is2)) return;
+#endif
 
   if ( isAttVar(*value) )
     { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else if ( isVar(*value) )
   { 
-     if( (flags & ATT_ASSIGNONLY) || IS_MATTR(flags,keep_vars) )
+     if( (flags & ATT_ASSIGNONLY) )
      { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
     *av = makeRef(value);			/* JW: Does this happen? */ 
   } else
@@ -372,11 +372,14 @@ Caller must ensure 4 cells space on global stack.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static int
-find_sub_attr(Word l, atom_t name, Word *vp ARG_LD)
+find_sub_attr(word* l, atom_t name, Word *vp ARG_LD)
 {
+  if(l==0 || isVar(*l)) 
+  { *vp = 0;     /* bad attribute list */
+    fail;
+  } 
   for(;;)
-  { deRef(l);
-
+  { 
     if ( isNil(*l) )
     { *vp = l;
       fail;
@@ -391,11 +394,19 @@ find_sub_attr(Word l, atom_t name, Word *vp ARG_LD)
 	{ *vp = &f->arguments[1];
 
 	  succeed;
-	} else
-	{ l = &f->arguments[2];
+    } else 
+    {   if (isTerm(*n))
+        {  Functor fn = valueTerm(*n);
+           if (fn->definition == name)
+           {  *vp = &f->arguments[1];
+              succeed;
+           }
+        }
+        l = &f->arguments[2];
+        deRef(l);
 	}
-      } else
-      { *vp = NULL;			/* bad attribute list */
+   } else
+   { *vp = NULL;			/* bad attribute list */
 	fail;
       }
     } else
@@ -405,14 +416,21 @@ find_sub_attr(Word l, atom_t name, Word *vp ARG_LD)
   }
 }
 
+
 static int
 find_attr(Word av, atom_t name, Word *vp ARG_LD)
-{ deRef(av);
+{ Word l;
+  deRef(av);
   assert(isAttVar(*av));
-  return find_sub_attr(valPAttVar(*av),name,vp PASS_LD);
+  l = valPAttVar(*av);
+  if(METATERM_ENABLED)
+  {
+      Sdprintf("L %s (%s)\n",
+             print_addr(l, 0), print_val(*l, 0));
+  }
+  deRef(l);
+ return find_sub_attr(l,name,vp PASS_LD);
 }
-
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 put_attr(Word attvar, atom_t name, Word value)
 
@@ -1415,7 +1433,6 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
-
 /**
  *  attvar_assign(+Var, +Value) is det.
  *    Is attv_unify/2 from XSB-Prolog
@@ -1428,7 +1445,6 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    METATERM_APPLY(av, & ~ METATERM_disabled ); /* Re-enable wakeup helps prevent recursive wakeup */
     assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
@@ -1437,30 +1453,8 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   return TRUE;
 }
 
+#ifdef O_METATERM
 
-static
-PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
-{ PRED_LD
-  int ret = PL_unify(A1,LD->attvar.head) && PL_unify(A2,LD->attvar.tail-2);
-  return ret;
-}
-
-static
-PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
-{ PRED_LD
-    if(PL_is_variable(A1))
-    { PL_put_term(LD->attvar.head,A1);
-      PL_put_term(LD->attvar.tail,A2);
-    } else
-    { PL_put_term(LD->attvar.head,A1);
-      if(PL_is_compound(LD->attvar.tail-2))
-      { PL_put_term(LD->attvar.tail-2,A2);
-      } else
-          PL_put_term(LD->attvar.tail,A2);
-      LD->alerted |= ALERT_WAKEUP;
-    }
-  return TRUE;
-}
 
 static
 PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
@@ -1488,11 +1482,8 @@ PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
       *g = consPtr(t, STG_GLOBAL|TAG_COMPOUND);
   }
    scheduleWakeup(*g, TRUE PASS_LD);
-  WAKEUP_PAUSE(FALSE);
    return TRUE;
 }
-
-#ifdef O_METATERM
 
 /* When a Metaterm is created it is most often the first attribute 
  This is used as a way to hide attributes in term comparison to get 
@@ -1517,185 +1508,56 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
   }
 }
 
-/*
- Returns the "$atts" attvar property (supposed to be a small int)
- Ideally mattss will have them at the begining
-*/
-int
-getMetaFlags__LD(Word av, int flags ARG_LD)
-{ Word found;
-    int value;
-    if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
-        value = 0;
-    else value = valInt(*found);
-    if (METATERM_no_inherit & flags) 
-        return value;    
-    if (value==0 || IS_MATTR(value,disabled))
-        return LD->meta_atts.attvar_default;
-    if (IS_MATTR(value,no_inherit) || IS_MATTR(METATERM_GLOBALLY,no_inherit)) 
-        return(value);
-    return(value | METATERM_GLOBALLY);
-}
-
-/*
- Sets the "$atts" attvar property (supposed to be a small int)
- Ideally mattss will have them at the begining
-*/
-void
-setMetaFlags__LD(Word av, int value ARG_LD)
-{ Word found;
-    if(!isAttVar(*av)) return;
-    if (find_attr(av, ATOM_datts, &found PASS_LD) && isInteger(*found))
-    {  *found = consInt(value);
-    } else
-    { word wval = consInt(value);
-      put_att_value(av,ATOM_datts,&wval PASS_LD);
-    }
-}
+// av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$matts_flags'(Y,1),wd(X==X).
 
 functor_t 
-getMetaOverride__LD(Word av, functor_t metaprop ARG_LD)
+getMetaOverride(Word av, functor_t f ARG_LD)
 { Word fdattrs,found;
-    if (isAttVar(*av) && find_attr(av, ATOM_meta_hook, &fdattrs PASS_LD)&&
-        find_sub_attr(fdattrs, metaprop, &found PASS_LD))
-    { return *found;
-    }
-    return metaprop;
+  if(!(METATERM_ENABLED)) return f;
+  if(!isAttVar(*av) || !find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
+  {
+      word fallback;
+      if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD) || !isTerm(fallback)) return f;
+      fdattrs = &fallback;
+  }
+  if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return f;
+  if ( isTerm(*found) )
+  { 
+     FunctorDef fd = valueFunctor(functorTerm(*found));
+     return fd->functor;
+  }
+  return f;
 }
 
-
-/*
- called during initPrologStacks from emptyStacks
- gvars reset there so seemed a good place
-*/
-void setupMAtts(ARG1_LD)
-{ LD->meta_atts.attvar_default = 0;
-  METATERM_GLOBALLY = 0;
-  LD->meta_atts.matts_count = 1;
+static
+PRED_IMPL("$matts_flags", 2, dmatts_flags, 0)
+{ PRED_LD
+    return setInteger(&LD->attvar.matts_flags, A1, A2);
 }
 
-/*
- This is runs an ECLipSe meta_attribute hook
+static
+PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
+{ PRED_LD
+  int ret = PL_unify(A1,LD->attvar.head) && PL_unify(A2,LD->attvar.tail-2);
+  return ret;
+}
 
-  There are only 2 of them needed for SWI
-  
-  compare_instances/3 s
-  can_unify/2 (disables all event processing while runing)
-
- Returns TRUE if a hook was implemetented 
-
- retresult is the hooks return result
-
-  
-
-*/
-int
-scheduleMetaterm(atom_t method, Word* vpP, Word* valueP, int disabledFlags, int* retresult ARG_LD)
-{ static predicate_t pred;
-
-    return FALSE;
-#if NEVER_EVER
-    wakeup_state wstate;
-    Word attvar;
-    Word vp = *vpP;
-    Word value = *valueP;
-    int rc;
-    if(!isAttVar(*vp))
-    {
-        attvar = value;
+static
+PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
+{ PRED_LD
+    if(PL_is_variable(A1))
+    { PL_put_term(LD->attvar.head,A1);
+      PL_put_term(LD->attvar.tail,A2);
     } else
-    {
-        attvar = vp;
-    }
-    word before = getMetaOveride(attvar, method);
-    if (before && METATERM_disabled)
-    {
-        return FALSE;
-    }
-
-    if (!pred)
-        pred = PL_pred(FUNCTOR_meta_hook4, 4, "$atts");
-    
-
-    setMetaFlags(attvar,before|METATERM_disabled);  /* avoid recursion */
-
-    if (!saveWakeup(&wstate, TRUE PASS_LD))
-        return FALSE;
-
-    functor_t override = getMetaOverride(vp);
-
-    term_t av = PL_new_term_refs(4);    /* restoreWakeup should free these */ 
-    *valTermRef(av) = method;
-    *valTermRef(av+1) = linkVal(vp);
-    *valTermRef(av+2) = linkVal(value);
-    int globalBefore = METATERM_GLOBALLY;
-    if (disabledFlags)
-    {
-        METATERM_GLOBALLY |= METATERM_disabled;
-    }
-    rc = PL_call_predicate(NULL, 
-                           PL_Q_PASS_EXCEPTION, pred, av);
-
-    METATERM_GLOBALLY = globalBefore;
-    if (rc == TRUE)
-    { if (!PL_get_integer(av+3,&rc))
-      { rc = FALSE;
+    { PL_put_term(LD->attvar.head,A1);
+      if(PL_is_compound(LD->attvar.tail-2))
+      { PL_put_term(LD->attvar.tail-2,A2);
       } else
-      { 
-          if(rc > 2)
-          { *valueP = vp;
-            *vpP = value;
-            rc = FALSE;
-          } else
-          {
-              if(retresult)
-               *retresult = rc;
-          }
-      }
+          PL_put_term(LD->attvar.tail,A2);
+      LD->alerted |= ALERT_WAKEUP;
     }
-    setMetaFlags(attvar,ATOM_datts, before);
-    restoreWakeup(&wstate PASS_LD);
-    return rc;
-#endif
+  return TRUE;
 }
-
-
-static
-PRED_IMPL("$matts_default", 4, dmatts_default, 0)
-{ PRED_LD
-
-    int ret = setInteger(&METATERM_GLOBALLY, A1, A2) &&
-    setInteger(&LD->meta_atts.attvar_default, A3, A4);
-     if(METATERM_GLOBALLY)      
-         LD->meta_atts.matts_count++;
-    return ret;
-}
-
-static
-PRED_IMPL("$as_functor", 2, das_functor, 0)
-{ PRED_LD
-    functor_t functor;
-    if(!PL_get_functor(A1,&functor)) return FALSE;
-    Word a2 = valTermRef(A2);
-    deRef(a2);
-    bindConst(a2,functor);
-    return TRUE;
-}
-
-
-static
-PRED_IMPL("$attvar_wake", 4, dattvar_wake, 0)
-{ PRED_LD
-  Word waketype,av, vp, value;
-  deRef2(valTermRef(A1),waketype);
-  deRef2(valTermRef(A2),av);
-  deRef2(valTermRef(A3),vp);
-  deRef2(valTermRef(A4),value);
-  if(needsRef(*av)) *av = makeRef(av); 
-  registerWakeup(PL_new_functor(*waketype,4), av, vp, value PASS_LD);
-   return TRUE;
-}
-
 
 /* For a heuristic used elsewhere from matts */
 static
@@ -1754,11 +1616,10 @@ BeginPredDefs(attvar)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
 #ifdef O_METATERM
-  PRED_DEF("$attvar_wake",    4, dattvar_wake, 0)
-  PRED_DEF("$matts_default",   4, dmatts_default,    0)
+  PRED_DEF("$matts_flags",   2, dmatts_flags,    0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
-  PRED_DEF("$as_functor",    2, das_functor,    0)
 #endif
+
 EndPredDefs
 
 #endif /*O_ATTVAR*/

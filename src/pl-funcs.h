@@ -41,12 +41,8 @@ COMMON(void)		registerWakeup(functor_t wakeup_type4,  Word attvar, Word attrs, W
 
 #ifdef O_METATERM
 COMMON(void)	scheduleWakeup(word g, int alert_flags ARG_LD);
-COMMON(int) 	getMetaFlags__LD(Word av, int inherit_flags ARG_LD);
-COMMON(void) 	setMetaFlags__LD(Word av, int value ARG_LD);
-COMMON(functor_t)   getMetaOverride__LD(Word av, functor_t metaprop ARG_LD);
-COMMON(void) 	setupMAtts(ARG1_LD);
+COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
-COMMON(int) 	scheduleMetaterm(atom_t wakeup_type, Word* attvar, Word* value, int disabledFlags, int* result ARG_LD);
 #endif
 
 /* pl-gvar.c */
