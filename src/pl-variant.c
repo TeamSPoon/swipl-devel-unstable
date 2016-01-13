@@ -239,8 +239,8 @@ isomorphic(argPairs *a, int i, int j, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
-      r = valPAttVar(wr);
+    { l = METATERM_SKIP_HIDDEN(valPAttVar(wl));
+      r = METATERM_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -312,6 +312,12 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
    deRef(l);
    deRef(r);
 
+   int retcode;
+   if(METATERM_HOOK(compare_instances,l,r,&retcode))
+   { if( retcode==0) return TRUE; 
+      /* for =@=/2 */
+   }
+
    wl = *l;
    wr = *r;
 
@@ -346,8 +352,8 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
     }
 
     if ( tag(wl) == TAG_ATTVAR )
-    { l = valPAttVar(wl);
-      r = valPAttVar(wr);
+    { l = METATERM_SKIP_HIDDEN(valPAttVar(wl));
+      r = METATERM_SKIP_HIDDEN(valPAttVar(wr));
       goto attvar;
     }
 
@@ -422,6 +428,12 @@ PRED_IMPL("=@=", 2, variant, 0)
   deRef(p1);
   deRef(p2);
 
+  int retcode;
+  if(METATERM_HOOK(compare_instances,p1,p2,&retcode))
+  { return retcode; 
+     /* for =@=/2 */
+  }
+
   if ( *p1 == *p2 )                     /* same term */
     return TRUE;
   if ( tag(*p1) != tag(*p2) )           /* different type */
@@ -431,8 +443,8 @@ again:
   { case TAG_VAR:
       return TRUE;
     case TAG_ATTVAR:
-      p1 = valPAttVar(*p1);
-      p2 = valPAttVar(*p2);
+      p1 = METATERM_SKIP_HIDDEN(valPAttVar(*p1));
+      p2 = METATERM_SKIP_HIDDEN(valPAttVar(*p2));
       goto again;
     case TAG_ATOM:
       return FALSE;

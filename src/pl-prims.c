@@ -214,6 +214,10 @@ Returns one of:
   - TRAIL_OVERFLOW:	Unification cannot be completed due to lack
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+/* TODO: we might call too early */
+#ifdef O_METATERM
+/*#define ATTR_INTERCEPT_VARS*/
+#endif
 
 static int
 do_unify(Word t1, Word t2 ARG_LD)
@@ -226,6 +230,28 @@ do_unify(Word t1, Word t2 ARG_LD)
 
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
+
+     
+
+#ifdef ATTR_INTERCEPT_VARS
+  /* DM: Trusting assignAttVar() with Vars */
+    if ( isAttVar(w1) )
+    { if ( !hasGlobalSpace(0) )
+      { rc = overflowCode(0);
+	goto out_fail;
+      }
+      assignAttVar(t1, t2, ATT_UNIFY PASS_LD);
+      continue;
+    }
+    if ( isAttVar(w2) )
+    { if ( !hasGlobalSpace(0) )
+      { rc = overflowCode(0);
+	goto out_fail;
+      }
+      assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
+      continue;
+    }
+  #endif
 
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
@@ -248,7 +274,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 	Trail(t1, makeRef(t2));
 	continue;
       }
-  #ifdef O_ATTVAR
+#ifndef ATTR_INTERCEPT_VARS
       if ( isAttVar(w2 ) )
 	w2 = makeRef(t2);
   #endif
@@ -260,7 +286,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = TRAIL_OVERFLOW;
 	goto out_fail;
       }
-  #ifdef O_ATTVAR
+  #ifndef ATTR_INTERCEPT_VARS
       if ( isAttVar(w1) )
 	w1 = makeRef(t1);
   #endif
@@ -268,7 +294,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       continue;
     }
 
-  #ifdef O_ATTVAR
+  #ifndef ATTR_INTERCEPT_VARS
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
@@ -1634,6 +1660,12 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
 
     deRef(p1); w1 = *p1;
     deRef(p2); w2 = *p2;
+
+    int retcode;
+    if(METATERM_HOOK(compare,p1,p2,&retcode))
+    { return retcode; 
+      /* This is also for ==/2 */
+    }
 
     if ( w1 == w2 )
     { if ( isVar(w1) )
@@ -3408,8 +3440,7 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-   /*we must keep room on the global stack
-    creating global terms we promise never to use*/
+   /*Avoid creating global terms we promise never to use*/
     int was_no_wakeups = ATT_LD(no_wakeups);
     ATT_LD(no_wakeups) = TRUE;
     int rc = unifiable(A1, A2, A3 PASS_LD);

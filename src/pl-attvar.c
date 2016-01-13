@@ -121,8 +121,9 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
-  wake[3] = makeRef(attvar);
+  wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; /* in case we are using this interface for other means */
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
+  METATERM_APPLY(attvar, | METATERM_disabled);
   appendWakeup(wake, 2, TRUE PASS_LD);
 }
 
@@ -199,6 +200,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
+#ifdef O_METATERM 
+  int fbs = getMetaFlags(av, METATERM_NORMAL);
+  if(!IS_MATTR(flags,disabled)) flags |= fbs;
+#endif
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
@@ -214,19 +219,24 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( (flags&ATT_WAKEBINDS) )
     return;
-
+ 
+ if (!IS_MATTR(flags,no_trail))
+ {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
+ }
 
+
+    if (IS_MATTR(flags,no_bind)) return;
 
   if ( isAttVar(*value) )
     { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else if ( isVar(*value) )
   { 
-     if( (flags & ATT_ASSIGNONLY) )
+     if( (flags & ATT_ASSIGNONLY) || IS_MATTR(flags,keep_vars) )
      { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
     *av = makeRef(value);			/* JW: Does this happen? */ 
   } else
@@ -235,7 +245,6 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      }
   } else
     *av = *value;
-
 }
 
 
@@ -363,13 +372,8 @@ Caller must ensure 4 cells space on global stack.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static int
-find_attr(Word av, atom_t name, Word *vp ARG_LD)
-{ Word l;
-
-  deRef(av);
-  assert(isAttVar(*av));
-  l = valPAttVar(*av);
-
+find_sub_attr(Word l, atom_t name, Word *vp ARG_LD)
+{
   for(;;)
   { deRef(l);
 
@@ -399,6 +403,13 @@ find_attr(Word av, atom_t name, Word *vp ARG_LD)
       fail;
     }
   }
+}
+
+static int
+find_attr(Word av, atom_t name, Word *vp ARG_LD)
+{ deRef(av);
+  assert(isAttVar(*av));
+  return find_sub_attr(valPAttVar(*av),name,vp PASS_LD);
 }
 
 
@@ -1417,6 +1428,7 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
+    METATERM_APPLY(av, & ~ METATERM_disabled ); /* Re-enable wakeup helps prevent recursive wakeup */
     assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
@@ -1476,10 +1488,247 @@ PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
       *g = consPtr(t, STG_GLOBAL|TAG_COMPOUND);
   }
    scheduleWakeup(*g, TRUE PASS_LD);
+  WAKEUP_PAUSE(FALSE);
+   return TRUE;
+}
+
+#ifdef O_METATERM
+
+/* When a Metaterm is created it is most often the first attribute 
+ This is used as a way to hide attributes in term comparison to get 
+ some modules the opertunity to not confuse =@= this happens with 
+  METATERM_SKIP_HIDDEN(..)
+*/
+Word attrs_after(Word origl, atom_t name ARG_LD)
+{  Word n,l;
+  deRef(origl);
+  if(!name) return origl;
+  deRef2(origl,l);
+  for (;;)
+  { if (!isTerm(*l)) return origl;
+    Functor f = valueTerm(*l);
+    if (f->definition != FUNCTOR_att3) return origl;
+    deRef2(&f->arguments[0],n);
+    deRef2(&f->arguments[2],l);    
+    if (*n == name) 
+    { 
+        return l;
+    }
+  }
+}
+
+/*
+ Returns the "$atts" attvar property (supposed to be a small int)
+ Ideally mattss will have them at the begining
+*/
+int
+getMetaFlags__LD(Word av, int flags ARG_LD)
+{ Word found;
+    int value;
+    if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
+        value = 0;
+    else value = valInt(*found);
+    if (METATERM_no_inherit & flags) 
+        return value;    
+    if (value==0 || IS_MATTR(value,disabled))
+        return LD->meta_atts.attvar_default;
+    if (IS_MATTR(value,no_inherit) || IS_MATTR(METATERM_GLOBALLY,no_inherit)) 
+        return(value);
+    return(value | METATERM_GLOBALLY);
+}
+
+/*
+ Sets the "$atts" attvar property (supposed to be a small int)
+ Ideally mattss will have them at the begining
+*/
+void
+setMetaFlags__LD(Word av, int value ARG_LD)
+{ Word found;
+    if(!isAttVar(*av)) return;
+    if (find_attr(av, ATOM_datts, &found PASS_LD) && isInteger(*found))
+    {  *found = consInt(value);
+    } else
+    { word wval = consInt(value);
+      put_att_value(av,ATOM_datts,&wval PASS_LD);
+    }
+}
+
+functor_t 
+getMetaOverride__LD(Word av, functor_t metaprop ARG_LD)
+{ Word fdattrs,found;
+    if (isAttVar(*av) && find_attr(av, ATOM_meta_hook, &fdattrs PASS_LD)&&
+        find_sub_attr(fdattrs, metaprop, &found PASS_LD))
+    { return *found;
+    }
+    return metaprop;
+}
+
+
+/*
+ called during initPrologStacks from emptyStacks
+ gvars reset there so seemed a good place
+*/
+void setupMAtts(ARG1_LD)
+{ LD->meta_atts.attvar_default = 0;
+  METATERM_GLOBALLY = 0;
+  LD->meta_atts.matts_count = 1;
+}
+
+/*
+ This is runs an ECLipSe meta_attribute hook
+
+  There are only 2 of them needed for SWI
+  
+  compare_instances/3 s
+  can_unify/2 (disables all event processing while runing)
+
+ Returns TRUE if a hook was implemetented 
+
+ retresult is the hooks return result
+
+  
+
+*/
+int
+scheduleMetaterm(atom_t method, Word* vpP, Word* valueP, int disabledFlags, int* retresult ARG_LD)
+{ static predicate_t pred;
+
+    return FALSE;
+#if NEVER_EVER
+    wakeup_state wstate;
+    Word attvar;
+    Word vp = *vpP;
+    Word value = *valueP;
+    int rc;
+    if(!isAttVar(*vp))
+    {
+        attvar = value;
+    } else
+    {
+        attvar = vp;
+    }
+    word before = getMetaOveride(attvar, method);
+    if (before && METATERM_disabled)
+    {
+        return FALSE;
+    }
+
+    if (!pred)
+        pred = PL_pred(FUNCTOR_meta_hook4, 4, "$atts");
+    
+
+    setMetaFlags(attvar,before|METATERM_disabled);  /* avoid recursion */
+
+    if (!saveWakeup(&wstate, TRUE PASS_LD))
+        return FALSE;
+
+    functor_t override = getMetaOverride(vp);
+
+    term_t av = PL_new_term_refs(4);    /* restoreWakeup should free these */ 
+    *valTermRef(av) = method;
+    *valTermRef(av+1) = linkVal(vp);
+    *valTermRef(av+2) = linkVal(value);
+    int globalBefore = METATERM_GLOBALLY;
+    if (disabledFlags)
+    {
+        METATERM_GLOBALLY |= METATERM_disabled;
+    }
+    rc = PL_call_predicate(NULL, 
+                           PL_Q_PASS_EXCEPTION, pred, av);
+
+    METATERM_GLOBALLY = globalBefore;
+    if (rc == TRUE)
+    { if (!PL_get_integer(av+3,&rc))
+      { rc = FALSE;
+      } else
+      { 
+          if(rc > 2)
+          { *valueP = vp;
+            *vpP = value;
+            rc = FALSE;
+          } else
+          {
+              if(retresult)
+               *retresult = rc;
+          }
+      }
+    }
+    setMetaFlags(attvar,ATOM_datts, before);
+    restoreWakeup(&wstate PASS_LD);
+    return rc;
+#endif
+}
+
+
+static
+PRED_IMPL("$matts_default", 4, dmatts_default, 0)
+{ PRED_LD
+
+    int ret = setInteger(&METATERM_GLOBALLY, A1, A2) &&
+    setInteger(&LD->meta_atts.attvar_default, A3, A4);
+     if(METATERM_GLOBALLY)      
+         LD->meta_atts.matts_count++;
+    return ret;
+}
+
+static
+PRED_IMPL("$as_functor", 2, das_functor, 0)
+{ PRED_LD
+    functor_t functor;
+    if(!PL_get_functor(A1,&functor)) return FALSE;
+    Word a2 = valTermRef(A2);
+    deRef(a2);
+    bindConst(a2,functor);
+    return TRUE;
+}
+
+
+static
+PRED_IMPL("$attvar_wake", 4, dattvar_wake, 0)
+{ PRED_LD
+  Word waketype,av, vp, value;
+  deRef2(valTermRef(A1),waketype);
+  deRef2(valTermRef(A2),av);
+  deRef2(valTermRef(A3),vp);
+  deRef2(valTermRef(A4),value);
+  if(needsRef(*av)) *av = makeRef(av); 
+  registerWakeup(PL_new_functor(*waketype,4), av, vp, value PASS_LD);
    return TRUE;
 }
 
 
+/* For a heuristic used elsewhere from matts */
+static
+PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
+{ PRED_LD
+
+	Word v = valTermRef(A1);
+    LocalFrame fr = environment_frame;
+    long l0 = levelFrame(fr)-1;     /* -1: Use my parent as reference */
+
+    int negInfo = -2;
+    { while(isRef(*(v)))
+      { negInfo--;
+        (v) = unRef(*(v)); }}
+
+    if( onStackArea(local, v) ) 
+     { DEBUG(1, Sdprintf("Ok, on local stack\n"));
+        while( fr && fr > (LocalFrame)v )
+            fr = parentFrame(fr);
+        if( fr )
+        { l0 -= levelFrame(fr);
+            return(PL_unify_integer(A2, l0));
+        } else 
+        { DEBUG(1,Sdprintf("Not on local stack\n"));
+          return(PL_unify_integer(A2, -1));
+        }
+    }
+    DEBUG(1,Sdprintf("!onStackArea\n"));
+    return(PL_unify_integer(A2, negInfo));
+    return TRUE;
+}
+
+#endif /*O_METATERM*/
 		 /*******************************
 		 *	    REGISTRATION	*
 		 *******************************/
@@ -1504,6 +1753,12 @@ BeginPredDefs(attvar)
   PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
+#ifdef O_METATERM
+  PRED_DEF("$attvar_wake",    4, dattvar_wake, 0)
+  PRED_DEF("$matts_default",   4, dmatts_default,    0)
+  PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
+  PRED_DEF("$as_functor",    2, das_functor,    0)
+#endif
 EndPredDefs
 
 #endif /*O_ATTVAR*/

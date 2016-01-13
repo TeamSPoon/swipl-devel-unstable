@@ -415,7 +415,15 @@ copy_term(Word from, Word to, int flags ARG_LD)
       }
       case TAG_ATTVAR:
 	if ( flags&COPY_ATTRS )
-	{ Word p = valPAttVar(*from);
+	{ 
+
+        int retcode;
+        if(METATERM_HOOK(copy_term,from,to,&retcode))
+        { return retcode; 
+            /* for copy_term/2 */
+        }
+
+      Word p = valPAttVar(*from);
 
 	  if ( isAttVar(*p) )		/* already copied */
 	  { *to = makeRefG(p);
@@ -436,7 +444,13 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	    goto again;
 	  }
 	} else
-	{ if ( shared(*from) )
+	{ 
+       int retcode;
+       if(METATERM_HOOK(copy_term_nat,from,to,&retcode))
+       { return retcode; 
+            /* for copy_term_nat/2 */
+       }
+      if ( shared(*from) )
 	  { Word p = valPAttVar(*from & ~BOTH_MASK);
 
 	    if ( *p == VAR_MARK )

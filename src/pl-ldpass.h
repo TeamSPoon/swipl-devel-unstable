@@ -54,6 +54,9 @@
 #define lookupModule(name)	lookupModule__LD(name PASS_LD)
 #define isCurrentProcedure(f,m) isCurrentProcedure__LD(f, m PASS_LD)
 #define resolveProcedure(f,m)	resolveProcedure__LD(f, m PASS_LD)
+#define getMetaFlags(av, metaprop) getMetaFlags__LD(av, metaprop PASS_LD)
+#define setMetaFlags(av, value) setMetaFlags__LD(av, value PASS_LD)
+#define getMetaOverride(av, metaprop) getMetaOverride__LD(av, metaprop PASS_LD)
 
 #define _PL_get_arg(n, t, a)	_PL_get_arg__LD(n, t, a PASS_LD)
 #define _PL_put_number(t, n)	_PL_put_number__LD(t, n PASS_LD)

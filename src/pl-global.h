@@ -415,6 +415,15 @@ struct PL_local_data
   } attvar;
 #endif
 
+#ifdef O_METATERM
+  struct {
+    int attvar_default; /* Default flags for attvars in system almost always = 0 */
+    int matts_default; /* Global default flags for meta-atts system Default == 0 */
+    int matts_current; /* flags for current matts () */
+	int matts_count;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+  } meta_atts;
+#endif
+
   struct
   { term_t	dummy;			/* see trimStacks() */
   } trim;

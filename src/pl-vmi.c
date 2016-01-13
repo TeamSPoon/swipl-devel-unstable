@@ -4701,9 +4701,18 @@ frame.
     }
 
     ARGP = argFrameP(NFR, 0);
-
+    
     for(; arity-- > 0; ARGP++, args++)
-      *ARGP = linkVal(args);
+    { *ARGP = linkVal(args);
+#ifdef O_METATERM_VMI /* check attvar hook */
+      if(arity==1)
+        { if(isAttVar(*args))
+            { functor_t alt_functor = getMetaOverride(valPAttVar(*args),functor);
+              if(alt_functor) functor = alt_functor;
+            }
+        }
+#endif
+     }
   }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
