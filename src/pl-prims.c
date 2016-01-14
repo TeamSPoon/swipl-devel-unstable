@@ -251,7 +251,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
-  #endif
+#endif
 
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);

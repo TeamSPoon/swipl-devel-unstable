@@ -121,9 +121,8 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
-  wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; /* in case we are using this interface for other means */
+  wake[3] = makeRef(attvar);
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
-  /*METATERM_APPLY(attvar, | METATERM_disabled);*/
   appendWakeup(wake, 2, TRUE PASS_LD);
 }
 
@@ -200,7 +199,6 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
@@ -225,7 +223,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
- 
+
 
 #ifdef O_METATERM
   if (METATERM_OVERIDES(av,FUNCTOR_is2)) return;
@@ -245,6 +243,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      }
   } else
     *av = *value;
+
 }
 
 
@@ -388,7 +387,7 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
 	{ *vp = &f->arguments[1];
 
 	  succeed;
-    } else 
+	} else
     {   if (isTerm(*n))
         {  Functor fn = valueTerm(*n);
            if (fn->definition == name)
@@ -405,8 +404,8 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
         }
         deRef(l);
 	}
-   } else
-   { *vp = NULL;			/* bad attribute list */
+      } else
+      { *vp = NULL;			/* bad attribute list */
 	fail;
       }
     } else
@@ -1510,7 +1509,6 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
   }
 }
 
-// av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$matts_flags'(Y,1),wd(X==X).
 inline
 functor_t 
 getMetaOverride(Word av, functor_t f ARG_LD)
@@ -1589,11 +1587,11 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
         } else 
         { DEBUG(1,Sdprintf("Not on local stack\n"));
           return(PL_unify_integer(A2, -1));
-        }
-    }
+  }
+  }
     DEBUG(1,Sdprintf("!onStackArea\n"));
     return(PL_unify_integer(A2, negInfo));
-    return TRUE;
+   return TRUE;
 }
 
 #endif /*O_METATERM*/
