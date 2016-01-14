@@ -372,15 +372,9 @@ Caller must ensure 4 cells space on global stack.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static int
-find_sub_attr(word* l, atom_t name, Word *vp ARG_LD)
-{
-  if(l==0 || isVar(*l)) 
-  { *vp = 0;     /* bad attribute list */
-    fail;
-  } 
-  for(;;)
-  { 
-    if ( isNil(*l) )
+find_sub_attr(Word l, word name, Word *vp ARG_LD)
+{ for(;;)
+  { if ( isNil(*l) )
     { *vp = l;
       fail;
     } else if ( isTerm(*l) )
@@ -399,10 +393,16 @@ find_sub_attr(word* l, atom_t name, Word *vp ARG_LD)
         {  Functor fn = valueTerm(*n);
            if (fn->definition == name)
            {  *vp = &f->arguments[1];
+
               succeed;
            }
         }
         l = &f->arguments[2];
+
+        if((void*)l < (void*)1 || !onGlobalArea(l))
+        { *vp = 0;
+            fail;
+        }
         deRef(l);
 	}
    } else
@@ -417,20 +417,22 @@ find_sub_attr(word* l, atom_t name, Word *vp ARG_LD)
 }
 
 
+
 static int
 find_attr(Word av, atom_t name, Word *vp ARG_LD)
 { Word l;
+
   deRef(av);
   assert(isAttVar(*av));
   l = valPAttVar(*av);
-  if(METATERM_ENABLED)
-  {
-      Sdprintf("L %s (%s)\n",
-             print_addr(l, 0), print_val(*l, 0));
+  if((void*)l < (void*)1 || !onGlobalArea(l))
+  { *vp = 0;
+      fail;
   }
-  deRef(l);
- return find_sub_attr(l,name,vp PASS_LD);
+  return find_sub_attr(l,name,vp PASS_LD);
 }
+
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 put_attr(Word attvar, atom_t name, Word value)
 
@@ -1509,17 +1511,21 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 }
 
 // av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$matts_flags'(Y,1),wd(X==X).
-
+inline
 functor_t 
 getMetaOverride(Word av, functor_t f ARG_LD)
 { Word fdattrs,found;
   if(!(METATERM_ENABLED)) return f;
-  if(!isAttVar(*av) || !find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
-  {
-      word fallback;
-      if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD) || !isTerm(fallback)) return f;
-      fdattrs = &fallback;
+  deRef(av);
+  if(!isAttVar(*av)) return f;
+  if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
+  { word fallback;
+    if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD)) return f;
+    if(!isAttVar(fallback)) return f;       
+    if(!find_attr(&fallback, ATOM_dmeta, &fdattrs PASS_LD)) return f;
   }
+  if(fdattrs==0) return f;
+  deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return f;
   if ( isTerm(*found) )
   { 

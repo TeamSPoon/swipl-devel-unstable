@@ -1629,16 +1629,14 @@ normal_call:
     if(METATERM_ENABLED)/* check attvar meta hooks */
     { size_t current_arity = ((Definition)DEF)->functor->arity;
       if (current_arity > 0)
-      { Word arg, ARG = ARGP - current_arity;
-        for(; current_arity-- > 0;)
-        { deRef2(ARG++, arg);
-          if(isAttVar(*arg))
+      { Word argAV, ARG = ARGP - current_arity; 
+        { deRef2(ARG,argAV);
+          if(isAttVar(*argAV))
           { functor_t current_functor = ((Definition)DEF)->functor->functor;
-            functor_t alt_functor = getMetaOverride(arg,current_functor PASS_LD);
+            functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
             if(alt_functor && alt_functor!=current_functor) 
-            { DEBUG(MSG_WAKEUPS, Sdprintf("swapping functors for attvar .. "));
+            { DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
               DEF = lookupDefinition(alt_functor, resolveModule(0));
-              break;
             }}}}}
 #endif
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
