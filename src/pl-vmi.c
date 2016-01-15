@@ -1626,7 +1626,7 @@ true:
 
 normal_call:
 
-CHECK_METATERM(0,ARGP);
+CHECK_METATERM(ARGP);
 
                  
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -3505,7 +3505,7 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 #ifdef O_PROF_PENTIUM
 #define PROF_FOREIGN \
 	{ END_PROF(); \
-      CHECK_METATERM(1,valTermRef(h0)) \
+      CHECK_FMETATERM(h0) \
 	  START_PROF(DEF->prof_index, DEF->prof_name); \
 	}
 #define PROF_FOREIGN0 \
@@ -3515,7 +3515,7 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 
 #else
 
-#define PROF_FOREIGN CHECK_METATERM(1,valTermRef(h0))
+#define PROF_FOREIGN CHECK_FMETATERM(h0)
 #define PROF_FOREIGN0 (void)0
 
 #endif

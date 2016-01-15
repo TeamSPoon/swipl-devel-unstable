@@ -2566,39 +2566,66 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(deref,a0) {Definition newDef = swap_out_functor((Definition)DEF,deref,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_METATERM(a0) {Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_FMETATERM(a0) {Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
+/* check attvar meta hooks */
 static inline
-Definition swap_out_functor(Definition DEF,int deref, Word ARGP ARG_LD )
-{
-    if(1) return DEF;
-    if(METATERM_ENABLED)/* check attvar meta hooks */
-    { size_t current_arity = ((Definition)DEF)->functor->arity;
-      if ((current_arity > 0 /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/))
-      { Word argAV, ARG = ARGP - current_arity;
-        for( ; current_arity-->0 ; ARG++)
-        { /*if(deref) if(isRef(*ARG))*/
-          { if(deref) 
-            { 
-              argAV = ARG;
-              //deRef(argAV);
-            } else
-            { argAV = (Word)unRef(*ARG);
-            }
-            if(argAV && isAttVar(*argAV))
-            { functor_t current_functor = ((Definition)DEF)->functor->functor;
-              functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
-              if(alt_functor && alt_functor!=current_functor) 
-              { DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
-                DEF = lookupDefinition(alt_functor,resolveModule(0));
-                return DEF;              
-              }
-              DEBUG(MSG_WAKEUPS, Sdprintf("no overriden functor for metatype"));
-            }
-        }}}}      
-    return DEF;
+Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
+{ if(!METATERM_ENABLED)  return DEF;
+  size_t current_arity = ((Definition)DEF)->functor->arity;
+  if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+  for( ; current_arity-->0 ; h0++)
+  {   Word argAV = valTermRef(h0);
+      deRef(argAV);              
+      if(argAV && isAttVar(*argAV))
+      { functor_t current_functor = ((Definition)DEF)->functor->functor;
+        functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
+        if(alt_functor && alt_functor!=current_functor) 
+        { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
+          if(altDEF)
+          {
+              DEBUG(MSG_WAKEUPS, Sdprintf("using overriden ffunctor for metatype"));
+              return altDEF;
+          }
+          DEBUG(MSG_WAKEUPS, Sdprintf("missing overriden ffunctor for metatype"));
+        }
+       // DEBUG(MSG_WAKEUPS, Sdprintf("no overriden ffunctor for metatype"));
+      }        
+  }
+  return DEF;
 }
-   
+
+/* check attvar meta hooks */
+static inline
+Definition swap_out_functor(Definition DEF, Word ARGP ARG_LD )
+{ if(!METATERM_ENABLED)  return DEF;
+  size_t current_arity = ((Definition)DEF)->functor->arity;
+  if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+
+  Word ARG = ARGP - current_arity;
+  for( ; current_arity-->0 ; ARG++)
+  {   Word argAV = ARG;
+      deRef(argAV);              
+      if(argAV && isAttVar(*argAV))
+      { functor_t current_functor = ((Definition)DEF)->functor->functor;
+        functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
+        if(alt_functor && alt_functor!=current_functor) 
+        { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
+          if(altDEF)
+          {
+              DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
+              return altDEF;
+          }
+          DEBUG(MSG_WAKEUPS, Sdprintf("missing overriden functor for metatype"));
+        }
+       // DEBUG(MSG_WAKEUPS, Sdprintf("no overriden functor for metatype"));
+      }        
+      return DEF;
+  }
+  return DEF;
+}
+
 #endif
 
 int
