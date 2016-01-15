@@ -226,13 +226,12 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(METATERM_ENABLED)
-  { /* WARN: dont call too early */
-  /* DM: Trusting assignAttVar() with Vars */
+  if(METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  {
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
-	goto out_fail;
+            goto out_fail;
       }
       assignAttVar(t1, t2, ATT_UNIFY PASS_LD);
       continue;
@@ -240,7 +239,7 @@ do_unify(Word t1, Word t2 ARG_LD)
     if ( isAttVar(w2) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
-	goto out_fail;
+            goto out_fail;
       }
       assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
@@ -269,7 +268,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 	continue;
       }
 
-      if ( isAttVar(w2 ) )
+      if ( isAttVar(w2 ) ) /* DM: tag checking is so cheap there is no reason to invert METATERM_ENABLED */
 	w2 = makeRef(t2);
 
       Trail(t1, w2);
@@ -3432,7 +3431,7 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-   /*Avoid creating global terms we promise never to use*/
+   /* Avoids creating global terms we promise never to use*/
     int was_no_wakeups = ATT_LD(no_wakeups);
     ATT_LD(no_wakeups) = TRUE;
     int rc = unifiable(A1, A2, A3 PASS_LD);

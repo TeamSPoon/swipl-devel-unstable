@@ -2017,6 +2017,15 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
+
+#define MATTS_ENABLE_VMI  	0x01 /* Hook WAM */
+#define MATTS_ENABLE_CPREDS	0x02 /* Hook CPREDS (WAM can miss a few)*/
+#define MATTS_SKIP_HIDDEN   0x04 /* dont factor $meta into attvar identity */
+#define MATTS_ENABLE_UNDO  	0x08 /* check attvars for undo hooks (perfomance checking)*/
+#define MATTS_DISABLED   	0x80 /* disable all options (allows the options to be saved) */
+#define MATTS_DEFAULT  	    MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN
+
+#ifdef O_METATERM
 /*
  METATERM_SKIP_HIDDEN(.)
 
@@ -2027,16 +2036,15 @@ typedef struct
       att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
   ( "$meta" attribute is also hidden. )
   */
-#ifdef O_METATERM
-#define METATERM_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,ATOM_dmeta PASS_LD)
-#define METATERM_OVERIDES(var,functor) (METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD))
-#define METATERM_HOOK(atom,t1,t2,rc) \
-           (METATERM_ENABLED && ATOM_ ## atom &&\
-            (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
-              (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
-               metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
-#define METATERM_ENABLED ((ATT_LD(no_wakeups)<4 && ATOM_dmeta && gvar_value__LD(ATOM_dmeta, &ATT_LD(matts_flags) PASS_LD) && !isVar(ATT_LD(matts_flags))))
-#else
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_ENABLE_CPREDS & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED)
+#define METATERM_OVERIDES(var,functor) METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD)
+#define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
+                    (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
+                      (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
+                       metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
+
+#else  /* for less noisey undefing of O_METATERM */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
 #define METATERM_OVERIDES(var,functor) (0)
 #define METATERM_HOOK(what,t1,t2,rc) (0)

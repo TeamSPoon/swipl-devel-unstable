@@ -411,9 +411,9 @@ struct PL_local_data
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
-    int		no_wakeups;  /* >0 Dont register wakeups (also to prevent recursion later in next patch) */
+    int		no_wakeups;  /* >0 Dont register wakeups (also to trap recursion) */
 #ifdef O_METATERM
-    word   matts_flags;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+    int     metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
 #endif
   } attvar;
 #endif

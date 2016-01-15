@@ -1238,7 +1238,21 @@ __do_undo(mark *m ARG_LD)
     if ( isTrailVal(p) )
     { DEBUG(2, Sdprintf("Undoing a trailed assignment\n"));
       tt--;
+#ifdef O_UNDO_HOOK
+      Word location = tt->address;
+      word older = trailVal(p);
+      if(isAttVar(older))
+      { Word location = tt->address;
+        word newer = *location;
+        *location = older;
+        if(MATTS_ENABLE_UNDO & METATERM_OVERIDES(older,unify_undo)) 
+        {
+            registerWakeup(FUNCTOR_dunify_undo4,location,valPAttVar(*location),&newer PASS_LD);
+        }
+      }
+#else
       *tt->address = trailVal(p);
+#endif
       DEBUG(CHK_SECURE,
 	    if ( isAttVar(*tt->address) )
 	      assert(on_attvar_chain(tt->address)));
@@ -2566,15 +2580,15 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(a0) if(METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
-#define CHECK_FMETATERM(a0) if(METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_METATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_FMETATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
 static inline
 Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
-  if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-
+  if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+  assert(ATT_LD(no_wakeups)<5); /*catch loops*/
   for( ; current_arity-->0 ; h0++)
   {   Word argAV = valTermRef(h0);
       deRef(argAV);              
@@ -2585,12 +2599,12 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
           {
-              DEBUG(MSG_WAKEUPS, Sdprintf("using overriden ffunctor for metatype"));
+              DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: using overriden ffunctor for metatype"));
               return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("missing overriden ffunctor for metatype"));
+          DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: missing overriden ffunctor for metatype"));
         }
-       // DEBUG(MSG_WAKEUPS, Sdprintf("no overriden ffunctor for metatype"));
+       // DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: no overriden ffunctor for metatype"));
       }        
   }
   return DEF;
@@ -2600,7 +2614,8 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 static inline
 Definition swap_out_functor(Definition DEF, Word ARGP ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
-  if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+  if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+  assert(ATT_LD(no_wakeups)<5); /*catch loops*/
   
   Word ARG = ARGP - current_arity;
   for( ; current_arity-->0 ; ARG++)
@@ -2616,9 +2631,9 @@ Definition swap_out_functor(Definition DEF, Word ARGP ARG_LD )
               DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
               return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));
+          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));\
         }
-       // DEBUG(MSG_WAKEUPS, Sdprintf("no overriden functor for metatype"));
+       // DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: no overriden functor for metatype"));
       }        
       /* derefing the next arg seems to segv  (so exit here) */
       return DEF;

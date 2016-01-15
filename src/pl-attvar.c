@@ -374,7 +374,48 @@ of the end of the list.  Returns FALSE with *vp == NULL if the attribute
 list is invalid.
 
 Caller must ensure 4 cells space on global stack.
+DM: Not sure this  ^ is true for find_attr() but true of put_attr()
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+static int
+find_attr(Word av, atom_t name, Word *vp ARG_LD)
+{ Word l;
+
+  deRef(av);
+  assert(isAttVar(*av));
+  l = valPAttVar(*av);
+
+  for(;;)
+  { deRef(l);
+
+    if ( isNil(*l) )
+    { *vp = l;
+      fail;
+    } else if ( isTerm(*l) )
+    { Functor f = valueTerm(*l);
+
+      if ( f->definition == FUNCTOR_att3 )
+      { Word n;
+
+	deRef2(&f->arguments[0], n);
+	if ( *n == name )
+	{ *vp = &f->arguments[1];
+
+	  succeed;
+	} else
+	{ l = &f->arguments[2];
+	}
+   } else
+   { *vp = NULL;			/* bad attribute list */
+    fail;
+   }
+  } else
+  { *vp = NULL;			/* bad attribute list */
+    fail;
+  }
+ }
+}
+
 
 static int
 find_sub_attr(Word l, word name, Word *vp ARG_LD)
@@ -432,23 +473,6 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
   }
  }
 }
-
-
-
-static int
-find_attr(Word av, atom_t name, Word *vp ARG_LD)
-{ Word l;
-
-  deRef(av);
-  assert(isAttVar(*av));
-  l = valPAttVar(*av);
-  if((void*)l < (void*)1 || !onGlobalArea(l))
-  { *vp = 0;
-      fail;
-  }
-  return find_sub_attr(l,name,vp PASS_LD);
-}
-
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 put_attr(Word attvar, atom_t name, Word value)
@@ -1596,9 +1620,10 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 { static predicate_t pred;
    wakeup_state wstate;
    int ret = 0;
-   if (ATT_LD(no_wakeups)>1)    /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metaInterrupt) */
+   if (ATT_LD(no_wakeups)>1)    /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metatermOverride)
+                                   this prevents aquiring unwanted C stack */
    { term_t ex = PL_new_term_ref();
-     ret = pl_break();
+     
      ret = PL_unify_term(ex,PL_FUNCTOR, 
            PL_FUNCTOR_CHARS, "metaterm_loop_error", 3,
            PL_ATOM, method,
@@ -1637,7 +1662,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 }
 
 static
-PRED_IMPL("$metaterm_overriding", 3, dattvar_overriding, 0)
+PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
 { PRED_LD
   Word av;
   word f;
@@ -1647,6 +1672,13 @@ PRED_IMPL("$metaterm_overriding", 3, dattvar_overriding, 0)
       PL_get_atom(A2,&f))) return FALSE;
   functor_t becomes = getMetaOverride(av,f PASS_LD);
   return PL_unify_functor(A3,becomes);
+}
+
+
+static
+PRED_IMPL("metaterm_options", 2, metaterm_options, 0)
+{ PRED_LD
+    return setInteger(&ATT_LD(metaterm_opts), A1, A2);
 }
 
 /* For a heuristic used elsewhere from matts */
@@ -1707,8 +1739,10 @@ BeginPredDefs(attvar)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
-  PRED_DEF("$metaterm_overriding", 3, dattvar_overriding, 0)
-
+  PRED_DEF("metaterm_options", 2, metaterm_options, 0)
+#ifdef O_DEBUG
+     PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
+#endif
 #endif
 
 EndPredDefs
