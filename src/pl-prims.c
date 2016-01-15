@@ -1662,7 +1662,7 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
     deRef(p2); w2 = *p2;
 
     int retcode;
-    if(METATERM_HOOK(compare,p1,p2,&retcode))
+    if(METATERM_HOOK(compare,p1,p2,&retcode)) /* ECLiPSe meta_attribute */
     { return retcode; 
       /* This is also for ==/2 */
     }

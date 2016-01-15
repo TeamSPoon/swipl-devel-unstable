@@ -3653,6 +3653,7 @@ VMI(I_FCALLDET7, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
   term_t h0 = argFrameP(FR, 0) - (Word)lBase;
 
+  PROF_FOREIGN;
   rc = (*f)(h0, h0+1, h0+2, h0+3, h0+4, h0+5, h0+6);
   VMI_GOTO(I_FEXITDET);
 }
@@ -3799,6 +3800,7 @@ VMI(I_FCALLNDET2, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
   term_t h0 = argFrameP(FR, 0) - (Word)lBase;
 
+  PROF_FOREIGN;
   rc = (*f)(h0, h0+1, &context);
   VMI_GOTO(I_FEXITNDET);
 }

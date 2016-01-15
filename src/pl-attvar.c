@@ -1534,12 +1534,6 @@ getMetaOverride(Word av, functor_t f ARG_LD)
 }
 
 static
-PRED_IMPL("$matts_flags", 2, dmatts_flags, 0)
-{ PRED_LD
-    return setInteger(&LD->attvar.matts_flags, A1, A2);
-}
-
-static
 PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
 { PRED_LD
   int ret = PL_unify(A1,LD->attvar.head) && PL_unify(A2,LD->attvar.tail-2);
@@ -1561,6 +1555,80 @@ PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
       LD->alerted |= ALERT_WAKEUP;
     }
   return TRUE;
+}
+
+
+/*
+
+ This for running ECLiPSe meta_attribute hooks that 
+  have somehow bypassed WAM 
+
+ Only in: variant/2 compare/3 and copy_term/2
+    
+ metaInterupt returns TRUE only if a hook was implemented 
+
+ thus, retresult was hooks return result:
+
+   copy_term[_nat]/2 expects TRUE only
+   the rest expect CMP_*
+
+*/
+int
+metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
+{ static predicate_t pred;
+   wakeup_state wstate;
+   int ret = 0;
+   if (ATT_LD(no_wakeups)>1)    /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metaInterrupt) */
+   { term_t ex = PL_new_term_ref();
+     ret = pl_break();
+     ret = PL_unify_term(ex,PL_FUNCTOR, 
+           PL_FUNCTOR_CHARS, "metaterm_loop_error", 3,
+           PL_ATOM, method,
+           PL_TERM, attvar,
+           PL_TERM, value);
+     assert(ret);
+     return PL_raise_exception(ex);
+   }
+
+   if (!saveWakeup(&wstate, TRUE PASS_LD))
+        return FALSE;
+
+    term_t av = PL_new_term_refs(4);    /* restoreWakeup should free these */ 
+    *valTermRef(av) = method;
+    *valTermRef(av+1) = linkVal(attvar);
+    *valTermRef(av+2) = linkVal(value);
+
+    if (!pred)
+        pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
+
+    if(!pred) return FALSE;
+
+    ATT_LD(no_wakeups)++;
+    int rc = PL_call_predicate(NULL,  
+                           PL_Q_PASS_EXCEPTION, pred, av);
+    ATT_LD(no_wakeups)--;
+    if (rc == TRUE)
+    { if (PL_get_integer(av+3,&rc))
+      { rc = FALSE;
+      } else
+      { *retresult = rc;
+      }
+    }
+    restoreWakeup(&wstate PASS_LD);
+    return rc;
+}
+
+static
+PRED_IMPL("$metaterm_overriding", 3, dattvar_overriding, 0)
+{ PRED_LD
+  Word av;
+  word f;
+  if(!METATERM_ENABLED) fail;
+  deRef2(valTermRef(A1),av);
+  if(!(PL_get_functor(A2,&f) ||
+      PL_get_atom(A2,&f))) return FALSE;
+  functor_t becomes = getMetaOverride(av,f PASS_LD);
+  return PL_unify_functor(A3,becomes);
 }
 
 /* For a heuristic used elsewhere from matts */
@@ -1616,12 +1684,13 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+#ifdef O_METATERM
   PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
-#ifdef O_METATERM
-  PRED_DEF("$matts_flags",   2, dmatts_flags,    0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
+  PRED_DEF("$metaterm_overriding", 3, dattvar_overriding, 0)
+
 #endif
 
 EndPredDefs
