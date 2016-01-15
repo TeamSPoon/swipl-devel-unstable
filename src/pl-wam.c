@@ -2565,6 +2565,41 @@ typedef enum
 	PC    = cref->value.clause->codes; \
 	NEXT_INSTRUCTION;
 
+#ifdef O_METATERM 
+#define CHECK_METATERM(deref,a0) {Definition newDef = swap_out_functor((Definition)DEF,deref,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
+
+static inline
+Definition swap_out_functor(Definition DEF,int deref, Word ARGP ARG_LD )
+{
+    if(1) return DEF;
+    if(METATERM_ENABLED)/* check attvar meta hooks */
+    { size_t current_arity = ((Definition)DEF)->functor->arity;
+      if ((current_arity > 0 /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/))
+      { Word argAV, ARG = ARGP - current_arity;
+        for( ; current_arity-->0 ; ARG++)
+        { /*if(deref) if(isRef(*ARG))*/
+          { if(deref) 
+            { 
+              argAV = ARG;
+              //deRef(argAV);
+            } else
+            { argAV = (Word)unRef(*ARG);
+            }
+            if(argAV && isAttVar(*argAV))
+            { functor_t current_functor = ((Definition)DEF)->functor->functor;
+              functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
+              if(alt_functor && alt_functor!=current_functor) 
+              { DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
+                DEF = lookupDefinition(alt_functor,resolveModule(0));
+                return DEF;              
+              }
+              DEBUG(MSG_WAKEUPS, Sdprintf("no overriden functor for metatype"));
+            }
+        }}}}      
+    return DEF;
+}
+   
+#endif
 
 int
 PL_next_solution(qid_t qid)
@@ -2572,7 +2607,7 @@ PL_next_solution(qid_t qid)
   AR_CTX
   QueryFrame QF;			/* Query frame */
   LocalFrame FR;			/* current frame */
-  LocalFrame NFR;			/* Next frame */
+  LocalFrame NFR;	/* Next frame */
   Word	     ARGP;			/* current argument pointer */
   Code	     PC = NULL;			/* program counter */
   Definition DEF = NULL;		/* definition of current procedure */

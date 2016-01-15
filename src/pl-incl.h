@@ -2018,20 +2018,30 @@ typedef struct
 		 *******************************/
 
 /*
+ METATERM_SKIP_HIDDEN(.)
+
  Only when "$meta" is present as an attribute:
    A feature for prolog programmers who want to hide their attributes from value 
   based term comparisons like "=@=" and "=="  
   They do so by put_attrs/2 their attrbute "imhiden" as parent of "$meta" like:
       att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
   ( "$meta" attribute is also hidden. )
-
   */
+#ifdef O_METATERM
 #define METATERM_SKIP_HIDDEN(ValPAttVar) attrs_after(ValPAttVar,ATOM_dmeta PASS_LD)
-#define METATERM_OVERIDES(var,functor) (functor != getMetaOverride(av,functor PASS_LD))
+#define METATERM_OVERIDES(var,functor) (METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD))
+#define METATERM_HOOK(atom,t1,t2,rc) \
+           (METATERM_ENABLED && ATOM_ ## atom &&\
+            (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
+              (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
+               metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
+#define METATERM_ENABLED ((ATT_LD(no_wakeups)<4 && ATOM_dmeta && gvar_value__LD(ATOM_dmeta, &ATT_LD(matts_flags) PASS_LD) && !isVar(ATT_LD(matts_flags))))
+#else
+#define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
+#define METATERM_OVERIDES(var,functor) (0)
 #define METATERM_HOOK(what,t1,t2,rc) (0)
-#define METATERM_HOOK_A(what,atom,t1,t2,rc) (0)
-#define METATERM_ENABLED (LD->attvar.matts_flags > 0)
-/*#define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar*/
+#define METATERM_ENABLED (0)
+#endif
 
 		 /*******************************
 		 *	      WAKEUP		*

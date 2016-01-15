@@ -214,11 +214,6 @@ Returns one of:
   - TRAIL_OVERFLOW:	Unification cannot be completed due to lack
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-/* TODO: we might call too early */
-#ifdef O_METATERM
-/*#define ATTR_INTERCEPT_VARS*/
-#endif
-
 static int
 do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
@@ -231,9 +226,8 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-     
-
-#ifdef ATTR_INTERCEPT_VARS
+  if(METATERM_ENABLED)
+  { /* WARN: dont call too early */
   /* DM: Trusting assignAttVar() with Vars */
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
@@ -251,7 +245,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
-#endif
+  }
 
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
@@ -274,10 +268,10 @@ do_unify(Word t1, Word t2 ARG_LD)
 	Trail(t1, makeRef(t2));
 	continue;
       }
-#ifndef ATTR_INTERCEPT_VARS
+
       if ( isAttVar(w2 ) )
 	w2 = makeRef(t2);
-  #endif
+
       Trail(t1, w2);
       continue;
     }
@@ -286,15 +280,14 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = TRAIL_OVERFLOW;
 	goto out_fail;
       }
-  #ifndef ATTR_INTERCEPT_VARS
+  
       if ( isAttVar(w1) )
 	w1 = makeRef(t1);
-  #endif
+  
       Trail(t2, w1);
       continue;
     }
 
-  #ifndef ATTR_INTERCEPT_VARS
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
@@ -311,7 +304,6 @@ do_unify(Word t1, Word t2 ARG_LD)
       assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
-  #endif
 
     if ( w1 == w2 )
       continue;

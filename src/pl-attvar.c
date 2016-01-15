@@ -192,6 +192,12 @@ void
 assignAttVar(Word av, Word value, int flags ARG_LD)
 { mark m;
 
+   if (isVar(*value) && !METATERM_OVERIDES(av,FUNCTOR_is2)) 
+   {
+      Trail(value, makeRef(av));
+      return;
+   }
+
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
@@ -216,7 +222,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     return;
 
 #ifdef O_METATERM
-  if (METATERM_OVERIDES(av,FUNCTOR_equals2)) return;
+  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,FUNCTOR_equals2)) return;
 #endif
  
   Mark(m);		/* must be trailed, even if above last choice */
@@ -233,14 +239,14 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else if ( isVar(*value) )
-  { 
-     if( (flags & ATT_ASSIGNONLY) )
-     { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
-    *av = makeRef(value);			/* JW: Does this happen? */ 
-  } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting attvar into plain var\n"));
-       Trail(value, makeRef(av));
-     }
+	  { 
+	     if( (flags & ATT_ASSIGNONLY) )
+	     { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
+	    *av = makeRef(value);			/* JW: Does this happen? */ 
+	  } else
+	     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting attvar into plain var\n"));
+	       Trail(value, makeRef(av));
+	  }
   } else
     *av = *value;
 
@@ -387,10 +393,13 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
 	{ *vp = &f->arguments[1];
 
 	  succeed;
-	} else
-    {   if (isTerm(*n))
-        {  Functor fn = valueTerm(*n);
-           if (fn->definition == name)
+	} else if (hasFunctor(*n, name)) /* for sub-attributes (not stored in toplevel of att/3s) */
+    {  *vp = &f->arguments[1];
+      succeed;
+    } else {   
+       if ( isTerm(*n) ) {
+           FunctorDef fd = valueFunctor(functorTerm(*n));
+           if (fd->name == name)
            {  *vp = &f->arguments[1];
 
               succeed;

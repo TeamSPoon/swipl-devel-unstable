@@ -1626,20 +1626,9 @@ true:
 
 normal_call:
 
-#ifdef O_METATERM 
-    if(METATERM_ENABLED)/* check attvar meta hooks */
-    { size_t current_arity = ((Definition)DEF)->functor->arity;
-      if (current_arity > 0)
-      { Word argAV, ARG = ARGP - current_arity; 
-        { deRef2(ARG,argAV);
-          if(isAttVar(*argAV))
-          { functor_t current_functor = ((Definition)DEF)->functor->functor;
-            functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
-            if(alt_functor && alt_functor!=current_functor) 
-            { DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
-              DEF = lookupDefinition(alt_functor, resolveModule(0));
-            }}}}}
-#endif
+CHECK_METATERM(0,ARGP);
+
+                 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -3516,10 +3505,19 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 #ifdef O_PROF_PENTIUM
 #define PROF_FOREIGN \
 	{ END_PROF(); \
+      CHECK_METATERM(1,valTermRef(h0)) \
 	  START_PROF(DEF->prof_index, DEF->prof_name); \
 	}
+#define PROF_FOREIGN0 \
+    { END_PROF(); \
+	  START_PROF(DEF->prof_index, DEF->prof_name); \
+	}
+
 #else
-#define PROF_FOREIGN (void)0
+
+#define PROF_FOREIGN CHECK_METATERM(1,valTermRef(h0))
+#define PROF_FOREIGN0 (void)0
+
 #endif
 
 BEGIN_SHAREDVARS
@@ -3583,7 +3581,7 @@ a1, a2, ... calling conventions.
 VMI(I_FCALLDET0, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
 
-  PROF_FOREIGN;
+  PROF_FOREIGN0;
   rc = (*f)();
   VMI_GOTO(I_FEXITDET);
 }
@@ -3781,7 +3779,7 @@ VMI(I_FCALLNDETVA, 0, 1, (CA1_FOREIGN))
 VMI(I_FCALLNDET0, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
 
-  PROF_FOREIGN;
+  PROF_FOREIGN0;
   rc = (*f)(&context);
   VMI_GOTO(I_FEXITNDET);
 }
