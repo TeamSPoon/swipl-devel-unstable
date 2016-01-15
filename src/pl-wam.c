@@ -1245,10 +1245,16 @@ __do_undo(mark *m ARG_LD)
       { Word location = tt->address;
         word newer = *location;
         *location = older;
-        if(MATTS_ENABLE_UNDO & METATERM_OVERIDES(older,unify_undo)) 
-        {
-            registerWakeup(FUNCTOR_dunify_undo4,location,valPAttVar(*location),&newer PASS_LD);
+        if(MATTS_ENABLE_UNDO & METATERM_OVERIDES(location,ATOM_undo_unify)) 
+        {  int keep;
+            if(metatermOverride(ATOM_undo_unify,location,&newer, &keep PASS_LD))
+            { if(!keep)
+                 registerWakeup(FUNCTOR_undo_unify4,location,valPAttVar(*location),&newer PASS_LD);
+            }
         }
+      } else
+      {
+          *location = older;
       }
 #else
       *tt->address = trailVal(p);

@@ -160,7 +160,7 @@ handy for it someone wants to add a data type to the system.
 #define O_METATERM 1
 /*#undef O_METATERM*/
 #define O_UNDO_HOOK 1
-#undef O_UNDO_HOOK
+/*#undef O_UNDO_HOOK*/
 
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
@@ -2037,7 +2037,7 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_ENABLE_CPREDS & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED)
+#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED) && !exception_term
 #define METATERM_OVERIDES(var,functor) METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \

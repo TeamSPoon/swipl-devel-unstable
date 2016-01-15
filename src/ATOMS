@@ -1015,6 +1015,7 @@ F tty			1
 F type			1
 F type_error		2
 F undefinterc		4
+/*F undo_unify		4*/
 F unify_determined	2
 F uninstantiation_error	1
 F var			1
