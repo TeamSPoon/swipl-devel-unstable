@@ -382,6 +382,9 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
   { if ( isNil(*l) )
     { *vp = l;
       fail;
+    } else if ( isVar(*l) )
+    { *vp = l; /* for sub-attributes (these are not stored in toplevel of att/3s) */
+      fail;
     } else if ( isTerm(*l) )
     { Functor f = valueTerm(*l);
 
@@ -393,18 +396,23 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
 	{ *vp = &f->arguments[1];
 
 	  succeed;
-	} else if (hasFunctor(*n, name)) /* for sub-attributes (not stored in toplevel of att/3s) */
-    {  *vp = &f->arguments[1];
-      succeed;
-    } else {   
-       if ( isTerm(*n) ) {
-           FunctorDef fd = valueFunctor(functorTerm(*n));
+	} else  
+    {  if ( isTerm(*n) ) /* for sub-attributes (these are not stored in toplevel of att/3s) */
+       {   Functor fn = valueTerm(*n);
+           if (fn->definition == name)
+           {  *vp = &f->arguments[1];
+
+              succeed;
+           }
+
+           FunctorDef fd = valueFunctor(fn->definition);
            if (fd->name == name)
            {  *vp = &f->arguments[1];
 
               succeed;
            }
         }
+
         l = &f->arguments[2];
 
         if((void*)l < (void*)1 || !onGlobalArea(l))
@@ -412,16 +420,17 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
             fail;
         }
         deRef(l);
+
 	}
-      } else
-      { *vp = NULL;			/* bad attribute list */
+   } else
+   { *vp = NULL;			/* bad attribute list */
 	fail;
-      }
-    } else
-    { *vp = NULL;			/* bad attribute list */
-      fail;
-    }
+   }
+  } else
+  { *vp = NULL;			/* bad attribute list */
+   fail;
   }
+ }
 }
 
 

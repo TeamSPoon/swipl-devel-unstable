@@ -111,8 +111,7 @@ code into functions.
 #ifdef O_ATTVAR
 #define CHECK_WAKEUP \
 	if ( unlikely(LD->alerted & ALERT_WAKEUP) ) \
-	{ LD->alerted &= ~ALERT_WAKEUP; \
-	  if ( *valTermRef(LD->attvar.head) ) \
+	{ if ( *valTermRef(LD->attvar.head) ) \
 	    goto wakeup; \
 	}
 #else
@@ -1628,7 +1627,6 @@ normal_call:
 
 CHECK_METATERM(ARGP);
 
-                 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -1660,6 +1658,7 @@ possible to be able to call-back to Prolog.
 
 depart_continue:
 retry_continue:
+
   setGenerationFrame(FR, GD->generation);
 #ifdef O_PROFILE
   FR->prof_node = NULL;

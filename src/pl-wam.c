@@ -2566,15 +2566,15 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(a0) {Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
-#define CHECK_FMETATERM(a0) {Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_METATERM(a0) if(METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_FMETATERM(a0) if(METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
 static inline
 Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
-{ if(!METATERM_ENABLED)  return DEF;
-  size_t current_arity = ((Definition)DEF)->functor->arity;
+{ size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+
   for( ; current_arity-->0 ; h0++)
   {   Word argAV = valTermRef(h0);
       deRef(argAV);              
@@ -2596,31 +2596,31 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
   return DEF;
 }
 
-/* check attvar meta hooks */
+/* check attvar meta hooks (only the last arg is looked at though)*/
 static inline
 Definition swap_out_functor(Definition DEF, Word ARGP ARG_LD )
-{ if(!METATERM_ENABLED)  return DEF;
-  size_t current_arity = ((Definition)DEF)->functor->arity;
+{ size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /*&& !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-
+  
   Word ARG = ARGP - current_arity;
   for( ; current_arity-->0 ; ARG++)
   {   Word argAV = ARG;
-      deRef(argAV);              
-      if(argAV && isAttVar(*argAV))
+      deRef(argAV);
+      if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
         functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
           {
-              DEBUG(MSG_WAKEUPS, Sdprintf("using overriden functor for metatype"));
+              DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
               return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("missing overriden functor for metatype"));
+          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));
         }
        // DEBUG(MSG_WAKEUPS, Sdprintf("no overriden functor for metatype"));
       }        
+      /* derefing the next arg seems to segv  (so exit here) */
       return DEF;
   }
   return DEF;
@@ -2800,6 +2800,7 @@ resumebreak:
 Attributed variable handling
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 wakeup:
+  LD->alerted &= ~ALERT_WAKEUP;
   DEBUG(MSG_WAKEUPS, Sdprintf("Activating wakeup\n"));
   NFR = lTop;
   setNextFrameFlags(NFR, FR);
