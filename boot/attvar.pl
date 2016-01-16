@@ -33,7 +33,8 @@
 	    freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
-	    copy_term/3                 % +Term, -Copy, -Residue
+	    copy_term/3,                % +Term, -Copy, -Residue
+            undo/1                      % :Goal
 	  ]).
 
 /** <module> Attributed variable handling
@@ -85,9 +86,20 @@ goals_with_module([G|Gs], M):- !,
 	goals_with_module(Gs, M).
 goals_with_module(_,_).
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
+
+           /*********************
+            *  UNDO HOOK   *
+            ********************/
+/*
+    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
+*/
+system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
+'$undo_unify':verify_attributes(_,_,[]).
+undo(Goal):- put_attr(Var,'$undo_unify',Goal),Var=Goal.
+
+           /*******************************
+           *	  ATTR UNIFY HOOK	*
+           *******************************/
 
 %%	attr_unify_wrapper(+Context, +Term, -Hook) is
 %	semidet.

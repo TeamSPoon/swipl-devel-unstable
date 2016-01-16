@@ -39,8 +39,13 @@ COMMON(int)		on_attvar_chain(Word avp);
 COMMON(Word)		alloc_attvar(ARG1_LD);
 COMMON(void)		registerWakeup(functor_t wakeup_type4,  Word attvar, Word attrs, Word value ARG_LD);
 
-#ifdef O_METATERM
 COMMON(void)	scheduleWakeup(word g, int alert_flags ARG_LD);
+
+#ifdef O_UNDO_HOOK
+COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
+#endif
+
+#ifdef O_METATERM
 COMMON(int)     metatermOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
 COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);

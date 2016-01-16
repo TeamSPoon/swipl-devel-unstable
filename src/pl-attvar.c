@@ -376,8 +376,10 @@ list is invalid.
 Caller must ensure 4 cells space on global stack.
 DM: Not sure this  ^ is true for find_attr() but true of put_attr()
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
-static int
+#ifndef O_UNDO_HOOK
+static
+#endif
+int
 find_attr(Word av, atom_t name, Word *vp ARG_LD)
 { Word l;
 
@@ -386,7 +388,12 @@ find_attr(Word av, atom_t name, Word *vp ARG_LD)
   l = valPAttVar(*av);
 
   for(;;)
-  { deRef(l);
+  { if((void*)l < (void*)1 || !onGlobalArea(l))
+     { *vp = 0;
+          fail;
+      }
+
+    deRef(l);
 
     if ( isNil(*l) )
     { *vp = l;

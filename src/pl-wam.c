@@ -1237,23 +1237,15 @@ __do_undo(mark *m ARG_LD)
 
     if ( isTrailVal(p) )
     { DEBUG(2, Sdprintf("Undoing a trailed assignment\n"));
-      tt--;
+     tt--; 
 #ifdef O_UNDO_HOOK
-      Word location = tt->address;
       word older = trailVal(p);
-      if(isAttVar(older))
-      { Word location = tt->address;
-        word newer = *location;
-        *location = older;
-        if(MATTS_ENABLE_UNDO & METATERM_OVERIDES(location,ATOM_undo_unify)) 
-        {  int keep;
-            if(metatermOverride(ATOM_undo_unify,location,&newer, &keep PASS_LD))
-            {/* if(!keep) registerWakeup(FUNCTOR_undo_unify4,location,valPAttVar(*location),&newer PASS_LD); */
-            }
-        }
-      } else
-      {
-          *location = older;
+      Word location = tt->address;
+      word newer = *location;
+      *location = older; Word unused;
+      if(isAttVar(older) && find_attr(location, ATOM_dundo_unify, &unused PASS_LD))  /*  */
+      { int retcode; metatermOverride(ATOM_dundo_unify,location,&newer,&retcode PASS_LD); 
+        /*scheduleWakeup(consPtr((found), STG_GLOBAL|TAG_COMPOUND), TRUE PASS_LD);*/
       }
 #else
       *tt->address = trailVal(p);
@@ -2585,7 +2577,7 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_METATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}
 #define CHECK_FMETATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
@@ -2617,15 +2609,20 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 
 /* check attvar meta hooks (only the last arg is looked at though)*/
 static inline
-Definition swap_out_functor(Definition DEF, Word ARGP ARG_LD )
+Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
   assert(ATT_LD(no_wakeups)<5); /*catch loops*/
-  
-  Word ARG = ARGP - current_arity;
+  if(1) return DEF;
+  Word ARG = argV - current_arity;
   for( ; current_arity-->0 ; ARG++)
   {   Word argAV = ARG;
-      deRef(argAV);
+      if(*argAV==0)
+      { /*skipping var*/
+           continue;
+      }
+      if(isRef(*argAV)) deRef(argAV);
+     
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
         functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
