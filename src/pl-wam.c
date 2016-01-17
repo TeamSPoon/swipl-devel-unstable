@@ -1247,7 +1247,9 @@ __do_undo(mark *m ARG_LD)
       *location = older; Word unused;
       if(isAttVar(older) && find_attr(location, ATOM_dundo_unify, &unused PASS_LD))  /*  */
       { int retcode; metatermOverride(ATOM_dundo_unify,location,&newer,&retcode PASS_LD); 
-        /*scheduleWakeup(consPtr((found), STG_GLOBAL|TAG_COMPOUND), TRUE PASS_LD);*/
+        /* DM:  I would have prefered to...
+           scheduleWakeup(*unused, TRUE PASS_LD);  <- problem was the when wakeups ran 'unused' was already gone (untrailed)
+          Slightly confused why this doesnt happen to the metatermOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */
       }
      } else
 #endif
