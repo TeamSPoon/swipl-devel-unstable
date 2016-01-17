@@ -1239,6 +1239,8 @@ __do_undo(mark *m ARG_LD)
     { DEBUG(2, Sdprintf("Undoing a trailed assignment\n"));
      tt--; 
 #ifdef O_UNDO_HOOK
+     if(MATTS_ENABLE_UNDO & METATERM_ENABLED)
+     {
       word older = trailVal(p);
       Word location = tt->address;
       word newer = *location;
@@ -1247,9 +1249,9 @@ __do_undo(mark *m ARG_LD)
       { int retcode; metatermOverride(ATOM_dundo_unify,location,&newer,&retcode PASS_LD); 
         /*scheduleWakeup(consPtr((found), STG_GLOBAL|TAG_COMPOUND), TRUE PASS_LD);*/
       }
-#else
-      *tt->address = trailVal(p);
+     } else
 #endif
+      *tt->address = trailVal(p);
       DEBUG(CHK_SECURE,
 	    if ( isAttVar(*tt->address) )
 	      assert(on_attvar_chain(tt->address)));

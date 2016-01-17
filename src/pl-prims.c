@@ -267,10 +267,10 @@ do_unify(Word t1, Word t2 ARG_LD)
 	Trail(t1, makeRef(t2));
 	continue;
       }
-
+  #ifdef O_ATTVAR
       if ( isAttVar(w2 ) ) /* DM: tag checking is so cheap there is no reason to invert METATERM_ENABLED */
 	w2 = makeRef(t2);
-
+  #endif
       Trail(t1, w2);
       continue;
     }
@@ -279,14 +279,15 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = TRAIL_OVERFLOW;
 	goto out_fail;
       }
-  
+  #ifdef O_ATTVAR
       if ( isAttVar(w1) )
 	w1 = makeRef(t1);
-  
+  #endif
       Trail(t2, w1);
       continue;
     }
 
+  #ifdef O_ATTVAR
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
@@ -303,6 +304,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
+  #endif
 
     if ( w1 == w2 )
       continue;
