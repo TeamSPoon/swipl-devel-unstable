@@ -2037,7 +2037,7 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_ENABLE_CPREDS & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED) && !exception_term
+#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED) && isVar(*valTermRef(exception_term))
 #define METATERM_OVERIDES(var,functor) METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
