@@ -500,10 +500,10 @@ setup_history :-
 	(   stream_property(user_input, tty(true)),
 	    current_predicate(rl_add_history/1),
 	    \+ current_prolog_flag(save_history, false),
-	    load_setup_file(library(prolog_history))
+	    load_setup_file(user:library(prolog_history))
 	->  prolog_history(enable)
 	;   true
-	).
+	). 
 
 load_setup_file(File) :-
 	catch(load_files(File,

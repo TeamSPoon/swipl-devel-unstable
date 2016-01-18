@@ -95,7 +95,12 @@ goals_with_module(_,_).
 */
 system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
-undo(Goal):- put_attr(Var,'$undo_unify',Goal),Var=Goal.
+undo(GoalIn):- 
+        metaterm_options(W,W), T is W \/ 8, % Flag to turn on trail scanning
+           ( T == W 
+             -> GoalIn=Goal ;
+                Goal=(metaterm_options(_,W),GoalIn)),
+               put_attr(Var,'$undo_unify',Goal),Var=Goal.
 
            /*******************************
            *	  ATTR UNIFY HOOK	*
