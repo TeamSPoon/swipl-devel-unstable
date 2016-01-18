@@ -2036,7 +2036,7 @@ typedef struct
       att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
   ( "$meta" attribute is also hidden. )
   */
-#define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_ENABLE_CPREDS & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
 #define METATERM_OVERIDES(var,functor) METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \

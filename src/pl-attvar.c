@@ -1494,9 +1494,12 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 
   deRef(av);
   if ( isAttVar(*av) )
-  { deRef2(valTermRef(A2), value);
-    /* FALSE on the next line isn't a hiding of trouble it will still raise the GLOBAL_OVERFLOW */
-    if(!allocGlobal(0)) return FALSE;
+  { if ( !hasGlobalSpace(0) )		/* 0 means enough for attvars */
+    {  int rc;
+       if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
+         return raiseStackOverflow(rc);
+    }
+    deRef2(valTermRef(A2), value);
     assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
