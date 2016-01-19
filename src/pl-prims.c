@@ -226,7 +226,7 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  if(MATTS_DO_UNIFY & METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
