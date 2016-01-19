@@ -1567,7 +1567,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 /* sometimes sneaking in an atom instead of a functor here */
 inline
 functor_t 
-getMetaOverride(Word av, functor_t f ARG_LD)
+getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
   if(!(METATERM_ENABLED)) return f;
   deRef(av);
@@ -1598,9 +1598,28 @@ getMetaOverride(Word av, functor_t f ARG_LD)
        return ft;
      }
      DEBUG(MSG_WAKEUPS,Sdprintf("return same atom"));
+     if(MATTS_ENABLE_CPREDS & override_flags) return NULL;
      return f;
   }
   return f;
+}
+inline
+bool 
+isMetaOverriden(Word av, functor_t f, int override_flags ARG_LD)
+{ Word fdattrs,found;
+  if(!(METATERM_ENABLED)) return FALSE;
+  deRef(av);
+  if(!isAttVar(*av)) return FALSE;
+  if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
+  { word fallback;
+    if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD)) return FALSE;
+    if(!isAttVar(fallback)) return FALSE;       
+    if(!find_attr(&fallback, ATOM_dmeta, &fdattrs PASS_LD)) return FALSE;
+  }
+  if(fdattrs==0) return FALSE;
+  deRef(fdattrs);
+  if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return FALSE;
+  return TRUE;
 }
 
 static
@@ -1704,7 +1723,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
-  functor_t becomes = getMetaOverride(av,f PASS_LD);
+  functor_t becomes = getMetaOverride(av,f, MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS PASS_LD);
   return PL_unify_functor(A3,becomes);
 }
 

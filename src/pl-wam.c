@@ -2606,7 +2606,7 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
       deRef(argAV);              
       if(argAV && isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
+        functor_t alt_functor = getMetaOverride(argAV,current_functor, MATTS_ENABLE_VMI PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
@@ -2632,7 +2632,7 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
       deRef(argAV);  
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
+        functor_t alt_functor = getMetaOverride(argAV,current_functor, MATTS_ENABLE_VMI PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
