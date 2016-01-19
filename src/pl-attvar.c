@@ -112,7 +112,10 @@ void
 registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  //if(LD_no_wakeup) return; 
+  if(LD_no_wakeup>0)
+  {
+      DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n");
+  }
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
@@ -388,12 +391,7 @@ find_attr(Word av, atom_t name, Word *vp ARG_LD)
   l = valPAttVar(*av);
 
   for(;;)
-  { if((void*)l < (void*)1 || !onGlobalArea(l))
-     { *vp = 0;
-          fail;
-      }
-
-    deRef(l);
+  { deRef(l);
 
     if ( isNil(*l) )
     { *vp = l;
@@ -462,11 +460,6 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
         }
 
         l = &f->arguments[2];
-
-        if((void*)l < (void*)1 || !onGlobalArea(l))
-        { *vp = 0;
-            fail;
-        }
         deRef(l);
 
 	}
@@ -1563,6 +1556,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
   }
 }
 
+/* sometimes sneaking in an atom instead of a functor here */
 inline
 functor_t 
 getMetaOverride(Word av, functor_t f ARG_LD)

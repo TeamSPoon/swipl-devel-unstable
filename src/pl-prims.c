@@ -3410,6 +3410,24 @@ retry:
 	  tt--;			/* re-insert the attvar */
 	  *tt->address = trailVal(p);
 
+	  tt--;				/* restore tail of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
+
+	  tt--;				/* restore head of wakeup list */
+	  p = tt->address;
+	  if ( isTrailVal(p) )
+	  { tt--;
+	    *tt->address = trailVal(p);
+	  } else
+	  { setVar(*p);
+	  }
+
 	  assert(tt>=mt);
 	}
       }
@@ -3433,12 +3451,8 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-   /* Avoids creating global terms we promise never to use*/
-    int was_no_wakeups = LD_no_wakeup;
-    LD_no_wakeup = TRUE;
-    int rc = unifiable(A1, A2, A3 PASS_LD);
-    LD_no_wakeup = was_no_wakeups;
-    return rc;
+
+  return unifiable(A1, A2, A3 PASS_LD);
 }
 
 
