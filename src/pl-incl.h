@@ -2009,11 +2009,13 @@ typedef struct
 #define ATT_ASSIGNONLY  	0x02			/* '$attvar_assign'/2 */
 #define ATT_UNIFY       	0x04			/* unify: assign and wakeup */
 
+
 #define LD_no_wakeup LD->attvar.no_wakeups
 
 		 /*******************************
 		 *	      METATERMS           	*
 		 *******************************/
+
 
 #define MATTS_ENABLE_VMI  	0x01 /* Hook WAM */
 #define MATTS_ENABLE_CPREDS	0x02 /* Hook CPREDS (WAM can miss a few)*/

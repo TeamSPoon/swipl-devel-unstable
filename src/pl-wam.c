@@ -2582,6 +2582,7 @@ typedef enum
 
 #ifdef O_METATERM 
 #define CHECK_METATERM(a0) /*if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}*/
+/* DM: possiblely anything that started in usercallN ends up inf foreign call.. so  swap_out_functor() might be able to be removed*/
 #define CHECK_FMETATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
@@ -2599,47 +2600,37 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          {
-              DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: using overriden ffunctor for metatype"));
-              return altDEF;
-          }
-          DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: missing overriden ffunctor for metatype"));
+          { DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: using overriden ffunctor for metatype"));
+            return altDEF;
+          } 
+          DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: missing overriden ffunctor for metatype"));
         }
-       // DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: no overriden ffunctor for metatype"));
       }        
   }
   return DEF;
 }
 
-/* check attvar meta hooks (only the last arg is looked at though)*/
+/* IS DISABLED RIGHT NOW (segv's sometimes) check attvar meta hooks (only the last arg is looked at though)*/
 static inline
 Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
   assert(LD_no_wakeup<5); /*catch loops*/
-  if(1) return DEF;
   Word ARG = argV - current_arity;
-  for( ; current_arity-->0 ; ARG++)
+  for( ; current_arity-->0 ; ARG++) /* DM: How is this suppsoed to be coded?  I am assuming something wrong? */    
   {   Word argAV = ARG;
-      if(*argAV==0)
-      { /*skipping var*/
-           continue;
-      }
-      if(isRef(*argAV)) deRef(argAV);
-     
+      deRef(argAV);  
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
         functor_t alt_functor = getMetaOverride(argAV,current_functor PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          {
-              DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
-              return altDEF;
+          { DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
+            return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));\
+          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));
         }
-       // DEBUG(MSG_WAKEUPS, Sdprintf("FORIEGN: no overriden functor for metatype"));
       }        
       /* derefing the next arg seems to segv  (so exit here) */
       return DEF;
@@ -2655,7 +2646,7 @@ PL_next_solution(qid_t qid)
   AR_CTX
   QueryFrame QF;			/* Query frame */
   LocalFrame FR;			/* current frame */
-  LocalFrame NFR;	/* Next frame */
+  LocalFrame NFR;			/* Next frame */
   Word	     ARGP;			/* current argument pointer */
   Code	     PC = NULL;			/* program counter */
   Definition DEF = NULL;		/* definition of current procedure */

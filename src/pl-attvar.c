@@ -1667,7 +1667,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
     }
 
     if (!pred)
-         pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
+        pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
 
     if(!pred) return FALSE;
 
