@@ -2021,6 +2021,7 @@ copy_term(nat-2) :-			% cyclic term
 	arg(2, T, X2),
 	get_attr(X2, foo, x).
 
+foo:verify_attributes(_,_,[]).
 
 		 /*******************************
 		 *	     TERM-HASH		*

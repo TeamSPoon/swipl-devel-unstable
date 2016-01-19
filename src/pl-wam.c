@@ -2581,7 +2581,7 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}
+#define CHECK_METATERM(a0) /*if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}*/
 #define CHECK_FMETATERM(a0) if(MATTS_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
@@ -2589,7 +2589,7 @@ static inline
 Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-  assert(ATT_LD(no_wakeups)<5); /*catch loops*/
+  assert(LD_no_wakeup<5); /*catch loops*/
   for( ; current_arity-->0 ; h0++)
   {   Word argAV = valTermRef(h0);
       deRef(argAV);              
@@ -2616,7 +2616,7 @@ static inline
 Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-  assert(ATT_LD(no_wakeups)<5); /*catch loops*/
+  assert(LD_no_wakeup<5); /*catch loops*/
   if(1) return DEF;
   Word ARG = argV - current_arity;
   for( ; current_arity-->0 ; ARG++)

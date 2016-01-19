@@ -112,7 +112,7 @@ void
 registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  if(ATT_LD(no_wakeups)) return; 
+  //if(LD_no_wakeup) return; 
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
@@ -192,7 +192,7 @@ void
 assignAttVar(Word av, Word value, int flags ARG_LD)
 { mark m;
 
-   if (isVar(*value) && !METATERM_OVERIDES(av,FUNCTOR_is2)) 
+   if (!(flags & ATT_ASSIGNONLY) && isVar(*value) && !METATERM_OVERIDES(av,FUNCTOR_is2)) 
    {
       Trail(value, makeRef(av));
       return;
@@ -1580,9 +1580,23 @@ getMetaOverride(Word av, functor_t f ARG_LD)
   deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return f;
   if ( isTerm(*found) )
-  { 
-     FunctorDef fd = valueFunctor(functorTerm(*found));
-     return fd->functor;
+  {  FunctorDef fd = valueFunctor(functorTerm(*found));
+     functor_t ft = fd->functor;
+     if(f!=ft)
+     { DEBUG(MSG_WAKEUPS,Sdprintf("return diff functor"));
+       return ft;
+     }
+     DEBUG(MSG_WAKEUPS,Sdprintf("return same functor"));
+     return f;
+  }
+  if ( isAtom(*found) )
+  {  functor_t ft = *found;
+     if(f!=ft)
+     { DEBUG(MSG_WAKEUPS,Sdprintf("return diff atom"));
+       return ft;
+     }
+     DEBUG(MSG_WAKEUPS,Sdprintf("return same atom"));
+     return f;
   }
   return f;
 }
@@ -1632,41 +1646,46 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 { static predicate_t pred;
    wakeup_state wstate;
    int ret = 0;
-   if (ATT_LD(no_wakeups)>1)    /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metatermOverride)
-                                   this prevents aquiring unwanted C stack */
-   { term_t ex = PL_new_term_ref();
-     
-     ret = PL_unify_term(ex,PL_FUNCTOR, 
-           PL_FUNCTOR_CHARS, "metaterm_loop_error", 3,
-           PL_ATOM, method,
-           PL_TERM, attvar,
-           PL_TERM, value);
-     assert(ret);
-     return PL_raise_exception(ex);
-   }
 
    if (!saveWakeup(&wstate, TRUE PASS_LD))
         return FALSE;
 
-    term_t av = PL_new_term_refs(4);    /* restoreWakeup should free these */ 
+    term_t av = PL_new_term_refs(4);    /* save/restoreWakeup manages these */ 
     *valTermRef(av) = method;
     *valTermRef(av+1) = linkVal(attvar);
     *valTermRef(av+2) = linkVal(value);
 
+        /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metatermOverride)
+                                    this prevents aquiring unwanted C stack */
+    if (LD_no_wakeup>1)
+    { term_t ex = av+3;
+     
+     ret = PL_unify_term(ex,PL_FUNCTOR, 
+           PL_FUNCTOR_CHARS, "metaterm_loop_error", 3,
+           PL_TERM, av+0,
+           PL_TERM, av+1,
+           PL_TERM, av+2);
+
+     DEBUG(MSG_WAKEUPS, pl_writeln(ex));
+
+     restoreWakeup(&wstate PASS_LD);
+     return PL_raise_exception(ex);
+    }
+
     if (!pred)
-        pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
+         pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
 
     if(!pred) return FALSE;
-
-    ATT_LD(no_wakeups)++;
+    DEBUG(MSG_WAKEUPS, pl_writeln(av));
+    LD_no_wakeup++;
     int rc = PL_call_predicate(NULL,  
                            PL_Q_PASS_EXCEPTION, pred, av);
-    ATT_LD(no_wakeups)--;
+    LD_no_wakeup--;
     if (rc == TRUE)
     { if (PL_get_integer(av+3,&rc))
-      { rc = FALSE;
-      } else
       { *retresult = rc;
+      } else
+      { rc = FALSE;
       }
     }
     restoreWakeup(&wstate PASS_LD);
@@ -1690,7 +1709,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
 static
 PRED_IMPL("metaterm_options", 2, metaterm_options, 0)
 { PRED_LD
-    return setInteger(&ATT_LD(metaterm_opts), A1, A2);
+    return setInteger(&LD_metaopts, A1, A2);
 }
 
 /* For a heuristic used elsewhere from matts */

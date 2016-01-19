@@ -3434,10 +3434,10 @@ static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
    /* Avoids creating global terms we promise never to use*/
-    int was_no_wakeups = ATT_LD(no_wakeups);
-    ATT_LD(no_wakeups) = TRUE;
+    int was_no_wakeups = LD_no_wakeup;
+    LD_no_wakeup = TRUE;
     int rc = unifiable(A1, A2, A3 PASS_LD);
-    ATT_LD(no_wakeups) = was_no_wakeups;
+    LD_no_wakeup = was_no_wakeups;
     return rc;
 }
 

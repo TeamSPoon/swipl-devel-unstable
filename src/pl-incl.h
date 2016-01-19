@@ -2009,14 +2009,11 @@ typedef struct
 #define ATT_ASSIGNONLY  	0x02			/* '$attvar_assign'/2 */
 #define ATT_UNIFY       	0x04			/* unify: assign and wakeup */
 
-
-#define ATT_LD(X) LD->attvar. X
-
+#define LD_no_wakeup LD->attvar.no_wakeups
 
 		 /*******************************
 		 *	      METATERMS           	*
 		 *******************************/
-
 
 #define MATTS_ENABLE_VMI  	0x01 /* Hook WAM */
 #define MATTS_ENABLE_CPREDS	0x02 /* Hook CPREDS (WAM can miss a few)*/
@@ -2026,6 +2023,9 @@ typedef struct
 #define MATTS_DEFAULT  	    MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN
 
 #ifdef O_METATERM
+
+#define LD_metaopts LD->attvar.metaterm_opts
+
 /*
  METATERM_SKIP_HIDDEN(.)
 
@@ -2037,7 +2037,7 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED ATT_LD(metaterm_opts) && !(ATT_LD(metaterm_opts) & MATTS_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
+#define METATERM_ENABLED LD_metaopts && !(LD_metaopts & MATTS_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
 #define METATERM_OVERIDES(var,functor) METATERM_ENABLED && functor != getMetaOverride(var,functor PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \

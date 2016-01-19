@@ -93,6 +93,16 @@ goals_with_module(_,_).
 /*
     ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
 */
+system:compare_to_retcode(>,1).
+system:compare_to_retcode(<,-1).
+system:compare_to_retcode(==,0).
+:- meta_predicate(system:wnmt(:)).
+system:wnmt(G):-setup_call_cleanup(metaterm_options(W,0),G,metaterm_options(0,W)).
+system:'$meta'('==', Var, Value, 1):-!, wnmt(Var==Value).
+system:'$meta'('=@=', Var, Value, 1):-!, wnmt(Var=@=Value).
+system:'$meta'('copy_term', Var, Value, 1):-!, wnmt('copy_term'(Var,Value)).
+system:'$meta'('copy_term_nat', Var, Value, 1):-!, wnmt('copy_term_nat'(Var,Value)).
+system:'$meta'('compare', Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
 system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
 undo(GoalIn):- 

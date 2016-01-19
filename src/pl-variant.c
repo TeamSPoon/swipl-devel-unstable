@@ -314,8 +314,7 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
 
    int retcode;
    if(METATERM_HOOK(at_equals,l,r,&retcode)) /* ECLiPSe meta_attribute */
-   { if( retcode==0) return TRUE; 
-      /* for =@=/2 */
+   { return retcode;  /* for =@=/2 */
    }
 
    wl = *l;
@@ -430,9 +429,7 @@ PRED_IMPL("=@=", 2, variant, 0)
 
   int retcode;
   if(METATERM_HOOK(at_equals,p1,p2,&retcode)) /* ECLiPSe meta_attribute */
-  { return retcode; 
-     /* for =@=/2 */
-  }
+  { return retcode; /* for =@=/2 */ }
 
   if ( *p1 == *p2 )                     /* same term */
     return TRUE;
