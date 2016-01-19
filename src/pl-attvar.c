@@ -1676,6 +1676,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
          pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
 
     if(!pred) return FALSE;
+
     DEBUG(MSG_WAKEUPS, pl_writeln(av));
     LD_no_wakeup++;
     int rc = PL_call_predicate(NULL,  
