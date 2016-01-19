@@ -503,7 +503,7 @@ setup_history :-
 	    load_setup_file(library(prolog_history))
 	->  prolog_history(enable)
 	;   true
-	). 
+	).
 
 load_setup_file(File) :-
 	catch(load_files(File,
