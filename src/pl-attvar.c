@@ -1515,7 +1515,7 @@ static
 PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
 { PRED_LD
   Word g;
-  if ( !hasGlobalSpace(6) )		/* 0 means enough for attvars */
+  if ( !hasGlobalSpace(6) )	
   { int rc;
 
     if ( (rc=ensureGlobalSpace(6, ALLOW_GC)) != TRUE )
