@@ -114,7 +114,7 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
 
   if(LD_no_wakeup>0)
   {
-      DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n");
+      DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
   }
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
