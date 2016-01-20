@@ -2611,8 +2611,8 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
           { DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: using overriden ffunctor for metatype"));
-            return altDEF;
-          } 
+              return altDEF;
+          }
           DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: missing overriden ffunctor for metatype"));
         }
       }        
@@ -2637,7 +2637,7 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
           { DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
-            return altDEF;
+              return altDEF;
           }
           DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));
         }
@@ -2656,7 +2656,7 @@ PL_next_solution(qid_t qid)
   AR_CTX
   QueryFrame QF;			/* Query frame */
   LocalFrame FR;			/* current frame */
-  LocalFrame NFR;			/* Next frame */
+  LocalFrame NFR;	/* Next frame */
   Word	     ARGP;			/* current argument pointer */
   Code	     PC = NULL;			/* program counter */
   Definition DEF = NULL;		/* definition of current procedure */

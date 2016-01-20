@@ -112,9 +112,9 @@ void
 registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  if(LD_no_wakeup>0)
-  {
-      DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
+  if(LD_no_wakeup > 0)
+  { DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
+	return;
   }
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
@@ -195,8 +195,28 @@ void
 assignAttVar(Word av, Word value, int flags ARG_LD)
 { mark m;
 
-   if (!(flags & ATT_ASSIGNONLY) && isVar(*value) && !METATERM_OVERIDES(av,FUNCTOR_is2)) 
+ /*  DM: Goal, Instead of merly placing the entire attvar into the variable like in do_unify()                     
+
+          1) I want an attvar hook to be able to copy some attributes onto the plain variable (VAR) turning it into an ATTVAR
+              *But* do not want to require that all hooks be upgrading all VARs to ATTVARs!                       
+
+          2) Sometimes Hooks can be allowed to place a Nonvar into that VAR  
+
+          3) Hooks should be able to leave the variable alone. Or place a different VAR inside the original the VAR.
+             
+          Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313
+    
+         ?- when(=(X,Y),X==Y), Y=A, X=A.
+         Yes.
+
+         ?- when(=(X,Y),X\==Y), Y=A, X=A.
+         No.
+    
+     */
+
+   if (!(flags & ATT_ASSIGNONLY) && isVar(*value) && !METATERM_OVERIDES(av,ATOM_variables))   
    {
+      DEBUG(MSG_WAKEUPS, Sdprintf("Put attvar into plain var\n"));
       Trail(value, makeRef(av));
       return;
    }
@@ -235,19 +255,21 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
 
 #ifdef O_METATERM
-  if (METATERM_OVERIDES(av,FUNCTOR_is2)) return;
+
+ if(METATERM_OVERIDES(av,ATOM_bind))
+     return;
 #endif
 
   if ( isAttVar(*value) )
     { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
-  } else if ( isVar(*value) )
-	  { 
-	     if( (flags & ATT_ASSIGNONLY) )
-	     { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with plain var\n"));
+  } 
+  else if ( isVar(*value) )
+  {  if( (flags & ATT_ASSIGNONLY) )
+	 { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with a plain VAR ref\n"));
 	    *av = makeRef(value);			/* JW: Does this happen? */ 
 	  } else
-	     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting attvar into plain var\n"));
+     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
 	       Trail(value, makeRef(av));
 	  }
   } else
@@ -1598,14 +1620,13 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
        return ft;
      }
      DEBUG(MSG_WAKEUPS,Sdprintf("return same atom"));
-     if(MATTS_ENABLE_CPREDS & override_flags) return NULL;
      return f;
   }
   return f;
 }
 inline
 bool 
-isMetaOverriden(Word av, functor_t f, int override_flags ARG_LD)
+isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
   if(!(METATERM_ENABLED)) return FALSE;
   deRef(av);
@@ -1668,10 +1689,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
    wakeup_state wstate;
    int ret = 0;
 
-   if (!saveWakeup(&wstate, TRUE PASS_LD))
-        return FALSE;
-
-    term_t av = PL_new_term_refs(4);    /* save/restoreWakeup manages these */ 
+    term_t av = PL_new_term_refs(4);    /* Someone outer context will free these  */
     *valTermRef(av) = method;
     *valTermRef(av+1) = linkVal(attvar);
     *valTermRef(av+2) = linkVal(value);
@@ -1689,12 +1707,15 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 
      DEBUG(MSG_WAKEUPS, pl_writeln(ex));
 
-     restoreWakeup(&wstate PASS_LD);
      return PL_raise_exception(ex);
     }
 
+    /* opens foreign frame so Not shift safe */
+    if (!saveWakeup(&wstate, TRUE PASS_LD))
+         return FALSE;
+
     if (!pred)
-        pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
+         pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
 
     if(!pred) return FALSE;
 

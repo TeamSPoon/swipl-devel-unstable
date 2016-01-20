@@ -2009,22 +2009,22 @@ typedef struct
 #define ATT_ASSIGNONLY  	0x02			/* '$attvar_assign'/2 */
 #define ATT_UNIFY       	0x04			/* unify: assign and wakeup */
 
-
 #define LD_no_wakeup LD->attvar.no_wakeups
 
 		 /*******************************
 		 *	      METATERMS           	*
 		 *******************************/
 
-
 #define MATTS_ENABLE_VMI  	0x01 /* Hook WAM */
 #define MATTS_ENABLE_CPREDS	0x02 /* Hook CPREDS (WAM can miss a few)*/
 #define MATTS_SKIP_HIDDEN   0x04 /* dont factor $meta into attvar identity */
 #define MATTS_ENABLE_UNDO  	0x08 /* check attvars for undo hooks (perfomance checking)*/
 #define MATTS_DO_UNIFY  	0x10 /* debugging for a moment trying to guage if damaging do_unify() 
-                                    Really would like to figure out the best way to allow unification to a varaible
-                                    where a hook supplies a value to a variable without placing the 
-                                    entire attvar into the variable. But giving some hook desiscion making instead.
+                                    Goal, really I would like to figure out the best way to allow unification to 
+                                    a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
+                                    I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
+                                    as the result of unification.
+                                    
                                  */
 #define MATTS_DISABLED   	0x80 /* disable all options (allows the options to be saved) */
 #define MATTS_DEFAULT  	    MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN
