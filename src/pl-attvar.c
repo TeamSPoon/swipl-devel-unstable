@@ -178,9 +178,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
+    { if (!(flags & ATT_NO_SWAP ))
+      { Word tmp = av;
+        av = value;
+        value = tmp;
+      }
     } else if ( av == value )
       return;
   }
@@ -1387,7 +1389,7 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
+    assignAttVar(av, value, ATT_ASSIGNONLY|ATT_NO_SWAP PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
   }

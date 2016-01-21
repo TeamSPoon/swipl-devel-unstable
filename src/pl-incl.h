@@ -1999,9 +1999,10 @@ typedef struct
 		 *******************************/
 
 /* assignAttVar() flags */
-#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
+#define ATT_UNIFY       0x0			/* unify: assign and wakeup DM: I wish I had made this 0x4 */
 #define ATT_WAKEBINDS   0x1			/* bindConst() */
 #define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
+#define ATT_NO_SWAP     0x8			/* Current only used in '$attvar_assign'/2 DM: but might need to be used in at least one or both the others  */
 
 
 		 /*******************************
