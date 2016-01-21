@@ -230,9 +230,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
+    { if (!(flags & ATT_NO_SWAP ))
+      { Word tmp = av;
+        av = value;
+        value = tmp;
+      }
     } else if ( av == value )
       return;
   }
@@ -1517,13 +1519,8 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   av = valTermRef(A1);
   deRef(av);
   if ( isAttVar(*av) )
-  { if ( !hasGlobalSpace(0) )		/* 0 means enough for attvars */
-    {  int rc;
-       if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-         return raiseStackOverflow(rc);
-    }
-    deRef2(valTermRef(A2), value);
-    assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
+  { deRef2(valTermRef(A2), value);
+    assignAttVar(av, value, ATT_ASSIGNONLY|ATT_NO_SWAP PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
   }
@@ -1580,8 +1577,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
     deRef2(&f->arguments[0],n);
     deRef2(&f->arguments[2],l);    
     if (*n == name) 
-    { 
-        return l;
+    { return l;
     }
   }
 }
