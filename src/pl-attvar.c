@@ -235,8 +235,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   if ( av == value)
   {  
       if( !(flags & ATT_ASSIGNONLY) )
-      { DEBUG(MSG_WAKEUPS, Sdprintf("SELF ATT_WAKEBINDS(%s)\n", vName(av)));
-        registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), av PASS_LD);
+      { if(METATERM_OVERIDES(av,ATOM_unify)) 
+        { DEBUG(MSG_WAKEUPS, Sdprintf("SELF ATT_WAKEBINDS(%s)\n", vName(av)));
+           registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), av PASS_LD);
+        }
       }
       return;
   }
@@ -263,10 +265,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   if ( (flags&ATT_WAKEBINDS) )
     return;
 
-  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,ATOM_unify)) 
+  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,ATOM_unify))
       return;
 
- /*if(!METATERM_OVERIDES(av,ATOM_trail))*/
+ if(!METATERM_OVERIDES(av,ATOM_trail))
  {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
@@ -1598,7 +1600,6 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 }
 
 /* sometimes sneaking in an atom instead of a functor here */
-inline
 functor_t 
 getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
@@ -1635,7 +1636,7 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
   }
   return f;
 }
-inline
+
 bool 
 isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
@@ -1652,7 +1653,7 @@ isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
   deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return FALSE;
   DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s)\n",vName(av),print_val(*found,0)));
-  return TRUE;
+  return !isVar(*found);
 }
 
 static
@@ -1758,6 +1759,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
   functor_t becomes = getMetaOverride(av,f, MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS PASS_LD);
+  if(isAtom(becomes)) return PL_unify_atom(A3,becomes);
   return PL_unify_functor(A3,becomes);
 }
 
@@ -1827,9 +1829,9 @@ BeginPredDefs(attvar)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
   PRED_DEF("metaterm_options", 2, metaterm_options, 0)
-#ifdef O_DEBUG
-     PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
-#endif
+ #ifdef O_DEBUG
+  PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
+ #endif
 #endif
 
 EndPredDefs

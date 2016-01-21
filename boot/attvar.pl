@@ -30,8 +30,7 @@
 
 :- module('$attvar',
 	  [ '$wakeup'/1,		% +Wakeup list
-            unify/4,
-	    freeze/2,			% +Var, :Goal
+            freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
 	    copy_term/3,                % +Term, -Copy, -Residue
@@ -81,11 +80,11 @@ wakeup(_, Next,Var, Value):-
         '$attvar_assign'(Var,Value),
         call(Next).
 
-unify(att(Module, _AttVal, Rest), Next, Var, Value):-!,
+unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
         Module:verify_attributes(Var, Value, Goals),
         unify(Rest, Next, Var, Value),
         goals_with_module(Goals,Module).
-unify(_, Next,Var, Value):-
+unify(_,Next,_, _):-
         call(Next).
 
 goals_with_module([G|Gs], M):- !,
