@@ -2029,7 +2029,7 @@ typedef struct
                                  */
 #define MATTS_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
 #define MATTS_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
-#define MATTS_DEFAULT  	    MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN|ATT_NO_SWAP
+#define MATTS_DEFAULT  	    (MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN|ATT_NO_SWAP|MATTS_PEER_WAKEUP)
 
 #ifdef O_METATERM
 

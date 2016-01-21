@@ -214,9 +214,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     
      */
 
-   if (!(flags & ATT_ASSIGNONLY) && isVar(*value) && !METATERM_OVERIDES(av,ATOM_variables))   
+   bool other_var = isVar(*value);
+
+   if (!(flags & ATT_ASSIGNONLY) && other_var && !METATERM_OVERIDES(av,ATOM_variables))   
    {
-      DEBUG(MSG_WAKEUPS, Sdprintf("Put attvar into plain var\n"));
+      DEBUG(MSG_METATERM, Sdprintf("Put attvar into plain var\n"));
       Trail(value, makeRef(av));
       return;
    }
@@ -226,50 +228,65 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
   bool other_attvar = isAttVar(*value);
 
-  if ( av == value ) return;
+  if ( av == value)
+  {  
+      if( !(flags & ATT_ASSIGNONLY) )
+      { DEBUG(MSG_WAKEUPS, Sdprintf("SELF ATT_WAKEBINDS(%s)\n", vName(av)));
+        registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), av PASS_LD);
+      }
+      return;
+  }
   
   if( !(flags & ATT_ASSIGNONLY) )
   {
-      if( other_attvar && (MATTS_DEFAULT & MATTS_PEER_WAKEUP) )
-      {   DEBUG(MSG_WAKEUPS, Sdprintf("MATTS_PEER_WAKEUP(%s)\n", vName(value)));
-          registerWakeup(FUNCTOR_unify4, value, valPAttVar(*value), av PASS_LD);
+      if(other_attvar && (LD_metaopts&MATTS_PEER_WAKEUP))
+      { 
+        Word wake1, wake2;
+        if ( value > av && !(LD_metaopts&ATT_NO_SWAP))
+        { wake2 = av; wake1= value;
+        } else
+        { wake1 = av; wake2= value;
+        }
+        registerWakeup(FUNCTOR_unify4, wake1, valPAttVar(*wake1), wake2 PASS_LD);
+        {  DEBUG(MSG_WAKEUPS, Sdprintf("MATTS_PEER_WAKEUP(%s)\n", vName(value)));
+           registerWakeup(FUNCTOR_wakeup4, wake2, valPAttVar(*wake2), wake1 PASS_LD);
+        }
+      } else
+      {  registerWakeup(FUNCTOR_wakeup4, av, valPAttVar(*av), value PASS_LD);
       }
-      registerWakeup(FUNCTOR_wakeup4, av, valPAttVar(*av), value PASS_LD);
   }
 
   if ( (flags&ATT_WAKEBINDS) )
     return;
 
-#ifdef O_METATERM
-  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,FUNCTOR_equals2)) return;
-#endif
- 
+  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,ATOM_unify)) 
+      return;
+
+ /*if(!METATERM_OVERIDES(av,ATOM_trail))*/
+ {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
-
-
-#ifdef O_METATERM
+ }
 
  if(METATERM_OVERIDES(av,ATOM_bind))
      return;
-#endif
 
   if ( isAttVar(*value) )
-    { DEBUG(MSG_WAKEUPS, Sdprintf("Unifying two attvars\n"));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } 
-  else if ( isVar(*value) )
+  else if ( other_var )
   {  if( (flags & ATT_ASSIGNONLY) )
-	 { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with a plain VAR ref\n"));
+	 { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
 	    *av = makeRef(value);			/* JW: Does this happen? */ 
 	 } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
+     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
 	    Trail(value, makeRef(av));
 	 }
   } else
@@ -399,7 +416,7 @@ of the end of the list.  Returns FALSE with *vp == NULL if the attribute
 list is invalid.
 
 Caller must ensure 4 cells space on global stack.
-DM: Not sure this  ^ is true for find_attr() but true of put_attr()
+DM: Not sure this  ^ is true for find_attr()
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 #ifndef O_UNDO_HOOK
 static
@@ -1601,19 +1618,19 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
   {  FunctorDef fd = valueFunctor(functorTerm(*found));
      functor_t ft = fd->functor;
      if(f!=ft)
-     { DEBUG(MSG_WAKEUPS,Sdprintf("return diff functor"));
+     { DEBUG(MSG_METATERM,Sdprintf("DIFF %s getMetaOverrideFunctor(%s,%s)\n",print_val(*found,0),vName(av),print_val(f,0)));
        return ft;
      }
-     DEBUG(MSG_WAKEUPS,Sdprintf("return same functor"));
+     DEBUG(MSG_METATERM,Sdprintf("SAME getMetaOverrideFunctor(%s,%s)\n",vName(av),print_val(f,0)));
      return f;
   }
   if ( isAtom(*found) )
   {  functor_t ft = *found;
      if(f!=ft)
-     { DEBUG(MSG_WAKEUPS,Sdprintf("return diff atom"));
+     { DEBUG(MSG_METATERM,Sdprintf("DIFF %s getMetaOverrideAtom(%s,%s)\n",print_val(*found,0),vName(av),print_val(f,0)));
        return ft;
      }
-     DEBUG(MSG_WAKEUPS,Sdprintf("return same atom"));
+     DEBUG(MSG_METATERM,Sdprintf("SAME getMetaOverrideAtom(%s,%s)\n",vName(av),print_val(*found,0)));
      return f;
   }
   return f;
@@ -1634,6 +1651,7 @@ isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
   if(fdattrs==0) return FALSE;
   deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return FALSE;
+  DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s)\n",vName(av),print_val(*found,0)));
   return TRUE;
 }
 
@@ -1681,7 +1699,7 @@ int
 metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 { static predicate_t pred;
    wakeup_state wstate;
-   int ret = 0;
+   int rc;
 
     term_t av = PL_new_term_refs(4);    /* Someone outer context will free these  */
     *valTermRef(av) = method;
@@ -1693,11 +1711,12 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
     if (LD_no_wakeup>1)
     { term_t ex = av+3;
      
-     ret = PL_unify_term(ex,PL_FUNCTOR, 
+     rc = PL_unify_term(ex,PL_FUNCTOR, 
            PL_FUNCTOR_CHARS, "metaterm_loop_error", 3,
            PL_TERM, av+0,
            PL_TERM, av+1,
            PL_TERM, av+2);
+     assert(rc!=0);
 
      DEBUG(MSG_WAKEUPS, pl_writeln(ex));
 
@@ -1713,9 +1732,9 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 
     if(!pred) return FALSE;
 
-    DEBUG(MSG_WAKEUPS, pl_writeln(av));
     LD_no_wakeup++;
-    int rc = PL_call_predicate(NULL,  
+    DEBUG(MSG_METATERM, pl_writeln(av));
+    rc = PL_call_predicate(NULL,  
                            PL_Q_PASS_EXCEPTION, pred, av);
     LD_no_wakeup--;
     if (rc == TRUE)

@@ -81,7 +81,7 @@ wakeup(_, Next,Var, Value):-
         '$attvar_assign'(Var,Value),
         call(Next).
 
-unify(att(Module, _AttVal, Rest), Next, Var, Value):-
+unify(att(Module, _AttVal, Rest), Next, Var, Value):-!,
         Module:verify_attributes(Var, Value, Goals),
         unify(Rest, Next, Var, Value),
         goals_with_module(Goals,Module).
@@ -115,7 +115,7 @@ system:'$meta'(compare, Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),co
 system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
 undo(GoalIn):- 
-        metaterm_options(W,W), T is W \/ 0x0800, % Flag to turn on trail scanning
+        metaterm_options(W,W), T is W \/ 0x0080, % Flag to turn on trail scanning
            ( T == W 
              -> GoalIn=Goal ;
                 Goal=(metaterm_options(_,W),GoalIn)),

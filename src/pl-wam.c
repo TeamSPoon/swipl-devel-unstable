@@ -2610,10 +2610,10 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          { DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: using overriden ffunctor for metatype"));
+          { DEBUG(MSG_METATERM, Sdprintf("FOREIGN: using overriden ffunctor for metatype"));
               return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("FOREIGN: missing overriden ffunctor for metatype"));
+          DEBUG(MSG_METATERM, Sdprintf("FOREIGN: missing overriden ffunctor for metatype"));
         }
       }        
   }
@@ -2636,10 +2636,10 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          { DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: using overriden functor for metatype"));
+          { DEBUG(MSG_METATERM, Sdprintf("INTERP: using overriden functor for metatype"));
               return altDEF;
           }
-          DEBUG(MSG_WAKEUPS, Sdprintf("INTERP: missing overriden functor for metatype"));
+          DEBUG(MSG_METATERM, Sdprintf("INTERP: missing overriden functor for metatype"));
         }
       }        
       /* derefing the next arg seems to segv  (so exit here) */
