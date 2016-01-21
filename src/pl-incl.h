@@ -2017,17 +2017,17 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define MATTS_ENABLE_VMI  	0x0100 /* Hook WAM */
-#define MATTS_ENABLE_CPREDS	0x0200 /* Hook CPREDS (WAM can miss a few)*/
-#define MATTS_SKIP_HIDDEN   0x0400 /* dont factor $meta into attvar identity */
-#define MATTS_ENABLE_UNDO  	0x0800 /* check attvars for undo hooks (perfomance checking)*/
-#define MATTS_DO_UNIFY  	0x1000 /* debugging for a moment trying to guage if damaging do_unify() 
+#define MATTS_ENABLE_VMI  	0x0010 /* Hook WAM */
+#define MATTS_ENABLE_CPREDS	0x0020 /* Hook CPREDS (WAM can miss a few)*/
+#define MATTS_SKIP_HIDDEN   0x0040 /* dont factor $meta into attvar identity */
+#define MATTS_ENABLE_UNDO  	0x0080 /* check attvars for undo hooks (perfomance checking)*/
+#define MATTS_DO_UNIFY  	0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
-                                    as the result of unification.
-                                    
+                                    as the result of unification.                                    
                                  */
+#define MATTS_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
 #define MATTS_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
 #define MATTS_DEFAULT  	    MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN|ATT_NO_SWAP
 

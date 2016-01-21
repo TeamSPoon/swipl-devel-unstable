@@ -30,6 +30,7 @@
 
 :- module('$attvar',
 	  [ '$wakeup'/1,		% +Wakeup list
+            unify/4,
 	    freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
@@ -80,6 +81,12 @@ wakeup(_, Next,Var, Value):-
         '$attvar_assign'(Var,Value),
         call(Next).
 
+unify(att(Module, _AttVal, Rest), Next, Var, Value):-
+        Module:verify_attributes(Var, Value, Goals),
+        unify(Rest, Next, Var, Value),
+        goals_with_module(Goals,Module).
+unify(_, Next,Var, Value):-
+        call(Next).
 
 goals_with_module([G|Gs], M):- !,
         M:call(G),
@@ -91,7 +98,7 @@ system:compare_to_retcode(>,1).
 system:compare_to_retcode(<,-1).
 system:compare_to_retcode(==,0).
 :- meta_predicate(system:wnmt(:)).
-system:wnmt(G):-setup_call_cleanup(metaterm_options(W,0),G,metaterm_options(0,W)).
+system:wnmt(G):-setup_call_cleanup(metaterm_options(W,0),(trace,G),metaterm_options(0,W)).
 system:'$meta'('==', Var, Value, 1):-!, wnmt(Var==Value). % this one ends up calling compare/3 
 system:'$meta'('=@=', Var, Value, 1):-!, wnmt(Var=@=Value).
 system:'$meta'(copy_term, Var, Value, 1):-!, wnmt(copy_term(Var,Value)).
@@ -108,7 +115,7 @@ system:'$meta'(compare, Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),co
 system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
 undo(GoalIn):- 
-        metaterm_options(W,W), T is W \/ 8, % Flag to turn on trail scanning
+        metaterm_options(W,W), T is W \/ 0x0800, % Flag to turn on trail scanning
            ( T == W 
              -> GoalIn=Goal ;
                 Goal=(metaterm_options(_,W),GoalIn)),

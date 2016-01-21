@@ -206,10 +206,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
              
           Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313
     
-         ?- when(=(X,Y),X==Y), Y=A, X=A.
+         ?- on_unify(X, X==Y), Y=A, X=A.
          Yes.
 
-         ?- when(=(X,Y),X\==Y), Y=A, X=A.
+         ?- on_unify(X, X\==Y), Y=A, X=A.
          No.
     
      */
@@ -228,19 +228,17 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-  if ( isAttVar(*value) )
-  { if ( value > av )
-    { if (!(flags & ATT_NO_SWAP ))
-      { Word tmp = av;
-        av = value;
-        value = tmp;
-      }
-    } else if ( av == value )
-      return;
-  }
+  bool other_attvar = isAttVar(*value);
 
+  if ( av == value ) return;
+  
   if( !(flags & ATT_ASSIGNONLY) )
-  {   registerWakeup(FUNCTOR_wakeup4, av, valPAttVar(*av), value PASS_LD);
+  {
+      if( other_attvar && (MATTS_DEFAULT & MATTS_PEER_WAKEUP) )
+      {   DEBUG(MSG_WAKEUPS, Sdprintf("MATTS_PEER_WAKEUP(%s)\n", vName(value)));
+          registerWakeup(FUNCTOR_unify4, value, valPAttVar(*value), av PASS_LD);
+      }
+      registerWakeup(FUNCTOR_wakeup4, av, valPAttVar(*av), value PASS_LD);
   }
 
   if ( (flags&ATT_WAKEBINDS) )
@@ -270,10 +268,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   {  if( (flags & ATT_ASSIGNONLY) )
 	 { DEBUG(MSG_WAKEUPS, Sdprintf("Assigning attvar with a plain VAR ref\n"));
 	    *av = makeRef(value);			/* JW: Does this happen? */ 
-	  } else
+	 } else
      { DEBUG(MSG_WAKEUPS, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
-	       Trail(value, makeRef(av));
-	  }
+	    Trail(value, makeRef(av));
+	 }
   } else
     *av = *value;
 
