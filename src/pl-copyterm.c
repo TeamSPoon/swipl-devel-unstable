@@ -415,10 +415,7 @@ copy_term(Word from, Word to, int flags ARG_LD)
       }
       case TAG_ATTVAR:
 	if ( flags&COPY_ATTRS )
-	{ 
-
-        int retcode;
-        if(METATERM_HOOK(copy_term,from,to,&retcode)) /* ECLiPSe meta_attribute: copy_term/2 */
+	{  if(METATERM_HOOK(copy_term,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term/2 */
         	continue;
 
       Word p = valPAttVar(*from);
@@ -442,9 +439,7 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	    goto again;
 	  }
 	} else
-	{ 
-       int retcode;
-        if(METATERM_HOOK(copy_term_nat,from,to,&retcode)) /* ECLiPSe meta_attribute: copy_term/2 */
+	{ if(METATERM_HOOK(copy_term_nat,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term_nat/2 */
         	continue;
       if ( shared(*from) )
 	  { Word p = valPAttVar(*from & ~BOTH_MASK);
@@ -458,9 +453,7 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	      TrailCyclic(from PASS_LD);
 	    }
 	  } else
-	  { 
-        int retcode;
-        if(!METATERM_HOOK(copy_term_nat,from,to,&retcode)) /* ECLiPSe meta_attribute: copy_term/2 */
+	  { if(!METATERM_HOOK(copy_term_nat,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term_nat/2 */
             setVar(*to);
 	  }
 	}

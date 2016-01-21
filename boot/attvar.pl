@@ -80,6 +80,7 @@ wakeup(_, Next,Var, Value):-
         '$attvar_assign'(Var,Value),
         call(Next).
 
+/* this is for reflexive non-assignment peer wakeup */
 unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
         Module:verify_attributes(Var, Value, Goals),
         unify(Rest, Next, Var, Value),
@@ -92,18 +93,6 @@ goals_with_module([G|Gs], M):- !,
 	goals_with_module(Gs, M).
 goals_with_module(_,_).
 
-/* These will be moved out - mainly testing */
-system:compare_to_retcode(>,1).
-system:compare_to_retcode(<,-1).
-system:compare_to_retcode(==,0).
-:- meta_predicate(system:wnmt(:)).
-system:wnmt(G):-setup_call_cleanup(metaterm_options(W,0),(trace,G),metaterm_options(0,W)).
-system:'$meta'('==', Var, Value, 1):-!, wnmt(Var==Value). % this one ends up calling compare/3 
-system:'$meta'('=@=', Var, Value, 1):-!, wnmt(Var=@=Value).
-system:'$meta'(copy_term, Var, Value, 1):-!, wnmt(copy_term(Var,Value)).
-system:'$meta'(copy_term_nat, Var, Value, 1):-!, wnmt(copy_term_nat(Var,Value)).
-system:'$meta'(compare, Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
-/* Above will be moved out - mainly testing */
 
            /*********************
             *  UNDO HOOK   *
@@ -111,14 +100,19 @@ system:'$meta'(compare, Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),co
 /*
     ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
 */
-system:'$meta'('$undo_unify', _, Goal, 1):- '$schedule_wakeup'(Goal).
+system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
+:- meta_predicate(undo(:)).
 undo(GoalIn):- 
-        metaterm_options(W,W), T is W \/ 0x0080, % Flag to turn on trail scanning
-           ( T == W 
-             -> GoalIn=Goal ;
-                Goal=(metaterm_options(_,W),GoalIn)),
-               put_attr(Var,'$undo_unify',Goal),Var=Goal.
+      metaterm_options(W,W), T is W \/ 0x0080, % Flag to turn on trail scanning
+           ( T =:= W  
+             -> GoalIn=Goal 
+             ;  Goal=(metaterm_options(_,W),GoalIn)
+            ),
+            put_attr(Var,'$undo_unify',Goal),
+            metaterm_options(_,T),
+            Var=Goal.
+
 
            /*******************************
            *	  ATTR UNIFY HOOK	*
