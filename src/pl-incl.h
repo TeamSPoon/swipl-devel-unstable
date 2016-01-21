@@ -2029,8 +2029,9 @@ typedef struct
                                  */
 #define MATTS_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
 #define MATTS_KEEP_BOTH  	0x0400 /* allow attvar survival */
+#define MATTS_MOVE_ATTS  	0x0800 /* move atts to survivor */
 #define MATTS_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
-#define MATTS_DEFAULT  	    (MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS|MATTS_SKIP_HIDDEN|ATT_NO_SWAP|MATTS_PEER_WAKEUP)
+#define MATTS_DEFAULT  	    (MATTS_ENABLE_VMI|MATTS_SKIP_HIDDEN|MATTS_ENABLE_CPREDS|MATTS_MOVE_ATTS)
 
 #ifdef O_METATERM
 
@@ -2049,7 +2050,7 @@ typedef struct
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED LD_metaopts && !(LD_metaopts & MATTS_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
 #define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, MATTS_ENABLE_CPREDS PASS_LD))
-#define METATERM_HOOK(atom,t1,t2,rc)  ((MATTS_ENABLE_CPREDS & METATERM_ENABLED) && \
+#define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))

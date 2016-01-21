@@ -232,6 +232,23 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   bool other_attvar = isAttVar(*value);
 
+  if(other_attvar && LD_metaopts&MATTS_MOVE_ATTS && !(LD_metaopts&ATT_NO_SWAP))
+  { if ( value > av )
+    { Word tmp = av;		     
+      av = value;		        
+      value = tmp;		    
+      if (flags & ATT_ASSIGNONLY)
+      { Word a = valPAttVar(*value);
+        Word b = valPAttVar(*av);
+        TrailAssignment(a);
+        TrailAssignment(b);
+        word wa = *a;
+        *a = *b;
+        *b = wa;
+      }
+    }
+  }
+
   if ( av == value)
   {  
       if( !(flags & ATT_ASSIGNONLY) )
@@ -280,8 +297,12 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      return;
 
   if ( isAttVar(*value) )
-  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
-    if(LD_metaopts && MATTS_KEEP_BOTH) return;
+  { if(LD_metaopts&MATTS_KEEP_BOTH) 
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("keep two attvars\n"));
+      return;
+    }
+
+    DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } 
   else if ( other_var )
@@ -1704,21 +1725,20 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 { static predicate_t pred;
    wakeup_state wstate;
    int rc;
+    term_t regs = LD->attvar.metaterm_regs;
+    *valTermRef(regs+0) = linkVal(attvar);
+    *valTermRef(regs+1) = linkVal(value);
 
-
-       /* opens foreign frame so Not shift safe 
-      by now everything we need must be in term_t */
+   /* opens foreign frame so Not shift safe */
   if (!saveWakeup(&wstate, TRUE PASS_LD))
       return FALSE;
 
-    term_t av = PL_new_term_refs(4);    /* DM: Hope an outer context will free these  */
+    term_t av = PL_new_term_refs(4);    /* Someone outer context will free these  */
     *valTermRef(av) = method;
-    *valTermRef(av+1) = linkVal(attvar);
-    *valTermRef(av+2) = linkVal(value);
+    *valTermRef(av+1) = *valTermRef(regs+0);
+    *valTermRef(av+2) = *valTermRef(regs+1);
 
-      /* Prevent calling a second time 
-        (allowing 1 in case no_wakeup is used by a one other 
-              wake hook calling metatermOverride)
+        /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metatermOverride)
         this prevents aquiring unwanted C stack */
     if (LD_no_wakeup>1)
     { term_t ex = av+3;
@@ -1731,17 +1751,9 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
      assert(rc!=0);
 
      DEBUG(MSG_WAKEUPS, pl_writeln(ex));
-
-     /*restoreWakeup(&wstate PASS_LD);*/
+     restoreWakeup(&wstate PASS_LD);
      return PL_raise_exception(ex);
     }
-
-
-    /* opens foreign frame so Not shift safe 
-      by now everything we need must be in term_t */
-    if (!saveWakeup(&wstate, TRUE PASS_LD))
-         return FALSE;
-
 
     if (!pred)
          pred = PL_pred(FUNCTOR_dmeta4,MODULE_user);
@@ -1755,7 +1767,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
     LD_no_wakeup--;
     if (rc == TRUE)
     { if (PL_get_integer(av+3,&rc))
-      { *retresult = rc;
+      { if(retresult) *retresult = rc;
       } else
       { rc = FALSE;
       }
@@ -1769,7 +1781,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
 { PRED_LD
   Word av;
   word f;
-  if(!(METATERM_ENABLED)) fail;
+  if(!METATERM_ENABLED) fail;
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
@@ -1795,14 +1807,12 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
     long l0 = levelFrame(fr)-1;     /* -1: Use my parent as reference */
 
     int negInfo = -2;
-    while (isRef(*(v)))
+    { while(isRef(*(v)))
     { negInfo--;
-      v = unRef(*(v));
-    }
+        (v) = unRef(*(v)); }}
 
     if (onStackArea(local, v))
-    {
-        DEBUG(1, Sdprintf("Ok, on local stack\n"));
+     { DEBUG(1, Sdprintf("Ok, on local stack\n"));
         while (fr && fr > (LocalFrame)v)
             fr = parentFrame(fr);
         if (fr)
@@ -1815,6 +1825,7 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
     }
     DEBUG(1,Sdprintf("!onStackArea\n"));
     return(PL_unify_integer(A2, negInfo));
+   return TRUE;
 }
 
 #endif /*O_METATERM*/
@@ -1850,7 +1861,6 @@ BeginPredDefs(attvar)
  #ifdef O_DEBUG
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
  #endif
-
 #endif
 
 EndPredDefs

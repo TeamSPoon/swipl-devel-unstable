@@ -413,6 +413,7 @@ struct PL_local_data
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
     int		no_wakeups;  /* >0 Dont register wakeups (also to trap recursion) */
 #ifdef O_METATERM
+    term_t  metaterm_regs;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
 #endif
   } attvar;

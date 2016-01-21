@@ -1247,10 +1247,10 @@ __do_undo(mark *m ARG_LD)
        *location = older; 
        if(isAttVar(older) && find_attr(location, ATOM_dundo_unify, &unused PASS_LD))
        { metatermOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD);
-       }         
         /* DM:  I would have prefered to...
             scheduleWakeup(newer, TRUE PASS_LD); <- problem was the when wakeups ran 'newer's inner arguments are already gone (untrailed)
           Slightly confused why this doesnt happen to the metatermOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */      
+      }
      } else
 #endif
       *tt->address = trailVal(p);

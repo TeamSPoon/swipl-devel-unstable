@@ -439,10 +439,10 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	    goto again;
 	  }
 	} else
-	{ if(METATERM_HOOK(copy_term_nat,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term_nat/2 */
-        	continue;
-      if ( shared(*from) )
+	{ if ( shared(*from) )
 	  { Word p = valPAttVar(*from & ~BOTH_MASK);
+       if(METATERM_HOOK(copy_term_nat,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term_nat/2 */
+         continue;
 
 	    if ( *p == VAR_MARK )
 	    { *to = makeRef(p);
@@ -453,8 +453,7 @@ copy_term(Word from, Word to, int flags ARG_LD)
 	      TrailCyclic(from PASS_LD);
 	    }
 	  } else
-	  { if(!METATERM_HOOK(copy_term_nat,from,to,NULL)) /* ECLiPSe meta_attribute: copy_term_nat/2 */
-            setVar(*to);
+	  { setVar(*to);
 	  }
 	}
 	continue;
