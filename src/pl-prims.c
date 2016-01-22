@@ -2254,7 +2254,10 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { *vp = makeRef(val);
+  { if(METATERM_OVERIDES(val,ATOM_v)) 
+       assignAttVar(val, vp, MATTS_PEER_NO_TRAIL PASS_LD);
+    else
+      *vp = makeRef(val);
   } else
     *vp = *val;
 }

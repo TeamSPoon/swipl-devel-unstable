@@ -2030,6 +2030,7 @@ typedef struct
 #define MATTS_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
 #define MATTS_KEEP_BOTH  	0x0400 /* allow attvar survival */
 #define MATTS_MOVE_ATTS  	0x0800 /* move atts to survivor */
+#define MATTS_PEER_NO_TRAIL 0x1000 /* peer no trail */
 #define MATTS_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
 #define MATTS_DEFAULT  	    (MATTS_ENABLE_VMI|MATTS_SKIP_HIDDEN|MATTS_ENABLE_CPREDS|MATTS_MOVE_ATTS)
 
