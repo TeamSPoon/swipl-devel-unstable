@@ -124,7 +124,7 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
-  wake[3] = makeRef(attvar);
+  wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; /* in case we are using this interface for other means */
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
   appendWakeup(wake, 2, TRUE PASS_LD);
 }
@@ -167,6 +167,30 @@ appendWakeup(Word wake, int len, int alert_flags ARG_LD)
     if (alert_flags) LD->alerted |= ALERT_WAKEUP;
     DEBUG(MSG_WAKEUPS, Sdprintf("new wakeup alerted=%d\n", alert_flags));
   }
+}
+
+/*
+ Returns the "$atts" attvar property (supposed to be a small int)
+ Ideally mattss will have them at the begining
+*/
+#define IS_META(option) ((flags & META_ ## option) != 0)
+
+int
+getMetaFlags(Word av, int flags ARG_LD)
+{ Word found;
+    int value;
+    if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
+        value = 0;
+    else value = valInt(*found);
+    if (IS_META(NO_INHERIT))
+        return METATERM_CURRENT = value;
+    flags = value;
+    if (value==0 || IS_META(DISABLED))
+        return META_DEFAULT;
+    flags = METATERM_GLOBAL;
+    if (IS_META(NO_INHERIT)) 
+        return(METATERM_CURRENT = value);
+    return METATERM_CURRENT =(value | METATERM_GLOBAL);
 }
 
 
@@ -214,9 +238,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     
      */
 
+   flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
+
    bool other_var = isVar(*value);
 
-   if (!(flags & ATT_ASSIGNONLY) && other_var && !METATERM_OVERIDES(av,ATOM_variables))   
+   if (!(flags& ATT_ASSIGNONLY) && other_var && !IS_META(PEER_NO_TRAIL))
    {
       DEBUG(MSG_METATERM, Sdprintf("Put attvar into plain var\n"));
       Trail(value, makeRef(av));
@@ -232,12 +258,12 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   bool other_attvar = isAttVar(*value);
 
-  if(other_attvar && LD_metaopts&MATTS_MOVE_ATTS && !(LD_metaopts&ATT_NO_SWAP))
+  if(other_attvar && !(flags& ATT_NO_SWAP))
   { if ( value > av )
     { Word tmp = av;		     
       av = value;		        
       value = tmp;		    
-      if (flags & ATT_ASSIGNONLY)
+      if (flags& ATT_ASSIGNONLY && IS_META(MOVE_ATTS))
       { Word a = valPAttVar(*value);
         Word b = valPAttVar(*av);
         TrailAssignment(a);
@@ -251,8 +277,8 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( av == value)
   {  
-      if( !(flags & ATT_ASSIGNONLY) )
-      { if(METATERM_OVERIDES(av,ATOM_unify)) 
+      if( !(flags& ATT_ASSIGNONLY) )
+      { if(IS_META(PEER_WAKEUP))
         { DEBUG(MSG_WAKEUPS, Sdprintf("SELF ATT_WAKEBINDS(%s)\n", vName(av)));
            registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), av PASS_LD);
         }
@@ -260,18 +286,18 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
       return;
   }
   
-  if( !(flags & ATT_ASSIGNONLY) )
+  if( !(flags& ATT_ASSIGNONLY) )
   {
-      if(other_attvar && (LD_metaopts&MATTS_PEER_WAKEUP))
+      if(other_attvar && IS_META(PEER_WAKEUP))
       { 
         Word wake1, wake2;
-        if ( value > av && !(LD_metaopts&ATT_NO_SWAP))
+        if ( value > av && !(flags& ATT_NO_SWAP))
         { wake2 = av; wake1= value;
         } else
         { wake1 = av; wake2= value;
         }
         registerWakeup(FUNCTOR_unify4, wake1, valPAttVar(*wake1), wake2 PASS_LD);
-        {  DEBUG(MSG_WAKEUPS, Sdprintf("MATTS_PEER_WAKEUP(%s)\n", vName(value)));
+        {  DEBUG(MSG_WAKEUPS, Sdprintf("META_PEER_WAKEUP(%s)\n", vName(value)));
            registerWakeup(FUNCTOR_wakeup4, wake2, valPAttVar(*wake2), wake1 PASS_LD);
         }
       } else
@@ -279,13 +305,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
       }
   }
 
-  if ( (flags&ATT_WAKEBINDS) )
+ if ( (flags& ATT_WAKEBINDS) )
     return;
 
-  if( !(flags & ATT_ASSIGNONLY) && METATERM_OVERIDES(av,ATOM_unify))
-      return;
-
- if(!METATERM_OVERIDES(av,ATOM_trail))
+ if(!(IS_META(NO_TRAIL)))
  {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
@@ -293,11 +316,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   DiscardMark(m);
  }
 
- if(METATERM_OVERIDES(av,ATOM_bind))
+ if (IS_META(NO_BIND))
      return;
 
   if ( isAttVar(*value) )
-  { if(LD_metaopts&MATTS_KEEP_BOTH) 
+  { if(IS_META(KEEP_BOTH))
     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("keep two attvars\n"));
       return;
     }
@@ -306,7 +329,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     *av = makeRef(value);
   } 
   else if ( other_var )
-  {  if( (flags & ATT_ASSIGNONLY) )
+  {  if( (flags& ATT_ASSIGNONLY) )
 	 { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
 	    *av = makeRef(value);			/* JW: Does this happen? */ 
 	 } else
@@ -751,12 +774,12 @@ restoreWakeup(wakeup_state *state ARG_LD)
     { FliFrame fr = (FliFrame) valTermRef(state->fid);
       Word p = (Word)(fr+1);
 
-      if ( (state->flags & WAKEUP_STATE_EXCEPTION) )
-      { if ( !(state->flags & WAKEUP_STATE_SKIP_EXCEPTION) )
+      if ( (state->flags& WAKEUP_STATE_EXCEPTION) )
+      { if ( !(state->flags& WAKEUP_STATE_SKIP_EXCEPTION) )
 	  restore_exception(p PASS_LD);
         p++;
       }
-      if ( (state->flags & WAKEUP_STATE_WAKEUP) )
+      if ( (state->flags& WAKEUP_STATE_WAKEUP) )
       { restore_wakeup(p PASS_LD);
       }
     }
@@ -1616,8 +1639,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
     deRef2(&f->arguments[0],n);
     deRef2(&f->arguments[2],l);    
     if (*n == name) 
-    { return l;
-    }
+      return l;    
   }
 }
 
@@ -1674,9 +1696,22 @@ isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
   if(fdattrs==0) return FALSE;
   deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return FALSE;
-  DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s)\n",vName(av),print_val(*found,0)));
+  DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s,%s)\n",vName(av),print_val(f,0),print_val(*found,0)));
   return !isVar(*found);
 }
+
+void
+setMetaFlags(Word av, int value ARG_LD)
+{ Word found;
+    if(!isAttVar(*av)) return;
+    if (find_attr(av, ATOM_datts, &found PASS_LD) && isInteger(*found))
+    {  *found = consInt(value);
+    } else
+    { word wval = consInt(value);
+      put_att_value(av,ATOM_datts,&wval PASS_LD);
+    }
+}
+
 
 static
 PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
@@ -1785,19 +1820,30 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
-  functor_t becomes = getMetaOverride(av,f, MATTS_ENABLE_VMI|MATTS_ENABLE_CPREDS PASS_LD);
+  functor_t becomes = getMetaOverride(av,f, META_ENABLE_VMI|META_ENABLE_CPREDS PASS_LD);
   if(isAtom(becomes)) return PL_unify_atom(A3,becomes);
   return PL_unify_functor(A3,becomes);
 }
 
+static
+PRED_IMPL("$visible_attrs", 2, dvisible_attrs, 0)
+{ PRED_LD
+  Word p;
 
+  deRef2(valTermRef(A1),p);
+  if ( isAttVar(*p) )
+  { *valTermRef(A2) = makeRef(METATERM_SKIP_HIDDEN(valPAttVar(*p)));
+    succeed;
+  }
+  fail;
+}
 static
 PRED_IMPL("metaterm_options", 2, metaterm_options, 0)
 { PRED_LD
-    return setInteger(&LD_metaopts, A1, A2);
+    return setInteger(&METATERM_GLOBAL, A1, A2);
 }
 
-/* For a heuristic used elsewhere from matts */
+/* For a heuristic used elsewhere from mattss */
 static
 PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
 { PRED_LD
@@ -1859,6 +1905,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
   PRED_DEF("metaterm_options", 2, metaterm_options, 0)
  #ifdef O_DEBUG
+  PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
  #endif
 #endif

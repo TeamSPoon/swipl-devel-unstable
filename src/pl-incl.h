@@ -2017,30 +2017,36 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define MATTS_ENABLE_VMI  	0x0010 /* Hook WAM */
-#define MATTS_ENABLE_CPREDS	0x0020 /* Hook CPREDS (WAM can miss a few)*/
-#define MATTS_SKIP_HIDDEN   0x0040 /* dont factor $meta into attvar identity */
-#define MATTS_ENABLE_UNDO  	0x0080 /* check attvars for undo hooks (perfomance checking)*/
-#define MATTS_DO_UNIFY  	0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
+#define META_ENABLE_VMI  	0x0010 /* Hook WAM */
+#define META_ENABLE_CPREDS	0x0020 /* Hook CPREDS (WAM can misses a few)*/
+#define META_SKIP_HIDDEN    0x0040 /* dont factor $meta into attvar identity */
+#define META_ENABLE_UNDO  	0x0080 /* check attvars for undo hooks (perfomance checking) */
+#define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
                                     as the result of unification.                                    
                                  */
-#define MATTS_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
-#define MATTS_KEEP_BOTH  	0x0400 /* allow attvar survival */
-#define MATTS_MOVE_ATTS  	0x0800 /* move atts to survivor */
-#define MATTS_PEER_NO_TRAIL 0x1000 /* peer no trail */
-#define MATTS_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
-#define MATTS_DEFAULT  	    (MATTS_ENABLE_VMI|MATTS_SKIP_HIDDEN|MATTS_ENABLE_CPREDS|MATTS_MOVE_ATTS)
+#define META_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
+#define META_KEEP_BOTH  	0x0400 /* allow attvar survival */
+#define META_MOVE_ATTS  	0x0800 /* move atts to survivor */
+#define META_NO_BIND        0x1000 /* C should let wakeup/1 do binding */
+#define META_NO_TRAIL       0x2000 /* Do not bother to trail the previous value */
+#define META_NO_INHERIT     0x4000 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define META_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
+#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_MOVE_ATTS)
+#define META_NO_WAKEUP      0x02 /* C should skip scheduling a $wakeup/1  */
+#define META_PEER_NO_TRAIL  0x08 /* peer no trail */
+#define META_SPY            0x100000 /*spy on attvar*/
+
 
 #ifdef O_METATERM
 
-#define LD_metaopts LD->attvar.metaterm_opts
+#define METATERM_GLOBAL LD->attvar.metaterm_opts
+#define METATERM_CURRENT LD->attvar.metaterm_current
 
 /*
  METATERM_SKIP_HIDDEN(.)
-
  Only when "$meta" is present as an attribute:
    A feature for prolog programmers who want to hide their attributes from value 
   based term comparisons like "=@=" and "=="  
@@ -2048,13 +2054,16 @@ typedef struct
       att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
   ( "$meta" attribute is also hidden. )
   */
-#define METATERM_SKIP_HIDDEN(ValPAttVar) (MATTS_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED LD_metaopts && !(LD_metaopts & MATTS_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
-#define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, MATTS_ENABLE_CPREDS PASS_LD))
-#define METATERM_HOOK(atom,t1,t2,rc)  (MATTS_ENABLE_CPREDS & METATERM_ENABLED && \
+
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_ENABLED METATERM_GLOBAL && !(METATERM_GLOBAL & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
+#define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD))
+#define METATERM_HOOK(atom,t1,t2,rc)  (META_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
+
+/*#define IS_META_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,META_NO_INHERIT)),option))))*/
 
 #else  /* for less noisey undefing of O_METATERM */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar

@@ -76,17 +76,23 @@ wakeup(att(Module, _AttVal, Rest), Next, Var, Value):-
         Module:verify_attributes(Var, Value, Goals),
         wakeup(Rest, Next, Var, Value),
         goals_with_module(Goals,Module).
+wakeup(_, Next,Var, Value):- attvar(Value),
+        get_attrs(Value,Atts),!,
+        pre_unify(Atts,
+          ('$attvar_assign'(Var,Value),Next),
+           Value, Var, Goals),
+        Goals.
+
 wakeup(_, Next,Var, Value):-
         '$attvar_assign'(Var,Value),
         call(Next).
 
 /* this is for reflexive non-assignment peer wakeup */
-unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
+pre_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_module(Goals,Module),G)):- !,
         Module:verify_attributes(Var, Value, Goals),
-        unify(Rest, Next, Var, Value),
-        goals_with_module(Goals,Module).
-unify(_,Next,_, _):-
-        call(Next).
+        pre_unify(Rest, Next, Var, Value, Goals).
+pre_unify(_,Next,_, _, Next).
+
 
 goals_with_module([G|Gs], M):- !,
         M:call(G),
@@ -94,30 +100,33 @@ goals_with_module([G|Gs], M):- !,
 goals_with_module(_,_).
 
 
-           /*********************
-            *  UNDO HOOK   *
-            ********************/
+        /***************
+         *  UNDO HOOK  *
+         ***************/
 /*
+    ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail.
     ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
 */
 system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 '$undo_unify':verify_attributes(_,_,[]).
+'$meta':verify_attributes(_,_,[]).
 :- meta_predicate(undo(:)).
 undo(GoalIn):- 
-      metaterm_options(W,W), T is W \/ 0x0080, % Flag to turn on trail scanning
-           ( T =:= W  
-             -> GoalIn=Goal 
-             ;  Goal=(metaterm_options(_,W),GoalIn)
-            ),
-            put_attr(Var,'$undo_unify',Goal),
-            metaterm_options(_,T),
-            Var=Goal.
+        metaterm_options(W,W), 
+        T is W \/ 0x0080, % Flag to turn on trail scanning
+        ( T =:= W  
+        -> GoalIn=Goal 
+        ;  Goal=(metaterm_options(_,W),GoalIn)
+        ),
+        put_attr(Var,'$undo_unify',GoalIn),
+        metaterm_options(_,T),
+        '$attvar_assign'(Var,Goal).
 
 
            /*******************************
            *	  ATTR UNIFY HOOK	*
            *******************************/
-
+/*
 %%	attr_unify_wrapper(+Context, +Term, -Hook) is
 %	semidet.
 %
@@ -160,7 +169,7 @@ system:term_expansion(Term, Into) :-
 	;   Into = [To:Hook,Term]
 	).
 
-
+*/
 		 /*******************************
 		 *	      FREEZE		*
 		 *******************************/

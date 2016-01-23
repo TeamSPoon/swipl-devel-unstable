@@ -415,6 +415,7 @@ struct PL_local_data
 #ifdef O_METATERM
     term_t  metaterm_regs;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+    int     metaterm_current; /* flags for current matts () */
 #endif
   } attvar;
 #endif
