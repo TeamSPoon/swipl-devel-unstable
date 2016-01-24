@@ -58,6 +58,9 @@ assignment. The attribute list remains   accessible  through the trailed
 assignment until this is GC'ed.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+#define NEVER_WRITELN(ex)
+/*#define NEVER_WRITELN(ex) pl_writeln(ex);*/
+
 #ifdef O_DEBUG
 static char *
 vName(Word adr)
@@ -194,6 +197,8 @@ getMetaFlags(Word av, int flags ARG_LD)
 }
 
 
+static void make_new_attvar(Word p ARG_LD);
+
 		 /*******************************
 		 *	     ASSIGNMENT		*
 		 *******************************/
@@ -219,15 +224,6 @@ void
 assignAttVar(Word av, Word value, int flags ARG_LD)
 { mark m;
 
-   flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
-
-   if (!(flags& ATT_ASSIGNONLY) && isVar(*value) && !IS_META(PEER_NO_TRAIL))
-   {  /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
-      DEBUG(MSG_METATERM, Sdprintf("Put attvar into plain var\n"));
-      Trail(value, makeRef(av));
-      return;
-   }
-
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
@@ -235,11 +231,17 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-  if( !(flags& ATT_ASSIGNONLY) )
-   registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
-  
+  flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
 
- if ( (flags& ATT_WAKEBINDS) )
+  bool did_wake = FALSE;
+
+  if( !(flags& ATT_ASSIGNONLY) )
+   if(!(IS_META(NO_WAKEUP))) 
+   { did_wake = TRUE;
+     registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
+   }
+
+ if ( (flags& ATT_WAKEBINDS) && did_wake )
     return;
 
  if(!(IS_META(NO_TRAIL)))
@@ -250,26 +252,53 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   DiscardMark(m);
  }
 
- if ( av == value) return;
-
  if (IS_META(NO_BIND))
      return;
 
-  if ( isAttVar(*value) )
-  { if(IS_META(KEEP_BOTH))
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("keep two attvars\n"));
+ if ( isAttVar(*value) )
+ { 
+    
+    if ( av == value) return;
+
+    if(IS_META(KEEP_BOTH))
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("META_KEEP_BOTH\n"));
       return;
     }
-    DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
-    *av = makeRef(value);
-  } else if ( isVar(*value) )
-  {  if( (flags& ATT_ASSIGNONLY) )
-	 { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
-	    *av = makeRef(value);			/* JW: Does this happen? */ 
+
+    if (av > value)
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying <- attvars\n"));
+      *av = makeRef(value);
+    } else
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying -> attvars\n"));
+      *value = makeRef(av);
+    }
+   
+ } else if ( isVar(*value) )
+ {  /* JW: Does this happen? */ 
+    /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
+     if( (flags& ATT_ASSIGNONLY) )
+	 { 
+         if(IS_META(KEEP_BOTH))
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Upgraging to an ATTVAR ref\n"));
+           make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
+           deRef(value);
+           *value = *valPAttVar(*av);
+         } else
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
+           *av = makeRef(value);			            
+         }
 	 } else
      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
-	    Trail(value, makeRef(av));
-	 }
+
+         if(IS_META(KEEP_BOTH)) return;
+
+         if(!IS_META(PEER_NO_TRAIL))
+         { /*This is what do_unify() would do*/
+           Trail(value, makeRef(av));
+         } else
+         { *value = makeRef(av);
+         }
+     }
   } else
     *av = *value;
 
@@ -661,7 +690,7 @@ saveWakeup(wakeup_state *state, int forceframe ARG_LD)
     { state->flags |= WAKEUP_STATE_WAKEUP;
       s = PL_new_term_refs(2);
 
-      DEBUG(MSG_WAKEUPS, pl_writeln(LD->attvar.head));
+      DEBUG(MSG_WAKEUPS, NEVER_WRITELN(LD->attvar.head));
 
       *valTermRef(s+0) = *h;
       setVar(*h);
@@ -686,7 +715,7 @@ restore_exception(Word p ARG_LD)
   *valTermRef(exception_bin) = p[0];
   exception_term = exception_bin;
 
-  DEBUG(1, pl_writeln(exception_term));
+  DEBUG(1, NEVER_WRITELN(exception_term));
 }
 
 
@@ -695,7 +724,7 @@ restore_wakeup(Word p ARG_LD)
 { *valTermRef(LD->attvar.head) = p[0];
   *valTermRef(LD->attvar.tail) = p[1];
 
-  DEBUG(MSG_WAKEUPS, pl_writeln(LD->attvar.head));
+  DEBUG(MSG_WAKEUPS, NEVER_WRITELN(LD->attvar.head));
 }
 
 
@@ -1516,7 +1545,7 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    assignAttVar(av, value, ATT_ASSIGNONLY|ATT_NO_SWAP PASS_LD);
+    assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
   }
@@ -1719,7 +1748,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
            PL_TERM, av+2);
      assert(rc!=0);
 
-     DEBUG(MSG_WAKEUPS, pl_writeln(ex));
+     DEBUG(MSG_WAKEUPS, NEVER_WRITELN(ex));
      restoreWakeup(&wstate PASS_LD);
      return PL_raise_exception(ex);
     }
@@ -1730,7 +1759,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
     if(!pred) return FALSE;
 
     LD_no_wakeup++;
-    DEBUG(MSG_METATERM, pl_writeln(av));
+    DEBUG(MSG_METATERM, NEVER_WRITELN(av));
     rc = PL_call_predicate(NULL,  
                            PL_Q_PASS_EXCEPTION, pred, av);
     LD_no_wakeup--;

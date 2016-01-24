@@ -2009,7 +2009,6 @@ typedef struct
 #define ATT_WAKEBINDS   0x01			/* bindConst() */
 #define ATT_ASSIGNONLY  0x02			/* '$attvar_assign'/2 */
 #define ATT_UNIFY       0x04			/* unify: assign and wakeup */
-#define ATT_NO_SWAP     0x08			/* Current only used in '$attvar_assign'/2 DM: but might need to be used in at least one or both the others  */
 
 #define LD_no_wakeup LD->attvar.no_wakeups
 
@@ -2017,28 +2016,29 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_ENABLE_VMI  	0x0010 /* Hook WAM */
-#define META_ENABLE_CPREDS	0x0020 /* Hook CPREDS (WAM can misses a few)*/
-#define META_SKIP_HIDDEN    0x0040 /* dont factor $meta into attvar identity */
-#define META_ENABLE_UNDO  	0x0080 /* check attvars for undo hooks (perfomance checking) */
+#define META_NO_WAKEUP  	0x0010 /* Dont call wakeup */
+#define META_NO_BIND        0x0020 /* C should let only prolog do binding */
+#define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
+#define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
+
 #define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
                                     as the result of unification.                                    
                                  */
-#define META_PEER_WAKEUP  	0x0200 /* Wakeup peer attvars */
-#define META_KEEP_BOTH  	0x0400 /* allow attvar survival */
-#define META_MOVE_ATTS  	0x0800 /* move atts to survivor */
-#define META_NO_BIND        0x1000 /* C should let wakeup/1 do binding */
-#define META_NO_TRAIL       0x2000 /* Do not bother to trail the previous value */
-#define META_NO_INHERIT     0x4000 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-#define META_DISABLED   	0x8000 /* disable all options (allows the options to be saved) */
-#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_MOVE_ATTS)
-#define META_NO_WAKEUP      0x02 /* C should skip scheduling a $wakeup/1  */
-#define META_PEER_NO_TRAIL  0x08 /* peer no trail */
-#define META_SPY            0x100000 /*spy on attvar*/
 
+#define META_PEER_NO_TRAIL  0x0200 /* peer no trail */
+#define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */
+
+#define META_ENABLE_VMI  	0x1000 /* Hook WAM */
+#define META_ENABLE_CPREDS	0x2000 /* Hook CPREDS (WAM can misses a few)*/
+#define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
+#define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
+
+
+#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS)
 
 #ifdef O_METATERM
 

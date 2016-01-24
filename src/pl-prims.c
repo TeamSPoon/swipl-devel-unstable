@@ -2255,7 +2255,7 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { assignAttVar(val, vp, META_PEER_NO_TRAIL PASS_LD);
+  { assignAttVar(val, vp, META_PEER_NO_TRAIL|ATT_ASSIGNONLY PASS_LD);
   } else
     *vp = *val;
 }
