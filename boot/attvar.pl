@@ -57,14 +57,16 @@ in pl-attvar.c
 
 system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-system:unify(Atts, Next, Var, Value):- Cookie = _, put_attr(Var,'$in_unify',Cookie),
+system:unify(Atts, Next, Var, Value):- % Cookie = _, put_attr(Var,'$in_unify',Cookie),
     user:pre_unify(Atts,Cookie,attv_unify(Var,Value), Var, Value, Goals),
-    (attvar(Value)->(put_attr(Var,'$in_unify',Cookie),user:pre_unify(Atts, Cookie, Goals, Var, Value, BothGoals));BothGoals=Goals),
+    (attvar(Value)->( % put_attr(Value,'$in_unify',Cookie),
+            user:pre_unify(Atts, Cookie, Goals, Var, Value, BothGoals));BothGoals=Goals),
     BothGoals,
     user:post_unify(Atts, Next, Var, Value).
 
+
            /*******************************
-           *	  VERIFY ATTRIBUTES	* 
+           *	  VERIFY ATTRIBUTES	  *
            *******************************/
 
 %%	pre_unify(+Att3s, +Next, +Var, +Value)
@@ -87,7 +89,7 @@ system:goals_with_module(_,_).
 
 
 system:pre_unify(att(Module, _AttVal, Rest),Cookie, Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- 
-        get_attr(Var,'$in_unify',CookieM),Cookie==CookieM,!,
+        % get_attr(Var,'$in_unify',CookieM),Cookie==CookieM,!,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
         system:pre_unify(Rest,Cookie, Next, Var, Value, G).
 

@@ -1866,10 +1866,8 @@ BeginPredDefs(attvar)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
   PRED_DEF("metaterm_options", 2, metaterm_options, 0)
- #ifdef O_DEBUG
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
- #endif
 #endif
 
 EndPredDefs
