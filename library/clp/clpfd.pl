@@ -6626,6 +6626,29 @@ verify_attributes(Var, Other, Gs) :-
         ).
 
 :- else.
+ :- if(current_prolog_flag(clp,emu)).
+
+attr_unify_hooked(clpfd_attr(_,_,_,Dom,Ps), Other) :-
+        (   nonvar(Other) ->
+            (   integer(Other) -> true
+            ;   type_error(integer, Other)
+            ),
+            domain_contains(Dom, Other),
+            trigger_props(Ps),
+            do_queue
+        ;   fd_get(Other, OD, OPs),
+            domains_intersection(OD, Dom, Dom1),
+            append_propagators(Ps, OPs, Ps1),
+            fd_put(Other, Dom1, Ps1),
+            trigger_props(Ps1),
+            do_queue
+        ).
+
+verify_attributes(Var,Value,[clpfd:attr_unify_hooked(Attr,Value)]):- 
+   get_attr(Var,clpfd,Attr).
+
+ :- else.
+
 attr_unify_hook(clpfd_attr(_,_,_,Dom,Ps), Other) :-
         (   nonvar(Other) ->
             (   integer(Other) -> true
@@ -6641,6 +6664,8 @@ attr_unify_hook(clpfd_attr(_,_,_,Dom,Ps), Other) :-
             trigger_props(Ps1),
             do_queue
         ).
+
+ :- endif.
 :- endif.
 
 append_propagators(fd_props(Gs0,Bs0,Os0), fd_props(Gs1,Bs1,Os1), fd_props(Gs,Bs,Os)) :-

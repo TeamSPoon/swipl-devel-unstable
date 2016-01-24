@@ -182,6 +182,7 @@ suspend_list([V=W|Unifier],Goal) :-
 	),
 	suspend_list(Unifier,Goal).
 
+:- if(current_prolog_flag(clp,va3)).
 verify_attributes(Var, Other, Gs) :-
 	(   get_attr(Var, when, call(Goal))
 	->  (	get_attr(Other, when, call(GoalOther))
@@ -191,7 +192,18 @@ verify_attributes(Var, Other, Gs) :-
 	    )
 	;   Gs = []
 	).
+:- else.
 
+
+attr_unify_hook(call(Goal), Other) :-
+	(   get_attr(Other, when, call(GOTher))
+	->  del_attr(Other, when),
+	    Goal, GOTher
+	;   Goal
+	).
+
+
+:- endif.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 attribute_goals(V) -->

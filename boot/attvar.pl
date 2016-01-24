@@ -59,8 +59,9 @@ in pl-attvar.c
 system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 system:unify(Atts, Next, Var, Value):-
-   (attvar(Var)->
-     user:pre_unify(Atts,'$attvar_assign'(Var,Value), Var, Value); true),
+   (attvar(Var)
+    -> user:pre_unify(Atts,'$attvar_assign'(Var,Value), Var, Value);
+     true),
      user:post_unify(Atts, Next, Var, Value).
 
            /*******************************
