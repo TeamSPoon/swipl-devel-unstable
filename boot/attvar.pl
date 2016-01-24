@@ -80,7 +80,7 @@ check_var_cookie(Var,FirstID:Expect):-
       (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shitft and a whatnot
       print_message(Type,format('~N~q~n',[Expect==SAtts])),
       nop(break),      
-      nop(throw(Expect==SAtts)))).
+      nop(throw(Expect==SAtts)))),!.
 
 %%	collect_all_va_goal_lists(+KernelWakeups)//
 %
