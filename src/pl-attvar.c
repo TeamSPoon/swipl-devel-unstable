@@ -1525,11 +1525,11 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 
 
 /**
- *  $attvar_assign(+Var, +Value) is det.
+ *  attv_unify(+Var, +Value) is det.
  *    Is actually attv_unify/2 from XSB-Prolog
 */
 static
-PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
+PRED_IMPL("attv_unify", 2, attv_unify, 0)
 { PRED_LD
   Word value, av;
 
@@ -1859,7 +1859,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_start", 0, call_residue_vars_start, 0)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
-  PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+  PRED_DEF("attv_unify", 2, attv_unify, 0)
 #ifdef O_METATERM
   PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)

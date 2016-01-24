@@ -58,7 +58,7 @@ in pl-attvar.c
 system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 system:unify(Atts, Next, Var, Value):- Cookie = _, put_attr(Var,'$in_unify',Cookie),
-    user:pre_unify(Atts, Cookie,'$assign_attvar'(Var,Value), Var, Value, Goals),
+    user:pre_unify(Atts,Cookie,attv_unify(Var,Value), Var, Value, Goals),
     (attvar(Value)->(put_attr(Var,'$in_unify',Cookie),user:pre_unify(Atts, Cookie, Goals, Var, Value, BothGoals));BothGoals=Goals),
     BothGoals,
     user:post_unify(Atts, Next, Var, Value).
