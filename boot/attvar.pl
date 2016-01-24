@@ -59,15 +59,29 @@ map_goals([G|Gs]):-
 	call(G),
 	map_goals(Gs).
 
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
+
+make_var_cookie(Var,VarID:Atom):- assertion(attvar(Var)), get_attrs(Var,Atts),format(atom(VarID),'~q',[Var]),format(atom(Atom),'~q',[varinfo(get_attrs(Var,Atts))]),
+    get_attrs(Var,Atts),format(atom(Atom),'~q',[varinfo(get_attrs(Var,Atts))]).
+
+check_var_cookie(Var,EVarID:Expect):- make_var_cookie(Var,VarID:Atom), 
+   nop((Expect==Atom->true;print_message(help,Expect==Atom))),
+   (EVarID==VarID->true;(backtrace(10),
+     nop(break),print_message(Expect==Atom),nop(throw(Expect==Atom)))).
+
 %%	collect_all_va_goal_lists(+KernelWakeups)//
 %
 %	Run the verify_attributes/3 unify hook for attributes on Attvar
 
 collect_all_va_goal_lists([]) --> [].
 collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
+   { make_var_cookie(Var,Cookie)},  
         ['$attvar_assign'(Var,Value)],
 	collect_va_goal_list(Att3s, Var, Value),
-        collect_all_va_goal_lists(Rest).
+        {check_var_cookie(Var,Cookie)},
+        collect_all_va_goal_lists(Rest),
+        {check_var_cookie(Var,Cookie)}.
 
 
 %%	collect_va_goal_list(+Att3s, +Var, +Value, -Goals)
@@ -78,7 +92,7 @@ collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
 
 collect_va_goal_list(att(Module, _AttVal, Rest), Var, Value) -->
 	(   { attvar(Var) }
-	->  { Module:verify_attributes(Var, Value, Goals) },
+	->  { make_var_cookie(Var,Cookie),Module:verify_attributes(Var, Value, Goals),check_var_cookie(Var,Cookie) },
 	    goals_with_module(Goals, Module)
 	;   []
 	),
