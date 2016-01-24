@@ -51,18 +51,17 @@ in pl-attvar.c
 %       Assignment happens in 'pre_unify'/4
 
 :- module_transparent(system:unify/4).
-:- module_transparent(system:pre_unify/4).
 :- module_transparent(system:post_unify/4).
-:- module_transparent(system:other_unify/5).
+:- module_transparent(system:pre_unify/5).
 :- module_transparent(system:ifdef/2).
 
-system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
+system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-system:unify(Atts, Next, Var, Value):-
-   (attvar(Var)
-    -> user:pre_unify(Atts,'$attvar_assign'(Var,Value), Var, Value);
-     true),
-     user:post_unify(Atts, Next, Var, Value).
+system:unify(Atts, Next, Var, Value):- Cookie = _, put_attr(Var,'$in_unify',Cookie),
+    user:pre_unify(Atts, Cookie,'$assign_attvar'(Var,Value), Var, Value, Goals),
+    (attvar(Value)->(put_attr(Var,'$in_unify',Cookie),user:pre_unify(Atts, Cookie, Goals, Var, Value, BothGoals));BothGoals=Goals),
+    BothGoals,
+    user:post_unify(Atts, Next, Var, Value).
 
            /*******************************
            *	  VERIFY ATTRIBUTES	* 
@@ -81,32 +80,18 @@ system:unify(Atts, Next, Var, Value):-
 %
 %	Finally call post binding closures/hooks.
 
-system:pre_unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
-        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest, Next, Var, Value),
-        goals_with_module(Goals,Module).
-
-system:pre_unify(_, Next,Var, Value):- attvar(Value),
-        get_attrs(Value,Atts),!,
-        system:other_unify(Atts,Next,Value, Var, Goals),
-        Goals.
-
-system:pre_unify(_, Next,_, _):- call(Next).
-
-
 system:goals_with_module([G|Gs], M):- !,
         M:call(G),
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
 
-/* this is for reflexive non-assignment peer pre_unify */
-system:other_unify(att(Module, _AttVal, Rest), Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- !,
+system:pre_unify(att(Module, _AttVal, Rest),Cookie, Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- 
+        get_attr(Var,'$in_unify',CookieM),Cookie==CookieM,!,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:other_unify(Rest, Next, Var, Value, G).
+        system:pre_unify(Rest,Cookie, Next, Var, Value, G).
 
-system:other_unify(_,Next,_, _, Next).
-
+system:pre_unify(_,_Cookie, Next, _, _, Next).
 
 
 		 /*******************************
