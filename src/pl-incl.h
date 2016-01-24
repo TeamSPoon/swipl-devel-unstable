@@ -2012,12 +2012,15 @@ typedef struct
 
 #define LD_no_wakeup LD->attvar.no_wakeups
 
+#define IS_META(option) ((flags & META_ ## option) != 0)
+
 		 /*******************************
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_NO_WAKEUP  	0x0010 /* Dont call wakeup */
-#define META_NO_BIND        0x0020 /* C should let only prolog do binding */
+#define META_PEER_NO_TRAIL  0x0008 /* peer no trail */
+#define META_NO_BIND        0x0010 /* C should let only prolog do binding */
+#define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
 #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
 
@@ -2028,7 +2031,6 @@ typedef struct
                                     as the result of unification.                                    
                                  */
 
-#define META_PEER_NO_TRAIL  0x0200 /* peer no trail */
 #define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
 #define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */
 

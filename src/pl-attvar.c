@@ -176,8 +176,6 @@ appendWakeup(Word wake, int len, int alert_flags ARG_LD)
  Returns the "$atts" attvar property (supposed to be a small int)
  Ideally mattss will have them at the begining
 */
-#define IS_META(option) ((flags & META_ ## option) != 0)
-
 int
 getMetaFlags(Word av, int flags ARG_LD)
 { Word found;
@@ -229,7 +227,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s,%s)\n", vName(av),print_val(*value,0)));
 
   flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
 
@@ -241,7 +239,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
    }
 
- if ( (flags& ATT_WAKEBINDS) && did_wake )
+ if ( (flags& ATT_WAKEBINDS) )
     return;
 
  if(!(IS_META(NO_TRAIL)))
@@ -255,6 +253,8 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
  if (IS_META(NO_BIND))
      return;
 
+ if( !(flags& ATT_ASSIGNONLY) ) return;
+
  if ( isAttVar(*value) )
  { 
     
@@ -266,16 +266,15 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     }
 
     if (av > value)
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying <- attvars\n"));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
       *av = makeRef(value);
     } else
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying -> attvars\n"));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av -> value\n"));
       *value = makeRef(av);
     }
    
- } else if ( isVar(*value) )
- {  /* JW: Does this happen? */ 
-    /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
+ } else if ( isVar(*value) )  /* JW: Does this happen? */ 
+ {  /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
      if( (flags& ATT_ASSIGNONLY) )
 	 { 
          if(IS_META(KEEP_BOTH))

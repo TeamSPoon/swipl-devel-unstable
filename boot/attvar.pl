@@ -132,7 +132,7 @@ system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 :- meta_predicate(undo(:)).
 undo(GoalIn):- 
         metaterm_options(W,W), 
-        T is W \/ 0x0080, % Flag to turn on trail scanning
+        T is W \/ 0x8000, % Flag to turn on trail scanning
         ( T =:= W  
         -> GoalIn=Goal 
         ;  Goal=(metaterm_options(_,W),GoalIn)
