@@ -54,18 +54,47 @@ in pl-attvar.c
 system:nop(_).
 
 
+system:goals_with_module([G|Gs], M):- !,
+        M:call(G),
+	system:goals_with_module(Gs, M).
+system:goals_with_module(_,_).
+
+
+make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
+   del_attr(Var,cookie), get_attrs(Var,Atts),
+   format(string(VarID),'~q',[Var]),
+   format(string(SAtts),'~q',[attrs(Var,Atts)]),
+   put_attr(Var,cookie,VarID).
+
+cookie:verify_attributes(_,_,[]).
+
+check_var_cookie(Var,FirstID:Expect):-
+  assertion(get_attr(Var,cookie,LastVarID)), % cookie is missing then something trampled this var (this is to decide how much to panic)
+   make_var_cookie(Var,VarID:SAtts),
+   nop((Expect==SAtts->true;print_message(trace,format('~N~q~n',[Expect==SAtts])))),
+   ((FirstID==VarID)
+    ->true;
+     (backtrace(30),
+      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shifts maybe vs a attvar bwing overwritten 
+       print_message(Type,format('~N~q~n',[Expect==SAtts])),
+       set_prolog_flag(access_level,system), % ensures trace durring wakeup
+       % leaving trace nop'ed out so we can run make check or other things easier
+       nop(trace), % someomes can just leap here since there will be false postives
+       nop(throw(Expect==SAtts)))),!.
+
 
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 :- meta_predicate(system:unify(+,0,+,+)).
 system:unify(Atts, Next, Var, Value):- 
-    nop(( Cookie = _, put_attr(Var,'$in_unify',Cookie))),
+    make_var_cookie(Var,Cookie:Attrs),
+    put_attr(Var,'$in_unify',Cookie),
     user:pre_unify(Atts,Cookie,attv_unify(Var,Value), Var, Value, Goals),
-   ((attvar(Value),get_attrs(Value,VAtts)) ->
-     ( nop(put_attr(Value,'$in_unify',Cookie)),
-       user:pre_unify(VAtts, Cookie,(Goals,user:post_unify(VAtts, Next, Value,Var)), Value, Var, BothGoals));
-    BothGoals=Goals),
+   ((attvar(Value),get_attrs(Value,VAtts),put_attr(Value,'$in_unify',Cookie)) ->
+     (user:pre_unify(VAtts, Cookie,(Goals,user:post_unify(VAtts, Next, Value,Var)), Value, Var, BothGoals));
+      BothGoals=Goals),
+    check_var_cookie(Var,Cookie:Attrs),
     call(BothGoals),
     user:post_unify(Atts, Next, Var, Value).
 
@@ -87,24 +116,20 @@ system:unify(Atts, Next, Var, Value):-
 %
 %	Finally call post binding closures/hooks.
 
-system:goals_with_module([G|Gs], M):- !,
-        M:call(G),
-	system:goals_with_module(Gs, M).
-system:goals_with_module(_,_).
-
 :- meta_predicate(system:pre_unify(+,+,0,+,+,-)).
-system:pre_unify(att(Module, _AttVal, Rest),Cookie, Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- 
-        nop((get_attr(Var,'$in_unify',CookieM),Cookie==CookieM)),
+system:pre_unify(att(Module, _AttVal, Rest),Cookie:Attrs, Next, Var, Value,
+                                               (Module:goals_with_module(Goals,Module),G)):- 
+        get_attr(Var,'$in_unify',CookieM),Cookie:Attrs==CookieM),
         !,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest,Cookie, Next, Var, Value, G).
+        system:pre_unify(Rest,Cookie:Attrs, Next, Var, Value, G).
 
 system:pre_unify(_,_, Next, _, _, Next).
 
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
+     /*******************************
+     *	  ATTR UNIFY HOOK	*
+     *******************************/
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value) :- !,
@@ -114,9 +139,9 @@ system:post_unify(_,Next,_,_):- Next.
 
 
 
-        /***************
+         /**************
          *  UNDO HOOK  *
-         ***************/
+         **************/
 /*    
     ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
     BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail.
