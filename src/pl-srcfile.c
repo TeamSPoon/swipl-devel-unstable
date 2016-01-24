@@ -781,6 +781,18 @@ equal_clause(Clause cl1, Clause cl2)
 
 
 int
+reloadHasClauses(SourceFile sf, Procedure proc ARG_LD)
+{ p_reload *reload;
+
+  if ( sf->reload && (reload=lookupHTable(sf->reload->procedures, proc)) )
+  { return reload->number_of_clauses > 0;
+  }
+
+  return FALSE;
+}
+
+
+static int
 reloadIsDefined(SourceFile sf, Procedure proc ARG_LD)
 { p_reload *reload;
 
@@ -1172,7 +1184,7 @@ delete_pending_clauses(SourceFile sf, Definition def, p_reload *r ARG_LD)
     if ( !visibleClause(c, r->generation) ||
 	 true(c, CL_ERASED) )
       continue;
-    if ( true(r->predicate, P_MULTIFILE) && c->owner_no != sf->index )
+    if ( true(r->predicate, P_MULTIFILE|P_DYNAMIC) && c->owner_no != sf->index )
       continue;
 
     c->generation.erased = rl->reload_gen;

@@ -103,11 +103,8 @@ collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
 %	change each others attributes.
 
 collect_va_goal_list(att(Module, _AttVal, Rest), Var, Value) -->
-	(   { attvar(Var) }
-	->  { make_var_cookie(Var,Cookie),Module:verify_attributes(Var, Value, Goals),check_var_cookie(Var,Cookie) },
-	    goals_with_module(Goals, Module)
-	;   []
-	),
+	{ Module:verify_attributes(Var, Value, Goals) },
+	goals_with_module(Goals, Module),
         collect_va_goal_list(Rest, Var, Value).
 collect_va_goal_list([],_,_) --> [].
 

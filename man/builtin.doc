@@ -451,7 +451,7 @@ Equivalent to \verb$load_files(Files, [if(not_loaded)]).$%
 		  changing the source code.}
 
     \predicate[ISO]{include}{1}{+File}
-Textually include the content of \arg{File} in the file in which the
+Textually include the content of \arg{File} at the position where the
 \jargon{directive} \exam{:- include(File).} appears. The include
 construct is only honoured if it appears as a directive in a
 source file. \jargon{Textual} include (similar to C/C++ \#include) is
@@ -459,26 +459,27 @@ obviously useful for sharing declarations such as dynamic/1 or
 multifile/1 by including a file with directives from multiple files that
 use these predicates.
 
-Textual including files that contain clauses is less obvious. Normally,
-in SWI-Prolog, clauses are \emph{owned} by the file in which they are
-defined. This information is used to \emph{replace} the old definition
-after the file has beeen modified and is reloaded by, e.g., make/0. As we
-understand it, include/1 is intended to include the same file multiple
-times. Including a file holding clauses multiple times into the same
-module is rather meaningless as it just duplicates the same clauses.
-Including a file holding clauses in multiple modules does not suffer
-from this problem, but leads to multiple equivalent \emph{copies} of
-predicates. Using use_module/1 can achieve the same result while
-\emph{sharing} the predicates.
+Textually including files that contain \emph{clauses} is less obvious.
+Normally, in SWI-Prolog, clauses are \emph{owned} by the file in which
+they are defined. This information is used to \emph{replace} the old
+definition after the file has been modified and is reloaded by, e.g.,
+make/0. As we understand it, include/1 is intended to include the same
+file multiple times. Including a file holding clauses multiple times
+into the same module is rather meaningless as it just duplicates the
+same clauses. Including a file holding clauses in multiple modules
+does not suffer from this problem, but leads to multiple equivalent
+\emph{copies} of predicates. Using use_module/1 can achieve the same
+result while \emph{sharing} the predicates.
 
-Despite these observations, various projects seem to be using include/1
-to load files holding clauses, typically loading them only once. Such
-usage would allow replacement by, e.g., consult/1. Unfortunately, the
-same project might use include/1 to share directives. Another example of
-a limitation of mapping to consult/1 is that if the clauses of a
-predicate are distributed over two included files, discontiguous/1 is
-appropriate, while if they are distributed over two consulted files, one
-must use multifile/1.
+If include/1 is used to load files holding clauses, and if these files
+are loaded only once, then these include/1 directives can be replaced by
+other predicates (such as consult/1). However, there are several cases
+where either include/1 has no alternative, or using any alternative also
+requires other changes. An example of the former is using include/1 to
+share directives. An example of the latter are cases where clauses of
+different predicates are distributed over multiple files: If these files
+are loaded with include/1, the directive discontiguous/1 is appropriate,
+whereas if they are consulted, one must use the directive multifile/1.
 
 To accommodate included files holding clauses, SWI-Prolog distinguishes
 between the source location of a clause (in this case the included
@@ -6513,7 +6514,7 @@ the first larger floating point number.
 Evaluate to positive infinity.  See \secref{floatsyntax}.  This value
 can be negated using \funcref{-}{1}.
     \function{nan}{0}{}
-Evaluate to \exph{Not a Number}.  See \secref{floatsyntax}.
+Evaluate to \emph{Not a Number}.  See \secref{floatsyntax}.
     \function{cputime}{0}{}
 Evaluate to a floating point number expressing the {\sc cpu} time (in seconds)
 used by Prolog up till now. See also statistics/2 and time/1.
