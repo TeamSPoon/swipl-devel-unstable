@@ -62,13 +62,25 @@ map_goals([G|Gs]):-
 % nop/1 is for disabling code while staying in syntax
 system:nop(_).
 
-make_var_cookie(Var,VarID:Atom):- assertion(attvar(Var)), get_attrs(Var,Atts),format(atom(VarID),'~q',[Var]),format(atom(Atom),'~q',[varinfo(get_attrs(Var,Atts))]),
-    get_attrs(Var,Atts),format(atom(Atom),'~q',[varinfo(get_attrs(Var,Atts))]).
+make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
+   del_attr(Var,cookie), get_attrs(Var,Atts),
+   format(string(VarID),'~q',[Var]),
+   format(string(SAtts),'~q',[attrs(Var,Atts)]),
+   put_attr(Var,cookie,VarID).
 
-check_var_cookie(Var,EVarID:Expect):- make_var_cookie(Var,VarID:Atom), 
-   nop((Expect==Atom->true;print_message(help,Expect==Atom))),
-   (EVarID==VarID->true;(backtrace(10),
-     nop(break),print_message(Expect==Atom),nop(throw(Expect==Atom)))).
+cookie:verify_attributes(_,_,[]).
+
+check_var_cookie(Var,FirstID:Expect):-
+  assertion(get_attr(Var,cookie,LastVarID)), % cookie is missing then something trampled this var (this is to decide how much to panic)
+   make_var_cookie(Var,VarID:SAtts),
+   nop((Expect==SAtts->true;print_message(trace,format('~N~q~n',[Expect==SAtts])))),
+   ((FirstID==VarID)
+    ->true;
+     (backtrace(30),
+      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shitft and a whatnot
+      print_message(Type,format('~N~q~n',[Expect==SAtts])),
+      nop(break),      
+      nop(throw(Expect==SAtts)))).
 
 %%	collect_all_va_goal_lists(+KernelWakeups)//
 %
