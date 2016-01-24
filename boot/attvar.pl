@@ -50,18 +50,23 @@ in pl-attvar.c
 %
 %       Assignment happens in 'pre_unify'/4
 
-:- module_transparent(system:unify/4).
-:- module_transparent(system:post_unify/4).
-:- module_transparent(system:pre_unify/5).
-:- module_transparent(system:ifdef/2).
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
 
+
+
+:- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-system:unify(Atts, Next, Var, Value):- % Cookie = _, put_attr(Var,'$in_unify',Cookie),
+:- meta_predicate(system:unify(+,0,+,+)).
+system:unify(Atts, Next, Var, Value):- 
+    nop(( Cookie = _, put_attr(Var,'$in_unify',Cookie))),
     user:pre_unify(Atts,Cookie,attv_unify(Var,Value), Var, Value, Goals),
-    (attvar(Value)->( % put_attr(Value,'$in_unify',Cookie),
-            user:pre_unify(Atts, Cookie, Goals, Var, Value, BothGoals));BothGoals=Goals),
-    BothGoals,
+   ((attvar(Value),get_attrs(Value,VAtts)) ->
+     ( nop(put_attr(Value,'$in_unify',Cookie)),
+       user:pre_unify(VAtts, Cookie,(Goals,user:post_unify(VAtts, Next, Value,Var)), Value, Var, BothGoals));
+    BothGoals=Goals),
+    call(BothGoals),
     user:post_unify(Atts, Next, Var, Value).
 
 
@@ -87,20 +92,21 @@ system:goals_with_module([G|Gs], M):- !,
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
-
+:- meta_predicate(system:pre_unify(+,+,0,+,+,-)).
 system:pre_unify(att(Module, _AttVal, Rest),Cookie, Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- 
-        % get_attr(Var,'$in_unify',CookieM),Cookie==CookieM,!,
+        nop((get_attr(Var,'$in_unify',CookieM),Cookie==CookieM)),
+        !,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
         system:pre_unify(Rest,Cookie, Next, Var, Value, G).
 
-system:pre_unify(_,_Cookie, Next, _, _, Next).
+system:pre_unify(_,_, Next, _, _, Next).
 
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
 
-
+:- meta_predicate(system:post_unify(+,0,+,+)).
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value) :- !,
 	ifdef(Module:attr_unify_hook(AttVal, Value),true),
 	system:post_unify(Rest, Next, Var, Value).
