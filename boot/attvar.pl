@@ -79,7 +79,9 @@ check_var_cookie(Var,FirstID:Expect):-
      (backtrace(30),
       (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shifts maybe vs a attvar bwing overwritten 
        print_message(Type,format('~N~q~n',[Expect==SAtts])),
-       nop(break),      
+       set_prolog_flag(access_level,system), % ensures trace durring wakeup
+       % leaving trace nop'ed out so we can run make check or other things easier
+       nop(trace), % someomes can just leap here since there will be false postives
        nop(throw(Expect==SAtts)))),!.
 
 %%	collect_all_va_goal_lists(+KernelWakeups)//
