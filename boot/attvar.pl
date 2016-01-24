@@ -48,7 +48,24 @@ in pl-attvar.c
 %	Called from the kernel if assignments will be made to attributed
 %	variables.
 %
-%       Assignment happens in 'pre_unify'/4
+%       1) Call pre_unify hooks for Var and possible Value
+%       2) Bind the Var with Value
+%       3) Check on post_bind hooks
+%	4) Finally call post binding closures/hooks.
+
+:- meta_predicate(system:unify(+,0,+,+)).
+system:unify(Atts, Next, Var, Value):- 
+    make_var_cookie(Var,Cookie:Attrs),
+    put_attr(Var,'$in_unify',Cookie),
+    user:pre_unify(Atts,user:post_unify(Atts, Next, Var, Value),Cookie, Var, Value, Goals),
+   ((attvar(Value),get_attrs(Value,VAtts),put_attr(Value,'$in_unify',Cookie)) ->
+     (user:pre_unify(VAtts,(Goals,user:post_unify(VAtts, Next, Value,Var)), Cookie, Value, Var, PostUnify));
+      PostUnify=Goals),
+    check_var_cookie(Var,Cookie:Attrs),
+    (put_attr(Value,'$in_unify',Cookie)->attv_unify(Var,Value);true),    
+    call(PostUnify).
+    
+
 
 % nop/1 is for disabling code while staying in syntax
 system:nop(_).
@@ -58,7 +75,6 @@ system:goals_with_module([G|Gs], M):- !,
         M:call(G),
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
-
 
 make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
    del_attr(Var,cookie), get_attrs(Var,Atts),
@@ -86,18 +102,6 @@ check_var_cookie(Var,FirstID:Expect):-
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-:- meta_predicate(system:unify(+,0,+,+)).
-system:unify(Atts, Next, Var, Value):- 
-    make_var_cookie(Var,Cookie:Attrs),
-    put_attr(Var,'$in_unify',Cookie),
-    user:pre_unify(Atts,Cookie,attv_unify(Var,Value), Var, Value, Goals),
-   ((attvar(Value),get_attrs(Value,VAtts),put_attr(Value,'$in_unify',Cookie)) ->
-     (user:pre_unify(VAtts, Cookie,(Goals,user:post_unify(VAtts, Next, Value,Var)), Value, Var, BothGoals));
-      BothGoals=Goals),
-    check_var_cookie(Var,Cookie:Attrs),
-    call(BothGoals),
-    user:post_unify(Atts, Next, Var, Value).
-
 
            /*******************************
            *	  VERIFY ATTRIBUTES	  *
@@ -112,19 +116,17 @@ system:unify(Atts, Next, Var, Value):-
 %	has an attribute. During this process,   modules  may remove and
 %	change each others attributes.
 %
-%	Next bind the Var to Value
-%
-%	Finally call post binding closures/hooks.
+%       when a callee removes the '$in_unify' property we succeed unconditionally
 
-:- meta_predicate(system:pre_unify(+,+,0,+,+,-)).
-system:pre_unify(att(Module, _AttVal, Rest),Cookie:Attrs, Next, Var, Value,
+:- meta_predicate(system:pre_unify(+,0,+,+,+,-)).
+system:pre_unify(att(Module, _AttVal, Rest), Next, Cookie, Var, Value,
                                                (Module:goals_with_module(Goals,Module),G)):- 
-        get_attr(Var,'$in_unify',CookieM),Cookie:Attrs==CookieM),
+        get_attr(Var,'$in_unify',CookieM),Cookie==CookieM),
         !,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest,Cookie:Attrs, Next, Var, Value, G).
+        system:pre_unify(Rest, Next,Cookie, Var, Value, G).
 
-system:pre_unify(_,_, Next, _, _, Next).
+system:pre_unify(_,Next,_, _, _, Next).
 
 
      /*******************************
