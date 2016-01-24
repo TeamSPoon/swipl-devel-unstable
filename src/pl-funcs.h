@@ -37,6 +37,20 @@ COMMON(void)		restoreWakeup(wakeup_state *state ARG_LD);
 COMMON(int)		PL_get_attr__LD(term_t t, term_t a ARG_LD);
 COMMON(int)		on_attvar_chain(Word avp);
 COMMON(Word)		alloc_attvar(ARG1_LD);
+COMMON(void)		registerWakeup(functor_t wakeup_type4,  Word attvar, Word attrs, Word value ARG_LD);
+
+COMMON(void)	scheduleWakeup(word g, int alert_flags ARG_LD);
+
+#ifdef O_UNDO_HOOK
+COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
+#endif
+
+#ifdef O_METATERM
+COMMON(int)     metatermOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
+COMMON(bool)  isMetaOverriden(Word av, functor_t metaprop, int override_flags ARG_LD);
+COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
+COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
+#endif
 
 /* pl-gvar.c */
 

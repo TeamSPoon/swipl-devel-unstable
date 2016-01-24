@@ -111,8 +111,7 @@ code into functions.
 #ifdef O_ATTVAR
 #define CHECK_WAKEUP \
 	if ( unlikely(LD->alerted & ALERT_WAKEUP) ) \
-	{ LD->alerted &= ~ALERT_WAKEUP; \
-	  if ( *valTermRef(LD->attvar.head) ) \
+	{ if ( *valTermRef(LD->attvar.head) ) \
 	    goto wakeup; \
 	}
 #else
@@ -1626,6 +1625,8 @@ true:
 
 normal_call:
 
+CHECK_METATERM(ARGP);
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -1972,9 +1973,8 @@ VMI(I_EXITFACT, 0, 0, ())
   exit_checking_wakeup:
 #ifdef O_ATTVAR
     if ( LD->alerted & ALERT_WAKEUP )
-    { LD->alerted &= ~ALERT_WAKEUP;
+    { if ( *valTermRef(LD->attvar.head) )
 
-      if ( *valTermRef(LD->attvar.head) )
       { PC = SUPERVISOR(exit);
 	goto wakeup;
       }
@@ -3503,10 +3503,18 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 #ifdef O_PROF_PENTIUM
 #define PROF_FOREIGN \
 	{ END_PROF(); \
+      CHECK_FMETATERM(h0) \
+	  START_PROF(DEF->prof_index, DEF->prof_name); \
+	}
+#define PROF_FOREIGN0 \
+    { END_PROF(); \
 	  START_PROF(DEF->prof_index, DEF->prof_name); \
 	}
 #else
-#define PROF_FOREIGN (void)0
+
+#define PROF_FOREIGN CHECK_FMETATERM(h0)
+#define PROF_FOREIGN0 (void)0
+
 #endif
 
 BEGIN_SHAREDVARS
@@ -3570,7 +3578,7 @@ a1, a2, ... calling conventions.
 VMI(I_FCALLDET0, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
 
-  PROF_FOREIGN;
+  PROF_FOREIGN0;
   rc = (*f)();
   VMI_GOTO(I_FEXITDET);
 }
@@ -3640,6 +3648,7 @@ VMI(I_FCALLDET7, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
   term_t h0 = argFrameP(FR, 0) - (Word)lBase;
 
+  PROF_FOREIGN;
   rc = (*f)(h0, h0+1, h0+2, h0+3, h0+4, h0+5, h0+6);
   VMI_GOTO(I_FEXITDET);
 }
@@ -3767,7 +3776,7 @@ VMI(I_FCALLNDETVA, 0, 1, (CA1_FOREIGN))
 VMI(I_FCALLNDET0, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
 
-  PROF_FOREIGN;
+  PROF_FOREIGN0;
   rc = (*f)(&context);
   VMI_GOTO(I_FEXITNDET);
 }
@@ -3786,6 +3795,7 @@ VMI(I_FCALLNDET2, 0, 1, (CA1_FOREIGN))
 { Func f = (Func)*PC++;
   term_t h0 = argFrameP(FR, 0) - (Word)lBase;
 
+  PROF_FOREIGN;
   rc = (*f)(h0, h0+1, &context);
   VMI_GOTO(I_FEXITNDET);
 }

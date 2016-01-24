@@ -29,7 +29,7 @@
 */
 
 :- module('$attvar',
-	  [ '$wakeup'/1,		% +Wakeup list
+	  [ undo/1,                     % :Goal
 	    freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
@@ -43,101 +43,102 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-%%	'$wakeup'(+List)
+%%	unify(Atts, Next, Var, Value)
 %
 %	Called from the kernel if assignments will be made to attributed
 %	variables.
 %
-%       Assignment happens in '$attvar_assign'/2
+%       Assignment happens in 'pre_unify'/4
 
-'$wakeup'(Wakes):-
-        collect_all_va_goal_lists(Wakes, Goals, []),
-        map_goals(Goals).
+:- module_transparent(system:unify/4).
+:- module_transparent(system:pre_unify/4).
+:- module_transparent(system:post_unify/4).
+:- module_transparent(system:other_unify/5).
+:- module_transparent(system:ifdef/2).
 
-map_goals([]).
-map_goals([G|Gs]):-
-	call(G),
-	map_goals(Gs).
+system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-%%	collect_all_va_goal_lists(+KernelWakeups)//
+system:unify(Atts, Next, Var, Value):-
+   (attvar(Var)->
+     user:pre_unify(Atts,'$attvar_assign'(Var,Value), Var, Value); true),
+     user:post_unify(Atts, Next, Var, Value).
+
+           /*******************************
+           *	  VERIFY ATTRIBUTES	* 
+           *******************************/
+
+%%	pre_unify(+Att3s, +Next, +Var, +Value)
 %
-%	Run the verify_attributes/3 unify hook for attributes on Attvar
-
-collect_all_va_goal_lists([]) --> [].
-collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
-        ['$attvar_assign'(Var,Value)],
-	collect_va_goal_list(Att3s, Var, Value),
-        collect_all_va_goal_lists(Rest).
-
-
-%%	collect_va_goal_list(+Att3s, +Var, +Value, -Goals)
+%	Called from the kernel if assignments will be made to attributed
+%	variables.
 %
-%	Calls Module:verify_attributes/3 for each `Module` for which Var
+%	First calls Module:verify_attributes/3 for each `Module` for which Var
 %	has an attribute. During this process,   modules  may remove and
 %	change each others attributes.
+%
+%	Next bind the Var to Value
+%
+%	Finally call post binding closures/hooks.
 
-collect_va_goal_list(att(Module, _AttVal, Rest), Var, Value) -->
-	(   { attvar(Var) }
-	->  { Module:verify_attributes(Var, Value, Goals) },
-	    goals_with_module(Goals, Module)
-	;   []
-	),
-        collect_va_goal_list(Rest, Var, Value).
-collect_va_goal_list([],_,_) --> [].
+system:pre_unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
+        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:pre_unify(Rest, Next, Var, Value),
+        goals_with_module(Goals,Module).
+
+system:pre_unify(_, Next,Var, Value):- attvar(Value),
+        get_attrs(Value,Atts),!,
+        system:other_unify(Atts,Next,Value, Var, Goals),
+        Goals.
+
+system:pre_unify(_, Next,_, _):- call(Next).
 
 
-goals_with_module([], _) --> [].
-goals_with_module([G|Gs], M) -->
-	{ strip_module(M:G, M2, GS) },
-	[M2:GS],
-	goals_with_module(Gs, M).
+system:goals_with_module([G|Gs], M):- !,
+        M:call(G),
+	system:goals_with_module(Gs, M).
+system:goals_with_module(_,_).
+
+
+/* this is for reflexive non-assignment peer pre_unify */
+system:other_unify(att(Module, _AttVal, Rest), Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- !,
+        system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:other_unify(Rest, Next, Var, Value, G).
+
+system:other_unify(_,Next,_, _, Next).
+
 
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
 
-%%	attr_unify_wrapper(+Context, +Term, -Hook) is
-%	semidet.
-%
-%	Hook   is   a   verify_attributes/3   hook   if   Term   is   an
-%	attr_unify_hook/2 implementation. The   verify_attributes/3 hook
-%	takes this shape:
-%
-%	  ==
-%	  Mod:verify_attributes(Var,Value,
-%				[attr_unify_hook(Attr,Value)]) :-
-%	      get_attr(Var,Mod,Attr).
-%	  ==
 
-attr_unify_wrapper(Context, Term, VHook) :-
-	clause_head(Context, Term, Module:attr_unify_hook(_,_)),
-	VHook = Module:(verify_attributes(Var,Value,
-					  [attr_unify_hook(Attr,Value)]) :-
-			       get_attr(Var,Module,Attr)).
-
-clause_head(_, M:Term, Head) :-
-	atom(M), !,
-	clause_head(M, Term, Head).
-clause_head(M, (Head :- _), M1:Head1) :- !,
-	strip_module(M:Head, M1, Head1),
-	atom(M1), callable(Head1).
-clause_head(M, Head, M:Head) :-
-	atom(M), callable(Head).
+system:post_unify(att(Module, AttVal, Rest), Next, Var, Value) :- !,
+	ifdef(Module:attr_unify_hook(AttVal, Value),true),
+	system:post_unify(Rest, Next, Var, Value).
+system:post_unify(_,Next,_,_):- Next.
 
 
-has_verify_attribute_wrapper(Mod) :-
-	predicate_property(Mod:verify_attributes(_,_,_), defined),
-        \+ predicate_property(Mod:verify_attributes(_,_,_), imported_from(_)).
 
-system:term_expansion(Term, Into) :-
-        prolog_load_context(module, Mod),
-	attr_unify_wrapper(Mod, Term, To:Hook),
-	\+ has_verify_attribute_wrapper(To),
-	(   To == Mod
-	->  Into = [Hook,Term]
-	;   Into = [To:Hook,Term]
-	).
+        /***************
+         *  UNDO HOOK  *
+         ***************/
+/*    
+    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
+    BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail.
+*/
+system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
+:- meta_predicate(undo(:)).
+undo(GoalIn):- 
+        metaterm_options(W,W), 
+        T is W \/ 0x0080, % Flag to turn on trail scanning
+        ( T =:= W  
+        -> GoalIn=Goal 
+        ;  Goal=(metaterm_options(_,W),GoalIn)
+        ),
+        put_attr(Var,'$undo_unify',GoalIn),
+        metaterm_options(_,T),
+        '$attvar_assign'(Var,Goal).
 
 
 		 /*******************************
@@ -146,7 +147,7 @@ system:term_expansion(Term, Into) :-
 
 %%	freeze(@Var, :Goal)
 %
-%	Suspend execution of Goal until Var is unbound.
+%	Suspend execution of Goal until Var is bound.
 
 :- meta_predicate
 	freeze(?, 0).
@@ -172,17 +173,13 @@ make_conjunction('$and'(A0, B0), (A, B)) :- !,
 make_conjunction(G, G).
 
 
-freeze:verify_attributes(Var, Other, Gs) :-
-	(   get_attr(Var, freeze, Goal)
-	->  (	attvar(Other)
-	    ->	(   get_attr(Other, freeze, G2)
-		->  put_attr(Other, freeze, '$and'(G2, Goal))
-		;   put_attr(Other, freeze, Goal)
-		),
-		Gs = []
-	    ;	Gs = ['$attvar':unfreeze(Goal)]
+freeze:attr_unify_hook(Goal, Y) :-
+	(   attvar(Y)
+	->  (   get_attr(Y, freeze, G2)
+	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
+	    ;	put_attr(Y, freeze, Goal)
 	    )
-	;   Gs = []
+	;   unfreeze(Goal)
 	).
 
 

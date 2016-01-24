@@ -252,22 +252,19 @@ notImplemented(char *name, int arity)
 
 word
 setBoolean(int *flag, term_t old, term_t new)
-{ if ( !PL_unify_bool_ex(old, *flag) ||
-       !PL_get_bool_ex(new, flag) )
-    fail;
-
-  succeed;
+{ if ( !PL_unify_bool_ex(old, *flag) ) fail;
+  if ( PL_compare(old,new) == CMP_EQUAL )
+    return TRUE;
+  return PL_get_bool_ex(new, flag);
 }
 
 
 word
 setInteger(int *flag, term_t old, term_t new)
 { GET_LD
-
-  if ( !PL_unify_integer(old, *flag) ||
-       !PL_get_integer_ex(new, flag) )
-    fail;
-
-  succeed;
+ if ( !PL_unify_integer(old, *flag) ) fail;
+ if ( PL_compare(old,new) == CMP_EQUAL )
+    return TRUE;
+ return PL_get_integer_ex(new, flag);
 }
 

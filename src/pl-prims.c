@@ -227,6 +227,26 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
+  if(META_DO_UNIFY & METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  {
+    if ( isAttVar(w1) )
+    { if ( !hasGlobalSpace(0) )
+      { rc = overflowCode(0);
+            goto out_fail;
+      }
+      assignAttVar(t1, t2, ATT_UNIFY PASS_LD);
+      continue;
+    }
+    if ( isAttVar(w2) )
+    { if ( !hasGlobalSpace(0) )
+      { rc = overflowCode(0);
+            goto out_fail;
+      }
+      assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
+      continue;
+    }
+  }
+
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
 	    assert(w2 != ATOM_garbage_collected);
@@ -249,7 +269,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 	continue;
       }
   #ifdef O_ATTVAR
-      if ( isAttVar(w2 ) )
+      if ( isAttVar(w2 ) ) /* DM: tag checking is so cheap there is no reason to invert METATERM_ENABLED */
 	w2 = makeRef(t2);
   #endif
       Trail(t1, w2);
@@ -358,10 +378,8 @@ raw_unify_ptrs_no_unbind(Word t1, Word t2  ARG_LD)
       return do_unify(t1, t2 PASS_LD);
     case OCCURS_CHECK_TRUE:
       return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
-      break;
     case OCCURS_CHECK_ERROR:
       return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
-      break;
     default:
       assert(0);
       fail;
@@ -1637,6 +1655,12 @@ do_compare(term_agendaLR *agenda, int eq ARG_LD)
     deRef(p1); w1 = *p1;
     deRef(p2); w2 = *p2;
 
+    int retcode;
+    if(METATERM_HOOK(compare,p1,p2,&retcode)) /* ECLiPSe meta_attribute */
+    { return retcode; 
+      /* This is also for ==/2 */
+    }
+
     if ( w1 == w2 )
     { if ( isVar(w1) )
 	goto cmpvars;
@@ -2231,7 +2255,7 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { *vp = makeRef(val);
+  { assignAttVar(val, vp, META_PEER_NO_TRAIL PASS_LD);
   } else
     *vp = *val;
 }
@@ -3387,24 +3411,6 @@ retry:
 	  tt--;			/* re-insert the attvar */
 	  *tt->address = trailVal(p);
 
-	  tt--;				/* restore tail of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
-
-	  tt--;				/* restore head of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
-
 	  assert(tt>=mt);
 	}
       }
@@ -3428,8 +3434,12 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-
-  return unifiable(A1, A2, A3 PASS_LD);
+   /* Avoids creating global terms we promise never to use*/
+    int was_no_wakeups = LD_no_wakeup;
+    LD_no_wakeup = TRUE;
+    int rc = unifiable(A1, A2, A3 PASS_LD);
+    LD_no_wakeup = was_no_wakeups;
+    return rc;
 }
 
 
