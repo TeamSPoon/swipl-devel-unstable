@@ -77,10 +77,10 @@ check_var_cookie(Var,FirstID:Expect):-
    ((FirstID==VarID)
     ->true;
      (backtrace(30),
-      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shitft and a whatnot
-      print_message(Type,format('~N~q~n',[Expect==SAtts])),
-      nop(break),      
-      nop(throw(Expect==SAtts)))),!.
+      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shifts maybe vs a attvar bwing overwritten 
+       print_message(Type,format('~N~q~n',[Expect==SAtts])),
+       nop(break),      
+       nop(throw(Expect==SAtts)))),!.
 
 %%	collect_all_va_goal_lists(+KernelWakeups)//
 %
@@ -93,6 +93,7 @@ collect_all_va_goal_lists(wakeup(Var, Att3s, Value, Rest)) -->
 	collect_va_goal_list(Att3s, Var, Value),
         {check_var_cookie(Var,Cookie)},
         collect_all_va_goal_lists(Rest),
+        /* Still no goals should ahve been ran yet */
         {check_var_cookie(Var,Cookie)}.
 
 
