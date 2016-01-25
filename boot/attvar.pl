@@ -50,33 +50,52 @@ in pl-attvar.c
 %
 %       1) Call pre_unify hooks for Var and possible Value
 %       2) Bind the Var with Value
-%       3) Check on post_bind hooks
+%       3) Check on post_unify hooks
 %	4) Finally call post binding closures/hooks.
 
 :- meta_predicate(system:unify(+,0,+,+)).
+/*
+system:unify(_Atts, Next, Var, _Value):-  get_attr(Var,'$in_unify',_),!,Next.
 system:unify(Atts, Next, Var, Value):- 
-    make_var_cookie(Var,Cookie:Attrs),
-    put_attr(Var,'$in_unify',Cookie),
+    assertion((make_var_cookie(Var,Cookie:Attrs),
+    put_attr(Var,'$in_unify',Cookie))),
     user:pre_unify(Atts,user:post_unify(Atts, Next, Var, Value),Cookie, Var, Value, Goals),
    ((attvar(Value),get_attrs(Value,VAtts),put_attr(Value,'$in_unify',Cookie)) ->
-     (user:pre_unify(VAtts,(Goals,user:post_unify(VAtts, Next, Value,Var)), Cookie, Value, Var, PostUnify));
-      PostUnify=Goals),
-    check_var_cookie(Var,Cookie:Attrs),
-    (put_attr(Value,'$in_unify',Cookie)->attv_unify(Var,Value);true),    
-    call(PostUnify).
-    
-
-
-% nop/1 is for disabling code while staying in syntax
-system:nop(_).
-
+     (user:pre_unify(VAtts,user:post_unify(VAtts, Goals, Value,Var), Cookie, Value, Var, PostBind));
+      PostBind=Goals),
+    nop(check_var_cookie(Var,Cookie:Attrs)),
+    (attvar(Var)->(del_attr(Var,'$in_unify'),attv_unify(Var,Value));true),
+    del_attr(Var,'cookie'),
+    call(PostBind).
+*/
 
 system:goals_with_module([G|Gs], M):- !,
         M:call(G),
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
-make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
+
+
+ssystem:unify(Atts, Next, Var, Value):-
+ (attvar(Var)->
+ user:pre_unify(Atts,'attv_unify'(Var,Value), Var, Value); true),
+     user:post_unify(Atts, Next, Var, Value).
+
+    
+/* this is for reflexive non-assignment peer pre_unify */
+system:other_unify(att(Module, _AttVal, Rest), Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- !,
+        system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:other_unify(Rest, Next, Var, Value, G).
+
+system:other_unify(_,Next,_, _, Next).
+
+
+
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
+
+
+system:make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
    del_attr(Var,cookie), get_attrs(Var,Atts),
    format(string(VarID),'~q',[Var]),
    format(string(SAtts),'~q',[attrs(Var,Atts)]),
@@ -100,11 +119,10 @@ check_var_cookie(Var,FirstID:Expect):-
 
 
 :- meta_predicate(system:ifdef(0,0)).
-system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
-
+system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
            /*******************************
-           *	  VERIFY ATTRIBUTES	  *
+           *	  VERIFY ATTRIBUTES	* 
            *******************************/
 
 %%	pre_unify(+Att3s, +Next, +Var, +Value)
@@ -118,7 +136,8 @@ system:ifdef(IfDef,Else):- '$c_current_predicate'(_, IfDef)->IfDef;Else.
 %
 %       when a callee removes the '$in_unify' property we succeed unconditionally
 
-:- meta_predicate(system:pre_unify(+,0,+,+,+,-)).
+:- meta_predicate(system:pre_unify(+,0,+,+)).
+/*
 system:pre_unify(att(Module, _AttVal, Rest), Next, Cookie, Var, Value,
                                                (Module:goals_with_module(Goals,Module),G)):- 
         get_attr(Var,'$in_unify',CookieM),Cookie==CookieM),
@@ -126,12 +145,23 @@ system:pre_unify(att(Module, _AttVal, Rest), Next, Cookie, Var, Value,
         system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
         system:pre_unify(Rest, Next,Cookie, Var, Value, G).
 
-system:pre_unify(_,Next,_, _, _, Next).
+system:pre_unify(_, Next, _, _, _, Next).
+*/
+system:pre_unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
+        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:pre_unify(Rest, Next, Var, Value),
+        goals_with_module(Goals,Module).
 
+system:pre_unify(_, Next,Var, Value):- attvar(Value),
+        get_attrs(Value,Atts),!,
+        system:other_unify(Atts,Next,Value, Var, Goals),
+        Goals.
 
-     /*******************************
-     *	  ATTR UNIFY HOOK	*
-     *******************************/
+system:pre_unify(_, Next,_, _):- call(Next).
+
+		 /*******************************
+		 *	  ATTR UNIFY HOOK	*
+		 *******************************/
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value) :- !,
@@ -159,7 +189,7 @@ undo(GoalIn):-
         ),
         put_attr(Var,'$undo_unify',GoalIn),
         metaterm_options(_,T),
-        '$attvar_assign'(Var,Goal).
+        'attv_unify'(Var,Goal).
 
 
 		 /*******************************

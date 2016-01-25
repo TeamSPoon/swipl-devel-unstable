@@ -176,6 +176,7 @@ appendWakeup(Word wake, int len, int alert_flags ARG_LD)
  Returns the "$atts" attvar property (supposed to be a small int)
  Ideally mattss will have them at the begining
 */
+
 int
 getMetaFlags(Word av, int flags ARG_LD)
 { Word found;
@@ -227,7 +228,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s,%s)\n", vName(av),print_val(*value,0)));
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
   flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
 
@@ -239,7 +240,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
    }
 
- if ( (flags& ATT_WAKEBINDS) )
+ if ( (flags& ATT_WAKEBINDS) && did_wake )
     return;
 
  if(!(IS_META(NO_TRAIL)))
@@ -253,8 +254,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
  if (IS_META(NO_BIND))
      return;
 
- if( !(flags& ATT_ASSIGNONLY) ) return;
-
+// if( !(flags& ATT_ASSIGNONLY) ) return;
  if ( isAttVar(*value) )
  { 
     
