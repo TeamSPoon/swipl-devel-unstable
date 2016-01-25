@@ -36,6 +36,7 @@
 	    copy_term/3                 % +Term, -Copy, -Residue
 	  ]).
 
+
 /** <module> Attributed variable handling
 
 Attributed  variable  and  coroutining  support    based  on  attributed
@@ -48,75 +49,33 @@ in pl-attvar.c
 %	Called from the kernel if assignments will be made to attributed
 %	variables.
 %
-%       1) Call pre_unify hooks for Var and possible Value
-%       2) Bind the Var with Value
-%       3) Check on post_unify hooks
-%	4) Finally call post binding closures/hooks.
+%       1) Call pre_unify hooks for Var
+%       2) Call pre_unify hooks for Value (If attvar)
+%       3) Bind the Var with Value
+%       4) Check on post_unify hooks on Var
+%		5) Finally call post binding closures/hooks for Var.
+%       6) Does not implicitly run post hooks on Value
+%
 
 :- meta_predicate(system:unify(+,0,+,+)).
-/*
-system:unify(_Atts, Next, Var, _Value):-  get_attr(Var,'$in_unify',_),!,Next.
-system:unify(Atts, Next, Var, Value):- 
-    assertion((make_var_cookie(Var,Cookie:Attrs),
-    put_attr(Var,'$in_unify',Cookie))),
-    user:pre_unify(Atts,user:post_unify(Atts, Next, Var, Value),Cookie, Var, Value, Goals),
-   ((attvar(Value),get_attrs(Value,VAtts),put_attr(Value,'$in_unify',Cookie)) ->
-     (user:pre_unify(VAtts,user:post_unify(VAtts, Goals, Value,Var), Cookie, Value, Var, PostBind));
-      PostBind=Goals),
-    nop(check_var_cookie(Var,Cookie:Attrs)),
-    (attvar(Var)->(del_attr(Var,'$in_unify'),attv_unify(Var,Value));true),
-    del_attr(Var,'cookie'),
-    call(PostBind).
-*/
-
-system:goals_with_module([G|Gs], M):- !,
-        M:call(G),
-	system:goals_with_module(Gs, M).
-system:goals_with_module(_,_).
-
-
+system:unify(Atts, Next, Var, Value):- fail,
+    format(string(VarId),'~q',[Var]),
+   %  metaflag_set(Var,0x0060), % no_wake + no_inherit
+     (attvar(Var)-> 
+			(put_attr(Var,'$in_unify',VarId),
+			   user:pre_unify(Atts,true, Var, Value), Goals= true,
+			    ((attvar(Var),get_attr(Var,'$in_unify',NextId))->
+			      (del_attr(Var,'$in_unify'),
+			      (NextId==VarId->'attv_unify'(Var,Value);true));true)
+			   ); true=Goals),
+     user:post_unify(Atts,(Next,Goals), Var, Value).
+     
 
 system:unify(Atts, Next, Var, Value):-
  metaflag_set(Var,0x0860), % disable+no_wake+no_inherit
  (attvar(Var)->
  user:pre_unify(Atts,'attv_unify'(Var,Value), Var, Value); true),
      user:post_unify(Atts, Next, Var, Value).
-
-    
-/* this is for reflexive non-assignment peer pre_unify */
-system:other_unify(att(Module, _AttVal, Rest), Next, Var, Value,(Module:goals_with_module(Goals,Module),G)):- !,
-        system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:other_unify(Rest, Next, Var, Value, G).
-
-system:other_unify(_,Next,_, _, Next).
-
-
-
-% nop/1 is for disabling code while staying in syntax
-system:nop(_).
-
-
-system:make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
-   del_attr(Var,cookie), get_attrs(Var,Atts),
-   format(string(VarID),'~q',[Var]),
-   format(string(SAtts),'~q',[attrs(Var,Atts)]),
-   put_attr(Var,cookie,VarID).
-
-cookie:verify_attributes(_,_,[]).
-
-check_var_cookie(Var,FirstID:Expect):-
-  assertion(get_attr(Var,cookie,LastVarID)), % cookie is missing then something trampled this var (this is to decide how much to panic)
-   make_var_cookie(Var,VarID:SAtts),
-   nop((Expect==SAtts->true;print_message(trace,format('~N~q~n',[Expect==SAtts])))),
-   ((FirstID==VarID)
-    ->true;
-     (backtrace(30),
-      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shifts maybe vs a attvar bwing overwritten 
-       print_message(Type,format('~N~q~n',[Expect==SAtts])),
-       set_prolog_flag(access_level,system), % ensures trace durring wakeup
-       % leaving trace nop'ed out so we can run make check or other things easier
-       nop(trace), % someomes can just leap here since there will be false postives
-       nop(throw(Expect==SAtts)))),!.
 
 
 :- meta_predicate(system:ifdef(0,0)).
@@ -137,29 +96,51 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 %
 %       when a callee removes the '$in_unify' property we succeed unconditionally
 
-:- meta_predicate(system:pre_unify(+,0,+,+)).
 /*
-system:pre_unify(att(Module, _AttVal, Rest), Next, Cookie, Var, Value,
-                                               (Module:goals_with_module(Goals,Module),G)):- 
-        get_attr(Var,'$in_unify',CookieM),Cookie==CookieM),
-        !,
-        system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest, Next,Cookie, Var, Value, G).
 
+:- meta_predicate(system:pre_unify(+,0,+,+,+,-)).
+
+system:pre_unify(att(Module, _AttVal, Rest), Next, VarId, Var, Value,  (goals_with_module(Goals,Module),G)):- 
+            /* For XSB compat */
+	get_attr(Var,'$in_unify',CookieM),VarId==CookieM, 
+	!,
+	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+	system:pre_unify(Rest, Next,VarId, Var, Value, G).
+
+system:pre_unify(_, Next, _, Var, Value, Goals):-    set_prolog_flag(access_level,system), % ensures trace durring wakeup
+        fail, attvar(Value), get_attrs(Value,Atts),!,
+	system:peer_unify(Atts,Next,Value, Var, Goals).
+			
 system:pre_unify(_, Next, _, _, _, Next).
 */
+
+:- meta_predicate(system:pre_unify(+,0,+,+)).
 system:pre_unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
         ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
         system:pre_unify(Rest, Next, Var, Value),
         goals_with_module(Goals,Module).
 
-system:pre_unify(_, Next,Var, Value):- attvar(Value),
-        get_attrs(Value,Atts),!,
-        system:other_unify(Atts,Next,Value, Var, Goals),
+system:pre_unify(_, Next,Var, Value):- fail, % for leq
+        attvar(Value), get_attrs(Value,Atts),!,
+        system:peer_unify(Atts,Next,Value, Var, Goals),
         Goals.
 
 system:pre_unify(_, Next,_, _):- call(Next).
+    
+                   /*******************************
+                   *	  PEER UNIFY HOOKS	*
+                   *******************************/
 
+:- meta_predicate(system:peer_unify(+,0,+,+,-)).
+
+system:peer_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_module(Goals,Module),G)):- !,
+	metaflag_set(Var,0x0060), % no_wake + no_inherit
+	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+	system:peer_unify(Rest, Next, Var, Value, G).
+
+system:peer_unify(_,Next,_, _, Next).
+
+		
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
@@ -176,8 +157,8 @@ system:post_unify(_,Next,_,_):- Next.
          *  UNDO HOOK  *
          **************/
 /*    
-    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.
-    BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail.
+    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.  % prints: before,1,2
+    BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail. % crashes ssytem
 */
 system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 :- meta_predicate(undo(:)).
@@ -396,3 +377,45 @@ frozen_residuals('$and'(X,Y), V) --> !,
 	frozen_residuals(Y, V).
 frozen_residuals(X, V) -->
 	[ freeze(V, X) ].
+
+
+
+
+
+
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
+
+
+system:make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
+   del_attr(Var,cookie), get_attrs(Var,Atts),
+   format(string(VarID),'~q',[Var]),
+   format(string(SAtts),'~q',[attrs(Var,Atts)]),
+   put_attr(Var,cookie,VarID).
+
+cookie:verify_attributes(_,_,[]).
+
+check_var_cookie(Var,FirstID:Expect):-
+  assertion(get_attr(Var,cookie,LastVarID)), % cookie is missing then something trampled this var (this is to decide how much to panic)
+   make_var_cookie(Var,VarID:SAtts),
+   nop((Expect==SAtts->true;print_message(trace,format('~N~q~n',[Expect==SAtts])))),
+   ((FirstID==VarID)
+    ->true;
+     (backtrace(30),
+      (LastVarID==FirstID-> Type = warning ; Type = error),  % detect between a shifts maybe vs a attvar bwing overwritten 
+       print_message(Type,format('~N~q~n',[Expect==SAtts])),
+       set_prolog_flag(access_level,system), % ensures trace durring wakeup
+       % leaving trace nop'ed out so we can run make check or other things easier
+       nop(trace), % someomes can just leap here since there will be false postives
+       nop(throw(Expect==SAtts)))),!.
+
+
+
+
+
+system:goals_with_module([G|Gs], M):- !,
+	M:call(G),
+	system:goals_with_module(Gs, M).
+system:goals_with_module(_,_).
+
+
