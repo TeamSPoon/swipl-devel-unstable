@@ -91,7 +91,7 @@ system:verify_attributes(_Var, _Value, []).
    attributes:modules_with_attributes(AttsMods), 
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
    do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals ,[]),
-   (attvar(Var)->'$attvar_assign'(Var,Value);true),
+   (attvar(Var)->'$attvar_assign'(Var,Value);ignore(Var=Value)),
    call_all_attr_uhooks(Att3s, Value),
    '$wakeup'(Rest),
    call_goal_list(UnifyAtMod,Goals).
@@ -108,7 +108,7 @@ call_goal_list(M,[G|Gs]):- !, M:call(G),call_goal_list(M,Gs).
 %  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
 %
 %  
-do_verify_attributes(_, Var, _ , _) --> {\+ attvar(Var),!}.
+do_verify_attributes(_, Var, _ , Value) --> {\+ attvar(Var),!,Value==Var}.
 do_verify_attributes(Mods,Var,[],Value)--> !, do_verify_attributes_rest(Mods,Var,Value).
 do_verify_attributes(AttsModules, Var, att(Module, _AttVal, Rest), Value) --> 
         { Module:verify_attributes(Var, Value, Goals),
