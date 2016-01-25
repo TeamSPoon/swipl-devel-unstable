@@ -90,14 +90,19 @@ system:verify_attributes(_Var, _Value, []).
 '$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
    attributes:modules_with_attributes(AttsMods), 
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
-   do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals ,[]),
+   do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
    (attvar(Var)->'$attvar_assign'(Var,Value);ignore(Var=Value)),
-   call_all_attr_uhooks(Att3s, Value),
-   '$wakeup'(Rest),
-   call_goal_list(UnifyAtMod,Goals).
+    call_all_attr_uhooks(Att3s, Value),        
+    '$wakeup'(Rest),
+    call_goals(UnifyAtMod,Goals).
 
-call_goal_list(_,[]):- !.
-call_goal_list(M,[G|Gs]):- !, M:call(G),call_goal_list(M,Gs).
+
+call_goals(_,[]):- !.
+call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(_, (M:G)):- !,call_goals(M,G).
+call_goals(M,[G|Gs]):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(M,G):- M:G.
+
 
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
@@ -114,20 +119,18 @@ call_goal_list(M,[G|Gs]):- !, M:call(G),call_goal_list(M,Gs).
 false.
 
 */
-do_verify_attributes(_, Var, _ , Value) --> {\+ attvar(Var),!,Value==Var}.
-do_verify_attributes(Mods,Var,[],Value)--> !, do_verify_attributes_rest(Mods,Var,Value).
-do_verify_attributes(AttsModules, Var, att(Module, _AttVal, Rest), Value) --> 
-        { Module:verify_attributes(Var, Value, Goals),
-          '$delete'(AttsModules,Module,RemainingMods) },
-        list(Goals),
-        do_verify_attributes(RemainingMods, Var,  Rest, Value).
+do_verify_attributes(_AttsModules,Var,_Att3s,_Value,[]) :- \+ attvar(Var),!,Value==Var.
+do_verify_attributes(AttsModules,Var, att(Module, _AttVal, Rest), Value, (Module:Goals1,Goals2)) :-  !,
+    Module:verify_attributes(Var, Value, Goals1),
+    '$delete'(AttsModules,Module,RemainingMods),
+    do_verify_attributes(RemainingMods, Var,  Rest, Value, Goals2).
 
 % Call verify_attributes/3 in rest of modules
-do_verify_attributes_rest([],_Var, _Value) --> [].
-do_verify_attributes_rest([Module|AttsModules], Var, Value) -->
-        { Module:verify_attributes(Var, Value, Goals) },
-        list(Goals),
-        do_verify_attributes_rest(AttsModules, Var, Value).
+do_verify_attributes([],_Var, _Att3s, _Value, []):-!.
+do_verify_attributes([Module|AttsModules], Var, [], Value, (Module:Goals1,Goals2)):- 
+   Module:verify_attributes(Var, Value, Goals1),
+   do_verify_attributes(AttsModules, Var, [], Value, Goals2).
+   
 
 
 call_all_attr_uhooks([], _).
