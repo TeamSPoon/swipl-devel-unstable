@@ -2044,7 +2044,8 @@ typedef struct
 
 #ifdef O_METATERM
 
-#define METATERM_GLOBAL LD->attvar.metaterm_opts
+#define METATERM_GLOBAL_FLAGS valInteger(*METATERM_GLOBAL)
+#define METATERM_GLOBAL valPHandle(LD->attvar.metaterm_opts PASS_LD)
 #define METATERM_CURRENT LD->attvar.metaterm_current
 
 /*
@@ -2058,7 +2059,7 @@ typedef struct
   */
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED METATERM_GLOBAL && !(METATERM_GLOBAL & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term)))
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD))
 #define METATERM_HOOK(atom,t1,t2,rc)  (META_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \

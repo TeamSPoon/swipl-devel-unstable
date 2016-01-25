@@ -183,16 +183,16 @@ getMetaFlags(Word av, int flags ARG_LD)
     int value;
     if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
         value = 0;
-    else value = valInt(*found);
+    else value = valInteger(*found);
     if (IS_META(NO_INHERIT))
         return METATERM_CURRENT = value;
     flags = value;
     if (value==0 || IS_META(DISABLED))
         return META_DEFAULT;
-    flags = METATERM_GLOBAL;
+    flags = METATERM_GLOBAL_FLAGS;
     if (IS_META(NO_INHERIT)) 
         return(METATERM_CURRENT = value);
-    return METATERM_CURRENT =(value | METATERM_GLOBAL);
+    return METATERM_CURRENT =(value | METATERM_GLOBAL_FLAGS);
 }
 
 
@@ -230,7 +230,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-  flags |= getMetaFlags(av, METATERM_GLOBAL PASS_LD);
+  flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
 
   bool did_wake = FALSE;
 
@@ -1552,6 +1552,52 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   return TRUE;
 }
 
+static
+PRED_IMPL("metaflag_set", 2, metaflag_set, 0)
+{ PRED_LD
+  int val;
+  if(!PL_get_integer_ex(A2,&val)) return FALSE;
+  Word av = valTermRef(A1);
+  deRef(av);
+  if ( isAttVar(*av) )
+  { 
+    int flags = getMetaFlags(av,META_NO_INHERIT PASS_LD);    
+    word w = consUInt(val | flags);
+    return put_attr(av,ATOM_datts,&w PASS_LD);
+  } else
+  { if(PL_unify_atom(A1,ATOM_global))
+     { TrailAssignment(METATERM_GLOBAL);
+        *METATERM_GLOBAL = consUInt(METATERM_GLOBAL_FLAGS | val);
+     } else if(PL_unify_atom(A1,ATOM_current))
+     { METATERM_CURRENT = METATERM_CURRENT | val;
+     }
+  }
+  return TRUE;
+}
+
+static
+PRED_IMPL("metaflag_unset", 2, metaflag_unset, 0)
+{ PRED_LD
+  int val;
+  if(!PL_get_integer_ex(A2,&val)) return FALSE;
+  Word av = valTermRef(A1);
+  deRef(av);
+  if ( isAttVar(*av) )
+  { 
+    int flags = getMetaFlags(av,META_NO_INHERIT PASS_LD);    
+    word w = consUInt(~val & flags);
+    return put_attr(av,ATOM_datts,&w PASS_LD);
+  } else
+  { if(PL_unify_atom(A1,ATOM_global))
+     { TrailAssignment(METATERM_GLOBAL);
+        *METATERM_GLOBAL = consUInt(METATERM_GLOBAL_FLAGS & ~val);
+     } else if(PL_unify_atom(A1,ATOM_current))
+     { METATERM_CURRENT = METATERM_CURRENT & ~val;
+     }
+  }
+  return TRUE;
+}
+
 #ifdef O_METATERM
 
 
@@ -1800,9 +1846,10 @@ PRED_IMPL("$visible_attrs", 2, dvisible_attrs, 0)
   fail;
 }
 static
-PRED_IMPL("metaterm_options", 2, metaterm_options, 0)
+PRED_IMPL("metaflag_options", 2, metaflag_options, 0)
 { PRED_LD
-    return setInteger(&METATERM_GLOBAL, A1, A2);
+    METATERM_CURRENT = METATERM_GLOBAL_FLAGS;
+    return setInteger(&METATERM_CURRENT, A1, A2);
 }
 
 /* For a heuristic used elsewhere from mattss */
@@ -1865,9 +1912,11 @@ BeginPredDefs(attvar)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
-  PRED_DEF("metaterm_options", 2, metaterm_options, 0)
+  PRED_DEF("metaflag_options", 2, metaflag_options, 0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
+  PRED_DEF("metaflag_set", 2, metaflag_set, 0)
+  PRED_DEF("metaflag_unset", 2, metaflag_unset, 0)
 #endif
 
 EndPredDefs

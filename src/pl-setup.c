@@ -1188,8 +1188,11 @@ emptyStacks(void)
     LD->attvar.head	  = PL_new_term_ref();
     LD->attvar.tail       = PL_new_term_ref();
     LD->attvar.gc_attvars = PL_new_term_ref();
+
     LD->attvar.metaterm_regs = PL_new_term_refs(2);
-    METATERM_GLOBAL =  METATERM_CURRENT =  META_DEFAULT;
+    LD->attvar.metaterm_opts = PL_new_term_refs(1);
+    METATERM_CURRENT =  META_DEFAULT;
+    *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 #ifdef O_GVAR

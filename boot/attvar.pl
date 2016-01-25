@@ -76,7 +76,8 @@ system:goals_with_module(_,_).
 
 
 
-ssystem:unify(Atts, Next, Var, Value):-
+system:unify(Atts, Next, Var, Value):-
+ metaflag_set(Var,0x0860), % disable+no_wake+no_inherit
  (attvar(Var)->
  user:pre_unify(Atts,'attv_unify'(Var,Value), Var, Value); true),
      user:post_unify(Atts, Next, Var, Value).
@@ -180,16 +181,10 @@ system:post_unify(_,Next,_,_):- Next.
 */
 system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 :- meta_predicate(undo(:)).
-undo(GoalIn):- 
-        metaterm_options(W,W), 
-        T is W \/ 0x8000, % Flag to turn on trail scanning
-        ( T =:= W  
-        -> GoalIn=Goal 
-        ;  Goal=(metaterm_options(_,W),GoalIn)
-        ),
-        put_attr(Var,'$undo_unify',GoalIn),
-        metaterm_options(_,T),
-        'attv_unify'(Var,Goal).
+undo(Goal):- 
+        metaflag_set(global,0x8000),
+        put_attr(Var,'$undo_unify',Goal),
+        attv_unify(Var,Goal).
 
 
 		 /*******************************

@@ -35,16 +35,7 @@ pl-file.c. These functions are used in pl-text.c.
 		 *******************************/
 
 #define setHandle(h, w)		(*valTermRef(h) = (w))
-
-static inline word
-valHandle__LD(term_t r ARG_LD)
-{ Word p = valTermRef(r);
-
-  deRef(p);
-  return *p;
-}
-
-#define valHandle(r) valHandle__LD(r PASS_LD)
+#define valHandle(r) *valPHandle(r PASS_LD)
 
 
 #define INIT_SEQ_STRING(n) INIT_SEQ_STRING__LD(n PASS_LD)

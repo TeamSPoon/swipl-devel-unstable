@@ -227,7 +227,7 @@ do_unify(Word t1, Word t2 ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(META_DO_UNIFY & METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  if(METATERM_ENABLED & META_DO_UNIFY)   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
@@ -2255,7 +2255,8 @@ unify_vp(Word vp, Word val ARG_LD)
     } else
       setVar(*vp);
   } else if ( isAttVar(*val) )
-  { assignAttVar(val, vp, META_PEER_NO_TRAIL|ATT_ASSIGNONLY PASS_LD);
+  { *vp = makeRef(val);
+     /* assignAttVar(val, vp, META_PEER_NO_TRAIL|ATT_ASSIGNONLY PASS_LD); */
   } else
     *vp = *val;
 }
