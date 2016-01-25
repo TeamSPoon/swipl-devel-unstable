@@ -107,7 +107,13 @@ call_goal_list(M,[G|Gs]):- !, M:call(G),call_goal_list(M,Gs).
 %  2) The caller''s module (Head of AttsModules)
 %  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
 %
-%  
+%
+/*
+1 ?- assert(t2(2,3)), freeze(A, writeln(A)),call(t2(A,A)).
+2
+false.
+
+*/
 do_verify_attributes(_, Var, _ , Value) --> {\+ attvar(Var),!,Value==Var}.
 do_verify_attributes(Mods,Var,[],Value)--> !, do_verify_attributes_rest(Mods,Var,Value).
 do_verify_attributes(AttsModules, Var, att(Module, _AttVal, Rest), Value) --> 
