@@ -183,15 +183,6 @@ assignAttVar(Word av, Word value ARG_LD)
   if ( av == value )
       return;
 
-
-  if ( isAttVar(*value) )
-  { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
-    }
-  }
-
   if(!(flags & ATT_ASSIGNONLY) )
   { TrailAssignment(av);
     registerWakeup(av, valPAttVar(*av), value PASS_LD);
@@ -207,15 +198,15 @@ assignAttVar(Word av, Word value ARG_LD)
   }
 
  if(!(flags & ATT_UNIFY_CHECK))
- {
-   TrailAssignment(av);
- } else
+ { TrailAssignment(av);
+ } 
+
+ else
  {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
- }
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
@@ -226,7 +217,8 @@ assignAttVar(Word av, Word value ARG_LD)
   } else
     *av = *value;
 
-  return;
+ }
+
 }
 
 
