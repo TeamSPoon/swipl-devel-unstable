@@ -3,7 +3,7 @@
     Author:        Markus Triska
     E-mail:        triska@gmx.at
     WWW:           http://www.swi-prolog.org
-    Copyright (C): 2014, 2015 Markus Triska
+    Copyright (C): 2014-2016 Markus Triska
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -167,8 +167,9 @@ are expressed as functions of universally quantified variables.
 By default, CLP(B) residual goals appear in (approximately) algebraic
 normal form (ANF). This projection is often computationally expensive.
 You can set the Prolog flag `clpb_residuals` to the value `bdd` to see
-the BDD representation of all constraints. This is generally faster,
-and also useful for learning more about BDDs. For example:
+the BDD representation of all constraints. This results in faster
+projection to residual goals, and is also useful for learning more
+about BDDs. For example:
 
 ==
 ?- set_prolog_flag(clpb_residuals, bdd).
@@ -181,7 +182,19 @@ node(2)- (v(Y, 1)->false;true).
 ==
 
 Note that this representation cannot be pasted back on the toplevel,
-and its details are subject to change.
+and its details are subject to change. Use copy_term/3 to obtain
+such answers as Prolog terms.
+
+The variable order of the BDD is determined by the order in which the
+variables first appear in constraints. To obtain different orders,
+you can for example use:
+
+==
+?- sat(+[1,Y,X]), sat(X#Y).
+node(3)- (v(Y, 0)->node(2);node(1)),
+node(1)- (v(X, 1)->true;false),
+node(2)- (v(X, 1)->false;true).
+==
 
 @author Markus Triska
 */
@@ -874,7 +887,8 @@ state(S0, S), [S] --> [S0].
    Unification. X = Expr is equivalent to sat(X =:= Expr).
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-verify_attributes(Var, Other, Gs) :-
+
+verify_attributes_old(Var, Other, Gs) :-
         % format("~w = ~w\n", [Var,Other]),
         (   get_attr(Var, clpb, index_root(I,Root)) ->
             (   integer(Other) ->
@@ -882,12 +896,13 @@ verify_attributes(Var, Other, Gs) :-
                     root_get_formula_bdd(Root, Sat, BDD0),
                     bdd_restriction(BDD0, I, Other, BDD),
                     root_put_formula_bdd(Root, Sat, BDD),
-                    Gs = [clpb:satisfiable_bdd(BDD)]
+   /*Prefixing is impl'd by VM and not a forced requirement in code */
+                    Gs = [satisfiable_bdd(BDD)]
                 ;   no_truth_value(Other)
                 )
             ;   atom(Other) ->
                 root_get_formula_bdd(Root, Sat0, _),
-                Gs = [clpb:root_rebuild_bdd(Root, Sat0)]
+                Gs = [root_rebuild_bdd(Root, Sat0)]
             ;   % due to variable aliasing, any BDDs may become unordered,
                 % so we need to rebuild the new BDD from the conjunction
                 % after the unification is in place
@@ -899,10 +914,11 @@ verify_attributes(Var, Other, Gs) :-
                 foldl(and, Fs, 1, And),
                 maplist(del_bdd, Roots),
                 maplist(=(NewRoot), Roots),
-                Gs = [clpb:root_rebuild_bdd(NewRoot, And)]
+                Gs = [root_rebuild_bdd(NewRoot, And)]
             )
         ;   Gs = []
         ).
+
 
 formulas_([]) --> [].
 formulas_([Root|Roots]) -->

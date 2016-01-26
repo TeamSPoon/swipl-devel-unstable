@@ -87,7 +87,7 @@ system:verify_attributes(_Var, _Value, []).
 %
 
 '$wakeup'([]).
-'$wakeup'(wakeup(UnifyAtMod, Var, Att3s, Value, Rest)) :-
+'$wakeup'(wakeup(Var, Att3s, Value, Rest)) :-
    attributes:modules_with_attributes(AttsMods), 
    '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
    do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
@@ -147,6 +147,36 @@ call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
 %
 %	This predicate deals with reserved attribute names to avoid
 %	the meta-call overhead.
+
+/*
+
+Ensure this works
+
+freeze:verify_attributes(Var, Other, Gs) :-
+	(   get_attr(Var, freeze, Goal)
+	->  (	attvar(Other)
+	    ->	(   get_attr(Other, freeze, G2)
+		->  put_attr(Other, freeze, '$and'(G2, Goal))
+		;   put_attr(Other, freeze, Goal)
+		),
+		Gs = []
+	    ;	Gs = ['$attvar':unfreeze(Goal)]
+	    )
+	;   Gs = []
+	).
+
+Also ensure this works
+
+freeze:attr_unify_hook(Goal, Y) :- !,
+	(   attvar(Y)
+	->  (   get_attr(Y, freeze, G2)
+	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
+	    ;	put_attr(Y, freeze, Goal)
+	    )
+	;   unfreeze(Goal)
+	).
+
+*/
 
 uhook(freeze, Goal, Y) :- !,
 	(   attvar(Y)

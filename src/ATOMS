@@ -429,6 +429,7 @@ A mutex			"mutex"
 A mutex_option		"mutex_option"
 A mutex_property	"mutex_property"
 A natural		"natural"
+A nan			"nan"
 A newline		"newline"
 A next_argument		"next_argument"
 A nil			"[]"
@@ -886,6 +887,7 @@ F grouping		1
 F hat			2
 F ifthen		2
 F import_into		1
+F inf			0
 F input			0
 F input			4
 F integer		1
@@ -916,6 +918,7 @@ F minus			2
 F mod			2
 F mode			1
 F msb			1
+F nan			0
 F newline		1
 F nlink			1
 F nonvar		1
@@ -1008,7 +1011,7 @@ F undefinterc		4
 F unify_determined	2
 F uninstantiation_error	1
 F var			1
-F wakeup		5
+F wakeup		4
 F warning		3
 F xor			2
 F xpceref		1

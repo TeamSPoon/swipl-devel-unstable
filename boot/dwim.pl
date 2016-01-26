@@ -76,7 +76,7 @@ correct_goal(Goal0, M, Bindings, Goal) :-	% correct the goal
 correct_goal(Goal, Module, _, NewGoal) :-	% try to autoload
 	\+ current_prolog_flag(Module:unknown, fail),
 	callable(Goal), !,
-	functor(Goal, Name, Arity),
+	callable_name_arity(Goal, Name, Arity),
 	'$undefined_procedure'(Module, Name, Arity, Action),
 	(   Action == error
 	->  existence_error(Module:Name/Arity),
@@ -87,6 +87,12 @@ correct_goal(Goal, Module, _, NewGoal) :-	% try to autoload
 	).
 correct_goal(Goal, M, _, M:Goal).
 
+callable_name_arity(Goal, Name, Arity) :-
+	compound(Goal), !,
+	compound_name_arity(Goal, Name, Arity).
+callable_name_arity(Goal, Goal, 0) :-
+	atom(Goal).
+
 existence_error(PredSpec) :-
 	strip_module(PredSpec, M, _),
 	current_prolog_flag(M:unknown, Unknown),
@@ -94,7 +100,7 @@ existence_error(PredSpec) :-
 
 dwim_existence_error(fail, _) :- !.
 dwim_existence_error(Unknown, PredSpec) :-
-	'$module'(TypeIn, TypeIn),
+	'$current_typein_module'(TypeIn),
 	unqualify_if_context(TypeIn, PredSpec, Spec),
 	(   no_context(Spec)
 	->  true
@@ -153,10 +159,9 @@ correct_margs(A, Arity, MHead, GoalIn, GoalOut, M, Bindings) :-
 correct_literal(Goal, Bindings, [Dwim], DwimGoal) :-
 	strip_module(Goal, CM, G1),
 	strip_module(Dwim, DM, G2),
-	functor(G1, _, Arity),
-	functor(G2, Name, Arity), !,	% same arity: we can replace arguments
-	G1 =.. [_|Arguments],
-	G2 =.. [Name|Arguments],
+	callable_name_arity(G1, _, Arity),
+	callable_name_arity(G2, Name, Arity), !, % same arity: we can replace arguments
+	change_functor_name(G1, Name, G2),
 	(   (   current_predicate(CM:Name/Arity)
 	    ->	ConfirmGoal = G2,
 		DwimGoal = CM:G2
@@ -170,12 +175,19 @@ correct_literal(Goal, Bindings, [Dwim], DwimGoal) :-
 	).
 correct_literal(Goal, Bindings, Dwims, NewGoal) :-
 	strip_module(Goal, _, G1),
-	functor(G1, _, Arity),
+	callable_name_arity(G1, _, Arity),
 	include_arity(Dwims, Arity, [Dwim]), !,
 	correct_literal(Goal, Bindings, [Dwim], NewGoal).
 correct_literal(Goal, _, Dwims, _) :-
 	print_message(error, dwim_undefined(Goal, Dwims)),
 	fail.
+
+change_functor_name(Term1, Name2, Term2) :-
+	compound(Term1), !,
+	compound_name_arguments(Term1, _, Arguments),
+	compound_name_arguments(Term2, Name2, Arguments).
+change_functor_name(Term1, Name2, Name2) :-
+	atom(Term1).
 
 include_arity([], _, []).
 include_arity([H|T0], Arity, [H|T]) :-
@@ -220,7 +232,7 @@ bind_vars([Name=Var|T]) :-
 
 '$find_predicate'(M:S, List) :-
 	name_arity(S, Name, Arity),
-	'$module'(TypeIn, TypeIn),
+	'$current_typein_module'(TypeIn),
 	(   M == TypeIn			% I.e. unspecified default module
 	->  true
 	;   Module = M

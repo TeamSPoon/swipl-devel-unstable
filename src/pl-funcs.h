@@ -121,6 +121,7 @@ COMMON(Number)		argvArithStack(int n ARG_LD);
 COMMON(void)		popArgvArithStack(int n ARG_LD);
 COMMON(void)		freeArithLocalData(PL_local_data_t *ld);
 COMMON(int)		ar_sign_i(Number n1);
+COMMON(int)		ar_signbit(Number n1);
 COMMON(int)		check_float(double f);
 COMMON(int)		PL_eval_expression_to_int64_ex(term_t t, int64_t *val);
 
@@ -333,8 +334,6 @@ COMMON(int)		exportProcedure(Module module, Procedure proc);
 COMMON(int)		declareModule(atom_t name, atom_t class, atom_t super,
 				      SourceFile sf, int line,
 				      int rdef);
-COMMON(word)		pl_module(term_t old, term_t new);
-COMMON(word)		pl_set_source_module(term_t old, term_t new);
 COMMON(word)		pl_context_module(term_t module);
 COMMON(int)		atomToImportStrength(atom_t a);
 COMMON(word)		pl_import(term_t pred);
@@ -512,7 +511,7 @@ COMMON(void)		cleanupSourceFiles(void);
 COMMON(void)		unlinkSourceFileModule(SourceFile sf, Module m);
 COMMON(void)		addProcedureSourceFile(SourceFile sf, Procedure proc);
 COMMON(int)		hasProcedureSourceFile(SourceFile sf, Procedure proc);
-COMMON(int)		reloadIsDefined(SourceFile sf, Procedure proc ARG_LD);
+COMMON(int)		reloadHasClauses(SourceFile sf, Procedure proc ARG_LD);
 COMMON(int)		isDefinedProcedureSource(Procedure proc);
 COMMON(ClauseRef)	assertProcedureSource(SourceFile sf, Procedure proc,
 					      Clause clause ARG_LD);
@@ -674,6 +673,7 @@ COMMON(int)		writeReservedSymbol(IOSTREAM *fd, atom_t atom, int flags);
 COMMON(int)		writeAtomToStream(IOSTREAM *s, atom_t atom);
 COMMON(char *)		format_float(double f, char *buf);
 COMMON(int)		unquoted_atom(atom_t a);
+COMMON(strnumstat)	make_nan(double *f);
 
 /* pl-term.c */
 COMMON(void)		cleanupTerm(void);

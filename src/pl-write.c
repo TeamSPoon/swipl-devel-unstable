@@ -829,14 +829,158 @@ This uses dtoa.c. See pl-dtoa.c for how this is packed into SWI-Prolog.
 TBD: The number of cases are large. We should see whether it is possible
 to clean this up a bit. The 5 cases   as  such are real: there is no way
 around these.
+
+NaN         and         Inf         printing           based          on
+http://eclipseclp.org/Specs/core_update_float.html, with comments   from
+Joachim Schimpf.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+#ifdef HAVE_IEEE754_H
+#include <ieee754.h>
+#else
+union ieee754_double
+{ double d;
+  struct
+  {
+#ifdef WORDS_BIGENDIAN
+    unsigned int negative:1;
+    unsigned int exponent:11;
+    unsigned int mantissa0:20;
+    unsigned int mantissa1:32;
+#else
+#if __FLOAT_WORD_ORDER == __BIG_ENDIAN
+    unsigned int mantissa0:20;
+    unsigned int exponent:11;
+    unsigned int negative:1;
+    unsigned int mantissa1:32;
+#else
+    unsigned int mantissa1:32;
+    unsigned int mantissa0:20;
+    unsigned int exponent:11;
+    unsigned int negative:1;
+#endif
+#endif
+  } ieee;
+};
+#endif
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+Joachim Schimpf: The exponent is  stored  with   a  "bias"  of  1023, so
+3ff=1023 means 0. And 0 means that the   mantissa is to be multiplied by
+2^0 = 1, maybe that's where my confusion came from...
+
+To add to the confusion, the mantissa  is a "hidden bit" representation,
+i.e. its actual value is 1.<the 52 bits   actually  stored>, so with a 0
+exponent the value of the resulting number is always >= 1 and < 2.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+static char *
+writeNaN(double f, char *buf)
+{ union ieee754_double u;
+
+  u.d = f;
+  assert(u.ieee.exponent == 0x7ff);	/* NaN exponent */
+  u.ieee.exponent = 0x3ff;		/* see above */
+  format_float(u.d, buf);
+  strcat(buf, "NaN");
+  return buf;
+}
+
+
+strnumstat
+make_nan(double *f)
+{ union ieee754_double u;
+
+  u.d = *f;
+  u.ieee.exponent = 0x7ff;		/* NaN exponent */
+  if ( isnan(u.d) )
+  { *f = u.d;
+    return NUM_OK;
+  }
+
+  return NUM_CONSTRANGE;		/* 1.0NaN is in fact 1.0Inf */
+}
+
+
+static char *
+writeINF(double f, char *buf)
+{ number n;
+
+  n.value.f = f;
+  n.type = V_FLOAT;
+
+  if ( ar_signbit(&n) < 0 )
+    return strcpy(buf, "-1.0Inf");
+  else
+    return strcpy(buf, "1.0Inf");
+}
+
+
+static char *
+format_special_float(double f, char *buf)
+{
+#ifdef HAVE_FPCLASSIFY
+  switch(fpclassify(f))
+  { case FP_NAN:
+      return writeNaN(f, buf);
+    case FP_INFINITE:
+      return writeINF(f, buf);
+  }
+#else
+#ifdef HAVE_FPCLASS
+  switch(fpclass(f))
+  { case FP_SNAN:
+    case FP_QNAN:
+      return writeNaN(f, buf);
+    case FP_NINF:
+    case FP_PINF:
+      return writeINF(n, buf);
+    case FP_NDENORM:		/* pos/neg denormalized non-zero */
+    case FP_PDENORM:
+    case FP_NNORM:			/* pos/neg normalized non-zero */
+    case FP_PNORM:
+    case FP_NZERO:			/* pos/neg zero */
+    case FP_PZERO:
+      break;
+  }
+#else
+#ifdef HAVE__FPCLASS
+  switch(_fpclass(f))
+  { case _FPCLASS_SNAN:
+    case _FPCLASS_QNAN:
+      return writeNaN(f, buf);
+    case _FPCLASS_NINF:
+    case _FPCLASS_PINF:
+      return writeINF(f, buf);
+  }
+#else
+#ifdef HAVE_ISINF
+  if ( isinf(f) )
+  { return writeINF(f, buf);
+  } else
+#endif
+#ifdef HAVE_ISNAN
+  if ( isnan(f) )
+  { return writeNaN(f, buf);
+  }
+#endif
+#endif /*HAVE__FPCLASS*/
+#endif /*HAVE_FPCLASS*/
+#endif /*HAVE_FPCLASSIFY*/
+
+  return NULL;
+}
+
 
 char *
 format_float(double f, char *buf)
-{ char *end, *o=buf;
+{ char *end, *o=buf, *s;
   int decpt, sign;
-  char *s = dtoa(f, 0, 30, &decpt, &sign, &end);
 
+  if ( (s=format_special_float(f, buf)) )
+    return s;
+
+  s = dtoa(f, 0, 30, &decpt, &sign, &end);
   DEBUG(2, Sdprintf("decpt=%d, sign=%d, len = %d, '%s'\n",
 		    decpt, sign, end-s, s));
 
@@ -901,7 +1045,7 @@ format_float(double f, char *buf)
 }
 
 
-static bool
+static int
 WriteNumber(Number n, write_options *options)
 { GET_LD
 
@@ -938,13 +1082,16 @@ WriteNumber(Number n, write_options *options)
 
       return rc;
     }
-    case V_MPQ:				/* should not get here */
 #endif
     case V_FLOAT:
+    { char buf[100];
+
+      format_float(n->value.f, buf);
+      return PutToken(buf, options->out);
+    }
+    default:
       assert(0);
   }
-
-  fail;
 }
 
 
@@ -952,7 +1099,6 @@ WriteNumber(Number n, write_options *options)
 static bool
 writePrimitive(term_t t, write_options *options)
 { GET_LD
-  double f;
   atom_t a;
   char buf[32];
   IOSTREAM *out = options->out;
@@ -968,81 +1114,11 @@ writePrimitive(term_t t, write_options *options)
   if ( PL_get_atom(t, &a) )
     return writeAtom(a, options);
 
-  if ( PL_is_integer(t) )		/* beware of automatic conversion */
+  if ( PL_is_number(t) )		/* beware of automatic conversion */
   { number n;
 
     PL_get_number(t, &n);
-
     return WriteNumber(&n, options);
-  }
-
-  if ( PL_get_float(t, &f) )
-  { char *s = NULL;
-
-#ifdef HAVE_FPCLASSIFY
-    switch(fpclassify(f))
-    { case FP_NAN:
-	s = (true(options, PL_WRT_QUOTED) ? "'$NaN'" : "NaN");
-        break;
-      case FP_INFINITE:
-	s = (true(options, PL_WRT_QUOTED) ? "'$Infinity'" : "Infinity");
-        break;
-    }
-#else
-#ifdef HAVE_FPCLASS
-    switch(fpclass(f))
-    { case FP_SNAN:
-      case FP_QNAN:
-	s = (true(options, PL_WRT_QUOTED) ? "'$NaN'" : "NaN");
-        break;
-      case FP_NINF:
-      case FP_PINF:
-	s = (true(options, PL_WRT_QUOTED) ? "'$Infinity'" : "Infinity");
-        break;
-      case FP_NDENORM:			/* pos/neg denormalized non-zero */
-      case FP_PDENORM:
-      case FP_NNORM:			/* pos/neg normalized non-zero */
-      case FP_PNORM:
-      case FP_NZERO:			/* pos/neg zero */
-      case FP_PZERO:
-	break;
-    }
-#else
-#ifdef HAVE__FPCLASS
-    switch(_fpclass(f))
-    { case _FPCLASS_SNAN:
-      case _FPCLASS_QNAN:
-	s = (true(options, PL_WRT_QUOTED) ? "'$NaN'" : "NaN");
-        break;
-      case _FPCLASS_NINF:
-      case _FPCLASS_PINF:
-	s = (true(options, PL_WRT_QUOTED) ? "'$Infinity'" : "Infinity");
-        break;
-    }
-#else
-#ifdef HAVE_ISINF
-    if ( isinf(f) )
-    { s = (true(options, PL_WRT_QUOTED) ? "'$Infinity'" : "Infinity");
-    } else
-#endif
-#ifdef HAVE_ISNAN
-    if ( isnan(f) )
-    { s = (true(options, PL_WRT_QUOTED) ? "'$NaN'" : "NaN");
-    }
-#endif
-#endif /*HAVE__FPCLASS*/
-#endif /*HAVE_FPCLASS*/
-#endif /*HAVE_FPCLASSIFY*/
-
-    if ( s )
-    { return PutToken(s, out);
-    } else
-    { char buf[100];
-
-      format_float(f, buf);
-
-      return PutToken(buf, out);
-    }
   }
 
 #if O_STRING

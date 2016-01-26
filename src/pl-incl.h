@@ -154,7 +154,8 @@ handy for it someone wants to add a data type to the system.
 #define O_ATTVAR		1
 #define O_CALL_RESIDUE		1
 #define O_VERIFY_ATTRIBUTES 1
-/*#define O_VERIFY_ATTRIBUTES_LEAN 1*/
+#define O_LIKE_MASTER 1
+#undef O_LIKE_MASTER
 #define O_GVAR			1
 #define O_CYCLIC		1
 
@@ -737,7 +738,8 @@ typedef enum
   NUM_OK    = TRUE,			/* Ok */
   NUM_FUNDERFLOW = -1,			/* Float underflow */
   NUM_FOVERFLOW = -2,			/* Float overflow */
-  NUM_IOVERFLOW = -3			/* Integer overflow */
+  NUM_IOVERFLOW = -3,			/* Integer overflow */
+  NUM_CONSTRANGE = -4			/* numeric constant out of range */
 } strnumstat;
 
 
@@ -1994,6 +1996,15 @@ typedef struct
 	    LD->var_names.numbervars_frame = _savedf; \
 	  } \
 	}
+
+		 /*******************************
+		 *      ATTVAR ASSIONMENT	*
+		 *******************************/
+
+/* assignAttVar() flags */
+#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
+#define ATT_WAKEBINDS   0x1			/* bindConst() */
+#define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
 
 
 		 /*******************************

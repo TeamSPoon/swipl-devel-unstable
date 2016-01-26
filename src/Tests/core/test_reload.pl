@@ -88,6 +88,10 @@ test(del_clause_a, all(X == [b,c])) :-
 	reload(del_clause_a, 1),
 	reload(del_clause_a, 2),
 	del_clause_a:p1(X).
+test(del_clause_z, all(X == [a,b])) :-
+	reload(del_clause_z, 1),
+	reload(del_clause_z, 2),
+	del_clause_z:p1(X).
 test(replace_clause, all(X == [b])) :-
 	reload(replace_clause, 1),
 	reload(replace_clause, 2),
@@ -112,10 +116,10 @@ test(del_attr_end) :-
 	assertion(predicate_property(del_attr_end:p, public)),
 	reload(del_attr_end, 2),
 	assertion(\+ predicate_property(del_attr_end:p, public)).
-test(del_dynamic) :-
+test(del_dynamic) :-				% dynamic remains
 	reload(del_dynamic, 1),
 	reload(del_dynamic, 2),
-	assertion(\+ predicate_property(del_dynamic:p(_), dynamic)).
+	assertion(predicate_property(del_dynamic:p(_), dynamic)).
 test(add_thread_local) :-
 	reload(add_thread_local, 1),
 	collect_messages(reload(add_thread_local, 2),

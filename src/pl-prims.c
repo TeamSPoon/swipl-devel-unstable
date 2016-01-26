@@ -353,7 +353,7 @@ out_fail:
 
 static int
 raw_unify_ptrs(Word t1, Word t2 ARG_LD)
-{ switch(LD->prolog_flag.occurs_check)
+{ switch( LD->prolog_flag.occurs_check )
   { case OCCURS_CHECK_FALSE:
       return do_unify(t1, t2 PASS_LD);
     case OCCURS_CHECK_TRUE:
@@ -365,6 +365,71 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
       fail;
   }
 }
+
+#ifdef VERY_USEFULL_CODE
+
+
+/* This adds wakeups to attvars rather than binding them */
+static int
+raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
+{ int rc;
+  Word old_gTop = gTop;
+  TrailEntry mt = tTop;
+
+  rc = raw_unify_ptrs_with_bind(t1, t2 PASS_LD);
+
+  /* Any attvar wakeup terms pushed to the global stack? */
+  if ( rc == TRUE && old_gTop != gTop )
+  { TrailEntry tt = tTop;
+    TrailEntry ot;
+
+    /* restore the attvars */
+    while (--tt >= mt)
+    { Word p = tt->address;
+
+      if ( isTrailVal(p) )
+      { word v = trailVal(p);
+	tt--;
+	if ( isAttVar(v) )
+	{ *tt->address = v;
+	  tt->address = NULL;
+	  tt[1].address = NULL;
+	}
+      }
+    }
+
+    /* remove the entries from the trail */
+    for(tt=mt, ot=mt, mt=tTop; tt < mt; )
+    { if ( tt->address )
+	*ot++ = *tt++;
+      else
+	tt++;
+    }
+    tTop = ot;
+  }
+
+  return rc;
+}
+
+
+static int
+raw_unify_ptrs_with_bind(Word t1, Word t2  ARG_LD)
+{ switch( LD->prolog_flag.occurs_check )
+  { case OCCURS_CHECK_FALSE:
+      return do_unify(t1, t2 PASS_LD);
+    case OCCURS_CHECK_TRUE:
+      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
+      break;
+    case OCCURS_CHECK_ERROR:
+      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
+      break;
+    default:
+      assert(0);
+      fail;
+  }
+}
+
+#endif
 
 
 static
@@ -2401,15 +2466,25 @@ PRED_IMPL("=..", 2, univ, PL_FA_ISO)
 	return PL_error(NULL, 0, NULL, ERR_INSTANTIATION);
     }
 
-    if ( !PL_unify_functor(t, PL_new_functor(name, arity)) )
-      fail;
+    if ( (p = allocGlobal(arity+1)) )
+    { Word l = valTermRef(tail);
 
-    for(n=1; PL_get_list(tail, head, tail); n++)
-    { if ( !PL_unify_arg(n, t, head) )
-	fail;
+      *valTermRef(head) = consPtr(p, TAG_COMPOUND|STG_GLOBAL);
+      *p++ = PL_new_functor(name, arity);
+      deRef(l);
+      while(isList(*l))
+      { Word h = HeadList(l);
+
+	deRef(h);
+	*p++ = needsRef(*h) ? makeRef(h) : *h;
+	l = TailList(l);
+	deRef(l);
+      }
+
+      return PL_unify(t, head);
     }
 
-    succeed;
+    return FALSE;
   }
 
   p = valTermRef(t);

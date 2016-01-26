@@ -451,7 +451,7 @@ Equivalent to \verb$load_files(Files, [if(not_loaded)]).$%
 		  changing the source code.}
 
     \predicate[ISO]{include}{1}{+File}
-Textually include the content of \arg{File} in the file in which the
+Textually include the content of \arg{File} at the position where the
 \jargon{directive} \exam{:- include(File).} appears. The include
 construct is only honoured if it appears as a directive in a
 source file. \jargon{Textual} include (similar to C/C++ \#include) is
@@ -459,26 +459,27 @@ obviously useful for sharing declarations such as dynamic/1 or
 multifile/1 by including a file with directives from multiple files that
 use these predicates.
 
-Textual including files that contain clauses is less obvious. Normally,
-in SWI-Prolog, clauses are \emph{owned} by the file in which they are
-defined. This information is used to \emph{replace} the old definition
-after the file has beeen modified and is reloaded by, e.g., make/0. As we
-understand it, include/1 is intended to include the same file multiple
-times. Including a file holding clauses multiple times into the same
-module is rather meaningless as it just duplicates the same clauses.
-Including a file holding clauses in multiple modules does not suffer
-from this problem, but leads to multiple equivalent \emph{copies} of
-predicates. Using use_module/1 can achieve the same result while
-\emph{sharing} the predicates.
+Textually including files that contain \emph{clauses} is less obvious.
+Normally, in SWI-Prolog, clauses are \emph{owned} by the file in which
+they are defined. This information is used to \emph{replace} the old
+definition after the file has been modified and is reloaded by, e.g.,
+make/0. As we understand it, include/1 is intended to include the same
+file multiple times. Including a file holding clauses multiple times
+into the same module is rather meaningless as it just duplicates the
+same clauses. Including a file holding clauses in multiple modules
+does not suffer from this problem, but leads to multiple equivalent
+\emph{copies} of predicates. Using use_module/1 can achieve the same
+result while \emph{sharing} the predicates.
 
-Despite these observations, various projects seem to be using include/1
-to load files holding clauses, typically loading them only once. Such
-usage would allow replacement by, e.g., consult/1. Unfortunately, the
-same project might use include/1 to share directives. Another example of
-a limitation of mapping to consult/1 is that if the clauses of a
-predicate are distributed over two included files, discontiguous/1 is
-appropriate, while if they are distributed over two consulted files, one
-must use multifile/1.
+If include/1 is used to load files holding clauses, and if these files
+are loaded only once, then these include/1 directives can be replaced by
+other predicates (such as consult/1). However, there are several cases
+where either include/1 has no alternative, or using any alternative also
+requires other changes. An example of the former is using include/1 to
+share directives. An example of the latter are cases where clauses of
+different predicates are distributed over multiple files: If these files
+are loaded with include/1, the directive discontiguous/1 is appropriate,
+whereas if they are consulted, one must use the directive multifile/1.
 
 To accommodate included files holding clauses, SWI-Prolog distinguishes
 between the source location of a clause (in this case the included
@@ -2944,22 +2945,37 @@ no longer exists.
     \predicate{instance}{2}{+Reference, -Term}
 Unify \arg{Term} with the referenced clause or database record.  Unit
 clauses are represented as \arg{Head} :- \const{true}.
+\end{description}
 
+
+\subsection{Flags}				\label{sec:flag}
+
+The predicate flag/3 is the oldest way to store global non-backtrackable
+data in SWI-Prolog. Flags are global and shared by all threads. Their
+value is limited to atoms, small (64-bit) integers and floating point
+numbers.  Flags are thread-safe.  The flags described in this section
+must not be confused with \jargon{Prolog flags} described in
+\secref{flags}.
+
+\begin{description}
+    \predicate{get_flag}{2}{+Key, -Value}
+True when \arg{Value} is the value currently associated with \arg{Key}.
+If \arg{Key} does not exist, a new flag with value `0' (zero) is
+created.
+    \predicate{set_flag}{2}{+Key, Value}
+Set flag \arg{Key} to \arg{Value}. Value must be an atom, small (64-bit)
+integer or float.
     \predicate{flag}{3}{+Key, -Old, +New}
-\arg{Key} is an atom, integer or term. As with the recorded database, if
-\arg{Key} is a term, only the name and arity are used to locate the
-flag. Unify \arg{Old} with the old value associated with \arg{Key}. If
-the key is used for the first time \arg{Old} is unified with the integer
-0. Then store the value of \arg{New}, which should be an integer, float,
-atom or arithmetic expression, under \arg{Key}. flag/3 is a fast
-mechanism for storing simple facts in the database. The flag database is
-shared between threads and updates are atomic, making it suitable for
-generating unique integer counters.%
-	\footnote{The flag/3 predicate is not portable. Non-backtrackable
-		  global variables (nb_setval/2) and non-backtrackable
-		  assignment (nb_setarg/3) are more widely recognised
-		  special-purpose alternatives for non-backtrackable
-		  and/or global states.}
+True when \arg{Old} is the current value of the flag \arg{Key} and the
+flag has been set to \arg{New}. \arg{New} can be an arithmetic
+expression. The update is \jargon{atomic}. This predicate can be used to
+create a \emph{shared} global counter as illustrated in the example
+below.
+
+\begin{code}
+next_id(Id) :-
+    flag(my_id, Id, Id+1).
+\end{code}
 \end{description}
 
 
@@ -4779,13 +4795,13 @@ print_message/2 to emit messages.
 
 The classical definition of this predicate is equivalent to the ISO
 predicate write_term/2 using the options \term{portray}{true} and
-\term{numbervars}{true}. The \term{portray}{true} options allows the
+\term{numbervars}{true}. The \term{portray}{true} option allows the
 user to implement application-specific printing of terms printed during
 debugging to facilitate easy understanding of the output. See also
 portray/1 and \pllib{portray_text}. SWI-Prolog adds \term{quoted}{true}
-to facilitate copy/paste of terms not affected by portray/1 and better
-distinguishing of e.g., \verb$42$, \verb$'42'$ and \verb$"42"$, a
-number, atom and string.
+to (1) facilitate the copying/pasting of terms that are not affected by
+portray/1 and to (2) allow numbers, atoms and strings to be more easily
+distinguished, e.g., \verb$42$, \verb$'42'$ and \verb$"42"$.
 
     \predicate{print}{2}{+Stream, +Term}
 Print \arg{Term} to \arg{Stream}.
@@ -6494,7 +6510,11 @@ Evaluate to the mathematical constant $e$ (2.71828\ldots).
     \function{epsilon}{0}{}
 Evaluate to the difference between the float 1.0 and
 the first larger floating point number.
-
+    \function{inf}{0}{}
+Evaluate to positive infinity.  See \secref{floatsyntax}.  This value
+can be negated using \funcref{-}{1}.
+    \function{nan}{0}{}
+Evaluate to \emph{Not a Number}.  See \secref{floatsyntax}.
     \function{cputime}{0}{}
 Evaluate to a floating point number expressing the {\sc cpu} time (in seconds)
 used by Prolog up till now. See also statistics/2 and time/1.
@@ -8997,4 +9017,3 @@ On Unix systems the sleep/1 predicate is realised ---in order of
 preference--- by nanosleep(), usleep(), select() if the time is below 1
 minute, or sleep().  On Windows systems Sleep() is used.
 \end{description}
-

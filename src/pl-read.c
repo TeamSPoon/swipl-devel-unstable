@@ -497,6 +497,7 @@ str_number_error(strnumstat rc)
     case NUM_FUNDERFLOW: return "float_underflow";
     case NUM_FOVERFLOW:  return "float_overflow";
     case NUM_IOVERFLOW:  return "integer_overflow";
+    case NUM_CONSTRANGE: return "numeric constant out of range";
   }
 
   return NULL;
@@ -2342,6 +2343,53 @@ get_quasi_quotation(term_t t, unsigned char **here, unsigned char *ein,
 #endif /*O_QUASIQUOTATIONS*/
 
 
+static cucharp
+float_tag(cucharp in, cucharp tag)
+{ while(*in == *tag)
+    in++, tag++;
+
+  if ( !*tag )
+  { int c;
+
+    utf8_get_uchar(in, &c);
+    if ( !PlIdContW(c) )
+      return in;
+  }
+
+  return NULL;
+}
+
+
+static strnumstat
+special_float(cucharp *in, cucharp start, Number value)
+{ cucharp s;
+
+  if ( (s=float_tag(*in, (cucharp)"Inf")) )
+  { if ( *start == '-' )
+      value->value.f = strtod("-Inf", NULL);
+    else
+      value->value.f = strtod("Inf", NULL);
+  } else if ( (s=float_tag(*in, (cucharp)"NaN")) &&
+	      start[0] == '1' && start[1] == '.' )
+  { char *e;
+    double f = strtod((char*)start, &e);
+
+    if ( e == (char*)(*in) )
+    { strnumstat rc = make_nan(&f);
+      if ( rc != NUM_OK )
+	return rc;
+      value->value.f = f;
+    } else
+      return NUM_CONSTRANGE;
+  } else
+    return NUM_ERROR;
+
+  *in = s;
+  return NUM_OK;
+}
+
+
+
 strnumstat
 str_number(cucharp in, ucharp *end, Number value, int escape)
 { int negative = FALSE;
@@ -2442,6 +2490,12 @@ str_number(cucharp in, ucharp *end, Number value, int escape)
       in++;
     while( isDigit(*in) )
       in++;
+  }
+
+  if ( (rc = special_float(&in, start, value)) != NUM_ERROR)
+  { if ( rc == NUM_OK )
+      *end = (ucharp)in;
+    return rc;
   }
 
   if ( value->type == V_FLOAT )

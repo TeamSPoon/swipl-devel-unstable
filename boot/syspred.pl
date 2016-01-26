@@ -39,6 +39,7 @@
 	    nospyall/0,
 	    debugging/0,
 	    rational/3,
+	    flag/3,
 	    atom_prefix/2,
 	    dwim_match/2,
 	    source_file_property/2,
@@ -52,12 +53,11 @@
 	    predicate_property/2,
 	    '$predicate_property'/2,
 	    clause_property/2,
-	    recorda/2,
-	    recordz/2,
-	    current_module/1,
-	    module_property/2,
-	    module/1,
-	    shell/1,
+	    current_module/1,			% ?Module
+	    module_property/2,			% ?Module, ?Property
+	    module/1,				% +Module
+	    working_directory/2,		% -OldDir, +NewDir
+	    shell/1,				% +Command
 	    shell/0,
 	    on_signal/3,
 	    current_signal/3,
@@ -354,6 +354,26 @@ trace_ports(Head, Ports) :-
 		Ports).
 
 
+%%	flag(+Name, -Old, +New) is det.
+%
+%	True when Old is the current value associated with the flag Name
+%	and New has become the new value.
+
+flag(Name, Old, New) :-
+	Old == New, !,
+	get_flag(Name, Old).
+flag(Name, Old, New) :-
+	with_mutex('$flag', update_flag(Name, Old, New)).
+
+update_flag(Name, Old, New) :-
+	get_flag(Name, Old),
+	(   atom(New)
+	->  set_flag(Name, New)
+	;   Value is New,
+	    set_flag(Name, Value)
+	).
+
+
 		 /*******************************
 		 *	      RATIONAL		*
 		 *******************************/
@@ -526,7 +546,7 @@ canonical_source_file(Spec, File) :-
 %	'$stream_position'. Largely Quintus compatible.
 
 prolog_load_context(module, Module) :-
-	'$set_source_module'(Module, Module).
+	'$current_source_module'(Module).
 prolog_load_context(file, F) :-
 	source_location(F, _).
 prolog_load_context(source, F) :-	% SICStus compatibility
@@ -1003,10 +1023,22 @@ module_property(program_space(_)).
 module(Module) :-
 	atom(Module),
 	current_module(Module), !,
-	'$module'(_, Module).
+	'$set_typein_module'(Module).
 module(Module) :-
-	'$module'(_, Module),
+	'$set_typein_module'(Module),
 	print_message(warning, no_current_module(Module)).
+
+%%	working_directory(-Old, +New)
+%
+%	True when Old is the current working directory and the working
+%	directory has been updated to New.
+
+working_directory(Old, New) :-
+	'$cwd'(Old),
+	(   Old == New
+	->  true
+	;   '$chdir'(New)
+	).
 
 
 		/********************************
