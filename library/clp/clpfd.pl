@@ -3,7 +3,7 @@
     Author:        Markus Triska
     E-mail:        triska@gmx.at
     WWW:           http://www.swi-prolog.org
-    Copyright (C): 2007-2015 Markus Triska
+    Copyright (C): 2007-2016 Markus Triska
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -3389,6 +3389,11 @@ trigger_props(fd_props(Gs,Bs,Os), X) :-
         ;   true
         ).
 
+trigger_props(fd_props(Gs,Bs,Os)) :-
+        trigger_props_(Gs),
+        trigger_props_(Bs),
+        trigger_props_(Os).
+
 trigger_props_([]).
 trigger_props_([P|Ps]) :- trigger_prop(P), trigger_props_(Ps).
 
@@ -3405,11 +3410,6 @@ trigger_prop(Propagator) :-
             ;   push_queue(Propagator, 1)
             )
         ).
-
-all_propagators(fd_props(Gs,Bs,Os)) -->
-        propagators_(Gs),
-        propagators_(Bs),
-        propagators_(Os).
 
 propagators_([]) --> [].
 propagators_([P|Ps]) --> propagator_(P), propagators_(Ps).
@@ -6607,13 +6607,14 @@ verify_attributes(Var, Other, Gs) :-
                 ;   type_error(integer, Other)
                 ),
                 domain_contains(Dom, Other),
-                Ps = Ps0
+                trigger_props(Ps0)
             ;   fd_get(Other, OD, OPs),
                 domains_intersection(OD, Dom, Dom1),
                 append_propagators(Ps0, OPs, Ps),
-                fd_put(Other, Dom1, Ps)
+                fd_put(Other, Dom1, Ps),
+                trigger_props(Ps)
             ),
-            phrase(all_propagators(Ps), Gs, [do_queue])
+            Gs = [do_queue]
         ;   Gs = []
         ).
 
