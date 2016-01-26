@@ -845,7 +845,6 @@ F dthrow		1
 F dtime			2
 F duplicate_key		1
 F dvard			1
-F dwakeup		1
 F e			0
 F encoding		1
 F end_of_stream		1
@@ -1011,7 +1010,7 @@ F undefinterc		4
 F unify_determined	2
 F uninstantiation_error	1
 F var			1
-F wakeup		4
+F wakeup		5
 F warning		3
 F xor			2
 F xpceref		1

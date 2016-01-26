@@ -2752,7 +2752,7 @@ wakeup:
   NFR = lTop;
   setNextFrameFlags(NFR, FR);
   SAVE_REGISTERS(qid);
-  DEF = GD->procedures.dwakeup1->definition;
+  DEF = PROCEDURE_dwakeup1->definition;
   LOAD_REGISTERS(qid);
   ARGP = argFrameP(NFR, 0);
   ARGP[0] = *valTermRef(LD->attvar.head);

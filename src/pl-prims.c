@@ -3404,17 +3404,18 @@ retry:
 
 	if ( isTrailVal(p) )
 	{
-      /* DM: TODO - convert to term_t */
-       bool isNonDelayed = (LD->attvar.currentAttvar == trailValP(p));
-       /* in the case of a non-delayed assignment we have trailed the attvar unless O_VERIFY_ATTRIBUTES_LEAN */
-       if (isNonDelayed)
+
+       /* in the case of a non-delayed assignment we may have trailed an attvar */
+       if (isAttVar(trailVal(p)))
        {
-          assert(isAttVar(trailVal(p)));
 
            tt--;				/* re-insert the attvar */
           *tt->address = trailVal(p);
-       } else /* otherwise (delayed) = we will have only trailed our request for wakeup */
-       { /* DM: TODO - obviously one register is not nearly enough */
+       }
+
+       
+       if ( tt>mt && !isAttVar(trailVal(p))) /* then must be wakeup closure pair */
+       {
            tt--;				/* restore tail of wakeup list */
            p = tt->address;
            if ( isTrailVal(p) )

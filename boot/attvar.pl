@@ -29,8 +29,8 @@
 */
 
 :- module('$attvar',
-	  [ '$wakeup'/1,		% +Wakeup list
-	    freeze/2,			% +Var, :Goal
+	  [ wakeup/5,		        % +Attrs :NextGoal +Var +Value
+        freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
 	    copy_term/3                 % +Term, -Copy, -Residue
@@ -44,17 +44,9 @@ in pl-attvar.c
 */
 
 
-
-/* DM: TODO  - WILL REMOVE - PROMISE! updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
-:- multifile attributes:modules_with_attributes/1.
-:- dynamic attributes:modules_with_attributes/1.
-attributes:modules_with_attributes([]).
-
        /*******************************
-       *         HOOKS              *
+       *         VERIFY_ATTRIBUTES              *
        *******************************/
-
-system:attr_unify_hook(_AttrValue, _Value).
 
 %%  Module:verify_attributes(+Var, +Value, -Goals)
 %  
@@ -65,104 +57,36 @@ system:attr_unify_hook(_AttrValue, _Value).
 % been bound to Value.
 %
 %  This predicate is called in each module that contains an attribute declaration.
-%
-% For cases in which look like:
-% ==
-% mod:verify_attributes(Var,Value,[]):- get_attrs(Var,mod,Atts),some_code(Atts,Value).
-% ==
-% it can in some cases be more efficient to avoid this extra get_attrs/3 call.
-% ==
-%  mod:attr_unify_hook(Atts,Value):- some_code(Atts,Value).
-% ==
-%  attr_unify_hook/2 is provided by both SWI and YAP
-%
+
 system:verify_attributes(_Var, _Value, []).
+system:attr_unify_hook(_AttrValue, _Value).
 
-%%	'$wakeup'(+List)
+%%	wakeup(+Att3s, +NextOnChain, + NextAtt3s ,+Var, +Value)
 %
-%	Called from the kernel if assignments will be made to
-%	attributed variables.
-%
-%       Current code requires O_VERIFY_ATTRIBUTES (In C)
-%
-%       Assignment happens in '$attvar_assign'/2
-%
+%	calls  Module:verify_attributes/3 on Modules that have 
+%   defined an attribute.
 
-'$wakeup'([]).
-'$wakeup'(wakeup(Var, Att3s, Value, Rest)) :-
-   attributes:modules_with_attributes(AttsMods), 
-   '$delete'(AttsMods,UnifyAtMod,RestAttsMods),!,
-   do_verify_attributes([UnifyAtMod|RestAttsMods], Var, Att3s, Value, Goals),
-   (attvar(Var)->'$attvar_assign'(Var,Value);ignore(Var=Value)),
-    call_all_attr_uhooks(Att3s, Value),        
-    '$wakeup'(Rest),
-    call_goals(UnifyAtMod,Goals).
-
-
-%% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
-%
-% calls  Module:verify_attributes/3 
-%
-%  1) Modules that have defined an attribute in Att3s
-%  2) The caller''s module (Head of AttsModules)
-%  3) remaining modules who have defined attributes on some variable (Tail of AttsModules)
-%
-%
-/*
-1 ?- assert(t2(2,3)), freeze(A, writeln(A)),call(t2(A,A)).
-2
-false.
-
-*/
-do_verify_attributes(_AttsModules,Var,_Att3s,_Value,[]) :- \+ attvar(Var),!,Value==Var.
-do_verify_attributes(AttsModules,Var, att(Module, _AttVal, Rest), Value, (Module:Goals1,Goals2)) :-  !,
-    Module:verify_attributes(Var, Value, Goals1),
-    '$delete'(AttsModules,Module,RemainingMods),
-    do_verify_attributes(RemainingMods, Var,  Rest, Value, Goals2).
-
-% Call verify_attributes/3 in rest of modules
-do_verify_attributes([],_Var, _Att3s, _Value, []):-!.
-do_verify_attributes([Module|AttsModules], Var, [], Value, (Module:Goals1,Goals2)):- 
-   Module:verify_attributes(Var, Value, Goals1),
-   do_verify_attributes(AttsModules, Var, [], Value, Goals2).
-   
-
-call_goals(_,[]):- !.
-call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
-call_goals(_, (M:G)):- !,call_goals(M,G).
-call_goals(M,[G|Gs]):- !,call_goals(M,G),call_goals(M,Gs).
-call_goals(M,G):- M:G.
+:- meta_predicate(wakeup(+, 0, +, ?, ?)).
+wakeup(_,Next,[],Var,Value):- !,
+	ignore('$attvar_assign'(Var,Value)),
+	Var==Value,
+	call(Next).
+wakeup(_,Next,att(Module, AttVal, Rest), Var,Value):- 
+	\+ attvar(Var), !, Var=Value,
+	Module:attr_unify_hook(AttVal, Value),
+	(Rest==[]->true;wakeup([], Next, Rest, Var, Value)),
+	call(Next).
+wakeup(att(Module, AttVal, Rest), Next, Att3s, Var, Value ):-
+	Module:verify_attributes(Var, Value, VAGoals),
+	wakeup(Rest, Next, [], Var, Value),
+	Module:attr_unify_hook(AttVal, Value),
+	call_goals(VAGoals,Module).
 
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
-
-call_all_attr_uhooks([], _).
-call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
-	uhook(Module, AttVal, Value),
-	call_all_attr_uhooks(Rest, Value).
-
-
-%%	uhook(+AttributeName, +AttributeValue, +Value)
-%
-%	Run the unify hook for attributed named AttributeName after
-%	assigning an attvar with attribute AttributeValue the value
-%	Value.
-%
-%	This predicate deals with reserved attribute names to avoid
-%	the meta-call overhead.
-/* DM: TODO - this is silly and will remove very soon! */
-uhook(freeze, Goal, Y) :- !,
-	(   attvar(Y)
-	->  (   get_attr(Y, freeze, G2)
-	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
-	    ;	put_attr(Y, freeze, Goal)
-	    )
-	;   unfreeze(Goal)
-	).
-uhook(Module, AttVal, Value) :-
-	Module:attr_unify_hook(AttVal, Value).
+call_goals([],_).
+call_goals([G|Gs],M):-
+	M:call(G),
+	call_goals(Gs,M).
 
 
 		 /*******************************
@@ -196,11 +120,9 @@ make_conjunction('$and'(A0, B0), (A, B)) :- !,
 	make_conjunction(B0, B).
 make_conjunction(G, G).
 
-
-/*
-DM: TODO - Ensure verify_attributes/3 works !
-
+/* DM: TODO - Ensure verify_attributes/3 works ! */
 freeze:verify_attributes(Var, Other, Gs) :-
+	\+ current_prolog_flag(wakeups,va3) -> Gs=[] ;
 	(   get_attr(Var, freeze, Goal)
 	->  (	attvar(Other)
 	    ->	(   get_attr(Other, freeze, G2)
@@ -213,9 +135,10 @@ freeze:verify_attributes(Var, Other, Gs) :-
 	;   Gs = []
 	).
 
-DM: TODO - Ensure this would have worked just as well!
 
-freeze:attr_unify_hook(Goal, Y) :- !,
+/* DM: TODO - Ensure this would have worked just as well! */
+freeze:attr_unify_hook(Goal, Y) :-
+	current_prolog_flag(wakeups,va3) -> true ;
 	(   attvar(Y)
 	->  (   get_attr(Y, freeze, G2)
 	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
@@ -223,9 +146,6 @@ freeze:attr_unify_hook(Goal, Y) :- !,
 	    )
 	;   unfreeze(Goal)
 	).
-
-*/
-
 
 %%	unfreeze(+ConjunctionOrGoal)
 %

@@ -102,7 +102,7 @@ which must run in constant space.
 
 	loop :- freeze(X, true), X = a, loop.
 
-SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
+SHIFT-SAFE: Caller must ensure 8 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
@@ -110,15 +110,15 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
-  assert(gTop+7 <= gMax && tTop+4 <= tMax);
+  assert(gTop+8 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-  gTop += 5;
-  wake[0] = FUNCTOR_wakeup4;
-  wake[1] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
-  wake[2] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
-  wake[3] = needsRef(*value) ? makeRef(value) : *value;
-  wake[4] = ATOM_nil;
+  gTop += 6;
+  wake[0] = FUNCTOR_wakeup5;
+  wake[1] = wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
+  wake[2] = ATOM_true;
+  wake[4] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
+  wake[5] = needsRef(*value) ? makeRef(value) : *value;
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -127,7 +127,7 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-    *tail = makeRef(wake+4);
+    *tail = makeRef(wake+2);
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -136,7 +136,7 @@ registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-    *tail = makeRef(wake+4);
+    *tail = makeRef(wake+2);
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -164,51 +164,58 @@ unifiable/3 and raw_unify_ptrs()
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-/* DM: TODO - Will add back ATT_WAKEBINDS */
+/* not uing incoming assignment flags for now */
 void
 assignAttVar(Word av, Word value ARG_LD)
-{ Word a;
+{
+  mark m;
+  
+  int flags = LD->attvar.attv_mode;
 
   assert(isAttVar(*av));
   assert(!isRef(*value));
- /* let registerWakeup sanity check gTop we still might TrailAssignment() 1+2
-  here we sanity check less */
-  assert(gTop+1 <= gMax && tTop+2 <= tMax);
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+   /* here we sanity check less  */
+  assert(tTop+2 <= tMax);
+
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  if ( av == value )
+      return;
+
 
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
       av = value;
       value = tmp;
-    } else if ( av == value )
-      return;
+    }
   }
 
-
-  /* DM: TODO - Will convert to term_t */
-#ifdef O_LIKE_MASTER 
- if( !(flags & ATT_ASSIGNONLY) )
-#endif
-  if(LD->attvar.currentAttvar!=av) 
-  {
-  a = valPAttVar(*av);
-  registerWakeup(av, a, value PASS_LD);
-  
-      return;
+  if(!(flags & ATT_ASSIGNONLY) )
+  { TrailAssignment(av);
+    registerWakeup(av, valPAttVar(*av), value PASS_LD);
+    return;
   }
 
-#ifdef O_LIKE_MASTER
+  if ( isAttVar(*value) )
+  { if ( value > av )
+    { Word tmp = av;
+      av = value;
+      value = tmp;
+    }
+  }
+
+ if(!(flags & ATT_UNIFY_CHECK))
+ {
+   TrailAssignment(av);
+ } else
+ {
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
   DiscardMark(m);
-#else
-  /* prolog maybe will our assigments (during wakeup) but just in case */
-  TrailAssignment(av);
-#endif
+ }
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
@@ -1398,10 +1405,10 @@ PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
     Word av = valTermRef(A1);
     deRef(av);
-    Word was = LD->attvar.currentAttvar;
-    LD->attvar.currentAttvar = av;
+    int was = LD->attvar.attv_mode;
+    LD->attvar.attv_mode = ATT_ASSIGNONLY;
     int ret = PL_unify(A1,A2);
-    LD->attvar.currentAttvar = was;
+    LD->attvar.attv_mode = was;
     if (ret!=1 && ret!=0)
     {
         return ret;
