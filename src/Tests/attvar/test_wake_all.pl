@@ -39,9 +39,11 @@ wake(N,Var):- put_attr(Var,test_wake_all,N).
 
 
 wake(1) :- wake(1, A), wake(2, A), wake_all_result(0).
-	
+
+/* This test has failed for several years in swi-prolog but not in yap, xsb or sicstus - still not fixed in
+   backport_of_last_known_good or master (however fixed in eclipse_c and minimal_again ) */
 wake(2) :-
-	wake(1, A), wake(2, B),  A=B, wake_all_result(3).
+	wake(1, A), wake(2, B),A=B, wake_all_result(3).
 
 
 

@@ -39,8 +39,8 @@
 
 test_clpfd :-
 	run_tests([ clpfd_wrong,
-                     clpfd_num2,
-                     clpfd_shower
+                     % clpfd_shower,
+                     clpfd_num2
 
 		  ]).
 
