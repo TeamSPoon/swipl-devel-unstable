@@ -168,10 +168,6 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 void
 assignAttVar(Word av, Word value ARG_LD)
 {
-  mark m;
-  
-  int flags = LD->attvar.attv_mode;
-
   assert(isAttVar(*av));
   assert(!isRef(*value));
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
@@ -180,45 +176,24 @@ assignAttVar(Word av, Word value ARG_LD)
 
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
+  TrailAssignment(av);
+
   if ( av == value )
       return;
 
-  if(!(flags & ATT_ASSIGNONLY) )
-  { TrailAssignment(av);
-    registerWakeup(av, valPAttVar(*av), value PASS_LD);
+  if((LD->attvar.attv_mode & ATT_WAKEBINDS) ) 
+  { registerWakeup(av, valPAttVar(*av), value PASS_LD);
     return;
   }
 
   if ( isAttVar(*value) )
-  { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
-    }
-  }
-
- if(!(flags & ATT_UNIFY_CHECK))
- { TrailAssignment(av);
- } 
-
- else
- {
-  Mark(m);		/* must be trailed, even if above last choice */
-  LD->mark_bar = NO_MARK_BAR;
-  TrailAssignment(av);
-  DiscardMark(m);
-
-  if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
-    *av = makeRef(value);
-  } else if ( isVar(*value) )
-  { DEBUG(1, Sdprintf("Assigning attvar with plain var\n"));
-    *av = makeRef(value);			/* JW: Does this happen? */
+    if ( value > av )
+     *value = makeRef(av);
+     else
+     *av = makeRef(value);
   } else
     *av = *value;
-
- }
-
 }
 
 
@@ -1395,17 +1370,14 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
-    Word av = valTermRef(A1);
-    deRef(av);
+
     int was = LD->attvar.attv_mode;
-    LD->attvar.attv_mode = ATT_ASSIGNONLY;
+    if (was & ATT_WAKEBINDS)
+      LD->attvar.attv_mode &= ~ATT_WAKEBINDS;
+    
     int ret = PL_unify(A1,A2);
     LD->attvar.attv_mode = was;
-    if (ret!=1 && ret!=0)
-    {
-        return ret;
-    }
-    succeed;
+    return ret;
 }
 
 
