@@ -164,6 +164,7 @@ unifiable/3 and raw_unify_ptrs()
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+/* DM: TODO - Will add back ATT_WAKEBINDS */
 void
 assignAttVar(Word av, Word value ARG_LD)
 { Word a;
@@ -187,6 +188,10 @@ assignAttVar(Word av, Word value ARG_LD)
   }
 
 
+  /* DM: TODO - Will convert to term_t */
+#ifdef O_LIKE_MASTER 
+ if( !(flags & ATT_ASSIGNONLY) )
+#endif
   if(LD->attvar.currentAttvar!=av) 
   {
   a = valPAttVar(*av);
@@ -195,8 +200,15 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
-  /* prolog trails our assigments now (during wakeup)*/
+#ifdef O_LIKE_MASTER
+  Mark(m);		/* must be trailed, even if above last choice */
+  LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
+  DiscardMark(m);
+#else
+  /* prolog maybe will our assigments (during wakeup) but just in case */
+  TrailAssignment(av);
+#endif
 
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
@@ -1376,7 +1388,9 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
-/** '$attvar_assign'(+Var, +Value) is det.
+/** 
+  '$attvar_assign'(+Var, +Value) is det.
+  Same as  XSB's machine:attv_unify/2
 */
 
 static

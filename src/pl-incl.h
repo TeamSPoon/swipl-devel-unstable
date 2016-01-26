@@ -155,7 +155,7 @@ handy for it someone wants to add a data type to the system.
 #define O_CALL_RESIDUE		1
 #define O_VERIFY_ATTRIBUTES 1
 #define O_LIKE_MASTER 1
-#undef O_LIKE_MASTER
+#undef O_LIKE_MASTER  /* DM: WILL BE A PLACE HOLDER FOR BETTER CODE */
 #define O_GVAR			1
 #define O_CYCLIC		1
 
@@ -2001,11 +2001,13 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
+#ifdef O_LIKE_MASTER
 /* assignAttVar() flags */
-#define ATT_UNIFY       0x0			/* unify: assign and wakeup */
 #define ATT_WAKEBINDS   0x1			/* bindConst() */
 #define ATT_ASSIGNONLY  0x2			/* '$attvar_assign'/2 */
+#define ATT_UNIFY       0x4			/* unify: assign and wakeup */
 
+#endif
 
 		 /*******************************
 		 *	      WAKEUP		*

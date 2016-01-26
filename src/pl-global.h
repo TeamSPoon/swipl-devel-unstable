@@ -411,7 +411,7 @@ struct PL_local_data
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
-    Word currentAttvar;
+    Word currentAttvar;  /* DM: TODO - Will convert to term_t */
   } attvar;
 #endif
 
