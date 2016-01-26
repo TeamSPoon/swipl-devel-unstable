@@ -43,7 +43,9 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-/* updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
+
+
+/* DM: TODO  - WILL REMOVE - PROMISE! updates to dynamic attributes:modules_with_attributes/1 happen is atts.pl */ 
 :- multifile attributes:modules_with_attributes/1.
 :- dynamic attributes:modules_with_attributes/1.
 attributes:modules_with_attributes([]).
@@ -97,13 +99,6 @@ system:verify_attributes(_Var, _Value, []).
     call_goals(UnifyAtMod,Goals).
 
 
-call_goals(_,[]):- !.
-call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
-call_goals(_, (M:G)):- !,call_goals(M,G).
-call_goals(M,[G|Gs]):- !,call_goals(M,G),call_goals(M,Gs).
-call_goals(M,G):- M:G.
-
-
 %% do_verify_attributes(+AttsModules, +Var, +Att3s, +Value, -Goals) is nondet.
 %
 % calls  Module:verify_attributes/3 
@@ -132,6 +127,16 @@ do_verify_attributes([Module|AttsModules], Var, [], Value, (Module:Goals1,Goals2
    do_verify_attributes(AttsModules, Var, [], Value, Goals2).
    
 
+call_goals(_,[]):- !.
+call_goals(M,(G,Gs)):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(_, (M:G)):- !,call_goals(M,G).
+call_goals(M,[G|Gs]):- !,call_goals(M,G),call_goals(M,Gs).
+call_goals(M,G):- M:G.
+
+
+		 /*******************************
+		 *	  ATTR UNIFY HOOK	*
+		 *******************************/
 
 call_all_attr_uhooks([], _).
 call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
@@ -147,37 +152,7 @@ call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
 %
 %	This predicate deals with reserved attribute names to avoid
 %	the meta-call overhead.
-
-/*
-
-Ensure this works
-
-freeze:verify_attributes(Var, Other, Gs) :-
-	(   get_attr(Var, freeze, Goal)
-	->  (	attvar(Other)
-	    ->	(   get_attr(Other, freeze, G2)
-		->  put_attr(Other, freeze, '$and'(G2, Goal))
-		;   put_attr(Other, freeze, Goal)
-		),
-		Gs = []
-	    ;	Gs = ['$attvar':unfreeze(Goal)]
-	    )
-	;   Gs = []
-	).
-
-Also ensure this works
-
-freeze:attr_unify_hook(Goal, Y) :- !,
-	(   attvar(Y)
-	->  (   get_attr(Y, freeze, G2)
-	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
-	    ;	put_attr(Y, freeze, Goal)
-	    )
-	;   unfreeze(Goal)
-	).
-
-*/
-
+/* DM: TODO - this is silly and will remove very soon! */
 uhook(freeze, Goal, Y) :- !,
 	(   attvar(Y)
 	->  (   get_attr(Y, freeze, G2)
@@ -190,20 +165,9 @@ uhook(Module, AttVal, Value) :-
 	Module:attr_unify_hook(AttVal, Value).
 
 
-%%	unfreeze(+ConjunctionOrGoal)
-%
-%	Handle  unfreezing  of  conjunctions.  As  meta-calling  control
-%	structures is slower than meta-interpreting them   we do this in
-%	Prolog. Another advantage is that   having unfreeze/1 in between
-%	makes the stacktrace and profiling   easier  to intepret. Please
-%	note that we cannot use a direct conjunction as this would break
-%	freeze(X, (a, !, b)).
-
-unfreeze('$and'(A,B)) :- !,
-	unfreeze(A),
-	unfreeze(B).
-unfreeze(Goal) :-
-	Goal.
+		 /*******************************
+		 *	      FREEZE		*
+		 *******************************/
 
 %%	freeze(@Var, :Goal)
 %
@@ -215,7 +179,7 @@ unfreeze(Goal) :-
 freeze(Var, Goal) :-
 	'$freeze'(Var, Goal), !.	% Succeeds if delayed
 freeze(_, Goal) :-
-	Goal.
+	call(Goal).
 
 %%	frozen(@Var, -Goals)
 %
@@ -232,6 +196,51 @@ make_conjunction('$and'(A0, B0), (A, B)) :- !,
 	make_conjunction(B0, B).
 make_conjunction(G, G).
 
+
+/*
+DM: TODO - Ensure verify_attributes/3 works !
+
+freeze:verify_attributes(Var, Other, Gs) :-
+	(   get_attr(Var, freeze, Goal)
+	->  (	attvar(Other)
+	    ->	(   get_attr(Other, freeze, G2)
+		->  put_attr(Other, freeze, '$and'(G2, Goal))
+		;   put_attr(Other, freeze, Goal)
+		),
+		Gs = []
+	    ;	Gs = ['$attvar':unfreeze(Goal)]
+	    )
+	;   Gs = []
+	).
+
+DM: TODO - Ensure this would have worked just as well!
+
+freeze:attr_unify_hook(Goal, Y) :- !,
+	(   attvar(Y)
+	->  (   get_attr(Y, freeze, G2)
+	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
+	    ;	put_attr(Y, freeze, Goal)
+	    )
+	;   unfreeze(Goal)
+	).
+
+*/
+
+
+%%	unfreeze(+ConjunctionOrGoal)
+%
+%	Handle  unfreezing  of  conjunctions.  As  meta-calling  control
+%	structures is slower than meta-interpreting them   we do this in
+%	Prolog. Another advantage is that   having unfreeze/1 in between
+%	makes the stacktrace and profiling   easier  to intepret. Please
+%	note that we cannot use a direct conjunction as this would break
+%	freeze(X, (a, !, b)).
+
+unfreeze('$and'(A,B)) :- !,
+	unfreeze(A),
+	unfreeze(B).
+unfreeze(Goal) :-
+	Goal.
 
 		 /*******************************
 		 *	       PORTRAY		*

@@ -6658,19 +6658,23 @@ attribute_goals(X) -->
         attributes_goals(Ps).
 
 clpfd_aux:attribute_goals(_) --> [].
-clpfd_aux:attr_unify_hook(_,_) :- false.
 
 clpfd_gcc_vs:attribute_goals(_) --> [].
-clpfd_gcc_vs:attr_unify_hook(_,_) :- false.
 
 clpfd_gcc_num:attribute_goals(_) --> [].
-clpfd_gcc_num:attr_unify_hook(_,_) :- false.
 
 clpfd_gcc_occurred:attribute_goals(_) --> [].
-clpfd_gcc_occurred:attr_unify_hook(_,_) :- false.
 
 clpfd_relation:attribute_goals(_) --> [].
+
+/* DM: TODO - WILL BE REMOVED AFTER TESTING */
+:- if(current_prolog_flag(auh2,supplement)).
+clpfd_aux:attr_unify_hook(_,_) :- false.
+clpfd_gcc_vs:attr_unify_hook(_,_) :- false.
+clpfd_gcc_num:attr_unify_hook(_,_) :- false.
+clpfd_gcc_occurred:attr_unify_hook(_,_) :- false.
 clpfd_relation:attr_unify_hook(_,_) :- false.
+:- endif.
 
 attributes_goals([]) --> [].
 attributes_goals([propagator(P, State)|As]) -->

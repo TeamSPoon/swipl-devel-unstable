@@ -182,6 +182,7 @@ suspend_list([V=W|Unifier],Goal) :-
 	),
 	suspend_list(Unifier,Goal).
 
+/* DM: TODO - WILL BE DEFAULT AFTER TESTING/PROFILING */
 :- if(current_prolog_flag(wakeups,va3)).
 verify_attributes(Var, Other, Gs) :-
 	(   get_attr(Var, when, call(Goal))

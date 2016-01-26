@@ -453,7 +453,6 @@ tautology(Sat) :-
                   true)
         ).
 
-%satisfiable_bdd(BDD) :- !, BDD \== 0.
 satisfiable_bdd(BDD) :-
         (   BDD == 0 -> false
         ;   BDD == 1 -> true
@@ -887,7 +886,38 @@ state(S0, S), [S] --> [S0].
    Unification. X = Expr is equivalent to sat(X =:= Expr).
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+/* newer version */
+verify_attributes(Var, Other, Gs) :-
+        % format("~w = ~w\n", [Var,Other]),
+        (   get_attr(Var, clpb, index_root(I,Root)) ->
+            (   integer(Other) ->
+                (   between(0, 1, Other) ->
+                    root_get_formula_bdd(Root, Sat, BDD0),
+                    bdd_restriction(BDD0, I, Other, BDD),
+                    root_put_formula_bdd(Root, Sat, BDD),
+                    Gs = [satisfiable_bdd(BDD)]
+                ;   no_truth_value(Other)
+                )
+            ;   atom(Other) ->
+                root_get_formula_bdd(Root, Sat0, _),
+                Gs = [root_rebuild_bdd(Root, Sat0)]
+            ;   % due to variable aliasing, any BDDs may become unordered,
+                % so we need to rebuild the new BDD from the conjunction
+                % after the unification is in place
+                root_get_formula_bdd(Root, Sat0, _),
+                Sat = Sat0*OtherSat,
+                parse_sat(Other, OtherSat),
+                sat_roots(Sat, Roots),
+                phrase(formulas_(Roots), [F|Fs]),
+                foldl(and, Fs, F, And),
+                maplist(del_bdd, Roots),
+                maplist(=(NewRoot), Roots),
+                Gs = [root_rebuild_bdd(NewRoot, And)]
+            )
+        ;   Gs = []
+        ).
 
+/* older version */
 verify_attributes_old(Var, Other, Gs) :-
         % format("~w = ~w\n", [Var,Other]),
         (   get_attr(Var, clpb, index_root(I,Root)) ->
@@ -918,6 +948,8 @@ verify_attributes_old(Var, Other, Gs) :-
             )
         ;   Gs = []
         ).
+
+
 
 
 formulas_([]) --> [].
@@ -1153,15 +1185,24 @@ indomain(0).
 indomain(1).
 
 
-%% sat_count(+Expr, -N) is det.
+%% sat_count(+Expr, -Count) is det.
 %
-% N is the number of different assignments of truth values to the
+% Count is the number of different assignments of truth values to the
 % variables in the Boolean expression Expr, such that Expr is true and
 % all posted constraints are satisfiable.
 %
-% Example:
+% A common form of invocation is `sat_count(+[1|Vs], Count)`: This
+% counts the number of admissible assignments to `Vs` without imposing
+% any further constraints.
+%
+% Examples:
 %
 % ==
+% ?- sat(A =< B), Vs = [A,B], sat_count(+[1|Vs], Count).
+% Vs = [A, B],
+% Count = 3,
+% sat(A=:=A*B).
+%
 % ?- length(Vs, 120), sat_count(+Vs, CountOr), sat_count(*(Vs), CountAnd).
 % Vs = [...],
 % CountOr = 1329227995784915872903807060280344575,
@@ -1659,15 +1700,25 @@ clpb_atom_var(Atom, Var) :-
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 :- public
-        clpb_hash:attr_unify_hook/2,
+        clpb_hash:verify_attributes/3,
         clpb_bdd:attribute_goals//1,
         clpb_hash:attribute_goals//1,
-        clpb_omit_boolean:attr_unify_hook/2,
+        clpb_omit_boolean:verify_attributes/3,
         clpb_omit_boolean:attribute_goals//1,
-        clpb_atom:attr_unify_hook/2,
+        clpb_atom:verify_attributes/3,
         clpb_atom:attribute_goals//1.
 
+clpb_hash:verify_attributes(_,_, []).  % this unification is always admissible
+
+/* DM: TODO - WILL BE REMOVED AFTER TESTING */
+:- if(current_prolog_flag(auh2,supplement)).
+:- public
+        clpb_hash:attr_unify_hook/2,
+		clpb_omit_boolean:attr_unify_hook/2,
+        clpb_atom:attr_unify_hook/2.
+
 clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
+:- endif.
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    If a universally quantified variable is unified to a Boolean value,
@@ -1675,9 +1726,14 @@ clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
    it is false.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-clpb_atom:attr_unify_hook(_, _) :- false.
+clpb_atom:verify_attributes(_, _, [false]).
 
+clpb_omit_boolean:verify_attributes(_, _, []).
+
+:- if(\+ current_prolog_flag(wakeups,va3)).
+clpb_atom:attr_unify_hook(_, _) :- false.
 clpb_omit_boolean:attr_unify_hook(_,_).
+:- endif.
 
 clpb_bdd:attribute_goals(_)          --> [].
 clpb_hash:attribute_goals(_)         --> [].

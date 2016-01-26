@@ -77,6 +77,7 @@ dif_c_c(X,Y,OrNode) :-
 		or_succeed(OrNode)
 	).
 
+/* DM: TODO - PROBABLY WILL BE DEFAULT AFTER TESTING/PROFILING */
 :- if(current_prolog_flag(wakeups,va3)).
 
 dif_c_c_l(Unifier,OrNode) :-
@@ -107,6 +108,7 @@ extend_ornode(OrNode,N,List,Vars) :-
 	),
 	put_attr(OrNode,dif,node(O,List)).
 
+/* DM: TODO - PROBABLY WILL BE DEFAULT AFTER TESTING/PROFILING */
 :- if(current_prolog_flag(wakeups,va3)).
 dif_c_c_l_aux([], _) --> [].
 dif_c_c_l_aux([X=Y|Unifier], OrNode) -->
@@ -148,6 +150,7 @@ add_ornode_var2(X,Y,OrNode) :-
 	).
 
 
+/* DM: TODO - PROBABLY WILL BE DEFAULT AFTER TESTING/PROFILING */
 :- if(current_prolog_flag(wakeups,va3)).
 
 verify_attributes(X, Other, Gs) :-
