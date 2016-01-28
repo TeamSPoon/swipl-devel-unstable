@@ -106,19 +106,18 @@ SHIFT-SAFE: Caller must ensure 8 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word attvar, Word attrs, Word value ARG_LD)
+registerWakeup(Word attvar, Word value ARG_LD)
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
-  assert(gTop+8 <= gMax && tTop+4 <= tMax);
+  assert(gTop+6 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-  gTop += 6;
-  wake[0] = FUNCTOR_wakeup5;
-  wake[1] = wake[3] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
+  gTop += 4;
+  wake[0] = FUNCTOR_wakeup3;
+  wake[1] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
   wake[2] = ATOM_true;
-  wake[4] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
-  wake[5] = needsRef(*value) ? makeRef(value) : *value;
+  wake[3] = needsRef(*value) ? makeRef(value) : *value;
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -175,6 +174,15 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
+
+  if( !(flags & ATT_ASSIGNONLY) )
+  { registerWakeup(av, value PASS_LD);
+  }
+
+  if ( (flags & ATT_WAKEBINDS) )
+    return;
+
+
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
@@ -183,18 +191,6 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     } else if ( av == value )
       return;
     }
-  
-
-  if( !(flags & ATT_ASSIGNONLY) )
-  { registerWakeup(av, valPAttVar(*av), value PASS_LD);
-  }
-
-  if ( av == value )
-     return;
-
-  if ( (flags & ATT_WAKEBINDS) || (flags & ATT_UNIFY) )
-    return;
-
 
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
@@ -1380,22 +1376,30 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 
 
 /** 
-  '$attvar_assign'(+Var, +Value) is det.
+  'attv_unify'(+Var, +Value) is det.
   Same as  XSB's machine:attv_unify/2
 */
 
 static
-PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
+PRED_IMPL("attv_unify", 2, attv_unify, 0)
 { PRED_LD
+
+  if ( !hasGlobalSpace(0) )
+  { int rc;
+
+      if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
+        return raiseStackOverflow(rc);
+  }
+
   Word value, av = valTermRef(A1);
 
-    deRef(av);
+  deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
     assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
   } else
   { unify_vp(av,valTermRef(A2) PASS_LD);
-    }
+  }
 
   return TRUE;
 }
@@ -1421,7 +1425,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_start", 0, call_residue_vars_start, 0)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
-  PRED_DEF("$attvar_assign", 2, dattvar_assign, 0)
+  PRED_DEF("attv_unify", 2, attv_unify, 0)
 EndPredDefs
 
 #endif /*O_ATTVAR*/

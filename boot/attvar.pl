@@ -29,7 +29,7 @@
 */
 
 :- module('$attvar',
-	  [ wakeup/5,		        % +Attrs :NextGoal +Var +Value
+	  [ wakeup/3,		        % +Var :NextGoal +Value
         freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
@@ -43,51 +43,43 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-
        /*******************************
-       *         VERIFY_ATTRIBUTES              *
+       *         VERIFY_ATTRIBUTES    *
        *******************************/
 
-%%  Module:verify_attributes(+Var, +Value, -Goals)
-%  
-% Called *before* Var has actually been bound to Value. If it fails,
-% the unification is deemed to have failed. It may succeed nondeterminately, 
-% in which case the unification might backtrack to give another answer.
-% It is expected to return, in Goals, a list of goals to be called after Var has
-% been bound to Value.
+%%	wakeup(+Var, +NextOnChain, +Value)
 %
-%  This predicate is called in each module that contains an attribute declaration.
+%  Calls  Module:verify_attributes/2 on caller Module
 
-system:verify_attributes(_Var, _Value, []).
-system:attr_unify_hook(_AttrValue, _Value).
+:- meta_predicate(wakeup(?,:,?)).
+/* durring runtime this seems to be calling in the correct module (clpfd chr_runtime etc etc)  
+   next section bellow fills in where term expansion misses things */
+wakeup(Var,M:Next, Value):- M:verify_attributes(Var, Value), M:call(Next).
 
-%%	wakeup(+Att3s, +NextOnChain, + NextAtt3s ,+Var, +Value)
-%
-%	calls  Module:verify_attributes/3 on Modules that have 
-%   defined an attribute.
+       /*******************************
+       *       FOR LAZY PROGRAMMERS   *
+       *******************************/
 
-:- meta_predicate(wakeup(+, 0, +, ?, ?)).
-wakeup(_,Next,[],Var,Value):- !,
-	ignore('$attvar_assign'(Var,Value)),
-	Var==Value,
-	call(Next).
-wakeup(_,Next,att(Module, AttVal, Rest), Var,Value):- 
-	\+ attvar(Var), !, Var=Value,
-	Module:attr_unify_hook(AttVal, Value),
-	(Rest==[]->true;wakeup([], Next, Rest, Var, Value)),
-	call(Next).
-wakeup(att(Module, AttVal, Rest), Next, Att3s, Var, Value ):-
+/* Note if a user doesnt know how they wished to handle all the properties of a variable
+  they may call system:verify_attributes/2 since it will call attv_unify/2  */
+
+system:verify_attributes(Var, Value):-
+    get_attrs(Var,Att3s),verify_attributes_wheels(Att3s,Var,Value).
+
+system:verify_attributes_wheels([],Var,Value):- attv_unify(Var,Value).
+system:verify_attributes_wheels(att(Module, AttVal, Rest), Var, Value ):-
 	Module:verify_attributes(Var, Value, VAGoals),
-	wakeup(Rest, Next, [], Var, Value),
+	verify_attributes_wheels(Rest, Var, Value),
 	Module:attr_unify_hook(AttVal, Value),
 	call_goals(VAGoals,Module).
-
 
 call_goals([],_).
 call_goals([G|Gs],M):-
 	M:call(G),
 	call_goals(Gs,M).
 
+system:attr_unify_hook(_Att, _Value).
+system:verify_attributes(_Var, _Value, []).
 
 		 /*******************************
 		 *	      FREEZE		*

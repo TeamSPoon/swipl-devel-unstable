@@ -38,7 +38,7 @@
 :- use_module(library(clpb)).
 
 test_clpb :-
-	run_tests([ clpb
+	run_tests([ % clpb
 		  ]).
 
 :- begin_tests(clpb).
