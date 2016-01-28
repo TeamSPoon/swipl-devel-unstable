@@ -220,7 +220,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
   int compound = FALSE;
   int rc = FALSE;
-
+  
   do
   { word w1, w2;
 
@@ -240,12 +240,14 @@ do_unify(Word t1, Word t2 ARG_LD)
 
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
-	{ Trail(t2, makeRef(t1));
+	{ 
+      Trail(t2, makeRef(t1));
 	  continue;
 	}
 	if ( t1 == t2 )
 	  continue;
-	Trail(t1, makeRef(t2));
+    Trail(t1, makeRef(t2));
+
 	continue;
       }
   #ifdef O_ATTVAR
@@ -264,6 +266,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       if ( isAttVar(w1) )
 	w1 = makeRef(t1);
   #endif
+
       Trail(t2, w1);
       continue;
     }
@@ -274,7 +277,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2 PASS_LD);
+      assignAttVar(t1, t2, ATT_UNIFY PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -282,7 +285,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1 PASS_LD);
+      assignAttVar(t2, t1, ATT_UNIFY PASS_LD);
       continue;
     }
   #endif
@@ -351,7 +354,6 @@ out_fail:
 }
 
 
-
 static int
 raw_unify_ptrs_no_unbind(Word t1, Word t2 ARG_LD)
 { switch( LD->prolog_flag.occurs_check )
@@ -369,7 +371,7 @@ raw_unify_ptrs_no_unbind(Word t1, Word t2 ARG_LD)
 
 /* This adds wakeups to attvars rather than binding them */
 static int
-raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
+raw_unify_ptrs(Word t1, Word t2 ARG_LD)
 { int rc;
   Word old_gTop = gTop;
   TrailEntry mt = tTop;
@@ -388,12 +390,13 @@ raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
       if ( isTrailVal(p) )
       { word v = trailVal(p);
        tt--;
-     	if ( isAttVar(v) || isVar(v) )
-    	{ *tt->address = v;
-    	  tt->address = NULL;
-    	  tt[1].address = NULL;
-    	}
+       if ( isAttVar(v) )
+       { *tt->address = v;
+         tt->address = NULL;
+         tt[1].address = NULL;
+       }
       }
+      
     }
 
     /* remove the entries from the trail */
@@ -408,8 +411,6 @@ raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
 
   return rc;
 }
-
-
 
 
 static
@@ -452,7 +453,7 @@ unify_ptrs(Word t1, Word t2, int flags ARG_LD)
 { for(;;)
   { int rc;
 
-    rc = raw_unify_ptrs_with_unbind(t1, t2 PASS_LD);
+    rc = raw_unify_ptrs(t1, t2 PASS_LD);
     if ( rc >= 0 )
       return rc;
 

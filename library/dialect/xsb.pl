@@ -46,7 +46,7 @@ system:verify_attributes(Var, Value, []):-
 end_of_file.
 
 
-% Working example
+% Working example from XSB docs (that works in SWI-Prolog now)
 
 :- module(fd,[domain/2,show_domain/1]).
 

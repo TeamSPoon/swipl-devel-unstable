@@ -164,45 +164,38 @@ unifiable/3 and raw_unify_ptrs()
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-/* not uing incoming assignment flags for now */
 void
-assignAttVar(Word av, Word value ARG_LD)
-{
-  mark m;
+assignAttVar(Word av, Word value, int flags ARG_LD)
+{ mark m;
   
-  int flags = LD->attvar.attv_mode;
-
   assert(isAttVar(*av));
   assert(!isRef(*value));
-  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
-   /* here we sanity check less  */
-  assert(tTop+2 <= tMax);
-
+  assert(gTop+8 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  if ( av == value )
-      return;
-
-  if(!(flags & ATT_ASSIGNONLY) )
-  { TrailAssignment(av);
-    registerWakeup(av, valPAttVar(*av), value PASS_LD);
-    return;
-  }
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
   if ( isAttVar(*value) )
   { if ( value > av )
     { Word tmp = av;
       av = value;
       value = tmp;
+    } else if ( av == value )
+      return;
     }
+  
+
+  if( !(flags & ATT_ASSIGNONLY) )
+  { registerWakeup(av, valPAttVar(*av), value PASS_LD);
   }
 
- if(!(flags & ATT_UNIFY_CHECK))
- { TrailAssignment(av);
- } 
+  if ( av == value )
+     return;
 
- else
- {
+  if ( (flags & ATT_WAKEBINDS) || (flags & ATT_UNIFY) )
+    return;
+
+
   Mark(m);		/* must be trailed, even if above last choice */
   LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
@@ -217,8 +210,7 @@ assignAttVar(Word av, Word value ARG_LD)
   } else
     *av = *value;
 
- }
-
+  return;
 }
 
 
@@ -1395,17 +1387,17 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 static
 PRED_IMPL("$attvar_assign", 2, dattvar_assign, 0)
 { PRED_LD
-    Word av = valTermRef(A1);
+  Word value, av = valTermRef(A1);
+
     deRef(av);
-    int was = LD->attvar.attv_mode;
-    LD->attvar.attv_mode = ATT_ASSIGNONLY;
-    int ret = PL_unify(A1,A2);
-    LD->attvar.attv_mode = was;
-    if (ret!=1 && ret!=0)
-    {
-        return ret;
+  if ( isAttVar(*av) )
+  { deRef2(valTermRef(A2), value);
+    assignAttVar(av, value, ATT_ASSIGNONLY PASS_LD);
+  } else
+  { unify_vp(av,valTermRef(A2) PASS_LD);
     }
-    succeed;
+
+  return TRUE;
 }
 
 
