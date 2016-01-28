@@ -3407,15 +3407,13 @@ retry:
 
        /* in the case of a non-delayed assignment we may have trailed an attvar */
        if (isAttVar(trailVal(p)))
-       {
-
-           tt--;				/* re-insert the attvar */
+       {   tt--;				/* re-insert the attvar */
           *tt->address = trailVal(p);
        }
 
        
        if ( tt>mt && !isAttVar(trailVal(p))) /* then must be wakeup closure pair */
-       {
+       {   
            tt--;				/* restore tail of wakeup list */
            p = tt->address;
            if ( isTrailVal(p) )

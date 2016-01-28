@@ -1,3 +1,5 @@
+
+
 /*  Part of SWI-Prolog
 
     Author:        Jan Wielemaker
@@ -35,20 +37,30 @@ test_wake_all:verify_attributes(Var,_,
 reset_test_wake_all:-flag(test_wake_all,_,0).
 wake_all_result(N):-flag(test_wake_all,N,N).
 
-wake(N,Var):- put_attr(Var,test_wake_all,N).
+wake(Var,N):- put_attr(Var,test_wake_all,N).
 
 
-wake(1) :- wake(1, A), wake(2, A), wake_all_result(0).
+wake(1) :- wake(A,1), wake(A,2), wake_all_result(0).
+
+va_test:verify_attributes(Var,_,[]):-get_attr(Var,va_test,Val),must_be(var,Val).
+
+wake(2) :- put_attr(X,va_test,Y), t(X,Y)=t(1,1).
+
+wake(3) :- wake(A,1), wake(B,2), A=a, A=B, wake_all_result(3).
 
 /* This test has failed for several years in swi-prolog but not in yap, xsb or sicstus - still not fixed in
    backport_of_last_known_good or master (however fixed in eclipse_c and minimal_again ) */
-wake(2) :-
-	wake(1, A), wake(2, B),A=B, wake_all_result(3).
 
+/*
+wake(6) :-
+	wake(A,1), wake(B,2), A=B, A=a, wake_all_result(3).
+*/
 
 
 :- dynamic
 	failed/1.
+
+test_wake_all :-!.
 
 test_wake_all :-
 	retractall(failed(_)),
