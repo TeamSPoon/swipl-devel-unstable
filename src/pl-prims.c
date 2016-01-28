@@ -351,8 +351,9 @@ out_fail:
 }
 
 
+
 static int
-raw_unify_ptrs(Word t1, Word t2 ARG_LD)
+raw_unify_ptrs_no_unbind(Word t1, Word t2 ARG_LD)
 { switch( LD->prolog_flag.occurs_check )
   { case OCCURS_CHECK_FALSE:
       return do_unify(t1, t2 PASS_LD);
@@ -366,9 +367,6 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
   }
 }
 
-#ifdef VERY_USEFULL_CODE
-
-
 /* This adds wakeups to attvars rather than binding them */
 static int
 raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
@@ -376,7 +374,7 @@ raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
   Word old_gTop = gTop;
   TrailEntry mt = tTop;
 
-  rc = raw_unify_ptrs_with_bind(t1, t2 PASS_LD);
+  rc = raw_unify_ptrs_no_unbind(t1, t2 PASS_LD);
 
   /* Any attvar wakeup terms pushed to the global stack? */
   if ( rc == TRUE && old_gTop != gTop )
@@ -389,12 +387,12 @@ raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
 
       if ( isTrailVal(p) )
       { word v = trailVal(p);
-	tt--;
-	if ( isAttVar(v) )
-	{ *tt->address = v;
-	  tt->address = NULL;
-	  tt[1].address = NULL;
-	}
+       tt--;
+     	if ( isAttVar(v) || isVar(v) )
+    	{ *tt->address = v;
+    	  tt->address = NULL;
+    	  tt[1].address = NULL;
+    	}
       }
     }
 
@@ -412,24 +410,6 @@ raw_unify_ptrs_with_unbind(Word t1, Word t2 ARG_LD)
 }
 
 
-static int
-raw_unify_ptrs_with_bind(Word t1, Word t2  ARG_LD)
-{ switch( LD->prolog_flag.occurs_check )
-  { case OCCURS_CHECK_FALSE:
-      return do_unify(t1, t2 PASS_LD);
-    case OCCURS_CHECK_TRUE:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_TRUE PASS_LD);
-      break;
-    case OCCURS_CHECK_ERROR:
-      return unify_with_occurs_check(t1, t2, OCCURS_CHECK_ERROR PASS_LD);
-      break;
-    default:
-      assert(0);
-      fail;
-  }
-}
-
-#endif
 
 
 static
@@ -472,7 +452,7 @@ unify_ptrs(Word t1, Word t2, int flags ARG_LD)
 { for(;;)
   { int rc;
 
-    rc = raw_unify_ptrs(t1, t2 PASS_LD);
+    rc = raw_unify_ptrs_with_unbind(t1, t2 PASS_LD);
     if ( rc >= 0 )
       return rc;
 
@@ -3300,7 +3280,7 @@ unify_all_trail_ptrs(Word t1, Word t2, mark *m ARG_LD)
 
     Mark(*m);
     LD->mark_bar = NO_MARK_BAR;
-    rc = raw_unify_ptrs(t1, t2 PASS_LD);
+    rc = raw_unify_ptrs_no_unbind(t1, t2 PASS_LD);
     if ( rc == TRUE )			/* Terms unified */
     { return rc;
     } else if ( rc == FALSE )		/* Terms did not unify */
