@@ -57,7 +57,7 @@ in pl-attvar.c
 wakeup(Var,M:Next, Value):- M:verify_attributes(Var, Value), M:call(Next).
 
        /*******************************
-       *       FOR LAZY PROGRAMMERS   *
+       *       FOR SISCTUS   *
        *******************************/
 
 /* Note if a user doesnt know how they wished to handle all the properties of a variable
@@ -70,7 +70,6 @@ system:verify_attributes_wheels([],Var,Value):- attv_unify(Var,Value).
 system:verify_attributes_wheels(att(Module, AttVal, Rest), Var, Value ):-
 	Module:verify_attributes(Var, Value, VAGoals),
 	verify_attributes_wheels(Rest, Var, Value),
-	Module:attr_unify_hook(AttVal, Value),
 	call_goals(VAGoals,Module).
 
 call_goals([],_).
