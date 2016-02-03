@@ -64,13 +64,31 @@ wakeup(Var,M:Next, Value):- M:verify_attributes(Var, Value), M:call(Next).
   they may call system:verify_attributes/2 since it will call attv_unify/2  */
 
 system:verify_attributes(Var, Value):-
-    get_attrs(Var,Att3s),verify_attributes_wheels(Att3s,Var,Value).
+    get_attrs(Var,Att3s),!,
+    pre_unify(Att3s,Var,Value).
+   
+system:verify_attributes(Var, Value):- Var==Value.
 
-system:verify_attributes_wheels([],Var,Value):- attv_unify(Var,Value).
-system:verify_attributes_wheels(att(Module, AttVal, Rest), Var, Value ):-
-	Module:verify_attributes(Var, Value, VAGoals),
-	verify_attributes_wheels(Rest, Var, Value),
+
+system:pre_unify(att(Module, _, Rest), Var, Value ):- attvar(Var), !,
+        Module:verify_attributes(Var, Value, VAGoals),
+	pre_unify(Rest,Var, Value),
 	call_goals(VAGoals,Module).
+system:pre_unify(_,Var,Value):- 
+        get_attrs(Var,PostAtt3s),
+        attv_unify(Var,Value),!,
+        Var==Value,
+        post_unify(PostAtt3s,Var,Value).
+system:pre_unify(_,Var,Value):- Var=Value.
+
+
+system:post_unify(att(Module, AttVal, Rest), Var, Value ):-!,
+        Module:attr_unify_hook(AttVal, Value),
+        post_unify(Rest, Var, Value).
+system:post_unify(_,Var,Value):- Var==Value.
+
+
+
 
 call_goals([],_).
 call_goals([G|Gs],M):-

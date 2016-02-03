@@ -165,7 +165,7 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 
 void
 assignAttVar(Word av, Word value, int flags ARG_LD)
-{ mark m;
+{
   
   assert(isAttVar(*av));
   assert(!isRef(*value));
@@ -177,27 +177,14 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if( !(flags & ATTV_ASSIGNONLY) )
   { registerWakeup(av, value PASS_LD);
-  }
-
-  if ( (flags & ATTV_BINDCONST) )
     return;
-
-
-  if ( isAttVar(*value) )
-  { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
-    } else if ( av == value )
-      return;
   }
 
-  Mark(m);		/* must be trailed, even if above last choice */
-  LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
-  DiscardMark(m);
+
   if ( isAttVar(*value) )
-  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+  { if(value == av) return;
+    DEBUG(1, Sdprintf("Unifying two attvars\n"));   
     if ( value > av )
     { Word tmp = av;
       av = value;
