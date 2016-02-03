@@ -906,7 +906,6 @@ with one operation, it turns out to be faster as well.
 Macros for environment frames (local stack frames)
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-<<<<<<< HEAD
 #define FR_HIDE_CHILDS		(0x0001) /* flag of pred after I_DEPART */
 #define FR_SKIPPED		(0x0002) /* We have skipped on this frame */
 #define FR_MARKED		(0x0004) /* GC */
