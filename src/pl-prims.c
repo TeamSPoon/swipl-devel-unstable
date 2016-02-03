@@ -220,7 +220,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 { term_agendaLR agenda;
   int compound = FALSE;
   int rc = FALSE;
-
+  
   do
   { word w1, w2;
 
@@ -240,12 +240,14 @@ do_unify(Word t1, Word t2 ARG_LD)
 
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
-	{ Trail(t2, makeRef(t1));
+	{ 
+      Trail(t2, makeRef(t1));
 	  continue;
 	}
 	if ( t1 == t2 )
 	  continue;
-	Trail(t1, makeRef(t2));
+    Trail(t1, makeRef(t2));
+
 	continue;
       }
   #ifdef O_ATTVAR
@@ -264,6 +266,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       if ( isAttVar(w1) )
 	w1 = makeRef(t1);
   #endif
+
       Trail(t2, w1);
       continue;
     }
@@ -274,7 +277,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2 PASS_LD);
+      assignAttVar(t1, t2, ATTV_DO_UNIFY PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -282,7 +285,7 @@ do_unify(Word t1, Word t2 ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1 PASS_LD);
+      assignAttVar(t2, t1, ATTV_DO_UNIFY PASS_LD);
       continue;
     }
   #endif
@@ -353,7 +356,7 @@ out_fail:
 
 static int
 raw_unify_ptrs(Word t1, Word t2 ARG_LD)
-{ switch(LD->prolog_flag.occurs_check)
+{ switch( LD->prolog_flag.occurs_check )
   { case OCCURS_CHECK_FALSE:
       return do_unify(t1, t2 PASS_LD);
     case OCCURS_CHECK_TRUE:
@@ -365,6 +368,51 @@ raw_unify_ptrs(Word t1, Word t2 ARG_LD)
       fail;
   }
 }
+
+#ifdef SAVED_UNWINDING_CODE
+/* This adds wakeups to attvars rather than binding them */
+static int
+raw_unify_ptrs(Word t1, Word t2 ARG_LD)
+{ int rc;
+  Word old_gTop = gTop;
+  TrailEntry mt = tTop;
+
+  rc = raw_unify_ptrs_no_unbind(t1, t2 PASS_LD);
+
+  /* Any attvar wakeup terms pushed to the global stack? */
+  if ( rc == TRUE && old_gTop != gTop )
+  { TrailEntry tt = tTop;
+    TrailEntry ot;
+
+    /* restore the attvars */
+    while (--tt >= mt)
+    { Word p = tt->address;
+
+      if ( isTrailVal(p) )
+      { word v = trailVal(p);
+       tt--;
+       if ( isAttVar(v) )
+       { *tt->address = v;
+         tt->address = NULL;
+         tt[1].address = NULL;
+       }
+      }
+      
+    }
+
+    /* remove the entries from the trail */
+    for(tt=mt, ot=mt, mt=tTop; tt < mt; )
+    { if ( tt->address )
+	*ot++ = *tt++;
+      else
+	tt++;
+    }
+    tTop = ot;
+  }
+
+  return rc;
+}
+#endif
 
 
 static
@@ -3338,28 +3386,36 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{ assert(isAttVar(trailVal(p)));
+	{
 
-	  tt--;				/* re-insert the attvar */
-	  *tt->address = trailVal(p);
+       /* in the case of a non-delayed assignment we may have trailed an attvar */
+       if (isAttVar(trailVal(p)))
+       {   tt--;				/* re-insert the attvar */
+          *tt->address = trailVal(p);
+       }
 
-	  tt--;				/* restore tail of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
+       
+       if ( tt>mt && !isAttVar(trailVal(p))) /* then must be wakeup closure pair */
+       {   
+           tt--;				/* restore tail of wakeup list */
+           p = tt->address;
+           if ( isTrailVal(p) )
+           { tt--;
+             *tt->address = trailVal(p);
+           } else
+           { setVar(*p);
+           }
 
-	  tt--;				/* restore head of wakeup list */
-	  p = tt->address;
-	  if ( isTrailVal(p) )
-	  { tt--;
-	    *tt->address = trailVal(p);
-	  } else
-	  { setVar(*p);
-	  }
+           tt--;				/* restore head of wakeup list */
+           p = tt->address;
+           if ( isTrailVal(p) )
+           { tt--;
+             *tt->address = trailVal(p);
+           } else
+           { setVar(*p);
+           }
+       }
+
 
 	  assert(tt>=mt);
 	}

@@ -1188,6 +1188,7 @@ emptyStacks(void)
     LD->attvar.head	  = PL_new_term_ref();
     LD->attvar.tail       = PL_new_term_ref();
     LD->attvar.gc_attvars = PL_new_term_ref();
+    LD->attvar.attv_mode = 0;
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 #ifdef O_GVAR

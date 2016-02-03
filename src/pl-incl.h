@@ -1999,6 +1999,15 @@ typedef struct
 	  } \
 	}
 
+		 /*******************************
+		 *      ATTVAR ASSIONMENT	*
+		 *******************************/
+
+/* assignAttVar() flags */
+#define ATTV_BINDCONST   0x1			/* bindConst() */
+#define ATTV_ASSIGNONLY  0x2			/* attv_unify/2 */
+#define ATTV_DO_UNIFY    0x4			/* unify: assign and wakeup */
+#define ATTV_UNIFY_CHECK 0x2			/* 'unifiable'/3 */
 
 		 /*******************************
 		 *	      WAKEUP		*
@@ -2107,7 +2116,7 @@ typedef struct
 #define PROCEDURE_dcall1		(GD->procedures.dcall1)
 #define PROCEDURE_setup_call_catcher_cleanup4 \
 				(GD->procedures.setup_call_catcher_cleanup4)
-#define PROCEDURE_dwakeup1		(GD->procedures.dwakeup1)
+#define PROCEDURE_dwakeup1		(GD->procedures.call1)
 #define PROCEDURE_dthread_init0		(GD->procedures.dthread_init0)
 #define PROCEDURE_exception_hook4	(GD->procedures.exception_hook4)
 #define PROCEDURE_dc_call_prolog	(GD->procedures.dc_call_prolog0)

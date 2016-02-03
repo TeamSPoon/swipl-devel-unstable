@@ -218,7 +218,6 @@ A dtoplevel		"$toplevel"
 A duplicate_key		"duplicate_key"
 A dvard			"$VAR$"
 A dvariable_names	"$variable_names"
-A dwakeup		"$wakeup"
 A dynamic		"dynamic"
 A e			"e"
 A encoding		"encoding"
@@ -795,7 +794,6 @@ F buffer_size		1
 F busy			2
 F call			1
 F call_continuation	1
-F callpred		2
 F catch			3
 F ceil			1
 F ceiling		1
@@ -853,7 +851,6 @@ F dthrow		1
 F dtime			2
 F duplicate_key		1
 F dvard			1
-F dwakeup		1
 F e			0
 F encoding		1
 F end_of_stream		1

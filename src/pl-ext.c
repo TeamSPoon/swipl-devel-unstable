@@ -466,7 +466,7 @@ initBuildIns(void)
   LOOKUPPROC(dc_call_prolog0);
   LOOKUPPROC(dinit_goal3);
 #ifdef O_ATTVAR
-  LOOKUPPROC(dwakeup1);
+  LOOKUPPROC(call1);
 #endif
 #if O_DEBUGGER
   PROCEDURE_event_hook1 =

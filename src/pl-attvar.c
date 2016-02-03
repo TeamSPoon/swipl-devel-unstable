@@ -106,7 +106,7 @@ SHIFT-SAFE: Caller must ensure 6 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-registerWakeup(Word name, Word value ARG_LD)
+registerWakeup(Word attvar, Word value ARG_LD)
 { Word wake;
   Word tail = valTermRef(LD->attvar.tail);
 
@@ -115,9 +115,9 @@ registerWakeup(Word name, Word value ARG_LD)
   wake = gTop;
   gTop += 4;
   wake[0] = FUNCTOR_wakeup3;
-  wake[1] = needsRef(*name) ? makeRef(name) : *name;
-  wake[2] = needsRef(*value) ? makeRef(value) : *value;
-  wake[3] = ATOM_nil;
+  wake[1] = needsRef(*attvar) ? makeRef(attvar) : *attvar;
+  wake[2] = ATOM_true;
+  wake[3] = needsRef(*value) ? makeRef(value) : *value;
 
   if ( *tail )
   { Word t;				/* Non-empty list */
@@ -126,7 +126,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-    *tail = makeRef(wake+3);
+    *tail = makeRef(wake+2);
     DEBUG(1, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -135,7 +135,7 @@ registerWakeup(Word name, Word value ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-    *tail = makeRef(wake+3);
+    *tail = makeRef(wake+2);
     LD->alerted |= ALERT_WAKEUP;
     DEBUG(1, Sdprintf("new wakeup\n"));
   }
@@ -156,22 +156,32 @@ that should be awoken.
 Before calling, av *must* point to   a  dereferenced attributed variable
 and value to a legal value.
 
-The predicate unifiable/3 relies on  the   trailed  pattern left by this
-function. If you change this you must also adjust unifiable/3.
+The predicate unifiable/3 and  raw_unify_ptrs()   relies  on the trailed
+pattern left by this function. If you   change this you must also adjust
+unifiable/3 and raw_unify_ptrs()
 
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 void
-assignAttVar(Word av, Word value ARG_LD)
-{ Word a;
-
+assignAttVar(Word av, Word value, int flags ARG_LD)
+{ mark m;
+  
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+
+
+  if( !(flags & ATTV_ASSIGNONLY) )
+  { registerWakeup(av, value PASS_LD);
+  }
+
+  if ( (flags & ATTV_BINDCONST) )
+    return;
+
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -182,13 +192,21 @@ assignAttVar(Word av, Word value ARG_LD)
       return;
   }
 
-  a = valPAttVar(*av);
-  registerWakeup(a, value PASS_LD);
-
+  Mark(m);		/* must be trailed, even if above last choice */
+  LD->mark_bar = NO_MARK_BAR;
   TrailAssignment(av);
+  DiscardMark(m);
   if ( isAttVar(*value) )
   { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    if ( value > av )
+    { Word tmp = av;
+      av = value;
+      value = tmp;
+    }
     *av = makeRef(value);
+  } else if ( isVar(*value) )
+  { DEBUG(1, Sdprintf("Assigning attvar with plain var\n"));
+    *av = makeRef(value);			/* JW: Does this happen? */
   } else
     *av = *value;
 
@@ -1361,6 +1379,36 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
+/** 
+  'attv_unify'(+Var, +Value) is det.
+  Same as  XSB's machine:attv_unify/2
+*/
+
+static
+PRED_IMPL("attv_unify", 2, attv_unify, 0)
+{ PRED_LD
+
+  if ( !hasGlobalSpace(0) )
+  { int rc;
+
+      if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
+        return raiseStackOverflow(rc);
+  }
+
+  Word value, av = valTermRef(A1);
+
+  deRef(av);
+  if ( isAttVar(*av) )
+  { deRef2(valTermRef(A2), value);
+    assignAttVar(av, value, ATTV_ASSIGNONLY PASS_LD);
+  } else
+  { unify_vp(av,valTermRef(A2) PASS_LD);
+  }
+
+  return TRUE;
+}
+
+
 		 /*******************************
 		 *	    REGISTRATION	*
 		 *******************************/
@@ -1381,6 +1429,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_start", 0, call_residue_vars_start, 0)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
+  PRED_DEF("attv_unify", 2, attv_unify, 0)
 EndPredDefs
 
 #endif /*O_ATTVAR*/

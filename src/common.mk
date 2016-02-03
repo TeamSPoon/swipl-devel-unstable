@@ -60,10 +60,10 @@ DCG=	basics.pl
 
 # Dialect library files
 
-DIALECT=yap.pl hprolog.pl commons.pl ciao.pl sicstus.pl bim.pl ifprolog.pl
+DIALECT=yap.pl hprolog.pl commons.pl ciao.pl sicstus.pl bim.pl ifprolog.pl xsb.pl
 YAP=	README.TXT
 SICSTUS=block.pl timeout.pl system.pl arrays.pl lists.pl terms.pl \
-	sockets.pl swipl-lfr.pl
+	sockets.pl swipl-lfr.pl atts.pl
 CIAO=	assertions.pl basicmodes.pl isomodes.pl regtypes.pl sockets.pl \
 	read.pl write.pl strings.pl format.pl lists.pl dcg.pl freeze.pl \
 	terms.pl system.pl iso_misc.pl aggregates.pl hiordlib.pl \
