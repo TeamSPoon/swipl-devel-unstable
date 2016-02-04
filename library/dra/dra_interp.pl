@@ -28,10 +28,9 @@
     the GNU General Public License.
 
 */
-:-  module(dra_interp,[]).
-:-  use_module(library(logicmoo_utils)).
-/*
-   % NOTICE:    %%%%% %%%%%%%%%%%
+
+:-  module(dra,[]).
+   % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
    %                                                                      %
@@ -52,19 +51,17 @@
    %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
-   %%%%%%%%%%%%%%%%%%
-
-*/
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- shell(cls).
 
 :- dynamic   user:file_search_path/2.
 :- multifile user:file_search_path/2.
 
-:- meta_predicate user:asserta_if_new(:).
+:- meta_predicate user:asserta_new(:).
 :- meta_predicate user:dra_must(:).
 :- meta_predicate user:dra_check(:).
-% asserta_if_new(G):-catch(G,_,fail),!.
-asserta_if_new(G):-retract_all0(G),asserta(G).
+% asserta_new(G):-catch(G,_,fail),!.
+asserta_new(G):-retract_all0(G),asserta(G).
 
 dra_must(G):-G*->true;throw(failed_must(G)).
 
@@ -106,20 +103,20 @@ pf(F):- dra_must(retract_all0(topl(_))),
   dra_to_filename(F,FC),
    dra_must([(FC)]),!.  % ,once(ignore((run_curent_test,sleep(2)))))).
 
-run_curent_test:- (if_defined(go,if_defined(test,if_defined(top)))),!.
+run_curent_test:- (if_is_defined(go,if_is_defined(test,if_is_defined(top)))),!.
 run_curent_test:- topl(_),!,forall(topl(I),time((ignore(call((nonvar(I),dra_call(I))))))),!.
 
 :- dynamic(is_clause_module/2).
 
-clause_module(_:Goal,M):-  clause_module0(Goal,M),!.
+clause_module(_:Goal,M):- clause_module0(Goal,M),!.
 clause_module(Goal,M):-  clause_module0(Goal,M),!.
 clause_module(M:_ ,M):-atom(M).
 
 clause_module0(:- (Goal) ,M):- !, clause_module0(Goal,M).
 clause_module0((Goal:- _ ),M):- !, clause_module0(Goal,M).
 clause_module0((Goal , _ ),M):- !, clause_module0(Goal,M).
-clause_module0(Goal,M):-is_clause_module(Goal,M),!.
-clause_module0(Goal,M):-clause_module1(Goal,M),asserta(is_clause_module(Goal,M)),!.
+clause_module0(Goal,M):- is_clause_module(Goal,M),!.
+clause_module0(Goal,M):- clause_module1(Goal,M),asserta(is_clause_module(Goal,M)),!.
 
 clause_module1(Goal,M):-predicate_property(Goal,imported_from(M)),!.
 clause_module1(Goal,M):-current_predicate(_,M:Goal),!.
@@ -202,7 +199,7 @@ pred_metainterp(_   ,unknown).
 
 
 :- dynamic(is_file_meta/2).
-add_file_meta(FileName,Type):-dra_to_filename(FileName,File),asserta_if_new(is_file_meta(File,Type)).
+add_file_meta(FileName,Type):-dra_to_filename(FileName,File),asserta_new(is_file_meta(File,Type)).
 
 %:-add_file_meta('compatibility_utilities_swi',is_builtin).
 %:-add_file_meta('swi_toplevel',is_builtin).
@@ -330,22 +327,22 @@ set_meta(Goal, Prop):- is_pred_metainterp(Goal,Prop),!.
 set_meta(Goal, Prop):- functor(Goal,F,A),functor(TGoal,F,A),
   dra_must(set_meta0(TGoal, Prop)),!,
   retract_all0(is_pred_metainterp(TGoal,_)),
-  asserta_if_new(is_pred_metainterp(TGoal,Prop)).
+  asserta_new(is_pred_metainterp(TGoal,Prop)).
 
 set_meta0(TGoal,is_builtin):-
     retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
     retract_all0(is_never_tabled(TGoal)),
-    asserta_if_new(is_builtin(TGoal)).
+    asserta_new(is_builtin(TGoal)).
 
 set_meta0(TGoal,is_never_tabled):-
     retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
     retract_all0(is_builtin(TGoal)),
-    asserta_if_new(is_never_tabled(TGoal)).
+    asserta_new(is_never_tabled(TGoal)).
 
-set_meta0(TGoal,is_tabled):- asserta_if_new(is_tabled(TGoal)),
+set_meta0(TGoal,is_tabled):- asserta_new(is_tabled(TGoal)),
     retract_all0(is_never_tabled(TGoal)),
     retract_all0(is_builtin(TGoal)),
-   (predicate_property(TGoal,dynamic)->asserta_if_new((TGoal:-!,dra_call(TGoal)));true).
+   (predicate_property(TGoal,dynamic)->asserta_new((TGoal:-!,dra_call(TGoal)));true).
    
 
 
@@ -386,319 +383,10 @@ initialize_table:-dra_must(initialise).
 print_table_statistics:-print_statistics.
 %load(P):-dra_must(prog0(P)),!.
 
-%:- user:ensure_loaded(library(dra/tabling3/dra_table_assert)).
-   % NOTICE:    %%%%% %%%%%%%%%%%
-   %                                                                      %
-   %  COPYRIGHT (2009) University of Dallas at Texas.                     %
-   %                                                                      %
-   %  Developed at the Applied Logic, Programming Languages and Systems   %
-   %  (ALPS) Laboratory at UTD by Feliks Kluzniak.                        %
-   %                                                                      %
-   %  Permission is granted to modify this file, and to distribute its    %
-   %  original or modified contents for non-commercial purposes, on the   %
-   %  condition that this notice is included in all copies in its         %
-   %  original form.                                                      %
-   %                                                                      %
-   %  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     %
-   %  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES     %
-   %  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND     %
-   %  NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR        %
-   %  ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR       %
-   %  OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING    %
-   %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
-   %  OTHER DEALINGS IN THE SOFTWARE.                                     %
-   %                                                                      %
-   %%%%%%%%%%%%%%%%%%
 
-%  Table-handling procedures for the "dra" interpreter.                    %
-%                                                                          %
-%  Written by Feliks Kluzniak at UTD (March 2009)           .              %
-%                                                                          %
-%  Last update: 25 August 2009.                                            %
-%                                                                          %
-
-% The tables are normally kept in asserted clauses, but for some systems this
-% is  not convenient, because asserted clauses are compiled.
-% For example, this is so in SWI Prolog, which in addition does not assert
-% cyclic terms, so  for that system the "recorded" database is more
-% appropriate.
-% In order to facilitate such changes, routines for handling the table is
-% factored out of the main program.
-
-
-% >>>>>>>>>  This version for systems that use assert/1. <<<<<<<<<
-
-:- dynamic answer/3 .
-
-
-% Clear all known answers.
-
-reinitialise_answer :-
-        retractall( answer( _, _, _ ) ).
-
-
-% is_answer_known( +goal, +fact ):
-% Does the table "answer" contain a variant of this fact paired with a variant
-% of this goal?
-
-% :- mode is_answer_known( +, +).
-
-is_answer_known( Goal, Fact ) :-
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        answer( CopyEssence, G, F ),
-        are_essences_variants( G, Goal ),
-        are_essences_variants( F, Fact ),
-        !.
-
-
-% memo( +goal, +fact, +level for tracing ):
-% If the table "answer" does not contain a variant of this fact paired with
-% a variant of this goal, then add the pair to the table, increasing
-% "number_of_answers".
-
-% :- mode memo( +, +, +).
-
-memo( Goal, Fact, _ ) :-
-        is_answer_known( Goal, Fact ),
-        !.
-
-memo( Goal, Fact, Level ) :-
-        % \+ is_answer_known( Goal, Fact ),
-        optional_trace( 'Storing answer: ', Goal, Fact, Level ),
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        assert( answer( CopyEssence, Goal, Fact ) ),
-        incval( number_of_answers ).
-
-
-% get_answer( +- goal ):
-% Get an instantiation (if any) tabled in "answer" for variants of this goal.
-% Sequence through all such instantiations on backtracking.
-
-% :- mode get_answer( ? ).
-
-get_answer( Goal ) :-
-        once( essence_hook( Goal, EssenceOfGoal ) ),
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        answer( CopyEssence, G, Ans ),
-        once( essence_hook( G, EssenceOfG ) ),
-        are_variants( EssenceOfGoal, EssenceOfG ),
-        EssenceOfGoal = EssenceOfG,     % make sure variables are the right ones
-        once( essence_hook( Ans, EssenceOfAns ) ),
-        EssenceOfGoal = EssenceOfAns .  % instantiate
-
-
-% get_all_tabled_goals( - list of goals ):
-% Get all the goals that were tabled together with their answers.
-
-get_all_tabled_goals( Goals ) :-
-        findall( Goal, answer( _, Goal, _ ), Goals ).
-
-
-
-%-----------------------------------------------------------------------------
-
-% reinitialise_result:
-% Clear the table of results.
-
-reinitialise_result :-
-        retractall( result( _, _ ) ).
-
-
-% is_result_known( +index, +fact ):
-% Does the table "result" contain a variant of this fact associated with this
-% index?
-
-% :- mode is_result_known( +, +).
-
-is_result_known( Index, Fact ) :-
-        result( Index, F ),
-        are_essences_variants( F, Fact ),
-        !.
-
-
-% new_result_or_fail( +index, +fact ):
-% If the table "result" already contains a variant of this fact associated with
-% this index, then fail.  Otherwise record the fact in the table and succeed.
-
-% :- mode new_result_or_fail( +, +).
-
-new_result_or_fail( Index, Fact ) :-
-        \+ is_result_known( Index, Fact ),
-        assert( result( Index, Fact ) ).
-
-
-
-%------------------------------------------------------------------------------
-
-% reinitialise_pioneer:
-% Clear the table of pioneers.
-
-reinitialise_pioneer :-
-        retractall( pioneer( _, _, _ ) ).
-
-% is_a_variant_of_a_pioneer( +goal, - index ):
-% Succeeds if the goal is a variant of a goal that is tabled in "pioneer";
-% returns the index of the relevant entry in table "pioneer".
-
-% :- mode is_a_variant_of_a_pioneer( +, - ).
-
-is_a_variant_of_a_pioneer( Goal, Index ) :-
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        pioneer( CopyEssence, G, Index ),
-        are_essences_variants( Goal, G ),
-        !.
-
-
-% add_pioneer( +goal, - index ):
-% Add an entry for this goal to "pioneer", return the unique index.
-
-% :- mode add_pioneer( +, - ).
-
-add_pioneer( Goal, Index ) :-
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        get_unique_index( Index ),
-        assert( pioneer( CopyEssence, Goal, Index ) ).
-
-
-
-%% delete_pioneer(+Index).
-% Remove the entry in "pioneer" associated with this index.
-
-delete_pioneer( Index ) :-
-        retract( pioneer( _, _, Index )).
-
-
-
-%------------------------------------------------------------------------------
-
-% reinitialise_loop:
-% Clear the table of pioneers.
-
-reinitialise_loop :-
-        retractall( loop( _, _ ) ).
-
-
-% add_loop( +index, +list of goals ):
-% Add an entry to "loop".
-
-% :- mode add_loop( +, +).
-
-add_loop( _, [] ) :-                                % empty loops are not stored
-        !.
-
-add_loop( Index, Goals ) :-                         % neither are duplicates
-        loop( Index, Gs ),
-        are_variants( Goals, Gs ),
-        !.
-
-add_loop( Index, Goals ) :-
-        assert( loop( Index, Goals ) ).
-
-
-% delete_loops( +index ):
-% Remove all the entries in "loop" that are associated with this index.
-
-delete_loops( Index ) :-
-        retractall( loop( Index, _ ) ).
-
-
-% get_loop( +index, - Goals ):
-% Get an entry from table "loop" that is associated with this index;
-% another such entry (if it exists) on backtracking etc.
-
-get_loop( Index, Gs ) :-
-        loop( Index, Gs ).
-
-
-
-%------------------------------------------------------------------------------
-
-% reinitialise_looping_alternative:
-% Clear the table of pioneers.
-
-reinitialise_looping_alternative :-
-        retractall( looping_alternative( _, _ ) ).
-
-
-% add_looping_alternative( +index, +Clause ):
-% Add and entry to "looping_alternative".
-
-% :- mode add_looping_alternative( +, +).
-
-add_looping_alternative( Index, Clause ) :-          % duplicates are not stored
-        looping_alternative( Index, C ),
-        are_variants( Clause, C ),
-        !.
-
-add_looping_alternative( Index, Clause ) :-
-        assert( looping_alternative( Index, Clause ) ).
-
-
-% delete_looping_alternatives( +index ):
-% Remove all the entries in "loop" that are associated with this index.
-
-delete_looping_alternatives( Index ) :-
-        retractall( looping_alternative( Index, _ ) ).
-
-
-% get_looping_alternative( +index, - clause ):
-% Get an entry from table "looping_alternative" that is associated with this
-% index; another such entry (if it exists) on backtracking etc.
-
-get_looping_alternative( Index, Clause ) :-
-        looping_alternative( Index, Clause ).
-
-
-
-%------------------------------------------------------------------------------
-
-% reinitialise_completed:
-% Clear the table of completed goals.
-
-reinitialise_completed :-
-        retractall( completed( _, _ ) ).
-
-
-% is_completed( +goal ):
-% Succeeds iff the goal is a variant of a goal that has been stored in
-% the table "completed".
-
-% :- mode is_completed( +).
-
-is_completed( Goal ) :-
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        completed( CopyEssence, G ),
-        are_essences_variants( Goal, G ).
-
-
-% complete_goal( +goal, +index for tracing ):
-% Make sure the goal is marked as completed.
-
-% :- mode complete_goal( +, +).
-
-complete_goal( Goal, _ ) :-
-        is_completed( Goal ),
-        !.
-
-complete_goal( Goal, Level ) :-
-        % \+ is_completed( Goal ),
-        copy_term( Goal, Copy ),
-        once( essence_hook( Copy, CopyEssence ) ),
-        trace_other( 'Completing', Goal, '?', Level ),
-        assert( completed( CopyEssence, Goal ) ).
-
-%------------------------------------------------------------------------------
-
-
-%:- user:ensure_loaded(library(dra/tabling3/dra_table_record)).
+:- ensure_loaded(library(dra_table_record)).
 %:- user:ensure_loaded(library(dra/tabling3/compatibility_utilities_swi)).
-%%%%%%%%%%%%%%
+%
 
 %  Predicates specific to SWI Prolog.                                      %
 %                                                                          %
@@ -706,7 +394,7 @@ complete_goal( Goal, Level ) :-
 %                                                                          %
 
 % :- ensure_loaded( higher_order ).
-   %%%%%%%%%%%%%%
+   %
 
    %  Some "higher order" predicates for Prolog.                              %
    %  This particular version was                                             %
@@ -820,7 +508,7 @@ complete_goal( Goal, Level ) :-
 
 :- ensure_loaded( library( lists ) ). % An SWI library, for reverse/2.
 %:- ensure_loaded( utilities ).
-%%%%%%%%%%%%%%
+%
 
 %  Some generally-useful utilities.                                        %
 %                                                                          %
@@ -831,7 +519,7 @@ complete_goal( Goal, Level ) :-
 
 
 %:- ensure_loaded( set_in_list ).
-   %%%%%%%%%%%%%%
+   %
 
    %  Simple, but useful operations on sets.                                  %
    %                                                                          %
@@ -1049,7 +737,7 @@ complete_goal( Goal, Level ) :-
 
 %:- ensure_loaded( higher_order ).
 %:- ensure_loaded( vardict_utilities ).
-   %%%%%%%%%%%%%%
+   %
 
    %  Utilities that have to do with variable dictionaries.                   %
    %                                                                          %
@@ -1208,7 +896,7 @@ complete_goal( Goal, Level ) :-
    %------------------------------------------------------------------------------
 
 %:- ensure_loaded( clause_verification ).
-%%%%%%%%%%%%%%
+%
 
 %  Utilities for verifying well-formedness of clauses.                     %
 %                                                                          %
@@ -1218,7 +906,7 @@ complete_goal( Goal, Level ) :-
 %                                                                          %
 
 %:- ensure_loaded( boolean_operations ).
-%%%%%%%%%%%%%%
+%
 
 %  Utilities for performing operations on boolean expressions.             %
 %                                                                          %
@@ -1228,7 +916,7 @@ complete_goal( Goal, Level ) :-
 %                                                                          %
 
 %:- ensure_loaded( errors_and_warnings ).
-%%%%%%%%%%%%%%
+%
 
 %  Utilities for producing warning and error messages.                     %
 %                                                                          %
@@ -1913,7 +1601,7 @@ cs_arg( Other, Ctxt, Seen, Single ) :-
 
 
 % Several paths seem to converge: special treatment is needed if any of them
-% is known to fail.
+% is is_known to fail.
 
 cs_join( ((A ; B) , C), Ctxt, MustFail, SeenFromFront, SeenFromBehind, Single
        ) :-
@@ -2017,7 +1705,7 @@ clause_warning( _, _ ).
 %------------------------------------------------------------------------------
 
 %:- ensure_loaded( io_utilities ).
-%%%%%%%%%%%%%%
+%
 
 
 %  Utilities that have to do with input and output.                        %
@@ -2591,6 +2279,7 @@ lp_system( 'SWI Prolog' ).
 
 std_input_stream(   user_input  ).
 std_output_stream(  user_output ).
+std_trace_stream(  user_error ).
 std_error_stream(   user_error  ).
 std_warning_stream( user_error  ).
 
@@ -2902,7 +2591,7 @@ writeln( OutputStream, Term ) :-
 % Write the term to the standard output stream, followed by a newline.
 /*
 writeln( Term ) :-
-        std_output_stream( OutputStream ),
+        std_trace_stream( OutputStream ),
         writeln( OutputStream, Term ).
 */
 
@@ -2920,7 +2609,7 @@ concat_atoms( A, B, AB ) :-
 %------------------------------------------------------------------------------
 
 % :- user:ensure_loaded(library(dra/tabling3/dra_common)).
-%%%%%%%%%%%%%%
+%
 
 % :- use_module(library(memo)).
 
@@ -3448,7 +3137,7 @@ dra_version( Version ) :-
                   ]
                 ).
 
-%%%%%%%%%%%%%%
+%
 
 
 %                                                                          %
@@ -3579,7 +3268,7 @@ dra_version( Version ) :-
 %
 %       The predicates defined by these clauses are stored in the table
 %       defined/1, in the form of patterns, e.g.,
-%           defined( p( _, _ ) ).
+%           is_defined( p( _, _ ) ).
 %
 %
 %    7. The top level notes "support" declarations in the table "support".
@@ -3674,7 +3363,7 @@ dra_version( Version ) :-
 
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( program_consistency ).
-%%%%%%%%%%%%%%
+%
 
 %                                                                          %
 %  Check the consistency of the loaded program.                            %
@@ -3688,7 +3377,7 @@ dra_version( Version ) :-
 
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( open_set_in_tree ).
-%%%%%%%%%%%%%%
+%
 
 %  Simple, but useful operations on sets.  The sets are open, i.e.,        %
 %  insertion is a destructive operation.                                   %
@@ -3925,7 +3614,7 @@ check_general_consistency :-
 %               ),
         % The above can be made simpler, now that we have "defined/1":
         findall( P / K,
-                 ( defined( Pattern )
+                 ( is_defined( Pattern )
                  , \+ hook_predicate( Pattern )
                  , functor( Pattern, P, K )
                  ),
@@ -4119,9 +3808,9 @@ extract_called( _, Empty ) :-
 % 	  ]).
 
 
-%%%%%%%%%%%%%%%%%
+%
 % Output cyclic terms as equations                           %
-%%%%%%%%%%%%%%%%%
+%
 %                                                            %
 % Example of use:                                            %
 %                                                            %
@@ -4131,7 +3820,7 @@ extract_called( _, Empty ) :-
 % Eq = [InitVar=f(_G805), _G805=g(_G805)] .                  %
 %                                                            %
 %                                                            %
-%%%%%%%%%%%%%%%%%
+%
 
 
 
@@ -4526,15 +4215,15 @@ identical_member2( (N , Term), Items ) :-
 
 :- dynamic (is_support)/1.
 :- dynamic (is_topl)/1.
-:- dynamic (defined)/1.
+:- dynamic (is_defined)/1.
 
 
 % If "p/k" has already been seen (and declared as dynamic), the fact is recorded
-% as "known( p( _, _, ...) )" (with "k" arguments).
+% as "is_known( p( _, _, ...) )" (with "k" arguments).
 % (Unlike Sicstus, Eclipse requires a dynamic declaration before the first
 %  assert.)
 
-:- dynamic known/1 .
+:- dynamic is_known/1 .
 
 
 % Default print depth.  (May be changed by the metainterpreter by invoking
@@ -4576,12 +4265,12 @@ prog( FileName ) :-
 
 %
 setup :-
-        retractall( known( _ )   ),
+        retractall( is_known( _ )   ),
         retractall( is_support( _ ) ),
         retractall( is_topl( _ )     ),
-        retractall( defined( _ ) ),
-        erase_modules,
-        create_modules.
+        retractall( is_defined( _ ) ),
+        erase_modules.
+        % create_modules.
 
 
 
@@ -4649,10 +4338,10 @@ erase_modules :-
 % (In Sicstus this is a no-op: the module "interpreted" will be created
 %  dynamically with the first assertion.)
 
+/*
 create_modules :-
         \+ lp_system( eclipse ),
         !.
-/*
 create_modules :-
         lp_system( eclipse ),
         create_module( interface_aux ),
@@ -4660,7 +4349,6 @@ create_modules :-
         create_module( interpreted, [], [ interface     ] ),
         create_module( support ),
         fill_interface_modules.
-*/
 %
 fill_interface_modules :-
         builtin( Pattern ),
@@ -4676,6 +4364,7 @@ fill_interface_modules :-
         fail.
 
 fill_interface_modules.
+*/
 
 
 
@@ -4802,13 +4491,13 @@ contiguity_dra_check( Clause ) :-
         get_clause_head( Clause, Head ),
         most_general_instance( Head, Pattern ),
         (
-            once( defined( P ) ),  P = Pattern    % predicate as in last clause?
+            once( is_defined( P ) ),  P = Pattern    % predicate as in last clause?
         ->
             true
         ;
-            \+ defined( Pattern )
+            \+ is_defined( Pattern )
         ->
-            asserta( defined( Pattern ) )
+            asserta( is_defined( Pattern ) )
         ;
             functor( Pattern, P, K ),
             warning( [ 'Non-contiguous declaration of ', P/K ] )
@@ -4820,7 +4509,7 @@ contiguity_dra_check( Clause ) :-
 
 % ensure_dynamic( +clause ):
 % Make sure the predicate of this clause is dynamic.
-% known/1 is used to avoid multiple declarations.
+% is_known/1 is used to avoid multiple declarations.
 % (NOTE: This is specific to Eclipse.)
 
 % :- mode ensure_dynamic( +).
@@ -4828,9 +4517,9 @@ contiguity_dra_check( Clause ) :-
 ensure_dynamic( Clause ) :-
         lp_system( eclipse ),
         get_clause_head( Clause, Head ),
-        \+ known( Head ),
+        \+ is_known( Head ),
         most_general_instance( Head, Pattern ),
-        assert( known( Pattern ) ),
+        assert( is_known( Pattern ) ),
         functor( Head, PredicateName, Arity ),
         dynamic_in_module( interpreted, PredicateName / Arity ),
         fail.
@@ -4871,8 +4560,7 @@ process_directive( (support PredSpecs) ) :-      % store in "support" table
         ).
 
 process_directive( (load_support FileName) ) :-  % compile into module "support"
-        !,
-        compile_to_module( support, FileName ).
+        !, compile_to_module( support, FileName ).
 
 process_directive( Directive ) :-
         legal_directive( Directive ),            % provided by a metainterpreter
@@ -4892,7 +4580,7 @@ process_directive( Directive ) :-                % unsupported directive
 % :- mode process_dra_call( +, +).
 
 process_dra_call( Query, VarDict ) :-
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, '-- Query: ' ),
         write( Output, Query ),
         writeln( Output, '.  --' ),
@@ -4937,7 +4625,7 @@ show_result( no, _ ) :-
 
 % OLD VERSION:
 % show_bindings( Dict ) :-
-%         std_output_stream( Output ),
+%         std_trace_stream( Output ),
 %         print_depth( MaxDepth ),
 %         member( [ Name | Var ], Dict ),
 %         write( Output, Name ),
@@ -4974,7 +4662,7 @@ show_bindings( VarDict ) :-
         filter( non_trivial_eq, AllEquations, NontrivialEquations ),
         % Sort by variable name:
         sort( NontrivialEquations, SortedEquations ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         show_equations( SortedEquations, Output ),
         fail.              % We must undo all the bindings that we created here!
 
@@ -5046,7 +4734,7 @@ check_not_builtin( _, _ ).
 
 old_top :-
         std_input_stream( Input ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         repeat,
         (
             lp_system( eclipse )
@@ -5144,7 +4832,7 @@ satisfied_with_dra_call( no ) :-
 
 user_accepts :-
         std_input_stream( Input ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, '  (more?) ' ),
         flush_output( Output ),
         getline( Input, Line ),
@@ -5152,7 +4840,7 @@ user_accepts :-
 
 %------------------------------------------------------------------------------
 
-%%  Built-in predicates for the "dra" interpreter  %
+%  Built-in predicates for the "dra" interpreter  %
 
 % If the interpreted program invokes a built-in predicate, that predicate dra_must
 % be declared in the table "is_builtin/1" below.
@@ -5214,7 +4902,7 @@ is_builtin0(Pred) :- functor(Pred,F,_),atom_concat('$',_,F).
 is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ clause(is_tabled(Pred),true).
 
 
-%%%%%%%%%%%%%%
+%
 
 
 %  The "set of coinductive hypotheses" for the "dra" interpreter.          %
@@ -5283,7 +4971,7 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %--------------  An implementation that uses goal_table:  --------------%
 
 %:- ensure_loaded( 'goal_table_in_tree' ).
-%%%%%%%%%%%%%%
+%
 
 %  A goal table implemented by a binary tree with lists.                   %
 %                                                                          %
@@ -5299,7 +4987,7 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( higher_order ).
 %:- ensure_loaded( tree ).
-%%%%%%%%%%%%%%
+%
 
 %  Operations on binary trees.                                             %
 %                                                                          %
@@ -5476,7 +5164,7 @@ unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %------------------------------------------------------------------------------
 
 
-%%%%%%%%%%%%%%
+%
 
 %  The "stack" data type for the "dra" interpreter.                        %
 %                                                                          %
@@ -5547,8 +5235,8 @@ unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %
 % % :- mode push_is_tabled( +, +, +, +, - ).
 %
-% push_is_tabled( Goal, Index, Clause, Stack,
-%              [ triple( Goal, Index, Clause ) | Stack ]
+% push_is_tabled( Goal, PGIndex, Clause, Stack,
+%              [ triple( Goal, PGIndex, Clause ) | Stack ]
 %            ).
 %
 %
@@ -5580,8 +5268,8 @@ empty_stack( tstack( [], Table ) ) :-
 
 % :- mode push_is_tabled( +, +, +, +, - ).
 
-push_is_tabled( Goal, Index, Clause, tstack( Stack, Table ),
-             tstack( [ triple( Goal, Index, Clause ) | Stack ], NewTable )
+push_is_tabled( Goal, PGIndex, Clause, tstack( Stack, Table ),
+             tstack( [ triple( Goal, PGIndex, Clause ) | Stack ], NewTable )
            ) :-
         goal_table_add( Table, Goal, NewTable ).
 
@@ -5742,14 +5430,14 @@ legal_directive(M:P):-atom(M),M:legal_directive(P).
 legal_directive(P):-compound(P),functor(P,F,1),property_pred(F,_).
 
 
-fresh_multifile(X):- current_module(M), dra_must(M \= user), asserta_if_new( ((user:X) :- (M:X))).
+fresh_multifile(X):- current_module(M), dra_must(M \= user), asserta_new( ((user:X) :- (M:X))).
 
 % Check and process the legal directives (invoked by top_level)
 
 source_context(F):- prolog_load_context(source,F).
 
 execute_directive( (table all) ) :-
-        !, once((source_context(F),add_file_meta(F,is_tabled));asserta_if_new( is_tabled( _ ):-! )).
+        !, once((source_context(F),add_file_meta(F,is_tabled));asserta_new( is_tabled( _ ):-! )).
 execute_directive( (table none) ) :-
         !, once((source_context(F),retract_all0(is_file_meta(F,is_tabled)));(retract_all0( is_tabled( _ ) ),retract_all0( is_tabled( _ ) :- ! ))).
 
@@ -5757,8 +5445,8 @@ execute_directive( (table PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
         (
             member( Pattern, Patterns ),
-            asserta_if_new( is_tabled( Pattern ) ),
-            asserta_if_new( (Pattern :- !, dra_call(Pattern) )),
+            asserta_new( is_tabled( Pattern ) ),
+            asserta_new( (Pattern :- !, dra_call(Pattern) )),
             functor(Pattern,F,A),
             discontiguous(F/A),
             dynamic(F/A),            
@@ -5770,15 +5458,15 @@ execute_directive( (table PredSpecs) ) :-
 
 execute_directive( (coinductive0 all) ) :-
         !,
-        asserta_if_new( is_coinductive1( _ ) ),
-        asserta_if_new( is_coinductive0( _ ) ).
+        asserta_new( is_coinductive1( _ ) ),
+        asserta_new( is_coinductive0( _ ) ).
 
 execute_directive( (coinductive0 PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
         (
             member( Pattern, Patterns ),
-            asserta_if_new( is_coinductive1( Pattern ) ),
-            asserta_if_new( is_coinductive0( Pattern ) ),
+            asserta_new( is_coinductive1( Pattern ) ),
+            asserta_new( is_coinductive0( Pattern ) ),
             fail
         ;
             true
@@ -5794,7 +5482,7 @@ execute_directive( answers( Goal, Pattern ) ) :-
         print_required_answers( Goal, Pattern ).
 
 execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,all],DB=..[DBF,_],
-        !, once((source_context(F),add_file_meta(F,DBF));asserta_if_new( DB:-! )).
+        !, once((source_context(F),add_file_meta(F,DBF));asserta_new( DB:-! )).
 execute_directive( Dir ) :- property_pred(F,DBF), (Dir=..[F,none];Dir=..[F,-all]),DB=..[DBF,_],
         !, once((source_context(F),retract_all0(is_file_meta(F,DBF)));(retract_all0( DB ),retract_all0( DB :- ! ))).
 execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,PredSpecs],         
@@ -5813,8 +5501,8 @@ add_patterns([],_):-!.
 add_patterns([P|Patterns],DBF):- add_pattern(P,DBF),!,add_patterns(Patterns,DBF).
 
 add_pattern(Pattern, - DBF):- DB=..[DBF,Pattern],retract_all0( DB ).
-add_pattern(Pattern, +DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
-add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
+add_pattern(Pattern, +DBF):- DB=..[DBF,Pattern],asserta_new( DB ).
+add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],asserta_new( DB ).
 
 
 % will_trace( +list of patterns ):
@@ -5822,7 +5510,7 @@ add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
 
 will_trace( Patterns ) :-
         member( Pattern, Patterns ),
-        asserta_if_new( is_tracing( Pattern ) ),
+        asserta_new( is_tracing( Pattern ) ),
         fail.
 
 will_trace( _ ).
@@ -5887,9 +5575,8 @@ remove_variants_( [ H | T ], Accumulator, RL ) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%
-
-%%  The interpreter  %%
+%
+%  The interpreter  %
 
 
 % Execute a dra_call.
@@ -5934,7 +5621,7 @@ dra_int_exit_dra_call:-
 % Print information about the number of steps and the answer table.
 
 print_statistics :-
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         getval( step_counter, NSteps ),
         getval( number_of_answers, NAns ),
         getval( old_table_size, OldNAns ),
@@ -6000,10 +5687,11 @@ plural( Output, N ) :-  N \= 1,  write( Output, 's' ).
 % tnot/1 must be ran in meta-interp
 tnot(G):-dra_call(tnot(G)).
 
-% A negation.
 
+% simply true.
 dra_interp(_ ,     _:true, _, _, _ ) :- !.
 
+% A negation.
 dra_interp(Cutted, (_ : (\+ Goal)), Stack, Hyp, Level ) :- assertion(nonvar(Goal)),
         !,
         NLevel is Level +1,
@@ -6259,8 +5947,8 @@ dra_int2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
                               ),
         !,
         incval( step_counter ),
-        get_unique_index( Index ),
-        trace_entry( variant, Goal, Index, Level ),
+        get_unique_index( PGIndex ),
+        trace_entry( variant, Goal, PGIndex, Level ),
         % Rescind the status of intervening pioneers:
         suppress_pioneers_on_list( InterveningTriples, Level ),
 
@@ -6281,7 +5969,7 @@ dra_int2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
         ->
             copy_term( Goal, OriginalGoal ),
             (
-                get_tabled_if_old_first( Goal, Index,
+                get_tabled_if_old_first( Goal, PGIndex,
                                          'variant (coinductive0)', Level
                                        )
             ;
@@ -6289,25 +5977,25 @@ dra_int2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
                 unify_with_coinductive_ancestor( Goal, Hyp ),
                 \+ is_answer_known( OriginalGoal, Goal ),    % postpone "old"
                 memo( OriginalGoal, Goal, Level ),
-                new_result_or_fail( Index, Goal ),           % i.e., note answer
-                trace_success( 'variant (coinductive0)', Goal, Index, Level )
+                new_result_or_fail( PGIndex, Goal ),           % i.e., note answer
+                trace_success( 'variant (coinductive0)', Goal, PGIndex, Level )
             ;
                 % other tabled results
-                get_remaining_tabled_answers( Goal, Index, variant, Level )
+                get_remaining_tabled_answers( Goal, PGIndex, variant, Level )
             ;
                 % wrap it up
-                trace_failure( 'variant (coinductive0)', Goal, Index, Level ),
-                retractall( result( Index, _ ) ),
+                trace_failure( 'variant (coinductive0)', Goal, PGIndex, Level ),
+                retractall( result( PGIndex, _ ) ),
                 fail
             )
         ;
 
             % Not coinductive, just sequence through tabled answers:
             (
-                get_all_tabled_answers( Goal, Index, variant, Level )
+                get_all_tabled_answers( Goal, PGIndex, variant, Level )
             ;
-                trace_failure( variant, Goal, Index, Level ),
-                retractall( result( Index, _ ) ),
+                trace_failure( variant, Goal, PGIndex, Level ),
+                retractall( result( PGIndex, _ ) ),
                 fail
             )
         ).
@@ -6342,23 +6030,23 @@ dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
         ),
         incval( step_counter ),
         copy_term( Goal, OriginalGoal ),
-        add_pioneer( Goal, Index ),
-        trace_entry( pioneer, Goal, Index, Level ),
+        add_pioneer( Goal, PGIndex ),
+        trace_entry( pioneer, Goal, PGIndex, Level ),
 
         (
-            get_tabled_if_old_first( Goal, Index, pioneer, Level )
+            get_tabled_if_old_first( Goal, PGIndex, pioneer, Level )
         ;
 
             NLevel is Level +1,
             use_clause(M, Goal, Body ),
             \+ is_completed( OriginalGoal ), % might well be, after backtracking
             copy_term( (Goal :- Body), ClauseCopy ),
-            push_is_tabled( OriginalGoal, Index, ClauseCopy, Stack, NStack ),
+            push_is_tabled( OriginalGoal, PGIndex, ClauseCopy, Stack, NStack ),
             dra_interp(Cutted, Body, NStack, NHyp, NLevel ),
             \+ is_answer_known( OriginalGoal, Goal ),   % postpone "old" answers
             memo( OriginalGoal, Goal, Level ),
-            new_result_or_fail( Index, Goal ),          % i.e., note the answer
-            trace_success( pioneer, Goal, Index, Level )
+            new_result_or_fail( PGIndex, Goal ),          % i.e., note the answer
+            trace_success( pioneer, Goal, PGIndex, Level )
         ;
 
             % All the clauses have been exhausted, except for looping
@@ -6368,29 +6056,29 @@ dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
 
             is_completed( Goal )                      % a variant has completed?
         ->
-            trace_other( 'Removing completed pioneer', Goal, Index, Level ),
-            rescind_pioneer_status( Index ),
-            get_remaining_tabled_answers( Goal, Index, 'completed now', Level )
+            trace_other( 'Removing completed pioneer', Goal, PGIndex, Level ),
+            rescind_pioneer_status( PGIndex ),
+            get_remaining_tabled_answers( Goal, PGIndex, 'completed now', Level )
         ;
 
-            is_a_variant_of_a_pioneer( Goal, Index )  % not lost pioneer status?
+            is_a_variant_of_a_pioneer( Goal, PGIndex )  % not lost pioneer status?
         ->
             (
-                trace_other( 'Computing fixed point for', Goal, Index, Level ),
-                compute_fixed_point( Goal, Index, Stack, Hyp, Level ),
-                \+ new_result_or_fail( Index, Goal ),
-                trace_success( pioneer, Goal, Index, Level )
+                trace_other( 'Computing fixed point for', Goal, PGIndex, Level ),
+                compute_fixed_point( Goal, PGIndex, Stack, Hyp, Level ),
+                \+ new_result_or_fail( PGIndex, Goal ),
+                trace_success( pioneer, Goal, PGIndex, Level )
             ;
-                trace_other( 'Fixed point computed', Goal, Index, Level ),
+                trace_other( 'Fixed point computed', Goal, PGIndex, Level ),
                 complete_goal( Goal, Level ),
-                complete_cluster( Index, Level ),
-                trace_other( 'Removing pioneer', Goal, Index, Level ),
-                rescind_pioneer_status( Index ),
-                get_remaining_tabled_answers( Goal, Index,
+                complete_cluster( PGIndex, Level ),
+                trace_other( 'Removing pioneer', Goal, PGIndex, Level ),
+                rescind_pioneer_status( PGIndex ),
+                get_remaining_tabled_answers( Goal, PGIndex,
                                               'completed now', Level
                                             )
             ;
-                retractall( result( Index, _ ) ),
+                retractall( result( PGIndex, _ ) ),
                 fail
             )
         ;
@@ -6398,19 +6086,19 @@ dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
             (
                 % No longer a pioneer and not completed, so just sequence
                 % through the remaining available tabled answers.
-                get_remaining_tabled_answers( Goal, Index,
+                get_remaining_tabled_answers( Goal, PGIndex,
                                               '(no longer a pioneer)', Level
                                             )
             ;
-                trace_failure( '(no longer a pioneer)', Goal, Index, Level ),
-                retractall( result( Index, _ ) ),
+                trace_failure( '(no longer a pioneer)', Goal, PGIndex, Level ),
+                retractall( result( PGIndex, _ ) ),
                 fail
             )
         ).
 
 
 
-% get_tabled_if_old_first( +goal, +goal index,
+% get_tabled_if_old_first( +goal, +GoalIndex,
 %                          +traces label, +traces level
 %                        ):
 % If the goal has been declared as "old_first", produce all the tabled answers,
@@ -6418,24 +6106,24 @@ dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
 
 % :- mode get_tabled_if_old_first( +, +, +, +).
 
-get_tabled_if_old_first( Goal, Index, Label, Level ) :-
+get_tabled_if_old_first( Goal, PGIndex, Label, Level ) :-
         is_old_first( Goal ),
-        get_all_tabled_answers( Goal, Index, Label, Level ),
-        new_result_or_fail( Index, Goal ).     % i.e., make a note of the answer
+        get_all_tabled_answers( Goal, PGIndex, Label, Level ),
+        new_result_or_fail( PGIndex, Goal ).     % i.e., make a note of the answer
 
 
-% get_all_tabled_answers( +goal, +goal index, +traces label, +traces level ):
+% get_all_tabled_answers( +goal, +GoalIndex, +traces label, +traces level ):
 % Return (one by one) all the answers that are currently tabled for this goal.
 % (Each answer is returned by appropriately instantiating the goal.)
 
 % :- mode get_all_tabled_answers( +, +, +, +).
 
-get_all_tabled_answers( Goal, Index, Label, Level ) :-
+get_all_tabled_answers( Goal, PGIndex, Label, Level ) :-
         get_answer( Goal ),
-        trace_success( Label, Goal, Index, Level ).
+        trace_success( Label, Goal, PGIndex, Level ).
 
 
-% get_remaining_tabled_answers( +goal,        +goal index,
+% get_remaining_tabled_answers( +goal,        +GoalIndex,
 %                               +traces label, +traces level
 %                             ):
 % Return (one by one) all the answers that are currently tabled for this goal
@@ -6444,10 +6132,10 @@ get_all_tabled_answers( Goal, Index, Label, Level ) :-
 
 % :- mode get_remaining_tabled_answers( +, +, +, +).
 
-get_remaining_tabled_answers( Goal, Index, Label, Level ) :-
+get_remaining_tabled_answers( Goal, PGIndex, Label, Level ) :-
         get_answer( Goal ),
-        \+ is_result_known( Index, Goal ),
-        trace_success( Label, Goal, Index, Level ).
+        \+ is_result_known( PGIndex, Goal ),
+        trace_success( Label, Goal, PGIndex, Level ).
 
 
 
@@ -6497,7 +6185,7 @@ use_clause_old(M, Goal, Body ) :-
 
 % :- mode compute_fixed_point( +, +, +, +, +).
 
-compute_fixed_point( Goal, Index, Stack, Hyp, Level ) :-
+compute_fixed_point( Goal, PGIndex, Stack, Hyp, Level ) :-
         NLevel is Level +1,
         (
             is_coinductive1( Goal )
@@ -6507,31 +6195,31 @@ compute_fixed_point( Goal, Index, Stack, Hyp, Level ) :-
             NHyp = Hyp
         ),
         getval( number_of_answers, NAns ),
-        compute_fixed_point_( Goal, Index, Stack, NHyp, NLevel, NAns ).
+        compute_fixed_point_( Goal, PGIndex, Stack, NHyp, NLevel, NAns ).
 
 %
 % :- mode compute_fixed_point_( +, +, +, +, +, +).
 
-compute_fixed_point_( Goal, Index, Stack, Hyp, Level, _ ) :-
+compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, _ ) :-
         copy_term( Goal, OriginalGoal ),
-        get_looping_alternative( Index, (G :- Body) ),        % i.e., iterate
+        get_looping_alternative( PGIndex, (G :- Body) ),        % i.e., iterate
         \+ \+ G = Goal,
         copy_term( (G :- Body), ClauseCopy ),
         G = Goal,
-        push_is_tabled( OriginalGoal, Index, ClauseCopy, Stack, NStack ),
+        push_is_tabled( OriginalGoal, PGIndex, ClauseCopy, Stack, NStack ),
         dra_interp(Cutted, Body, NStack, Hyp, Level ),
         (nonvar(Cutted)-> warning(['cutted at ',Cutted]); true),
-        new_result_or_fail( Index, Goal ),
+        new_result_or_fail( PGIndex, Goal ),
         memo( OriginalGoal, Goal, Level ).
 
-compute_fixed_point_( Goal, Index, Stack, Hyp, Level, NAns ) :-
+compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, NAns ) :-
         getval( number_of_answers, NAnsNow ),
         NAnsNow \= NAns,                % i.e., fail if there are no new answers
-        compute_fixed_point_( Goal, Index, Stack, Hyp, Level, NAnsNow ).
+        compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, NAnsNow ).
 
 
 
-% suppress_pioneers_on_list( +list of triples, +level for tracing ):
+% suppress_pioneers_on_list( +list of triples, +TraceLevel ):
 % If any of the triples describe goals that are pioneers, make sure those goals
 % cease to be pioneers.
 
@@ -6552,21 +6240,21 @@ suppress_pioneers_on_list( _, _ ).
 
 % :- mode rescind_pioneer_status( +).
 
-rescind_pioneer_status( Index ) :-
-        delete_pioneer( Index ),
-        delete_loops( Index ),
-        delete_looping_alternatives( Index ).
+rescind_pioneer_status( PGIndex ) :-
+        delete_pioneer( PGIndex ),
+        delete_loops( PGIndex ),
+        delete_looping_alternatives( PGIndex ).
 
 
-% complete_cluster( +index of a pioneer goal, +level for tracing ):
+% complete_cluster( +PioneerIndex of a pioneer goal, +TraceLevel ):
 % If the goal has an associated cluster, make sure all the goals in the cluster
 % are marked as completed.
 % Recall that a cluster may consist of a number of "loops".
 
 % :- mode complete_cluster( +, +).
 
-complete_cluster( Index, Level ) :-
-        get_loop( Index, Gs ),                  % iterate over loops
+complete_cluster( PGIndex, Level ) :-
+        get_loop( PGIndex, Gs ),                  % iterate over loops
         member( G, Gs ),                        % iterate over members of a loop
         complete_goal( G, Level ),
         fail.
@@ -6603,8 +6291,8 @@ extract_goals( [ triple( G, _, _ ) | Ts ], [ G | Gs ] ) :-
 
 % :- mode get_unique_index( - ).
 
-get_unique_index( Index ) :-
-        getval( unique_index, Index ),
+get_unique_index( PGIndex ) :-
+        getval( unique_index, PGIndex ),
         incval( unique_index ).
 
 
@@ -6627,43 +6315,43 @@ are_essences_variants( T1, T2 ) :-
 
 
 
-% trace_entry( +label, +goal, +goal index, +level ):
+% trace_entry( +label, +goal, +GoalIndex, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % entering the goal (at this level, with this label).
-% (The goal index is not always relevant: "?" is used for those cases.)
+% (The GoalIndex is not always relevant: "?" is used for those cases.)
 
-trace_entry( Label, Goal, Index, Level ) :-
+trace_entry( Label, Goal, PGIndex, Level ) :-
         is_tracing( Goal ),
         !,
         write_level( Level ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, 'Entering ' ),
-        write_label_and_goal( Label, Goal, Index ),
+        write_label_and_goal( Label, Goal, PGIndex ),
         nl( Output ).
 
 trace_entry( _, _, _, _ ).
 
 
-% trace_success( +label, +goal, +goal index, +level ):
+% trace_success( +label, +goal, +GoalIndex, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % success of the goal (at this level, with this label).  Moreover, just before
 % backtracking gets back to the goal, print out a traces line about retrying the
 % goal.
-% (The goal index is not always relevant: "?" is used for those cases.)
+% (The GoalIndex is not always relevant: "?" is used for those cases.)
 
-trace_success( Label, Goal, Index, Level ) :-
+trace_success( Label, Goal, PGIndex, Level ) :-
         is_tracing( Goal ),
         !,
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         (
             write_level( Level ),
             write( Output, 'Success ' ),
-            write_label_and_goal( Label, Goal, Index ),
+            write_label_and_goal( Label, Goal, PGIndex ),
             nl( Output )
         ;
             write_level( Level ),
             write( Output, 'Retrying ' ),
-            write_label_and_goal( Label, Goal, Index ),
+            write_label_and_goal( Label, Goal, PGIndex ),
             nl( Output ),
             fail
         ).
@@ -6671,34 +6359,34 @@ trace_success( Label, Goal, Index, Level ) :-
 trace_success( _, _, _, _ ).
 
 
-% trace_failure( +label, +goal, +goal index, +level ):
+% trace_failure( +label, +goal, +GoalIndex, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % failure of the goal (at this level, with this label).
-% (The goal index is not always relevant: "?" is used for those cases.)
+% (The GoalIndex is not always relevant: "?" is used for those cases.)
 
-trace_failure( Label, Goal, Index, Level ) :-
+trace_failure( Label, Goal, PGIndex, Level ) :-
         is_tracing( Goal ),
         !,
         write_level( Level ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, 'Failing ' ),
-        write_label_and_goal( Label, Goal, Index ),
+        write_label_and_goal( Label, Goal, PGIndex ),
         nl( Output ).
 
 trace_failure( _, _, _, _ ).
 
 
-% trace_other( +label, +goal, +goal index, +level ):
+% trace_other( +label, +goal, +GoalIndex, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % this goal (at this level, with this label).
-% (The goal index is not always relevant: "?" is used for those cases.)
+% (The GoalIndex is not always relevant: "?" is used for those cases.)
 
-trace_other( Label, Goal, Index, Level ) :-
+trace_other( Label, Goal, PGIndex, Level ) :-
         is_tracing( Goal ),
         !,
         write_level( Level ),
-        write_label_and_goal( Label, Goal, Index ),
-        std_output_stream( Output ),
+        write_label_and_goal( Label, Goal, PGIndex ),
+        std_trace_stream( Output ),
         nl( Output ).
 
 trace_other( _, _, _, _ ).
@@ -6707,27 +6395,27 @@ trace_other( _, _, _, _ ).
 % Auxiliaries for tracing:
 
 write_level( Level ) :-
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, '[' ),
         write( Output, Level ),
         write( Output, '] ' ).
 
-write_label_and_goal( Label, Goal, Index ) :-
+write_label_and_goal( Label, Goal, PGIndex ) :-
         print_depth( Depth ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write( Output, Label ),
         write( Output, ': ' ),
-        write_goal_number( Index ),
+        write_goal_number( PGIndex ),
         write_shallow( Output, Goal, Depth ).
 
 
 write_goal_number( '?' ) :-
         !.
 
-write_goal_number( Index ) :-
-        std_output_stream( Output ),
+write_goal_number( PGIndex ) :-
+        std_trace_stream( Output ),
         write( Output, '<' ),
-        write( Output, Index ),
+        write( Output, PGIndex ),
         write( Output, '> ' ).
 
 
@@ -6741,7 +6429,7 @@ optional_trace( Label, Goal, Term, Level ) :-
         !,
         print_depth( Depth ),
         write_level( Level ),
-        std_output_stream( Output ),
+        std_trace_stream( Output ),
         write(         Output, Label ),
         write_shallow( Output, Goal, Depth ),
         write(         Output, ' : ' ),
