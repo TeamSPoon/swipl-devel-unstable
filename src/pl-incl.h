@@ -1963,8 +1963,8 @@ size N on the global stack AND  can   use  bindConst()  to bind it to an
 (attributed) variable.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#define BIND_GLOBAL_SPACE (10)
-#define BIND_TRAIL_SPACE (6)
+#define BIND_GLOBAL_SPACE (12)
+#define BIND_TRAIL_SPACE (8)
 #define hasGlobalSpace(n) \
 	(likely(gTop+(n)+BIND_GLOBAL_SPACE <= gMax) && \
 	 likely(tTop+BIND_TRAIL_SPACE <= tMax))
