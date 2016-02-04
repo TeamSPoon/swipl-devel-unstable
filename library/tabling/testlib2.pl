@@ -1,6 +1,8 @@
+:- expects_dialect(hprolog).
 :- use_module(library(format)).
-:- ['table_link_manager.pl'].
-:- ['variantlib.pl'].
+
+:- ensure_loaded('table_link_manager.pl'). 
+:- ensure_loaded('variantlib.pl'). 
 
 % Used for automatically comparing the results of the XSB and hProlog version of a benchmark.
 % Requires the presence of variant_for_xsb_comparison/1 facts in the hProlog benchmark file.

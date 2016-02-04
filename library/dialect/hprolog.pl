@@ -308,3 +308,5 @@ time(Goal, CPU, Wall) :-
 	get_time(T1),
 	Wall is T1-T0,
 	CPU is CPU1-CPU0.
+
+

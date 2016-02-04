@@ -29,7 +29,7 @@
 
 */
 
-:-  module(dra,[]).
+% :-  module(dra_interp,[]).
    % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
@@ -384,7 +384,8 @@ print_table_statistics:-print_statistics.
 %load(P):-dra_must(prog0(P)),!.
 
 
-:- ensure_loaded(library(dra_table_record)).
+% :- ensure_loaded(library(dra_table_record)).
+:- ensure_loaded((dra_table_assert)).
 %:- user:ensure_loaded(library(dra/tabling3/compatibility_utilities_swi)).
 %
 
@@ -6466,41 +6467,41 @@ show_stack( _ ).
 % c +r = 7.949 seconds
 
 /*
-% :- pf(library('dra/tabling3/examples/XSB/fib.tlp') ).
+% :- pf(('dra/tabling3/examples/XSB/fib.tlp') ).
 
-:- pf(library('dra/tabling3/examples/co_t.tlp') ).
-
-
-:- pf(library('dra/tabling3/examples/coind2.tlp') ).
-% :- pf(library('dra/tabling3/examples/LTL/v.pl') ).
-%:- pf(library('dra/tabling3/examples/mini_graph.tlp') ).
-%:- pf(library('dra/tabling3/examples/mini_language.tlp') ).
-:- pf(library('dra/tabling3/examples/paper_example.tlp') ).
+:- pf(('dra/tabling3/examples/co_t.tlp') ).
 
 
+:- pf(('dra/tabling3/examples/coind2.tlp') ).
+% :- pf(('dra/tabling3/examples/LTL/v.pl') ).
+%:- pf(('dra/tabling3/examples/mini_graph.tlp') ).
+%:- pf(('dra/tabling3/examples/mini_language.tlp') ).
+:- pf(('dra/tabling3/examples/paper_example.tlp') ).
 
-:- pf(library('dra/tabling3/Bench/tabling3/run')).
-:- pf(library('dra/tabling3/Bench/prolog/run')).
-:- pf(library('dra/tabling3/Bench/clpfd/run')).
-:- pf(library('dra/tabling3/Bench/aspclp/run')).
+
+
+:- pf(('dra/tabling3/Bench/tabling3/run')).
+:- pf(('dra/tabling3/Bench/prolog/run')).
+:- pf(('dra/tabling3/Bench/clpfd/run')).
+:- pf(('dra/tabling3/Bench/aspclp/run')).
 */
 
-t0:- time([library('dra/tabling3/examples/XSB/farmer.tlp')]).
-tn:- time([library('dra/tabling3/examples/tnot1.tlp')]).
-t1:- time(process_file(library('dra/tabling3/examples/XSB/farmer.tlp') )),!.
-t2:- time([library('dra/tabling3/examples/XSB/ham.tlp')]).
-t2a:- time([library('dra/tabling3/examples/XSB/ham_auto.tlp')]).
+t0:- time([('dra/tabling3/examples/XSB/farmer.tlp')]).
+tn:- time([('dra/tabling3/examples/tnot1.tlp')]).
+t1:- time(process_file(('dra/tabling3/examples/XSB/farmer.tlp') )),!.
+t2:- time([('dra/tabling3/examples/XSB/ham.tlp')]).
+t2a:- time([('dra/tabling3/examples/XSB/ham_auto.tlp')]).
 
-t2b:- time(pf(library('dra/tabling3/examples/XSB/ham.tlp') )).
-t3:- [(library('dra/tabling3/examples/graph.tlp') )].
-t4:- pf(library('dra/tabling3/examples/module.tlp') ).
-t4:- [(library('dra/tabling3/examples/paper_example.tlp') )].
-t4:- pf(library('dra/tabling3/examples/conditional.clp') ).
-t4:- pf(library('dra/tabling3/examples/simple1.tlp') ).
-t4:- pf(library('dra/tabling3/examples/simple1_old_first.tlp') ).
-t4:- pf(library('dra/tabling3/examples/conditional.clp') ).
-t4:- pf(library('dra/tabling3/examples/small_comment_example.tlp') ).
-t4:- pf(library('dra/tabling3/examples/coind_new.tlp') ).
+t2b:- time(pf(('dra/tabling3/examples/XSB/ham.tlp') )).
+t3:- [(('dra/tabling3/examples/graph.tlp') )].
+t4:- pf(('dra/tabling3/examples/module.tlp') ).
+t4:- [(('dra/tabling3/examples/paper_example.tlp') )].
+t4:- pf(('dra/tabling3/examples/conditional.clp') ).
+t4:- pf(('dra/tabling3/examples/simple1.tlp') ).
+t4:- pf(('dra/tabling3/examples/simple1_old_first.tlp') ).
+t4:- pf(('dra/tabling3/examples/conditional.clp') ).
+t4:- pf(('dra/tabling3/examples/small_comment_example.tlp') ).
+t4:- pf(('dra/tabling3/examples/coind_new.tlp') ).
 t5:- consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/dra/tabling3/Bench/tabling/tcl.pl').
 
 % :- repeat,logOnErrorIgnore(prolog),fail.

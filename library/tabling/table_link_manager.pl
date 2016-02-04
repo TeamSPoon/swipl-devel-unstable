@@ -1,6 +1,7 @@
-:- ['trie.pl'].
-:- ['utils.pl'].
-
+ :- expects_dialect(hprolog).
+:- ensure_loaded('trie.pl').
+:- ensure_loaded('utils.pl').
+ 
 :- use_module(library(format)).
 
 % This file defines a call pattern trie.
@@ -21,7 +22,8 @@ table_link_manager_initialize :-
 
 % Succeeds if the table_link_manager_initialize/0 predicate was already called.
 table_link_manager_initialized :-
-  \+ nb_getval(trie_table_link,[]).
+  nb_current(trie_table_link,_),
+  \+ nb_current(trie_table_link,[]).
 
 % PRIVATE
 % mode: + -

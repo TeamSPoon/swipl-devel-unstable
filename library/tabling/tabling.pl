@@ -1,3 +1,12 @@
+:- expects_dialect(hprolog).
+
+
+:- ensure_loaded('table_datastructure.pl'). 
+:- ensure_loaded('batched-worklist.pl'). 
+:- ensure_loaded('table_print.pl'). 
+:- ensure_loaded('testlib2.pl'). 
+:- ensure_loaded('globalWorklist.pl'). 
+
 :- ['table_datastructure.pl','batched-worklist.pl','table_print.pl','testlib2.pl','globalWorklist.pl'].
 
 :- use_module(library(lists)).

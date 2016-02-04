@@ -1,6 +1,7 @@
+:- expects_dialect(hprolog).
 :- use_module(library(format)).
 :- use_module(library(lists)).
-:- ['utils.pl'].
+:- ensure_loaded('utils.pl').
 
 % Notes about testing:
 % - name of a test should start with t_, optionally followed by a number

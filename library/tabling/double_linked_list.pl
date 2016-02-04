@@ -1,3 +1,4 @@
+:- expects_dialect(hprolog).
 % A circular double linked list
 % =============================
 
@@ -21,7 +22,7 @@
 
 :- use_module(library(format)). % hProlog-specific
 
-:- ['utils.pl'].
+:- ensure_loaded('utils.pl').
 
 dll_new_double_linked_list(List) :-
   % Nonused cell dll_start at the beginning, points to itself (this is easy when adding elements).

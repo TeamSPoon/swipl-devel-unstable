@@ -1,5 +1,6 @@
+:- expects_dialect(hprolog).
 :- use_module(library(format)).
-:- ['utils.pl'].
+:- ensure_loaded('utils.pl').
 
 % Routines for printing the table datastructure.
 % To assist in debugging and for output.

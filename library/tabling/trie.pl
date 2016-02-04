@@ -1,3 +1,4 @@
+:- expects_dialect(hprolog).
 % Implementation of a prefix tree, a.k.a. trie %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -10,9 +11,8 @@
 :- use_module(library(format)).
 % :- use_module(library(assoc)).
 % We have copied this code to assoc.pl
-:- ['assoc.pl'].
-
-:- ['utils.pl']. % map_component/2 for debugging purposes
+:- ensure_loaded('assoc.pl'). 
+:- ensure_loaded('utils.pl'). % map_component/2 for debugging purposes
 
 % Structure of tries:
 % trie_inner_node(MaybeValue,Children).
