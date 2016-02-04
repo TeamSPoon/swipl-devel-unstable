@@ -1178,22 +1178,23 @@ emptyStacks(void)
   { int i;
 
     PL_open_foreign_frame();
-    exception_term        = 0;
-    exception_bin         = PL_new_term_ref();
-    exception_printed     = PL_new_term_ref();
-    LD->exception.tmp     = PL_new_term_ref();
-    LD->exception.pending = PL_new_term_ref();
-    LD->trim.dummy        = PL_new_term_ref();
+    exception_term          = 0;
+    exception_bin           = PL_new_term_ref();
+    exception_printed       = PL_new_term_ref();
+    LD->exception.tmp       = PL_new_term_ref();
+    LD->exception.pending   = PL_new_term_ref();
+    LD->trim.dummy          = PL_new_term_ref();
 #ifdef O_ATTVAR
-    LD->attvar.head	  = PL_new_term_ref();
-    LD->attvar.tail       = PL_new_term_ref();
-    LD->attvar.gc_attvars = PL_new_term_ref();
+    LD->attvar.head	    = PL_new_term_ref();
+    LD->attvar.tail         = PL_new_term_ref();
+    LD->attvar.gc_attvars   = PL_new_term_ref();
 
     LD->attvar.metaterm_regs = PL_new_term_refs(2);
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
     METATERM_CURRENT =  META_DEFAULT;
     *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
     LD->slow_unify     = SLOW_UNIFY_DEFAULT;
+
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 #ifdef O_GVAR
