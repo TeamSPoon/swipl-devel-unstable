@@ -260,8 +260,7 @@ do_unify(Word t1, Word t2 ARG_LD)
 
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
-	{ 
-      Trail(t2, makeRef(t1));
+	{ Trail(t2, makeRef(t1));
 	  continue;
 	}
 	if ( t1 == t2 )
@@ -3413,11 +3412,29 @@ retry:
 	gp += 6;
 
 	if ( isTrailVal(p) )
-	{ if(isAttVar(trailVal(p))) {
+	{ assert(isAttVar(trailVal(p)));
 
 	  tt--;			/* re-insert the attvar */
           *tt->address = trailVal(p);
-     }
+       
+           tt--;				/* restore tail of wakeup list */
+           p = tt->address;
+           if ( isTrailVal(p) )
+           { tt--;
+             *tt->address = trailVal(p);
+           } else
+           { setVar(*p);
+           }
+
+           tt--;				/* restore head of wakeup list */
+           p = tt->address;
+           if ( isTrailVal(p) )
+           { tt--;
+             *tt->address = trailVal(p);
+           } else
+           { setVar(*p);
+           }
+
 	  assert(tt>=mt);
 	}
       }
@@ -3441,12 +3458,8 @@ retry:
 static
 PRED_IMPL("unifiable", 3, unifiable, 0)
 { PRED_LD
-   /* Avoids creating global terms we promise never to use*/
-    int was_no_wakeups = LD_no_wakeup;
-    LD_no_wakeup = TRUE;
-    int rc = unifiable(A1, A2, A3 PASS_LD);
-    LD_no_wakeup = was_no_wakeups;
-    return rc;
+
+  return unifiable(A1, A2, A3 PASS_LD);
 }
 
 

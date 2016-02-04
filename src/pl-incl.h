@@ -2016,6 +2016,7 @@ typedef struct
 #define ATTV_ASSIGNONLY  0x02			/* '$attvar_assign'/2 */
 #define ATTV_DO_UNIFY       0x04			/* unify: assign and wakeup */
 
+#define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
 #define LD_no_wakeup LD->attvar.no_wakeups
 
@@ -2038,7 +2039,7 @@ typedef struct
                                     as the result of unification.                                    
                                  */
 
-#define META_DISABLE_SWAP   0x0200 /* check attvars for undo hooks (perfomance checking) */
+#define META_DISABLE_SWAP   0x0200 /* dont sort attvars for unification */
 
 #define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
 #define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */
@@ -2047,6 +2048,7 @@ typedef struct
 #define META_ENABLE_CPREDS	0x2000 /* Hook CPREDS (WAM can misses a few)*/
 #define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
 #define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
+#define META_ENABLE_PREUNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
 
 
 #define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS)
@@ -2074,13 +2076,14 @@ typedef struct
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
-
+#define POST_SKIP_HIDDEN(l,r) if (*l==*r && *l==ATOM_nil) continue
 /*#define IS_META_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,META_NO_INHERIT)),option))))*/
 
 #else  /* for less noisey undefing of O_METATERM */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
 #define METATERM_OVERIDES(var,functor) (0)
 #define METATERM_HOOK(what,t1,t2,rc) (0)
+#define POST_SKIP_HIDDEN(l,r) (void)0
 #define METATERM_ENABLED (0)
 #endif
 

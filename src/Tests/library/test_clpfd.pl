@@ -39,7 +39,7 @@
 
 test_clpfd :-
 	run_tests([ clpfd_wrong,
-                     % clpfd_shower,
+                     clpfd_shower,
                      clpfd_num2
 
 		  ]).
@@ -106,7 +106,7 @@ solve(N,[A1,A2,A3,A4],[B1,B2,B3,B4],[C1,C2,C3,C4],[D1,D2,D3,D4]) :-
 
 test(num1,X==20):- num(1,X).
 test(num2,X==323):- num(2,X).
-%test(num3,X==2492):- num(3,X).
+test(num3,X==2492):- num(3,X).
 % 24 seconds
 % test(num4,X==13240):- num(4,X).
 % 60 seconds
@@ -135,7 +135,7 @@ shower(S, Done) :-
         cumulative(Tasks, [limit(3)]),
         labeling([], [Done|S]).
 
-test(shower2,[X,Y]==[[0, 0, 0, 3, 5, 8, 5, 11], 14]):- shower(X, Y).
+test(shower2,[X,Y]==[[0, 0, 0, 3, 5, 8, 5, 11], 14]):- shower(X, Y),!.
 
 :- end_tests(clpfd_shower).
 

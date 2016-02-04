@@ -605,6 +605,8 @@ static
 PRED_IMPL("copy_term", 2, copy_term, 0)
 { PRED_LD
 
+  GROW_OR_RET_OVERFLOW(1);
+
   if ( PL_is_atomic(A1) )
   { return PL_unify(A1, A2);
   } else
@@ -644,6 +646,11 @@ PRED_IMPL("duplicate_term", 2, duplicate_term, 0)
 static
 PRED_IMPL("copy_term_nat", 2, copy_term_nat, 0)
 { PRED_LD
+
+
+  GROW_OR_RET_OVERFLOW(1);
+  
+
   term_t copy = PL_new_term_ref();
 
   if ( copy_term_refs(A1, copy, COPY_SHARE PASS_LD) )

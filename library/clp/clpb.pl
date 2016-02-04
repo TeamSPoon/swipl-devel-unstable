@@ -886,8 +886,10 @@ state(S0, S), [S] --> [S0].
    Unification. X = Expr is equivalent to sat(X =:= Expr).
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+/* newer version */
 verify_attributes(Var, Other, Gs) :-
-        % format("~w = ~w\n", [Var,Other]),
+ \+ current_prolog_flag(wakeups,va3) -> Gs=[] ;
+           % format("~w = ~w\n", [Var,Other]),
         (   get_attr(Var, clpb, index_root(I,Root)) ->
             (   integer(Other) ->
                 (   between(0, 1, Other) ->
@@ -916,6 +918,81 @@ verify_attributes(Var, Other, Gs) :-
         ;   Gs = []
         ).
 
+/* older version */
+verify_attributes_old(Var, Other, Gs) :-
+        % format("~w = ~w\n", [Var,Other]),
+        (   get_attr(Var, clpb, index_root(I,Root)) ->
+            (   integer(Other) ->
+                (   between(0, 1, Other) ->
+                    root_get_formula_bdd(Root, Sat, BDD0),
+                    bdd_restriction(BDD0, I, Other, BDD),
+                    root_put_formula_bdd(Root, Sat, BDD),
+   /*Prefixing is impl'd by VM and not a forced requirement in code */
+                    Gs = [satisfiable_bdd(BDD)]
+                ;   no_truth_value(Other)
+                )
+            ;   atom(Other) ->
+                root_get_formula_bdd(Root, Sat0, _),
+                Gs = [root_rebuild_bdd(Root, Sat0)]
+            ;   % due to variable aliasing, any BDDs may become unordered,
+                % so we need to rebuild the new BDD from the conjunction
+                % after the unification is in place
+                root_get_formula_bdd(Root, Sat0, _),
+                Sat = Sat0*OtherSat,
+                parse_sat(Other, OtherSat),
+                sat_roots(Sat, Roots),
+                phrase(formulas_(Roots), Fs),
+                foldl(and, Fs, 1, And),
+                maplist(del_bdd, Roots),
+                maplist(=(NewRoot), Roots),
+                Gs = [root_rebuild_bdd(NewRoot, And)]
+            )
+        ;   Gs = []
+        ).
+
+
+attr_unify_hook(AttVal, Other) :-
+      current_prolog_flag(wakeups,va3) -> true ;
+       (AttVal = index_root(I,Root),
+        (   integer(Other) ->
+            (   between(0, 1, Other) ->
+                root_get_formula_bdd(Root, Sat, BDD0),
+                bdd_restriction(BDD0, I, Other, BDD),
+                root_put_formula_bdd(Root, Sat, BDD),
+                satisfiable_bdd(BDD)
+            ;   no_truth_value(Other)
+            )
+        ;   atom(Other) ->
+            root_get_formula_bdd(Root, Sat0, _),
+            parse_sat(Sat0, Sat),
+            sat_bdd(Sat, BDD),
+            root_put_formula_bdd(Root, Sat0, BDD),
+            is_bdd(BDD),
+            satisfiable_bdd(BDD)
+        ;   % due to variable aliasing, any BDDs may now be unordered,
+            % so we need to rebuild the new BDD from the conjunction.
+            root_get_formula_bdd(Root, Sat0, _),
+            Sat = Sat0*OtherSat,
+            (   var(Other), var_index_root(Other, _, OtherRoot),
+                OtherRoot \== Root ->
+                root_get_formula_bdd(OtherRoot, OtherSat, _),
+                parse_sat(Sat, Sat1),
+                sat_bdd(Sat1, BDD1),
+                And = Sat,
+                sat_roots(Sat, Roots)
+            ;   parse_sat(Other, OtherSat),
+                sat_roots(Sat, Roots),
+                maplist(root_rebuild_bdd, Roots),
+                roots_and(Roots, 1-1, And-BDD1)
+            ),
+            maplist(del_bdd, Roots),
+            maplist(=(NewRoot), Roots),
+            root_put_formula_bdd(NewRoot, And, BDD1),
+            is_bdd(BDD1),
+            satisfiable_bdd(BDD1)
+        )).
+
+
 formulas_([]) --> [].
 formulas_([Root|Roots]) -->
         (   { root_get_formula_bdd(Root, F, _) } ->
@@ -930,6 +1007,16 @@ root_rebuild_bdd(Root, Formula) :-
         is_bdd(BDD),
         root_put_formula_bdd(Root, Formula, BDD),
         satisfiable_bdd(BDD).
+
+
+
+root_rebuild_bdd(Root) :-
+        (   root_get_formula_bdd(Root, F0, _) ->
+            parse_sat(F0, Sat),
+            sat_bdd(Sat, BDD),
+            root_put_formula_bdd(Root, F0, BDD)
+        ;   true
+        ).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Support for project_attributes/2.
@@ -1664,15 +1751,19 @@ clpb_atom_var(Atom, Var) :-
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 :- public
-        clpb_hash:verify_attributes/3,
+        clpb_hash:attr_unify_hook/2,
+	clpb_hash:verify_attributes/3,
         clpb_bdd:attribute_goals//1,
         clpb_hash:attribute_goals//1,
+        clpb_omit_boolean:attr_unify_hook/2,
         clpb_omit_boolean:verify_attributes/3,
         clpb_omit_boolean:attribute_goals//1,
+        clpb_atom:attr_unify_hook/2,
         clpb_atom:verify_attributes/3,
         clpb_atom:attribute_goals//1.
 
 clpb_hash:verify_attributes(_,_, []).  % this unification is always admissible
+clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    If a universally quantified variable is unified to a Boolean value,
@@ -1681,8 +1772,11 @@ clpb_hash:verify_attributes(_,_, []).  % this unification is always admissible
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 clpb_atom:verify_attributes(_, _, [false]).
+% will never get here 
+clpb_atom:attr_unify_hook(_, _) :- false.
 
 clpb_omit_boolean:verify_attributes(_, _, []).
+clpb_omit_boolean:attr_unify_hook(_,_).
 
 clpb_bdd:attribute_goals(_)          --> [].
 clpb_hash:attribute_goals(_)         --> [].

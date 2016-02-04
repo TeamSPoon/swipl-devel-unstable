@@ -61,27 +61,12 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 %
 %       If a callee removes the '$in_unify' property we succeed unconditionally
 
-/*
-
-system:pre_unify(att(Module, _AttVal, Rest), Next, VarId, Var, Value,  (goals_with_module(Goals,Module),G)):- 
-            /* For XSB compat */
-	
-	!,
-	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-	system:pre_unify(Rest, Next,VarId, Var, Value, G).
-
-system:pre_unify(_, Next, _, Var, Value, Goals):-    set_prolog_flag(access_level,system), % ensures trace durring wakeup
-        fail, attvar(Value), get_attrs(Value,Atts),!,
-	system:peer_unify(Atts,Next,Value, Var, Goals).
-
-system:pre_unify(_, Next, _, _, _, Next).
-
-*/
-
+no_pre_unify:- true.
 
 :- meta_predicate(system:pre_unify(+,0,+,+)).
 
-system:pre_unify(_,Next,Var,Value):- nonvar(Var),!,Var=Value,call(Next).
+system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
+system:pre_unify(_,Next,Var,Value):- no_pre_unify, !,'$trail_assignment'(Var),attv_unify(Var,Value),call(Next).
 system:pre_unify(Atts,Next,Var,Value):- 
      format(string(VarId),'~q',[Var]),
      put_attr(Var,'$in_unify',VarId),!,
@@ -89,11 +74,12 @@ system:pre_unify(Atts,Next,Var,Value):-
 
 system:verify_attributes(_Var, _Value, []).
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
+
 system:pre_unify(_, Next, Var, Value,VarId):- \+ ((get_attr(Var,'$in_unify',CookieM),VarId==CookieM)),!, call(Next).
 system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarId):- !,
         Module:verify_attributes(Var, Value, Goals),
         system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarId).
-system:pre_unify([], Next, Var, Value,VarId):- attv_unify(Var,Value),call(Next).
+system:pre_unify(_, Next, _Var, _Value,_VarId):- call(Next).
         
 
                    /*******************************
@@ -116,10 +102,10 @@ system:peer_unify(_,Next,_, _, Next).
 system:attr_unify_hook(_AttVal, _Value).
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
-system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):-!,
+system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         Module:attr_unify_hook(AttVal, Value),
         post_unify(Rest, Next, Var, Value).
-system:post_unify(_,Next,_Var,_Value):- call(Next).
+system:post_unify(_,Next,Var,Value):- Var==Value, call(Next).
 
 
 

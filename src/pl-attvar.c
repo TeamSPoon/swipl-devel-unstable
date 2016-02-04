@@ -109,13 +109,13 @@ SHIFT-SAFE: Caller must ensure 7 global and 4 trail-cells
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static void
-appendWakeup(Word wake, int len, int alert_flags ARG_LD);
+appendWakeup(Word wake ARG_LD);
 
 void
 registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  if(LD_no_wakeup > 0)
+  if(LD_no_wakeup > 0 && FALSE)
   { DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
 	return;
   }
@@ -127,9 +127,9 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
-  wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; /* in case we are using this interface for other means */
+  wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; 
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
-  appendWakeup(wake, 2, TRUE PASS_LD);
+  appendWakeup(wake PASS_LD);
 }
 
 void
@@ -141,13 +141,14 @@ scheduleWakeup(word g, int alert_flags ARG_LD)
   wake[0] = FUNCTOR_comma2;
   wake[1] = g;
   wake[2] = ATOM_true;
-  appendWakeup(wake, 2, alert_flags PASS_LD);
+  LD->alerted |= alert_flags;
+  appendWakeup(wake PASS_LD);
 }
 
 
 
 static void
-appendWakeup(Word wake, int len, int alert_flags ARG_LD)
+appendWakeup(Word wake ARG_LD)
 { Word tail = valTermRef(LD->attvar.tail);
 
   if ( *tail )
@@ -157,7 +158,7 @@ appendWakeup(Word wake, int len, int alert_flags ARG_LD)
     TrailAssignment(t);
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
-    *tail = makeRef(wake+len);
+    *tail = makeRef(wake+2);
     DEBUG(MSG_WAKEUPS, Sdprintf("appended to wakeup\n"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
@@ -166,9 +167,10 @@ appendWakeup(Word wake, int len, int alert_flags ARG_LD)
     TrailAssignment(head);		/* See (*) */
     *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);
-    *tail = makeRef(wake+len);
-    if (alert_flags) LD->alerted |= ALERT_WAKEUP;
-    DEBUG(MSG_WAKEUPS, Sdprintf("new wakeup alerted=%d\n", alert_flags));
+    *tail = makeRef(wake+2);    
+    LD->alerted |= ALERT_WAKEUP;
+    DEBUG(MSG_WAKEUPS, Sdprintf("new wakeup alerted=%d\n", LD->alerted & ALERT_WAKEUP));
+
   }
 }
 
@@ -221,8 +223,56 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 
 void
 assignAttVar(Word av, Word value, int flags ARG_LD)
+{ Word a;
+
+  assert(isAttVar(*av));
+  assert(!isRef(*value));
+  assert(gTop+7 <= gMax && tTop+6 <= tMax);
+  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+
+  if ( isAttVar(*value) )
+  { if ( value > av )
+    { Word tmp = av;
+      av = value;
+      value = tmp;
+    } else if ( av == value )
+      return;
+  }
+
+  a = valPAttVar(*av);
+  registerWakeup(FUNCTOR_post_unify4, av, a, value PASS_LD);
+
+  TrailAssignment(av);
+  if ( isAttVar(*value) )
+  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+    *av = makeRef(value);
+  } else
+    *av = *value;
+
+  return;
+}
+
+void
+assignAttVarPostUnify(Word av, Word value, int flags ARG_LD)
+{ Word a;
+
+  registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+
+  TrailAssignment(av);
+
+}
+
+
+
+
+void
+assignAttVarWierd(Word av, Word value, int flags ARG_LD)
 { mark m;
 
+  /*temporarly confirming do_unify can use ATTV_WAKEBINDS will make it fail dif(10)*/
+  //if(flags==ATTV_DO_UNIFY) flags = ATTV_WAKEBINDS;
   
   assert(isAttVar(*av));
   assert(!isRef(*value));
@@ -247,16 +297,28 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   bool did_wake = FALSE;
 
-
   if( !(flags& ATTV_ASSIGNONLY) )
    if(!(IS_META(NO_WAKEUP))) 
-   { did_wake = TRUE;
-     registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
+   { if ( av == value) 
+     {
+         DEBUG(MSG_WAKEUPS, Sdprintf("no_self_unify(%s)\n", vName(av)));
+         return;
+     }
+    if(IS_META(ENABLE_PREUNIFY))
+    {
+      registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
+      did_wake = TRUE;
+    }
   }
 
  if ( (flags& ATTV_WAKEBINDS) && did_wake )
     return;
 
+ if(!IS_META(ENABLE_PREUNIFY)) 
+ {
+     registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+     did_wake = TRUE;
+ }
  if(!(IS_META(NO_TRAIL)))
  {
   Mark(m);		/* must be trailed, even if above last choice */
@@ -264,16 +326,25 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   TrailAssignment(av);
   DiscardMark(m);
  }
-
+ 
  if (IS_META(NO_BIND))
      return;
 
-// if( !(flags& ATTV_ASSIGNONLY) ) return;
+}
+
+void
+assignAttVarNoWake(Word av, Word value, int flags ARG_LD)
+{
+ 
+ assert(isAttVar(*av));
+ assert(!isRef(*value));
+ DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
+
+ flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+
  if ( isAttVar(*value) )
  { 
-     registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-    
-    if ( av == value) return;
+     if ( av == value) return;
 
     if(IS_META(KEEP_BOTH))
     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("META_KEEP_BOTH\n"));
@@ -284,7 +355,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
         *av = makeRef(value);
     } else
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av -> value\n"));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Reversing value <- av\n"));
         *value = makeRef(av);
     }
     
@@ -304,22 +375,23 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 	 } else
      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
 
-         registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-         if(IS_META(KEEP_BOTH)) return;
+         if(IS_META(KEEP_BOTH))
+         {  registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
+            return;
+         }
 
          if(!IS_META(PEER_NO_TRAIL))
          { /*This is what do_unify() would do*/
            Trail(value, makeRef(av));
          } else
-         { *value = makeRef(av);
+         { registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
+           //*value = makeRef(av);
          }
      }
-  } else {
-      registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-      *av = *value;
+  } else 
+  {
+     *av = *value;
   }
-
-
 }
 
 
@@ -828,12 +900,7 @@ PRED_IMPL("put_attr", 3, put_attr, 0)	/* +Var, +Name, +Value */
   Word av, vp;
   atom_t name;
 
-  if ( !hasGlobalSpace(1) )		/* 0 means enough for attvars */
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(1, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(1);  /* 0 means enough for attvars */
 
   if ( !PL_get_atom_ex(A2, &name) )
     fail;
@@ -873,12 +940,8 @@ PRED_IMPL("put_attrs", 2, put_attrs, 0)
 { PRED_LD
   Word av, vp;
 
-  if ( !hasGlobalSpace(0) )		/* 0 means enough for attvars */
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(0); /* 0 means enough for attvars */
+  
 
   av = valTermRef(A1);
   deRef(av);
@@ -904,12 +967,7 @@ PRED_IMPL("del_attr", 2, del_attr2, 0)	/* +Var, +Name */
   Word av;
   atom_t name;
 
-  if ( !hasGlobalSpace(0) )
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(0);  /* 0 means enough for attvars */
 
   if ( !PL_get_atom_ex(A2, &name) )
     return FALSE;
@@ -938,12 +996,7 @@ PRED_IMPL("del_attrs", 1, del_attrs, 0)	/* +Var */
 { PRED_LD
   Word av;
 
-  if ( !hasGlobalSpace(0) )
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(0);  /* 0 means enough for attvars */
 
   av = valTermRef(A1);
   deRef(av);
@@ -977,12 +1030,7 @@ PRED_IMPL("$freeze", 2, freeze, 0)
 { PRED_LD
   Word v;
 
-  if ( !hasGlobalSpace(0) )
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(0);
 
   v = valTermRef(A1);
   deRef(v);
@@ -1249,12 +1297,7 @@ PRED_IMPL("$suspend", 3, suspend, PL_FA_TRANSPARENT)
   atom_t name;
   Word v, g;
 
-  if ( !hasGlobalSpace(6) )		/* 0 means enough for attvars */
-  { int rc;
-
-    if ( (rc=ensureGlobalSpace(6, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(6);		/* 0 means enough for attvars */
 
   if ( !PL_get_atom_ex(A2, &name) )
     return FALSE;
@@ -1543,43 +1586,47 @@ PRED_IMPL("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif /*O_CALL_RESIDUE*/
 
 
+
+static
+PRED_IMPL("$trail_assignment", 1, dtrail_assignment, 0) 
+{ PRED_LD
+  Word value, av = valTermRef(A1);
+  deRef2(av, value);
+  if ( canBind(*value) )
+  { TrailAssignment(value); 
+  } else
+  { TrailAssignment(unRef(*av)); 
+  }
+  return TRUE;
+}
+
 /** 
  *  attv_unify(+Var, +Value) is det.
  *    Is actually attv_unify/2 from XSB-Prolog
+ * 
+ *  Warn: dont forget to call $trail_assignment(Var) 
 */
-
 static
 PRED_IMPL("attv_unify", 2, attv_unify, 0)
 { PRED_LD
 
-/*
-    Word av = valTermRef(A1);
-    deRef(av);
-    int was = LD->attvar.attv_mode;
-    LD->attvar.attv_mode = was | ATTV_ASSIGNONLY;
-    int ret = PL_unify(A1,A2);
-    LD->attvar.attv_mode = was;
-    return ret;
-*/
   Word value, av;
-
-  if ( !hasGlobalSpace(0) )
-  { int rc;
-
-      if ( (rc=ensureGlobalSpace(0, ALLOW_GC)) != TRUE )
-        return raiseStackOverflow(rc);
-  }
-
+  GROW_OR_RET_OVERFLOW(0);
+  
   av = valTermRef(A1);
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    assignAttVar(av, value, ATTV_ASSIGNONLY PASS_LD);
-  } else
+    assignAttVarNoWake(av, value, ATTV_ASSIGNONLY PASS_LD);
+    return TRUE;
+  } else if ( isVar(*av) )
   { unify_vp(av,valTermRef(A2) PASS_LD);
+    return TRUE;
+  } else
+  { return PL_unify(A1,A2);
   }
 
-  return TRUE;
+  
 }
 
 static
@@ -1635,12 +1682,8 @@ static
 PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
 { PRED_LD
   Word g;
-  if ( !hasGlobalSpace(6) )	
-  { int rc;
 
-    if ( (rc=ensureGlobalSpace(6, ALLOW_GC)) != TRUE )
-      return raiseStackOverflow(rc);
-  }
+  GROW_OR_RET_OVERFLOW(6);
 
   g = valTermRef(A1);
   deRef(g);
@@ -1656,7 +1699,7 @@ PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
     g = valTermRef(g2);
       *g = consPtr(t, STG_GLOBAL|TAG_COMPOUND);
   }
-   scheduleWakeup(*g, TRUE PASS_LD);
+   scheduleWakeup(*g, ALERT_WAKEUP PASS_LD);
    return TRUE;
 }
 
@@ -1942,6 +1985,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
+  PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
   PRED_DEF("metaflag_options", 2, metaflag_options, 0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
