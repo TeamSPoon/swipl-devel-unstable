@@ -1,4 +1,4 @@
-#! swipl -L8G -G8G -T8G -f
+% #! swipl -L8G -G8G -T8G -f
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
@@ -61,10 +61,13 @@
 :- dynamic   user:file_search_path/2.
 :- multifile user:file_search_path/2.
 
-assert_if_new(G):-catch(G,_,fail),!.
-assert_if_new(G):-assert(G).
+:- meta_predicate user:asserta_if_new(:).
+:- meta_predicate user:dra_must(:).
+:- meta_predicate user:dra_check(:).
+% asserta_if_new(G):-catch(G,_,fail),!.
+asserta_if_new(G):-retract_all0(G),asserta(G).
 
-must(G):-G*->true;throw(failed_must(G)).
+dra_must(G):-G*->true;throw(failed_must(G)).
 
 property_pred((table),is_tabled).
 property_pred(builtin,is_builtin).
@@ -100,12 +103,12 @@ property_pred(hilog,is_hilog).
 
 retract_all0(R):- ignore((retract(R),fail)).
 
-pf(F):- must(retract_all0(topl(_))),
-  to_filename(F,FC),
-   must([(FC)]),!.  % ,once(ignore((run_curent_test,sleep(2)))))).
+pf(F):- dra_must(retract_all0(topl(_))),
+  dra_to_filename(F,FC),
+   dra_must([(FC)]),!.  % ,once(ignore((run_curent_test,sleep(2)))))).
 
-run_curent_test:- show_call_failure(if_defined(go,if_defined(test,if_defined(top)))),!.
-run_curent_test:- top(_),!,forall(top(I),time((ignore(show_call((nonvar(I),query(I))))))),!.
+run_curent_test:- (if_defined(go,if_defined(test,if_defined(top)))),!.
+run_curent_test:- topl(_),!,forall(topl(I),time((ignore(call((nonvar(I),dra_call(I))))))),!.
 
 :- dynamic(is_clause_module/2).
 
@@ -124,37 +127,37 @@ clause_module1(Goal,M):-current_predicate(_,M:Goal),!.
 clause_module1(Goal,M):-source_file(Goal,F), module_property(M,file(F)),!.
 clause_module1(Goal,M):-predicate_property(_:Goal,imported_from(M)),!.
 clause_module1(Goal,M):-current_module(M),current_predicate(_,M:Goal),!.
-clause_module1(Goal,M):-clause(Goal,_,Ref),clause_propery(Ref,module(M)).
-clause_module1(Goal,M):-clause(_:Goal,_,Ref),clause_propery(Ref,module(M)).
+clause_module1(Goal,M):-clause(Goal,_,Ref),clause_property(Ref,module(M)).
+clause_module1(Goal,M):-clause(_:Goal,_,Ref),clause_property(Ref,module(M)).
 
 
-% load( + file name ):
+% dra_load( +file name ):
 % Initialise, then load a program from this file, processing directives and
 % queries.  After this is done, enter interactive mode.
 
 
 :-export(load/1).
-load( FileName ) :-
-     must_det_l((
+dra_load( FileName ) :-
+     dra_must((
         setup,
-        initialise,                              % provided by a metainterpreter
-        process_file( FileName ),!,
-        check_general_consistency,
-        program_loaded)),!.                          % provided by a metainterpreter
+        initialise)),                              % provided by a metainterpreter
+        dra_must((process_file( FileName ))),!,
+        dra_must((check_general_consistency)),
+        dra_must((program_loaded)),!.                          % provided by a metainterpreter
 
 
 cputime(X):- statistics(cputime,X).
 
-% process_file( + file name ):
+% process_file( +file name ):
 % Load a program from this file, processing directives and queries.
 
-% :- mode process_file( + ).
+% :- mode process_file( +).
 
 do_process_file( FileName ) :-    
         open_the_file( FileName, ProgStream ),
         process_input( ProgStream ),!,
         
-        sanity(at_end_of_stream(ProgStream)),        
+        assertion(at_end_of_stream(ProgStream)),        
    % atom_to_memory_file('',Null_stream),
    % file_directory_name(FileName,D),
    stream_property(ProgStream,file_name(FN)),
@@ -164,7 +167,7 @@ do_process_file( FileName ) :-
 memberchk_same(X, [Y0|Ys]) :- is_list(Ys),!,C=..[v,Y0|Ys],!, arg(_,C,Y), ( X =@= Y ->  (var(X) -> X==Y ; true)),!.
 memberchk_same(X, [Y|Ys]) :- (   X =@= Y ->  (var(X) -> X==Y ; true) ;   (nonvar(Ys),memberchk_same(X, Ys) )).
 no_repeats_var(Var):- nonvar(Var) ->true;(get_attr(Var,nr,_)->true;put_attr(Var,nr,old_vals([]))).
-nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz),memberchk_same(VarValue,Waz),nb_setarg(1,AttValue,[VarValue|Waz]).
+nr:attr_unify_hook(AttValue,VarValue):- AttValue=old_vals(Waz), !, \+ memberchk_same(VarValue,Waz),nb_setarg(1,AttValue,[VarValue|Waz]).
 
 current_dirs(DO):- no_repeats_var(DO),current_dirs0(D),(atom_concat(DO,'/',D)->true;DO=D).
 current_dirs0(D):- prolog_load_context(directory,D).
@@ -177,12 +180,13 @@ current_dirs0(D):- expand_file_name('*/*/*/',X),member(E,X),absolute_file_name(E
 current_dirs0(D):- source_file_property(FN, modified(_)), file_directory_name(FN,D).
 current_dirs0('.').
 
-to_filename( FileName, FileName ) :- atomic(FileName),exists_file(FileName),!.
-to_filename( FileName, AFN ) :-
- must(default_extension( Ext );Ext='.tlp'), 
- must((current_dirs(D),
+dra_to_filename( FileName, FileName ) :- atomic(FileName),exists_file(FileName),!.
+dra_to_filename( FileName, AFN ) :-
+ dra_must(default_extension( Ext );Ext='.tlp'), 
+ dra_must((current_dirs(D),
      member(TF,[false,true]),
-        absolute_file_name(FileName,AFN,[solutions(all),expand(TF),access(read),relative_to(D),file_errors(fail),extensions(['',Ext,'.pl','.tlp','.clp','.P'])]),
+        absolute_file_name(FileName,AFN,[solutions(all),expand(TF),access(read),relative_to(D),file_errors(fail),
+          extensions(['',Ext,'.pl','.tlp','.clp','.P'])]),
         exists_file(AFN))),!.
 
 :-dynamic(is_pred_metainterp/2).
@@ -197,7 +201,9 @@ pred_metainterp(Pred,M):- source_file(Pred,File),is_file_meta(File,M),!.
 pred_metainterp(Pred,M):- might_be_clause_meta(Pred)-> M = is_never_tabled. 
 pred_metainterp(_   ,unknown).
 
-add_file_meta(FileName,Type):-to_filename(FileName,File),assert_if_new(is_file_meta(File,Type)).
+
+:- dynamic(is_file_meta/2).
+add_file_meta(FileName,Type):-dra_to_filename(FileName,File),asserta_if_new(is_file_meta(File,Type)).
 
 %:-add_file_meta('compatibility_utilities_swi',is_builtin).
 %:-add_file_meta('swi_toplevel',is_builtin).
@@ -207,8 +213,8 @@ add_file_meta(FileName,Type):-to_filename(FileName,File),assert_if_new(is_file_m
 
 
 % top:
-% Interactive mode.  Each term that is not a directive or a query is treated
-% as an abbreviated query.  After displaying the results of each query read
+% Interactive mode.  Each term that is not a directive or a dra_call is treated
+% as an abbreviated dra_call.  After displaying the results of each dra_call read
 % characters upto the nearest newline: if the first character is ";",
 % backtrack to find alternative solutions.
 % Exit upon encountering end of file.
@@ -219,10 +225,10 @@ add_file_meta(FileName,Type):-to_filename(FileName,File),assert_if_new(is_file_m
 
 
 
-:- user:dynamic(expand_query/4).
-:- user:multifile(expand_query/4).
+:- user:dynamic(expand_dra_call/4).
+:- user:multifile(expand_dra_call/4).
 
-user:expand_query(_Goal, _Expanded, _Bindings, _ExpandedBindings):-fail.
+user:expand_dra_call(_Goal, _Expanded, _Bindings, _ExpandedBindings):-fail.
 
 
 :- user:dynamic(expand_answer/2).
@@ -235,15 +241,15 @@ user:expand_answer(_Goal, _Expanded):-fail.
 		*           EXECUTION		*
 		********************************/
 :-meta_predicate user:dra_execute(0, ?).
-:-meta_predicate user:residue_vars(0, ?).
+:-meta_predicate user:dra_residue_var(0, ?).
 :-meta_predicate user:dra_execute_goal22(0, ?).
 
 user:dra_execute(Var, _) :-
 	var(Var), !,
-	print_message(informational, var_query(Var)),
+	print_message(informational, var_dra_call(Var)),
 	fail.
 user:dra_execute(end_of_file, _) :- !,
-	print_message(query, query(eof)).
+	print_message(dra_call, dra_call(eof)).
 user:dra_execute(Goal, Bindings) :-
 	'$module'(TypeIn, TypeIn),
 	'$dwim_correct_goal'(TypeIn:Goal, Bindings, Corrected), !,
@@ -254,12 +260,12 @@ user:dra_execute(Goal, Bindings) :-
 	user:dra_execute_goal22(Expanded, Bindings).
 user:dra_execute(_, _) :-
 	notrace,
-	print_message(query, query(no)),
+	print_message(dra_call, dra_call(no)),
 	fail.
 
 user:dra_execute_goal22(Goal, Bindings) :-
    	'$toplevel':restore_debug,
-	user:residue_vars(Goal, Vars),
+	user:dra_residue_var(Goal, Vars),
 	deterministic(Det),
 	(   '$toplevel':save_debug
 	;   '$toplevel':restore_debug, fail
@@ -271,17 +277,17 @@ user:dra_execute_goal22(Goal, Bindings) :-
 	).
 user:dra_execute_goal22(_, _) :-
 	'$toplevel':save_debug,
-	print_message(query, query(no)),
+	print_message(dra_call, dra_call(no)),
 	fail.
 
-user:residue_vars(Goal, Vars) :-
+user:dra_residue_var(Goal, Vars) :-
 	current_prolog_flag(toplevel_residue_vars, true), !,
-	call_residue_vars(query(Goal), Vars).
-user:residue_vars(Goal, []) :-
-	query(Goal).
+	call_residue_vars(dra_call(Goal), Vars).
+user:dra_residue_var(Goal, []) :-
+	dra_call(Goal).
 
 
-user:dra_prompt(Module, BrekLev, Prompt) :-
+user:prompt(Module, BrekLev, Prompt) :-
 	current_prolog_flag(toplevel_prompt, PAtom),
 	atom_codes(PAtom, P0),
 	(    Module \== user
@@ -292,7 +298,7 @@ user:dra_prompt(Module, BrekLev, Prompt) :-
 	->   '$toplevel':'$substitute'('~l', ['[', BrekLev, '] '], P1, P2)
 	;    '$toplevel':'$substitute'('~l', [], P1, P2)
 	),
-	current_prolog_flag(query_debug_settings, debug(Debugging, Tracing)),
+	current_prolog_flag(debug_settings, debug(Debugging, Tracing)),
 	(    Tracing == true
 	->   '$toplevel':'$substitute'('~d', ['[traced] '], P2, P3)
 	;    Debugging == true
@@ -305,7 +311,7 @@ user:dra_prompt(Module, BrekLev, Prompt) :-
 %:- call(user:rl_add_history('traced,go')).
 :- '$toplevel':setup_history.
 
-user:listing_mpred_hook(What):- debugOnError(dra_listing(What)).
+user:listing_mpred_hook(What):- dra_listing(What).
 
 dra_listing(What):-get_pi(What,PI),PI\=@=What,!,dra_listing(PI).
 dra_listing(Matches):- ignore(dra_listing_0(Matches)),!.
@@ -323,24 +329,24 @@ dra_listing_0(MatchesIn):-
 
 set_meta(Goal, Prop):- is_pred_metainterp(Goal,Prop),!.
 set_meta(Goal, Prop):- functor(Goal,F,A),functor(TGoal,F,A),
-  show_call(set_meta0(TGoal, Prop)),!,
+  dra_must(set_meta0(TGoal, Prop)),!,
   retract_all0(is_pred_metainterp(TGoal,_)),
   asserta_if_new(is_pred_metainterp(TGoal,Prop)).
 
 set_meta0(TGoal,is_builtin):-
-    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,query(TGoal)));true),
+    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
     retract_all0(is_never_tabled(TGoal)),
     asserta_if_new(is_builtin(TGoal)).
 
 set_meta0(TGoal,is_never_tabled):-
-    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,query(TGoal)));true),
+    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
     retract_all0(is_builtin(TGoal)),
     asserta_if_new(is_never_tabled(TGoal)).
 
 set_meta0(TGoal,is_tabled):- asserta_if_new(is_tabled(TGoal)),
     retract_all0(is_never_tabled(TGoal)),
     retract_all0(is_builtin(TGoal)),
-   (predicate_property(TGoal,dynamic)->asserta_new((TGoal:-!,query(TGoal)));true).
+   (predicate_property(TGoal,dynamic)->asserta_if_new((TGoal:-!,dra_call(TGoal)));true).
    
 
 
@@ -354,9 +360,9 @@ might_be_clause_meta( Goal ):- compound(Goal), \+ \+ (arg(_,Goal,[_|_])),!.
 
 
 %:-use_module(boot('$toplevel'),[]).
-% '$query_loop'/0 
+% '$dra_call_loop'/0 
 (tprolog) :-   \+ lp_system( eclipse ),!,
-    user:with_assertions(op(0,fy,(traced)),   
+    w_tl(op(0,fy,(traced)),   
 	(((   current_prolog_flag(break_level, BreakLev)
 	->  true
 	;   BreakLev = -1
@@ -364,22 +370,22 @@ might_be_clause_meta( Goal ):- compound(Goal), \+ \+ (arg(_,Goal,[_|_])),!.
 	repeat,
 	    (   '$module'(TypeIn, TypeIn),
 	       '$toplevel':(((   (stream_property(user_input, tty(true)),write('tprolog '))
-		->  user:dra_prompt(TypeIn, BreakLev, Prompt),
+		->  user:prompt(TypeIn, BreakLev, Prompt),
 		    prompt(Old, '|    ')
 		;   Prompt = '', prompt(Old, '') ),
 		trim_stacks,
-	        '$toplevel':read_query(Prompt, Query, Bindings),
+	        '$toplevel':read_dra_call(Prompt, Query, Bindings),
 		prompt(_, Old),
-		call_expand_query(Query, ExpandedQuery,
+		call_expand_dra_call(Query, ExpandedQuery,
 				  Bindings, ExpandedBindings)
 	    ->  expand_goal(ExpandedQuery, Goal))),
 	        (user:dra_execute(Goal, ExpandedBindings),fail) )))), !.
 
 
 
-initialize_table:-must(initialise).
+initialize_table:-dra_must(initialise).
 print_table_statistics:-print_statistics.
-%load(P):-must(prog0(P)),!.
+%load(P):-dra_must(prog0(P)),!.
 
 %:- user:ensure_loaded(library(dra/tabling3/dra_table_assert)).
    % NOTICE:    %%%%% %%%%%%%%%%%
@@ -432,14 +438,14 @@ reinitialise_answer :-
         retractall( answer( _, _, _ ) ).
 
 
-% is_answer_known( + goal, + fact ):
+% is_answer_known( +goal, +fact ):
 % Does the table "answer" contain a variant of this fact paired with a variant
 % of this goal?
 
-% :- mode is_answer_known( +, + ).
+% :- mode is_answer_known( +, +).
 
 is_answer_known( Goal, Fact ) :-
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         answer( CopyEssence, G, F ),
         are_essences_variants( G, Goal ),
@@ -447,12 +453,12 @@ is_answer_known( Goal, Fact ) :-
         !.
 
 
-% memo( + goal, + fact, + level for tracing ):
+% memo( +goal, +fact, +level for tracing ):
 % If the table "answer" does not contain a variant of this fact paired with
 % a variant of this goal, then add the pair to the table, increasing
 % "number_of_answers".
 
-% :- mode memo( +, +, + ).
+% :- mode memo( +, +, +).
 
 memo( Goal, Fact, _ ) :-
         is_answer_known( Goal, Fact ),
@@ -461,7 +467,7 @@ memo( Goal, Fact, _ ) :-
 memo( Goal, Fact, Level ) :-
         % \+ is_answer_known( Goal, Fact ),
         optional_trace( 'Storing answer: ', Goal, Fact, Level ),
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         assert( answer( CopyEssence, Goal, Fact ) ),
         incval( number_of_answers ).
@@ -475,7 +481,7 @@ memo( Goal, Fact, Level ) :-
 
 get_answer( Goal ) :-
         once( essence_hook( Goal, EssenceOfGoal ) ),
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         answer( CopyEssence, G, Ans ),
         once( essence_hook( G, EssenceOfG ) ),
@@ -502,11 +508,11 @@ reinitialise_result :-
         retractall( result( _, _ ) ).
 
 
-% is_result_known( + index, + fact ):
+% is_result_known( +index, +fact ):
 % Does the table "result" contain a variant of this fact associated with this
 % index?
 
-% :- mode is_result_known( +, + ).
+% :- mode is_result_known( +, +).
 
 is_result_known( Index, Fact ) :-
         result( Index, F ),
@@ -514,11 +520,11 @@ is_result_known( Index, Fact ) :-
         !.
 
 
-% new_result_or_fail( + index, + fact ):
+% new_result_or_fail( +index, +fact ):
 % If the table "result" already contains a variant of this fact associated with
 % this index, then fail.  Otherwise record the fact in the table and succeed.
 
-% :- mode new_result_or_fail( +, + ).
+% :- mode new_result_or_fail( +, +).
 
 new_result_or_fail( Index, Fact ) :-
         \+ is_result_known( Index, Fact ),
@@ -534,36 +540,35 @@ new_result_or_fail( Index, Fact ) :-
 reinitialise_pioneer :-
         retractall( pioneer( _, _, _ ) ).
 
-% is_a_variant_of_a_pioneer( + goal, - index ):
+% is_a_variant_of_a_pioneer( +goal, - index ):
 % Succeeds if the goal is a variant of a goal that is tabled in "pioneer";
 % returns the index of the relevant entry in table "pioneer".
 
 % :- mode is_a_variant_of_a_pioneer( +, - ).
 
 is_a_variant_of_a_pioneer( Goal, Index ) :-
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         pioneer( CopyEssence, G, Index ),
         are_essences_variants( Goal, G ),
         !.
 
 
-% add_pioneer( + goal, - index ):
+% add_pioneer( +goal, - index ):
 % Add an entry for this goal to "pioneer", return the unique index.
 
 % :- mode add_pioneer( +, - ).
 
 add_pioneer( Goal, Index ) :-
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         get_unique_index( Index ),
         assert( pioneer( CopyEssence, Goal, Index ) ).
 
 
-% delete_pioneer( + index ):
-% Remove the entry in "pioneer" associated with this index.
 
-% :- mode delete_pioneer( + ).
+%% delete_pioneer(+Index).
+% Remove the entry in "pioneer" associated with this index.
 
 delete_pioneer( Index ) :-
         retract( pioneer( _, _, Index )).
@@ -579,10 +584,10 @@ reinitialise_loop :-
         retractall( loop( _, _ ) ).
 
 
-% add_loop( + index, + list of goals ):
+% add_loop( +index, +list of goals ):
 % Add an entry to "loop".
 
-% :- mode add_loop( +, + ).
+% :- mode add_loop( +, +).
 
 add_loop( _, [] ) :-                                % empty loops are not stored
         !.
@@ -596,14 +601,14 @@ add_loop( Index, Goals ) :-
         assert( loop( Index, Goals ) ).
 
 
-% delete_loops( + index ):
+% delete_loops( +index ):
 % Remove all the entries in "loop" that are associated with this index.
 
 delete_loops( Index ) :-
         retractall( loop( Index, _ ) ).
 
 
-% get_loop( + index, - Goals ):
+% get_loop( +index, - Goals ):
 % Get an entry from table "loop" that is associated with this index;
 % another such entry (if it exists) on backtracking etc.
 
@@ -621,10 +626,10 @@ reinitialise_looping_alternative :-
         retractall( looping_alternative( _, _ ) ).
 
 
-% add_looping_alternative( + index, + Clause ):
+% add_looping_alternative( +index, +Clause ):
 % Add and entry to "looping_alternative".
 
-% :- mode add_looping_alternative( +, + ).
+% :- mode add_looping_alternative( +, +).
 
 add_looping_alternative( Index, Clause ) :-          % duplicates are not stored
         looping_alternative( Index, C ),
@@ -635,14 +640,14 @@ add_looping_alternative( Index, Clause ) :-
         assert( looping_alternative( Index, Clause ) ).
 
 
-% delete_looping_alternatives( + index ):
+% delete_looping_alternatives( +index ):
 % Remove all the entries in "loop" that are associated with this index.
 
 delete_looping_alternatives( Index ) :-
         retractall( looping_alternative( Index, _ ) ).
 
 
-% get_looping_alternative( + index, - clause ):
+% get_looping_alternative( +index, - clause ):
 % Get an entry from table "looping_alternative" that is associated with this
 % index; another such entry (if it exists) on backtracking etc.
 
@@ -660,23 +665,23 @@ reinitialise_completed :-
         retractall( completed( _, _ ) ).
 
 
-% is_completed( + goal ):
+% is_completed( +goal ):
 % Succeeds iff the goal is a variant of a goal that has been stored in
 % the table "completed".
 
-% :- mode is_completed( + ).
+% :- mode is_completed( +).
 
 is_completed( Goal ) :-
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         completed( CopyEssence, G ),
         are_essences_variants( Goal, G ).
 
 
-% complete_goal( + goal, + index for tracing ):
+% complete_goal( +goal, +index for tracing ):
 % Make sure the goal is marked as completed.
 
-% :- mode complete_goal( +, + ).
+% :- mode complete_goal( +, +).
 
 complete_goal( Goal, _ ) :-
         is_completed( Goal ),
@@ -684,7 +689,7 @@ complete_goal( Goal, _ ) :-
 
 complete_goal( Goal, Level ) :-
         % \+ is_completed( Goal ),
-        copy_term2( Goal, Copy ),
+        copy_term( Goal, Copy ),
         once( essence_hook( Copy, CopyEssence ) ),
         trace_other( 'Completing', Goal, '?', Level ),
         assert( completed( CopyEssence, Goal ) ).
@@ -717,24 +722,24 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % apply( + predicate name (possibly with arguments), + list of arguments ):
+   % apply( +predicate name (possibly with arguments), +list of arguments ):
    % Extend the list of arguments of the first argument with the second argument
    % and invoke the result.
    % For example, if we have
-   %     sum( A, B, C ) :-  C is A + B.
+   %     sum( A, B, C ) :-  C is A +B.
    % then
    %     dra_map( sum(5 ), [ 1, 2, 3 ], Result )
    % will bind Result to [ 6, 7, 8 ].
-
+  /*
    apply( PredNameArgs, Arguments ) :-
            PredNameArgs =.. [ PredName | Args ],
            append( Args, Arguments, AllArgs ),
            Literal =.. [ PredName | AllArgs ],
            call( Literal ).
-
+ */
 
    %------------------------------------------------------------------------------
-   % dra_map( + PredicateName, +List, -MappedList )
+   % dra_map( +PredicateName, +List, -MappedList )
    % The predicate should implement a unary function, i.e.,
    %   - it should take two arguments, the first of which is an input argument,
    %     and the second of which is an output argument;
@@ -757,7 +762,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % filter( + predicate name, + list, - filtered list ):
+   % filter( +predicate name, +list, - filtered list ):
    % The predicate should take one argument.
    % The output list will contain only those elements of the input list for which
    % the predicate succeeds.
@@ -776,7 +781,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % filter2( + predicate name, + list, - yes list, - no list ):
+   % filter2( +predicate name, +list, - yes list, - no list ):
    % The predicate should take one argument.
    % The first output list will contain only those elements of the input list for
    % which the predicate succeeds; the second output list will contain only those
@@ -795,7 +800,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % dra_fold( + predicate name,+ initial value, + list, - final value ):
+   % dra_fold( +predicate name,+initial value, +list, - final value ):
    % The predicate should implement a binary function, i.e.,
    %   - it should take three arguments, the first two of which are input
    %     arguments, and the third of which is an output argument;
@@ -855,7 +860,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % same_set_element( + item, + item ):
+   % same_set_element( +item, +item ):
    % Succeeds iff the two items are identical
    % when treated as elements of a set.
 
@@ -872,7 +877,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % is_in_set( + item, + set ):
+   % is_in_set( +item, +set ):
    % Is the item a member of the set?
 
    is_in_set( Item, set( List ) ) :-
@@ -888,7 +893,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % from_set( + set, - member, - new set ):
+   % from_set( +set, - member, - new set ):
    % Remove an arbitrary member from the set;
    % fail if the set is empty.
 
@@ -896,7 +901,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % remove_from_set( + item, + set, - new set ):
+   % remove_from_set( +item, +set, - new set ):
    % Remove the given item from the set;
    % fail if the item is not a member.
 
@@ -913,7 +918,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % add_to_set( + item, + set, - new set ):
+   % add_to_set( +item, +set, - new set ):
    % Add the item to the set.
    %
    % WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
@@ -930,7 +935,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % sub_set( + set, + set ):
+   % sub_set( +set, +set ):
    % Succeed iff the first set is a subset of the second set.
    %
    % NOTE: In Eclipse the name "subset" is reserved for a built-in.
@@ -947,7 +952,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % equal_sets( + set, + set ):
+   % equal_sets( +set, +set ):
    % Are the two sets equal?
 
    equal_sets( A, B ) :-
@@ -956,7 +961,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % set_union( + set, + set, - the union ):
+   % set_union( +set, +set, - the union ):
    % Compute the union of two sets.
 
    set_union( set( L1 ), S2, set( Union ) ) :-
@@ -975,7 +980,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % set_intersection( + set, + set, - the intersection ):
+   % set_intersection( +set, +set, - the intersection ):
    % Compute the intersection of two sets.
 
    set_intersection( set( L1 ), S2, set( Intersection ) ) :-
@@ -994,7 +999,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % set_difference( + set, + set, - the difference ):
+   % set_difference( +set, +set, - the difference ):
    % Subtract the second set from the first.
 
    set_difference( set( L1 ), S2, set( Difference ) ) :-
@@ -1013,7 +1018,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % symmetric_set_difference( + set, + set,
+   % symmetric_set_difference( +set, +set,
    %                           - the symmetric difference
    %                         ):
    % Compute the symmetric difference of two sets.
@@ -1025,7 +1030,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % set_from_list( + list, - set ):
+   % set_from_list( +list, - set ):
    % Form a set with all the elements of the list.
    %
    % WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
@@ -1060,8 +1065,8 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % expand_variable_dictionary( + term,
-   %                             + variable dictionary,
+   % expand_variable_dictionary( +term,
+   %                             +variable dictionary,
    %                             - variable dictionary expanded as needed
    %                           ):
    % The variable dictionary is for the term in the form it was read in, but the
@@ -1097,7 +1102,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % extract_vars_from_dict( + variable dictionary, - list of variables ) :
+   % extract_vars_from_dict( +variable dictionary, - list of variables ) :
    % Produce a list of the (current instantiations of) the variables that
    % occur in this dictionary.
 
@@ -1161,7 +1166,7 @@ complete_goal( Goal, Level ) :-
 
 
    %------------------------------------------------------------------------------
-   % mk_variable_dictionary( + term, - a variable dictionary ):
+   % mk_variable_dictionary( +term, - a variable dictionary ):
    % Produce a variable dictionary for this term, as if it had been read by
    % readvar/3.
    % Since the original variable names are not available, we will use the names
@@ -1191,13 +1196,13 @@ complete_goal( Goal, Level ) :-
    mk_next_name( Name, Next ) :-
            name_chars( Name, [ U, C ] ),      % still in single letters?
            !,
-           NC is C + 1,         % good for ASCII, might not work for some encodings
+           NC is C +1,         % good for ASCII, might not work for some encodings
            name_chars( Next, [ U, NC ] ).
 
    mk_next_name( Name, Next ) :-
            name_chars( Name, [ CodeOfUndercore, CodeOfV | DigitChars ] ),
            name_chars( Number, DigitChars ),
-           NextNumber is Number + 1,                               % good for ASCII
+           NextNumber is Number +1,                               % good for ASCII
            name_chars( NextNumber, NewDigitChars ),
            name_chars( Next, [ CodeOfUndercore, CodeOfV | NewDigitChars ] ).
 
@@ -1235,8 +1240,8 @@ complete_goal( Goal, Level ) :-
 
 
 %------------------------------------------------------------------------------
-% warning( + term ):
-% warning( + list of terms ):
+% warning( +term ):
+% warning( +list of terms ):
 % Print this term or list of terms as a warning.
 % There are no spaces between items on the list.
 % Strings are printed without quotes.
@@ -1319,8 +1324,8 @@ end_warning :-
 
 
 %------------------------------------------------------------------------------
-% error( + term ):
-% error( + list of terms ):
+% error( +term ):
+% error( +list of terms ):
 % Print this term or list of terms as an error, then abort the computation.
 % There are no spaces between items on the list.
 % Strings are printed without quotes.
@@ -1407,7 +1412,7 @@ end_error :-
 
 
 %------------------------------------------------------------------------------
-% bool_eval( + boolean expression, - true or false ):
+% bool_eval( +boolean expression, - true or false ):
 % Evaluate the expression.
 
 bool_eval( V, _ ) :-
@@ -1479,12 +1484,12 @@ bool_neg( E, V ) :-
 
 
 %------------------------------------------------------------------------------
-% verify_program_with_vars( + list of pairs ):
+% verify_program_with_vars( +list of pairs ):
 % Like verify_program/1 below, but instead of a list of terms we have a list
 % of pairs (pair( term, variable dictionary for the term)), i.e., we can use
 % information about original variable names.
 
-% :- mode verify_program_with_vars( + ).
+% :- mode verify_program_with_vars( +).
 
 verify_program_with_vars( Pairs ) :-
         member( Pair, Pairs ),
@@ -1497,12 +1502,12 @@ verify_program_with_vars( _ ).
 
 
 %------------------------------------------------------------------------------
-% verify_program( + list of terms ):
+% verify_program( +list of terms ):
 % Given a list of terms that should all be clauses, directives, or queries,
 % raise an error if any of the terms is obviously incorrect.
 % See also verify_program_with_vars/1 above.
 
-% :- mode verify_program( + ).
+% :- mode verify_program( +).
 
 verify_program( Terms ) :-
         member( Term, Terms ),
@@ -1514,8 +1519,8 @@ verify_program( _ ).
 
 
 %------------------------------------------------------------------------------
-% verify_program_item( + list of terms, + variable dictionary ):
-% Given a term that should  be a clause, a directive, or a query,
+% verify_program_item( +list of terms, +variable dictionary ):
+% Given a term that should  be a clause, a directive, or a dra_call,
 % raise an error if it is obviously incorrect.
 
 verify_program_item( Var, VarDict ) :-
@@ -1534,7 +1539,7 @@ verify_program_item( (?- Var), VarDict ) :-
         var( Var ),
         !,
         bind_variables_to_names( VarDict ),
-        error( [ 'A variable query: \"', (?- Var), '\"' ] ).
+        error( [ 'A variable dra_call: \"', (?- Var), '\"' ] ).
 
 verify_program_item( (?- Query), VarDict ) :-       % avoid check for singletons
         !,
@@ -1553,7 +1558,7 @@ verify_program_item( _, _ ).
 
 
 %------------------------------------------------------------------------------
-% is_a_good_clause( + term ):
+% is_a_good_clause( +term ):
 % Is this term a reasonable clause?  Even if it is,  warnings may be produced.
 
 is_a_good_clause( T ) :-
@@ -1562,7 +1567,7 @@ is_a_good_clause( T ) :-
 
 
 %------------------------------------------------------------------------------
-% is_a_good_clause( + term, + variable dictionary ):
+% is_a_good_clause( +term, +variable dictionary ):
 % Is this term a reasonable clause?  Even if it is,  warnings may be produced.
 
 is_a_good_clause( T, VarDict ) :-
@@ -1573,7 +1578,7 @@ is_a_good_clause( T, VarDict ) :-
 
 
 %------------------------------------------------------------------------------
-% get_clause_head( + term, - head ):
+% get_clause_head( +term, - head ):
 % Treat this non-variable term as a clause, get its head.
 
 % :- mode get_clause_head( +, - ).
@@ -1583,7 +1588,7 @@ get_clause_head( H       , H ).
 
 
 %------------------------------------------------------------------------------
-% is_a_good_clause_head( + term ):
+% is_a_good_clause_head( +term ):
 % Is this term a good head for a clause?
 
 is_a_good_clause_head( Var ) :-
@@ -1600,7 +1605,7 @@ is_a_good_clause_head( Hd ) :-
 
 
 %------------------------------------------------------------------------------
-% has_a_good_clause_body( + term, + variable dictionary ):
+% has_a_good_clause_body( +term, +variable dictionary ):
 % Treat this non-variable term as a clause, check it for elementary sanity.
 % Assume that the head is not a variable.
 %
@@ -1613,7 +1618,7 @@ is_a_good_clause_head( Hd ) :-
 % a structure that holds the entire clause and the variable dictionary, and
 % we use it to produce better diagnostics.
 
-% :- mode has_a_good_clause_body( ?, + ).
+% :- mode has_a_good_clause_body( ?, +).
 
 has_a_good_clause_body( Clause, VarDict ) :-
         has_a_good_clause_body_( Clause, ctxt( VarDict, Clause ) ).
@@ -1631,9 +1636,9 @@ has_a_good_clause_body_( Fact, Ctxt ) :-
 
 
 
-% check_for_variable_calls( + (part of a) clause body,
-%                           + the set of variables seen so far,
-%                           + the context (just for better diagnostics)
+% check_for_variable_calls( +(part of a) clause body,
+%                           +the set of variables seen so far,
+%                           +the context (just for better diagnostics)
 %                         )
 
 check_for_variable_calls( V, _, Ctxt ) :-
@@ -1696,7 +1701,7 @@ check_for_variable_calls( _, _, _ ).
 
 
 
-% check_for_singleton_variables( + clause, + context ):
+% check_for_singleton_variables( +clause, +context ):
 % Produce a warning if there is a path in the clause on which a variable occurs
 % only once, that occurrence of the variable is not a unique occurrence of the
 % variable on other paths, and the name of the variable does not begin with an
@@ -1725,8 +1730,8 @@ check_for_singleton_variables( Clause, Ctxt ) :-
         ).
 
 %
-% cs( + (sub)term,
-%     + context,
+% cs( +(sub)term,
+%     +context,
 %     - boolean indicating whether the construct must fail,
 %     - set of variables seen from front,
 %     - set of variables seen from behind,
@@ -1986,7 +1991,7 @@ result4( result( _, _, _ , D ), D ).
 
 
 %------------------------------------------------------------------------------
-% clause_error( + list to be displayed (the error message), + the context ):
+% clause_error( +list to be displayed (the error message), +the context ):
 % Show the error and the entire clause, with proper variable names.
 % For the time being V and 'V' will both appear as V on output.
 
@@ -1997,7 +2002,7 @@ clause_error( MsgList, ctxt( VarDict, Clause ) ) :-
 
 
 %------------------------------------------------------------------------------
-% clause_warning( + list to be displayed (the warning message), + the context ):
+% clause_warning( +list to be displayed (the warning message), +the context ):
 % Show the warning and the entire clause, with proper variable names.
 % For the time being V and 'V' will both appear as V on output.
 
@@ -2028,7 +2033,7 @@ clause_warning( _, _ ).
 
 
 %------------------------------------------------------------------------------
-% ensure_filename_is_an_atom( + filename ):
+% ensure_filename_is_an_atom( +filename ):
 % Verify that the filename is an atom.  If not, produce a fatal error.
 
 ensure_filename_is_an_atom( FileName ) :-
@@ -2043,12 +2048,12 @@ ensure_filename_is_an_atom( FileName ) :-
 
 
 %------------------------------------------------------------------------------
-% ensure_extension( + file name chars,
-%                   + extension chars,
+% ensure_extension( +file name chars,
+%                   +extension chars,
 %                   - the root file name,
 %                   - file name, possibly extended
 %                 ):
-% If the file name has no extension, add the provided extension (which must
+% If the file name has no extension, add the provided extension (which dra_must
 % include the period; it can also be empty) and return the file name as the
 % root name; if the file name has an extension, don't change it, but extract
 % the root name.
@@ -2068,7 +2073,7 @@ ensure_extension( FileNameChars, ExtChars,
 
 
 %------------------------------------------------------------------------------
-% read_terms_with_vars( + input stream,
+% read_terms_with_vars( +input stream,
 %                       - list of terms with variable dictionaries
 %                     ):
 % Like read_terms/2 (see below), but each item on the resulting list is of
@@ -2102,7 +2107,7 @@ process_if_op_directive( _ ).
 
 
 %------------------------------------------------------------------------------
-% read_terms( + input stream, - list of terms ):
+% read_terms( +input stream, - list of terms ):
 % Given an open input stream, produce all the terms that can be read from it.
 %
 % NOTE: Operator declarations are interpreted on the fly, but not deleted from
@@ -2128,11 +2133,11 @@ read_terms_( InputStream, Term, [ Term | Terms ] ) :-
 
 
 %------------------------------------------------------------------------------
-% write_terms( + list of terms, + output stream ):
+% write_terms( +list of terms, +output stream ):
 % Given an open output stream, write onto it all the terms from the list,
 % one per line but without any other pretty-printing.
 
-% :- mode write_terms( +, + ).
+% :- mode write_terms( +, +).
 
 write_terms( Terms, OutputStream ) :-
         member( Term, Terms ),
@@ -2144,10 +2149,10 @@ write_terms( _, _ ).
 
 
 %------------------------------------------------------------------------------
-% write_clauses( + list of clauses, + output stream ):
+% write_clauses( +list of clauses, +output stream ):
 % Given an open output stream, write onto it all the clauses from the list.
 
-% :- mode write_clauses( +, + ).
+% :- mode write_clauses( +, +).
 
 write_clauses( Clauses, OutputStream ) :-
         member( Clause, Clauses ),
@@ -2192,7 +2197,7 @@ write_list( S, NotAList ) :-
 
 
 %------------------------------------------------------------------------------
-% getline( + input stream, - list of character atoms ) :
+% getline( +input stream, - list of character atoms ) :
 %    Reads characters from this input stream upto (and including) the nearest
 %    newline.  The newline is not included in the list of characters that is
 %    returned.
@@ -2214,10 +2219,10 @@ getline_( InputStream, C   , [ C | Cs ] ) :-
 
 
 %------------------------------------------------------------------------------
-% putline( + output stream, + list of character strings ) :
+% putline( +output stream, +list of character strings ) :
 %    Writes the characters to this stream and follows them with a newline.
 
-% :- mode putline( +, + ).
+% :- mode putline( +, +).
 
 putline( OutputStream, Cs ) :-
         putchars( OutputStream, Cs ),
@@ -2225,10 +2230,10 @@ putline( OutputStream, Cs ) :-
 
 
 %------------------------------------------------------------------------------
-% putchars( + output stream, + list of character strings ) :
+% putchars( +output stream, +list of character strings ) :
 %    Writes the characters to the current output stream.
 
-% :- mode putchars( +, + ).
+% :- mode putchars( +, +).
 
 putchars( _OutputStream, [] ).
 
@@ -2243,13 +2248,13 @@ putchars( OutputStream, [ C | Cs ] ) :-
 
 
 %------------------------------------------------------------------------------
-% check( + goal ) :
+% dra_check( +goal ) :
 %    Succeeds iff goal succeeds, but without instantiating any variables
 %    (side-effects may appear, though).
 
-% :- mode check( + ).
+% :- mode dra_check( +).
 
-check( Goal ) :-  \+ \+ call( Goal ) .
+dra_check( Goal ) :-  \+ \+ call( Goal ) .
 
 
 
@@ -2276,7 +2281,7 @@ mk_ground_aux( V, N, N1 ) :-
         var( V ),
         !,
         V = ' V'( N ),
-        N1 is N + 1.
+        N1 is N +1.
 
 mk_ground_aux( T, N, N ) :-
         atomic( T ),
@@ -2297,7 +2302,7 @@ mk_ground_auxs( [ T | Ts ], N, N2 ) :-
 
 
 %------------------------------------------------------------------------------
-% is_ground_var( + term ):
+% is_ground_var( +term ):
 % Is this term a variable that was ground by mk_ground/1?
 
 is_ground_var( Var ) :-
@@ -2310,7 +2315,7 @@ is_ground_var( ' V'( N ) ) :-
 
 
 %------------------------------------------------------------------------------
-% ground_term_variables( + term, - set of variables ):
+% ground_term_variables( +term, - set of variables ):
 % Given a term grounded by mk_ground/1, produce the set of the grounded form of
 % variables occurring in the term.
 % (Note that the term may be a subset of a larger term grounded by mk_ground/1,
@@ -2354,20 +2359,21 @@ gtv_( T, S, NS ) :-
 
 
 %------------------------------------------------------------------------------
-% is_an_instance( + term, + term ) :
+% is_an_instance( +term, +term ) :
 %    Succeeds iff arg1 is an instance of arg2, but does not instantiate any
 %    variables.
 % NOTE: In Eclipse this loops on cyclic terms.
 
 is_an_instance( T1, T2 ) :-
-        check( T1 = T2 ),                     % quickly weed out obvious misfits
-        copy_term( T2, CT2 ), subsumes_chk( CT2, T1 ).
+        dra_check( T1 = T2 ),                     % quickly weed out obvious misfits
+        copy_term( T2, CT2 ), 
+        subsumes_chk( CT2, T1 ).
 
 
 
 %------------------------------------------------------------------------------
-% mk_pattern( + an atom representing the name of a predicate,
-%             + an integer representing the arity of the predicate,
+% mk_pattern( +an atom representing the name of a predicate,
+%             +an integer representing the arity of the predicate,
 %             - the most general pattern that matches all invocations of the
 %               predicate
 %           )
@@ -2385,7 +2391,7 @@ mk_pattern( P, K, Pattern ) :-
 
 
 %------------------------------------------------------------------------------
-% most_general_instance( + a term,
+% most_general_instance( +a term,
 %                        - a most general instance with the same main functor
 %                      ):
 % E.g., p( a, q( X, Y ) )  is transformed to  p( _, _ ).
@@ -2399,7 +2405,7 @@ most_general_instance( Term, Pattern ) :-
 
 
 %------------------------------------------------------------------------------
-% predspecs_to_patterns( + a conjunction of predicate specifications,
+% predspecs_to_patterns( +a conjunction of predicate specifications,
 %                        - list of most general instances of these predicates
 %                      ):
 % Given one or several predicate specifications (in the form "p/k" or
@@ -2430,14 +2436,14 @@ predspecs_to_patterns( PredSpec, [ Pattern ] ) :-
 
 
 %------------------------------------------------------------------------------
-% predspec_to_pattern( + a predicate specification,
+% predspec_to_pattern( +a predicate specification,
 %                      - a most general instance of this predicate
 %                    ):
 % Given a predicate specification (in the form "p/k") check whether it is
 % well-formed: if not, raise a fatal error; otherwise return a most general
 % instance that correspond to the predicate specification.
 
-predspec_to_pattern( + PredSpec, + Pattern ) :- !,predspec_to_pattern( PredSpec, Pattern ).
+predspec_to_pattern( +PredSpec, +Pattern ) :- !,predspec_to_pattern( PredSpec, Pattern ).
 predspec_to_pattern( - PredSpec, - Pattern ) :- !,predspec_to_pattern( PredSpec, Pattern ).
 predspec_to_pattern( M:PredSpec, M:Pattern ):- !,predspec_to_pattern( PredSpec, Pattern ).
 predspec_to_pattern( PredSpec, Pattern ) :- Pattern \= (_/_),!,PredSpec = Pattern.
@@ -2470,7 +2476,7 @@ check_predspec( PredSpec ) :- trace,
 
 
 %------------------------------------------------------------------------------
-% is_a_variable_name( + term ):
+% is_a_variable_name( +term ):
 % Is this the name of a variable?
 
 is_a_variable_name( Term ) :-
@@ -2495,7 +2501,7 @@ uc( 'Y' ).  uc( 'Z' ).
 
 
 %------------------------------------------------------------------------------
-% between( + integer, +- integer, + integer ):
+% between( +integer, +- integer, +integer ):
 % Succeed if arg1 =< arg2 < arg3.
 % If arg2 is a variable, generate the appropriate values
 
@@ -2518,12 +2524,12 @@ between_generate( A, A, B ) :-
 
 between_generate( A, V, B ) :-
         A < B,
-        NA is A + 1,
+        NA is A +1,
         between_generate( NA, V, B ).
 
 
 %------------------------------------------------------------------------------
-% member_reversed( +- item, + list of items ):
+% member_reversed( +- item, +list of items ):
 % Like member/2, but the order of searching/generation is reversed.
 
 member_reversed( M, [ _ | L ] ) :-
@@ -2532,7 +2538,7 @@ member_reversed( M, [ M | _ ] ).
 
 
 %------------------------------------------------------------------------------
-% remove( + item, + list, - list sans item ) :
+% remove( +item, +list, - list sans item ) :
 % The item is in the list: remove the first occurrence.
 
 remove( Item, List, ListSansItem ) :-
@@ -2542,7 +2548,7 @@ remove( Item, List, ListSansItem ) :-
 
 
 %------------------------------------------------------------------------------
-% write_shallow_with_eq( + output stream, + term, + maximum depth ):
+% write_shallow_with_eq( +output stream, +term, +maximum depth ):
 % Like write_shallow/3, but instead of relying on the underlying mechanism of
 % Prolog write equations for terms that are cyclical at a depth that does not
 % excceed the maximum depth.  This procedure is due to Ronald de Haan of TU
@@ -2591,7 +2597,7 @@ std_warning_stream( user_error  ).
 
 
 %------------------------------------------------------------------------------
-% getchar( + input stream, - character in the form of an atom ):
+% getchar( +input stream, - character in the form of an atom ):
 % This is introduced because the built-in get_char/2 returns strings on
 % Eclipse and atoms on Sicstus.
 
@@ -2601,7 +2607,7 @@ getchar( Stream, Atom ) :-
 
 %------------------------------------------------------------------------------
 % name_chars( +- atom or number,
-%             -+ list of characters (codes) that form its name
+%             -+list of characters (codes) that form its name
 %           ):
 % Used because Eclipse complains about name/2 being obsolete.
 
@@ -2610,7 +2616,7 @@ name_chars( Atomic, NameCharCodes ) :-
 
 
 %------------------------------------------------------------------------------
-% clause_in_module( + module name, +- clause head, - clause body ):
+% clause_in_module( +module name, +- clause head, - clause body ):
 % Like clause/2, but from the named module.
 %
 % NOTE: For the module 'interpreted' we provide special treatment.  Instead of
@@ -2634,7 +2640,7 @@ clause_in_module( ModuleName, Head, Body ) :-
 
 
 %------------------------------------------------------------------------------
-% current_predicate_in_module( + module name, +- predicate specification ):
+% current_predicate_in_module( +module name, +- predicate specification ):
 % Like current_predicate/2, but from the named module.
 %
 % NOTE: See the note to clause_in_module/3 above.
@@ -2648,7 +2654,7 @@ current_predicate_in_module( ModuleName, PredSpec ) :-
 
 
 %------------------------------------------------------------------------------
-% assert_in_module( + module name, + clause ):
+% assert_in_module( +module name, +clause ):
 % Like assert/1, but into this module.
 %
 % NOTE: See the note to clause_in_module/3 above.
@@ -2658,7 +2664,7 @@ assert_in_module( Module, Clause ) :-
 
 
 %------------------------------------------------------------------------------
-% assertz_in_module( + module name, + clause ):
+% assertz_in_module( +module name, +clause ):
 % Like assertz/1, but into this module.
 %
 % NOTE: See the note to clause_in_module/3 above.
@@ -2688,7 +2694,7 @@ assertz_in_module( Module, Clause ) :-
 
 
 %------------------------------------------------------------------------------
-% retractall_in_module( + module name, + head pattern ):
+% retractall_in_module( +module name, +head pattern ):
 % Like retractall/1, but into this module.
 %
 % NOTE: See the note to clause_in_module/3 above.
@@ -2706,7 +2712,7 @@ retractall_in_module( Module, Head ) :-
 
 
 %------------------------------------------------------------------------------
-% call_in_module( + module name, + head pattern ):
+% call_in_module( +module name, +head pattern ):
 % Like call/1, but into this module.
 
 call_in_module( Module, Head ) :-
@@ -2714,21 +2720,21 @@ call_in_module( Module, Head ) :-
 
 
 %------------------------------------------------------------------------------
-% export_from_module( + module name, + predicate specification ):
+% export_from_module( +module name, +predicate specification ):
 % For Sicstus this is a no-op.
 
 export_from_module( _, _ ).
 
 
 %------------------------------------------------------------------------------
-% dynamic_in_module( + module name, + predicate specification ):
+% dynamic_in_module( +module name, +predicate specification ):
 % For Sicstus this is a no-op.
 
 dynamic_in_module( _, _ ).
 
 
 %------------------------------------------------------------------------------
-% compile_to_module( + module name, + file name ):
+% compile_to_module( +module name, +file name ):
 % Compile the program in this file into this module.
 
 compile_to_module( Module, FileName ) :-
@@ -2736,31 +2742,30 @@ compile_to_module( Module, FileName ) :-
 
 
 %------------------------------------------------------------------------------
-% copy_term2( + term, - term ):
+% copy_term( +term, -term ):
 % Same as copy_term/2, but safe for cyclic terms.
 % In the case of Sicstus there are no problems.
 
-copy_term2( Term, Copy ) :-
-        copy_term( Term, Copy ).
+% copy_term( Term, Copy ) :- copy_term( Term, Copy ).
 
 
 %------------------------------------------------------------------------------
-% are_variants( + term, + term ) :
+% are_variants( +term, +term ) :
 %    Succeeds only if both arguments are variants of each other.
 %    Does not instantiate any variables.
 % NOTE:
 %   If variant/2 turns out to be broken, replace the last call with the
 %    following three:
-%        check( T1 = T2 ),                   % quickly weed out obvious misfits
+%        dra_check( T1 = T2 ),                   % quickly weed out obvious misfits
 %        copy_term( T2, CT2 ),
-%        check( (numbervars( T1, 0, N ), numbervars( CT2, 0, N ), T1 = CT2) ).
+%        dra_check( (numbervars( T1, 0, N ), numbervars( CT2, 0, N ), T1 = CT2) ).
 
 are_variants( T1, T2 ) :-
         variant( T1, T2 ).
 
 
 %------------------------------------------------------------------------------
-% write_shallow( + output stream, + term, + maximum depth ):
+% write_shallow( +output stream, +term, +maximum depth ):
 % Like write/2, but only to a limited print depth.
 
 write_shallow( OutputStream, Term, MaxDepth ) :-
@@ -2776,7 +2781,7 @@ is_swi_builtin( Pred ) :-
 
 
 %------------------------------------------------------------------------------
-% ordered_term_variables( + term, - list of variables ):
+% ordered_term_variables( +term, - list of variables ):
 % Produce the set of variables in this term in the order of their occurrence.
 % (term_variables/2 does it in that order in Sicstus, but in reverse order in
 %  Eclipse.)
@@ -2786,7 +2791,7 @@ ordered_term_variables( Term, Variables ) :-
 
 
 %------------------------------------------------------------------------------
-% readvar( + input stream, - term, - variable dictionary  ):
+% readvar( +input stream, - term, - variable dictionary  ):
 % Simulates Eclipse's readvar/3.  The variable dictionary will be in the format
 % used by Eclipse, not by Sicstus (i.e., an entry has the form
 % "[ name | Variable ]" rather than "name = variable".
@@ -2802,7 +2807,7 @@ translate_vardict_entry( N = V, [ N | V ] ).
 
 
 %------------------------------------------------------------------------------
-% erase_module( + module name ):
+% erase_module( +module name ):
 % Simulates Eclipse's erase_module/1.
 %
 % NOTE: See the note to clause_in_module/3 above.
@@ -2830,7 +2835,7 @@ erase_module( _ ).
 
 
 %------------------------------------------------------------------------------
-% setval( + name, + value ):
+% setval( +name, +value ):
 % Set this counter to this value.
 %
 % NOTE: Since DRA uses global variables to store only integers, we use the
@@ -2842,7 +2847,7 @@ setval( Name, Value ) :-
 
 
 %------------------------------------------------------------------------------
-% getval( + name, - value ):
+% getval( +name, - value ):
 % Get the value associated with this counter.
 
 getval( Name, Value ) :-
@@ -2850,17 +2855,17 @@ getval( Name, Value ) :-
 
 
 %------------------------------------------------------------------------------
-% incval( + name ):
+% incval( +name ):
 % Increment this counter by 1.
 incval( Name ) :- !, flag( Name, Value, Value+1 ).
 incval( Name ) :-
         getval( Name, Value ),
-        NewValue is Value + 1,
+        NewValue is Value +1,
         setval( Name, NewValue ).
 
 
 %------------------------------------------------------------------------------
-% writeclause( + output stream, + clause ):
+% writeclause( +output stream, +clause ):
 % Given an open output stream, write the clause onto it.
 
 writeclause( OutputStream, (:- Directive) ) :-
@@ -2884,25 +2889,26 @@ writeclause( OutputStream, Clause ) :-
 
 
 %------------------------------------------------------------------------------
-% writeln( + output stream, + term ):
+% writeln( +output stream, +term ):
 % Write the term, followed by a newline.
 
+/*
 writeln( OutputStream, Term ) :-
         write( OutputStream, Term ),
         nl(    OutputStream ).
-
+*/
 
 %------------------------------------------------------------------------------
-% writeln( + term ):
+% writeln( +term ):
 % Write the term to the standard output stream, followed by a newline.
-
+/*
 writeln( Term ) :-
         std_output_stream( OutputStream ),
         writeln( OutputStream, Term ).
-
+*/
 
 %------------------------------------------------------------------------------
-% concat_atoms( + atom, + atom, - atom ):
+% concat_atoms( +atom, +atom, - atom ):
 % Return an atom whose name is the concatenation of the names of the first two
 % atoms.
 
@@ -2999,7 +3005,7 @@ dra_version( Version ) :-
 %    2. The program should contain no other directives. It may, however,
 %       contain queries, which will be executed immediately upon reading.
 %
-%    3. Just before the result of a query is reported, the interpreter
+%    3. Just before the result of a dra_call is reported, the interpreter
 %       produces a printout with statistics accummulated since the previous
 %       printout (or since the beginning, if this is the first printout during
 %       this session with the interpreted program). The printout looks like
@@ -3011,7 +3017,7 @@ dra_version( Version ) :-
 %       evaluated goals, M is the number of new additions to the answer table,
 %       N is the current size of the answer table.
 %
-%    4. If the program invokes a built-in predicate, that predicate must
+%    4. If the program invokes a built-in predicate, that predicate dra_must
 %       be declared in the table "is_builtin/1" (see file "dra_builtins.pl").
 %       Every addition should be considered carefully: some built-ins might
 %       require special treatment by the interpreter.
@@ -3117,7 +3123,7 @@ dra_version( Version ) :-
    in the program, and "goal" to refer to an instance of a call.  We will also
    avoid the conventional overloading of the term "goal" in yet another way: we
    will call a sequence (i.e., conjunction) of goals just that (unless we can
-   refer to it as a "query" or a "resolvent").
+   refer to it as a "dra_call" or a "redra_intnt").
 
    Similarly, the user can declare a predicate to be "coinductive", by using
    another kind of directive, e.g.,
@@ -3145,7 +3151,7 @@ dra_version( Version ) :-
 
    The interpreter uses a number of tables that store information accumulated
    during a computation.  A computation consists in reading a program and
-   executing a number of queries.  A query is a sequence (i.e., conjunction) of
+   executing a number of queries.  A dra_call is a sequence (i.e., conjunction) of
    goals.
 
    The tables (implemented as dynamic predicates of Prolog) are:
@@ -3196,18 +3202,18 @@ dra_version( Version ) :-
                   used to load the program.
            ))
 
-           This table is not cleared before the evaluation of a new query.
+           This table is not cleared before the evaluation of a new dra_call.
 
            Detailed comments:
            ..................
            In general, for each success of a tabled goal encountered during the
-           evaluation of a query, the interpreter will make certain that the
+           evaluation of a dra_call, the interpreter will make certain that the
            result, i.e., the successful instantiation of that goal (which need
            not be ground!) is stored in the table "answer", accompanied by a
            variant of the original version of the goal (i.e., as it appeared
            when it was first encountered).
 
-           Before a query finally fails (after exhausting all the answers),
+           Before a dra_call finally fails (after exhausting all the answers),
            tabled goals encountered during its evaluation will have computed
            their least fixed points, i.e., all the possible results for those
            goals will be stored in "answer".  (Of course, if this set of all
@@ -3266,7 +3272,7 @@ dra_version( Version ) :-
            is useful for determining whether new answers have been generated
            during a phase of the computation.
 
-           This variable is not cleared before the evaluation of a new query.
+           This variable is not cleared before the evaluation of a new dra_call.
 
 
    -- pioneer( goal, index )
@@ -3278,7 +3284,7 @@ dra_version( Version ) :-
 
            The role of a pioneer is to compute the fixpoint (by tabling answers)
             for itself and its cluster before failing: this is why the results
-           for its variant descendants can be obtained simply by querying
+           for its variant descendants can be obtained simply by dra_calling
            "answer", without using their clauses (which prevents endless
            recursion).
 
@@ -3302,9 +3308,9 @@ dra_version( Version ) :-
            "loop" and "looping_alternative" (see below) are removed.  The
            associated entries in "result" are not removed. The unique index is
            not reused for other goals during the evaluation of the current
-           query.
+           dra_call.
 
-           This table is cleared before the evaluation of a new query.
+           This table is cleared before the evaluation of a new dra_call.
 
            (NOTE: In the actual implementation each fact in "pioneer" has the
                   form
@@ -3324,7 +3330,7 @@ dra_version( Version ) :-
            indices for coinductive goals, which might need them to hold their
            own results in "result".
 
-           The variable is cleared before the evaluation of a new query.
+           The variable is cleared before the evaluation of a new dra_call.
 
 
    -- result( index, fact )
@@ -3344,7 +3350,7 @@ dra_version( Version ) :-
 
            The table is also used by coinductive goals that are not pioneers.
 
-           This table is cleared before the evaluation of a new query.
+           This table is cleared before the evaluation of a new dra_call.
 
 
    -- loop( index, list of goals )
@@ -3364,7 +3370,7 @@ dra_version( Version ) :-
            a part of a larger loop, or because it has become completed), the
            associated entries in "loop" are removed.
 
-           This table is cleared before the evaluation of a new query.
+           This table is cleared before the evaluation of a new dra_call.
 
 
    -- looping_alternative( index, clause )
@@ -3383,7 +3389,7 @@ dra_version( Version ) :-
            a part of a larger loop, or because it has become completed), the
            associated entries in "looping_alternative" are removed.
 
-           This table is cleared before the evaluation of a new query.
+           This table is cleared before the evaluation of a new dra_call.
 
 
    -- completed( goal )
@@ -3393,7 +3399,7 @@ dra_version( Version ) :-
            can be found in table "answer".  Variants of a completed goal are
            completed as well.
 
-           This table is not cleared before the evaluation of a new query.
+           This table is not cleared before the evaluation of a new dra_call.
 
            (NOTE: In the actual implementation each fact in "completed" has the
                   form
@@ -3417,19 +3423,19 @@ dra_version( Version ) :-
    -- step_counter
 
            This is a non-logical variable that keeps track of the number of
-           goals resolved during the evaluation of each query.  The final value
-           is printed after the query terminates.
+           goals redra_intd during the evaluation of each dra_call.  The final value
+           is printed after the dra_call terminates.
 
-           The variable is cleared before the evaluation of a new query.
+           The variable is cleared before the evaluation of a new dra_call.
 
    -- old_table_size
 
            This is a non-logical variable that is used to store the value of
-           "number_of_answers" before the evaluation of a query.  Used to
+           "number_of_answers" before the evaluation of a dra_call.  Used to
            produce automatic information about the growth of the table after the
-           query terminates.
+           dra_call terminates.
 
-           The variable is reinitialized before the evaluation of a new query.
+           The variable is reinitialized before the evaluation of a new dra_call.
 
 
 *******************************************************************************/
@@ -3476,7 +3482,7 @@ dra_version( Version ) :-
 %
 %       As the file is loaded, directives and queries are executed on-the-fly
 %       by invoking the metainterpreter (except the ":- op ..." directive,
-%       which is interpreted directly). A query is evaluated to give all
+%       which is interpreted directly). A dra_call is evaluated to give all
 %       solutions (it is as if the user kept responding with a semicolon):
 %       to avoid that use the built-in predicate once/1 .
 %
@@ -3500,7 +3506,7 @@ dra_version( Version ) :-
 %       NOTE: 1. In the interactive mode one cannot input more than one term
 %                per line.
 %
-%             2. When a query succeeds, the bindings of variables should be
+%             2. When a dra_call succeeds, the bindings of variables should be
 %                printed upto a certain maximum depth.  The default value is
 %                given in print_depth/1 below.  The maximum depth can be
 %                changed from the interpreted program by invoking
@@ -3640,11 +3646,11 @@ dra_version( Version ) :-
 %                 to give the interpreter a chance to act upon the
 %                 directive.
 %
-%          - query/1:
+%          - dra_call/1:
 %                 This would be the main entry point of the metainterpreter.
-%                 Whenever the top level encounters a query (of the form
-%                 "?- Q."), it will display the query and then call
-%                 "query( Q )".  Depending on the result, it will then
+%                 Whenever the top level encounters a dra_call (of the form
+%                 "?- Q."), it will display the dra_call and then call
+%                 "dra_call( Q )".  Depending on the result, it will then
 %                 display "No", or "Yes" (preceded by a display of bindings
 %                 acquired by the variables occurring in "Q"); in the latter
 %                 case it will also backtrack to obtain more solutions.
@@ -3707,18 +3713,18 @@ dra_version( Version ) :-
 
 
 %------------------------------------------------------------------------------
-% empty_oset( +- open set ) :
+% empty_openset( +- open set ) :
 % Create an empty set, or check that the given set is empty.
 
-empty_oset( V ) :-
+empty_openset( V ) :-
         var( V ).
 
 
 %------------------------------------------------------------------------------
-% add_to_oset( + item, +- open set ):
+% add_to_openset( +item, +- open set ):
 % Add the item to the set.
 
-add_to_oset( Item, Set ) :-
+add_to_openset( Item, Set ) :-
         (
             var( Set )
         ->
@@ -3733,18 +3739,18 @@ add_to_oset( Item, Set ) :-
             ;
                 Item @< I
             ->
-                add_to_oset( Item, L )
+                add_to_openset( Item, L )
             ;
-                add_to_oset( Item, R )
+                add_to_openset( Item, R )
             )
         ).
 
 
 %------------------------------------------------------------------------------
-% is_in_oset( + item, + open set ):
+% is_in_openset( +item, +open set ):
 % Is the given item a member of the set?
 
-is_in_oset( Item, Set ) :-
+is_in_openset( Item, Set ) :-
         (
             var( Set )
         ->
@@ -3759,43 +3765,43 @@ is_in_oset( Item, Set ) :-
             ;
                 Item @< I
             ->
-                is_in_oset( Item, L )
+                is_in_openset( Item, L )
             ;
-                is_in_oset( Item, R )
+                is_in_openset( Item, R )
             )
         ).
 
 
 %------------------------------------------------------------------------------
-% generate_member_of_oset( + open set, - item ):
+% generate_member_of_openset( +open set, - item ):
 % Nondeterministically generate members of the set.
 
-generate_member_of_oset( Set, Item ) :-
+generate_member_of_openset( Set, Item ) :-
         nonvar( Set ),
         Set = t( I, L, R ),
         (
-            generate_member_of_oset( L, Item )
+            generate_member_of_openset( L, Item )
         ;
             Item = I
         ;
-            generate_member_of_oset( R, Item )
+            generate_member_of_openset( R, Item )
         ).
 
 
 %------------------------------------------------------------------------------
-% equal_osets( + open set, + open set ):
+% equal_opensets( +open set, +open set ):
 % Are the two sets equal?
 
-equal_osets( S1, S2 ) :-
-        symmetric_oset_difference( S1, S2, SD ),
-        empty_oset( SD ).
+equal_opensets( S1, S2 ) :-
+        symmetric_openset_difference( S1, S2, SD ),
+        empty_openset( SD ).
 
 
 %------------------------------------------------------------------------------
-% oset_union( + open set, + open set, - open set ):
+% openset_union( +open set, +open set, - open set ):
 % Compute the union of two sets.
 
-oset_union( S1, S2, Result ) :-
+openset_union( S1, S2, Result ) :-
         copy_items( S1, Result ),
         copy_items( S2, Result ).
 
@@ -3805,16 +3811,16 @@ copy_items( V, _ ) :-
         !.
 
 copy_items( t( I, L, R ), Result ) :-
-        add_to_oset( I, Result ),
+        add_to_openset( I, Result ),
         copy_items( L, Result ),
         copy_items( R, Result ).
 
 
 %------------------------------------------------------------------------------
-% oset_intersection( + open set, + open set, - open set ):
+% openset_intersection( +open set, +open set, - open set ):
 % Compute the intersection of two sets.
 
-oset_intersection( S1, S2, Result ) :-
+openset_intersection( S1, S2, Result ) :-
         copy_shared( S1, S2, Result ).
 
 %
@@ -3824,9 +3830,9 @@ copy_shared( V, _, _ ) :-
 
 copy_shared( t( I, L, R ), S, Result ) :-
         (
-            is_in_oset( I, S )
+            is_in_openset( I, S )
         ->
-            add_to_oset( I, Result )
+            add_to_openset( I, Result )
         ;
             true
         ),
@@ -3835,10 +3841,10 @@ copy_shared( t( I, L, R ), S, Result ) :-
 
 
 %------------------------------------------------------------------------------
-% oset_difference( + open set, + open set, - open set ):
+% openset_difference( +open set, +open set, - open set ):
 % Subtract the second set from the first.
 
-oset_difference( S1, S2, Result ) :-
+openset_difference( S1, S2, Result ) :-
         copy_not_shared( S1, S2, Result ).
 
 %
@@ -3848,30 +3854,30 @@ copy_not_shared( V, _, _ ) :-
 
 copy_not_shared( t( I, L, R ), S, Result ) :-
         (
-            is_in_oset( I, S )
+            is_in_openset( I, S )
         ->
             true
         ;
-            add_to_oset( I, Result )
+            add_to_openset( I, Result )
         ),
         copy_not_shared( L, S, Result ),
         copy_not_shared( R, S, Result ).
 
 
 %------------------------------------------------------------------------------
-% symmetric_oset_difference( + open set, + open set, - open set ):
+% symmetric_openset_difference( +open set, +open set, - open set ):
 % Compute the symmetric difference of two sets.
 
-symmetric_oset_difference( S1, S2, Result ) :-
-        oset_difference( S1, S2, Result ),
-        oset_difference( S2, S1, Result ).
+symmetric_openset_difference( S1, S2, Result ) :-
+        openset_difference( S1, S2, Result ),
+        openset_difference( S2, S1, Result ).
 
 
 %------------------------------------------------------------------------------
-% oset_to_list( + open set, - list ):
+% openset_to_list( +open set, - list ):
 % Create a list that contains all the elements of the set.
 
-oset_to_list( Set, List ) :-
+openset_to_list( Set, List ) :-
         to_list( Set, [], List ).
 
 %
@@ -3885,20 +3891,20 @@ to_list( t( I, L, R ), ListSoFar, List ) :-
 
 
 %------------------------------------------------------------------------------
-% list_to_oset( + list, - set ):
+% list_to_openset( +list, - set ):
 % Create a set that contains all the elements from the list (without
 % duplicates, of course).
 
-list_to_oset( List, Set ) :-
-        empty_oset( Set ),
-        list_to_oset_( List, Set ).
+list_to_openset( List, Set ) :-
+        empty_openset( Set ),
+        list_to_openset_( List, Set ).
 
 %
-list_to_oset_( [], _ ).
+list_to_openset_( [], _ ).
 
-list_to_oset_( [ H | T ], S ) :-
-        add_to_oset( H, S ),
-        list_to_oset_( T, S ).
+list_to_openset_( [ H | T ], S ) :-
+        add_to_openset( H, S ),
+        list_to_openset_( T, S ).
 
 %------------------------------------------------------------------------------
 
@@ -3931,12 +3937,12 @@ check_general_consistency :-
                  ListOfDefinedSupport
                ),
         (
-            is_top( Var ),  var( Var )
+            is_topl( Var ),  var( Var )
         ->
             ListOfDeclaredTop = ListOfDefined
         ;
             findall( P/K
-                   , ( is_top( Pattern )
+                   , ( is_topl( Pattern )
                      , functor( Pattern, P, K )
                      )
                    , ListOfDeclaredTop
@@ -3949,26 +3955,26 @@ check_general_consistency :-
                , ListOfDeclaredSupport
                ),
 
-        list_to_oset( ListOfDefined        , OSetOfDefined         ),
-        list_to_oset( ListOfDeclaredSupport, OSetOfDeclaredSupport ),
-        list_to_oset( ListOfDefinedSupport , OSetOfDefinedSupport  ),
-        list_to_oset( ListOfDeclaredTop    , OSetOfDeclaredTop     ),
+        list_to_openset( ListOfDefined        , OSetOfDefined         ),
+        list_to_openset( ListOfDeclaredSupport, OSetOfDeclaredSupport ),
+        list_to_openset( ListOfDefinedSupport , OSetOfDefinedSupport  ),
+        list_to_openset( ListOfDeclaredTop    , OSetOfDeclaredTop     ),
 
-        oset_difference( OSetOfDeclaredTop, OSetOfDefined, OSetOfUndefinedTop ),
-        oset_difference( OSetOfDeclaredSupport, OSetOfDefinedSupport,
+        openset_difference( OSetOfDeclaredTop, OSetOfDefined, OSetOfUndefinedTop ),
+        openset_difference( OSetOfDeclaredSupport, OSetOfDefinedSupport,
                          OSetOfUndefinedSupport
                        ),
         declared_undefined_warnings( OSetOfUndefinedTop    , top     ),
         declared_undefined_warnings( OSetOfUndefinedSupport, support ),
 
-        oset_intersection( OSetOfDefinedSupport, OSetOfDeclaredSupport,
+        openset_intersection( OSetOfDefinedSupport, OSetOfDeclaredSupport,
                            OSetOfCallableSupport
                          ),
-        oset_union( OSetOfDefined, OSetOfCallableSupport, OSetOfAllDefined ),
+        openset_union( OSetOfDefined, OSetOfCallableSupport, OSetOfAllDefined ),
 
         get_called_predicates( OSetOfDefined, OSetOfAllDefined, OSetOfCalled ),
-        oset_difference( OSetOfDefined, OSetOfCalled, OSetOfDefinedUncalled ),
-        oset_difference( OSetOfDefinedUncalled, OSetOfDeclaredTop,
+        openset_difference( OSetOfDefined, OSetOfCalled, OSetOfDefinedUncalled ),
+        openset_difference( OSetOfDefinedUncalled, OSetOfDeclaredTop,
                          OSetOfUncalled
                        ),
         uncalled_warnings( OSetOfUncalled ).
@@ -3976,7 +3982,7 @@ check_general_consistency :-
 
 %
 declared_undefined_warnings( OSetOfPredSpecs, KindOfDeclaration ) :-
-        generate_member_of_oset( OSetOfPredSpecs, PredSpec ),
+        generate_member_of_openset( OSetOfPredSpecs, PredSpec ),
         warning( [ 'Predicate ', PredSpec,
                    ' declared as \"', KindOfDeclaration, '\" but not defined'
                  ]
@@ -3988,7 +3994,7 @@ declared_undefined_warnings( _, _ ).
 
 %
 uncalled_warnings( OSetOfPredSpecs ) :-
-        generate_member_of_oset( OSetOfPredSpecs, PredSpec ),
+        generate_member_of_openset( OSetOfPredSpecs, PredSpec ),
         warning( [ 'Predicate ', PredSpec, ' defined but not called' ] ),
         fail.
 
@@ -3996,8 +4002,8 @@ uncalled_warnings( _ ).
 
 
 
-% get_called_predicates( + open set of predicates,
-%                        + open set of all defined predicates,
+% get_called_predicates( +open set of predicates,
+%                        +open set of all defined predicates,
 %                        - open set of predicates called from the defined ones
 %                      ):
 % Produce the set of predicates called from the first set, at the same time
@@ -4005,12 +4011,12 @@ uncalled_warnings( _ ).
 
 get_called_predicates( OSetOfPredicates, OSetOfDefined, OSetOfCalled ) :-
         sets_of_called( OSetOfPredicates, OSetOfDefined, ListOfSetsOfCalled ),
-        empty_oset( Empty ),
-        dra_fold( oset_union, Empty, ListOfSetsOfCalled, OSetOfCalled ).
+        empty_openset( Empty ),
+        dra_fold( openset_union, Empty, ListOfSetsOfCalled, OSetOfCalled ).
 
 %
 sets_of_called( OsetOfPredicates, OSetOfDefined, ListOfSetsOfCalled ) :-
-        oset_to_list( OsetOfPredicates, ListOfPredicates ),
+        openset_to_list( OsetOfPredicates, ListOfPredicates ),
         dra_map( set_of_called( OSetOfDefined ),
              ListOfPredicates, ListOfSetsOfCalled
            ).
@@ -4024,14 +4030,14 @@ set_of_called( OSetOfDefined, PredSpec, OSetOfCalled ) :-
                  )
                , OSetsOfCalled
                ),
-        empty_oset( Empty ),
-        dra_fold( oset_union, Empty, OSetsOfCalled, OSetOfCalled ),
-        oset_difference( OSetOfCalled, OSetOfDefined, OSetOfCallsToUndefined ),
+        empty_openset( Empty ),
+        dra_fold( openset_union, Empty, OSetsOfCalled, OSetOfCalled ),
+        openset_difference( OSetOfCalled, OSetOfDefined, OSetOfCallsToUndefined ),
         warnings_about_called( OSetOfCallsToUndefined, PredSpec ).
 
 %
 warnings_about_called( OSetOfPredSpecsBad, ParentPredSpec ) :-
-        generate_member_of_oset( OSetOfPredSpecsBad, PredSpecBad ),
+        generate_member_of_openset( OSetOfPredSpecsBad, PredSpecBad ),
         predspec_to_pattern( PredSpecBad, Pattern ),
         \+ builtin( Pattern ),
         warning( [ 'Undefined predicate ', PredSpecBad,
@@ -4043,7 +4049,7 @@ warnings_about_called( OSetOfPredSpecsBad, ParentPredSpec ) :-
 warnings_about_called( _, _ ).
 
 
-% extract_called( + clause body, - open set of called predicates ):
+% extract_called( +clause body, - open set of called predicates ):
 % Extract the list of predicates called by this body, except for predicates
 % declared as builtin.
 
@@ -4059,7 +4065,7 @@ extract_called( Binary, OSetOfCalled ) :-
         !,
         extract_called( A, OSetOfCalledA ),
         extract_called( B, OSetOfCalledB ),
-        oset_union( OSetOfCalledA, OSetOfCalledB, OSetOfCalled ).
+        openset_union( OSetOfCalledA, OSetOfCalledB, OSetOfCalled ).
 
 extract_called( Unary, OSetOfCalled ) :-
         ( Unary = (\+ A)
@@ -4089,11 +4095,11 @@ extract_called( Predicate, OSetOfCalled ) :-
         callable( Predicate ),
         !,
         functor( Predicate, P, K ),
-        empty_oset( OSetOfCalled ),
-        add_to_oset( P/K, OSetOfCalled ).
+        empty_openset( OSetOfCalled ),
+        add_to_openset( P/K, OSetOfCalled ).
 
 extract_called( _, Empty ) :-
-        empty_oset( Empty ).
+        empty_openset( Empty ).
 
 %------------------------------------------------------------------------------
 
@@ -4131,7 +4137,7 @@ extract_called( _, Empty ) :-
 
 
 %------------------------------------------------------------------------------
-% cyclic( + Term, + Max ) :
+% cyclic( +Term, +Max ) :
 % Succeeds iff the term Term is cyclic within a depth of Max.
 
 cyclic( Term, Max ) :-
@@ -4140,14 +4146,14 @@ cyclic( Term, Max ) :-
         check_list_for_duplicates( Subterms ).
 
 
-% list_subterms_up_to_depth( + Term, + MaxDepth, - Subterms ) :
+% list_subterms_up_to_depth( +Term, +MaxDepth, - Subterms ) :
 % Produces a list of all subterms of Term upto the given depth.
 
 list_subterms_up_to_depth( Term, MaxDepth, Subterms ) :-
         aux_subterms_up_to_depth( [ Term ], MaxDepth, Subterms, [] ).
 
 
-% aux_subterms_up_to_depth( + Terms, + MaxDepth, - Subterms, - End ) :
+% aux_subterms_up_to_depth( +Terms, +MaxDepth, - Subterms, - End ) :
 %    - Terms is a list of subterms, all at the same level of the original term;
 %    - MaxDepth is the maximum further depth to which we should descend;
 %    - Subterms is an _open_ list of subterms (upto the maximum depth) obtained
@@ -4174,7 +4180,7 @@ aux_subterms_up_to_depth( [ Term | Terms ], MaxDepth, Subterms, End ) :-
         aux_subterms_up_to_depth( Terms, MaxDepth, RestOfSubterms, End ).
 
 
-% check_list_for_duplicates( + List ) :
+% check_list_for_duplicates( +List ) :
 % Checks whether the list contains duplicates, i.e., at least two identical
 % terms ("identical" as opposed to "unifiable").
 %
@@ -4200,7 +4206,7 @@ check_list_for_duplicates( List ) :-
 
 
 %------------------------------------------------------------------------------
-% get_equation( + Term, - Equation ) :
+% get_equation( +Term, - Equation ) :
 %  Gets the equation corresponding to a term in
 % the form of a list of equalities in which the cyclic points are marked with
 % x/1 markers. The argument of x/1 is the integer that is paired with the
@@ -4220,7 +4226,7 @@ get_equation( Term, Equation ) :-
                ).
 
 
-% obtain_all_cyclic_subterms( + Term, - List ) :
+% obtain_all_cyclic_subterms( +Term, - List ) :
 % Create a list of all the cyclic subterms of this term.
 % A "cyclic term" in this context is a term whose main functor is involved in a
 % cycle, as opposed to a term that only contains cyclic subterms.  For example,
@@ -4287,7 +4293,7 @@ obtain_all_cyclic_subterms( [ T | TS ], SeenBefore, _Root, Acc, List ) :-
         obtain_all_cyclic_subterms( TS, SeenBefore, noroot, NAcc, List ).
 
 
-% number_list_starting_at( + List, + InitialNr, - NumberedList ) :
+% number_list_starting_at( +List, +InitialNr, - NumberedList ) :
 %  - List is the list to be numbered;
 %  - InitialNr is the number to start numbering with;
 %  - NumberedList is the result of numbering elements of List from InitialNr
@@ -4296,11 +4302,11 @@ obtain_all_cyclic_subterms( [ T | TS ], SeenBefore, _Root, Acc, List ) :-
 number_list_starting_at( [], _, [] ).
 
 number_list_starting_at( [ H | T ], N, [ (N , H) | A ] ) :-
-        M is N + 1,
+        M is N +1,
         number_list_starting_at( T, M, A ).
 
 
-% convert( + Terms, + CyclicSubterms, + EquationAccumulator, - Equation,
+% convert( +Terms, +CyclicSubterms, +EquationAccumulator, - Equation,
 %          - NewTerms
 %        ) :
 %    - Terms is (the remainder of) a list containing one term, or all the
@@ -4370,7 +4376,7 @@ convert( [ T | Ts ],  CyclicSubterms, Acc, Equation, [ NewT | NewTs ] ) :-
 
 
 %------------------------------------------------------------------------------
-% get_printable_term_equation( + Term, - Head, - List ) :
+% get_printable_term_equation( +Term, - Head, - List ) :
 % Returns the equation of a term as a list of strings.
 % Head is a string containing the initial variable of the equation.
 % List is a list of strings containing parts of the equation.
@@ -4390,7 +4396,7 @@ get_printable_list( [ ( A = B ) | T ], [ String | Rest ] ) :-
         get_printable_list( T, Rest ).
 
 
-% get_term_equation( + Term, - EquationList, - HeadVar ) :
+% get_term_equation( +Term, - EquationList, - HeadVar ) :
 % Obtains a list of equations corresponding to the cyclic term Term, in which
 % HeadVar is the variable corresponding to Term.
 % Added conversion to more sensible variable names. [FK]
@@ -4410,7 +4416,7 @@ get_term_equation( Term, EquationList, HeadVar ) :-
 
 
 %------------------------------------------------------------------------------
-% get_equation_with_variables( + Equation, - EquationList, - HeadVar ) :
+% get_equation_with_variables( +Equation, - EquationList, - HeadVar ) :
 % Turns an equation with x/1 markers into an equation with variables for the
 % cyclic points.
 %
@@ -4429,7 +4435,7 @@ get_equation_with_variables( Equation, EquationList, HeadVar ) :-
 
 
 
-% variable_list( + Equation, - VariableList ) :
+% variable_list( +Equation, - VariableList ) :
 % Gets a list of numbered variables for every term in the list of equations.
 
 variable_list( [], [] ).
@@ -4438,7 +4444,7 @@ variable_list( [ ( N , _ ) | T ], [ ( N , _ ) | R ] ) :-
         variable_list( T, R ).
 
 
-% convert_markers_to_vars( + Equation, + VarList, - NewEquation ) :
+% convert_markers_to_vars( +Equation, +VarList, - NewEquation ) :
 % For each pair in Equation:
 %   - replace the number by the corresponding variable in VarList;
 %   - convert the term by replacing each x( N ) marker with the
@@ -4452,7 +4458,7 @@ convert_markers_to_vars( [ (N , T) | Rest ], VarList, [ V = NT | RestAns ] ) :-
         convert_markers_to_vars( Rest, VarList, RestAns ).
 
 
-% replace_markers_by_variable( + Term, + NumberedVarList, - NewTerm ) :
+% replace_markers_by_variable( +Term, +NumberedVarList, - NewTerm ) :
 % Replaces cyclic positions, marked with x/1, with corresponding variables from
 % a numbered list of variables.
 %
@@ -4485,17 +4491,14 @@ replace_markers_by_variables_in_list( [ T | Ts ], VL, [ V | Vs ] ) :-
 
 
 %------------------------------------------------------------------------------
-% identical_member( + term, + list ) :
+% identical_member( +term, +list ) :
 % Succeed if the list contains this term (as opposed to something that is
 % unifiable with this term).
 
-old_identical_member( X, Items ) :-
-        member( T, Items ),
-        X == T,
-        !.
+identical_member( X, Items ) :- member( T, Items ),X == T,!.
 
 
-% identical_member2( (-+ number , + term), + list of pairs ) :
+% identical_member2( (-+number , +term), +list of pairs ) :
 % Succeed if the list contains a pair whose second element is identical to the
 % second element of arg1, and whose first element unifies with the first
 % element of arg1.
@@ -4559,7 +4562,7 @@ set_print_depth( Strange ) :-
 
 
 
-% prog( + file name ):
+% prog( +file name ):
 % Initialise, then load a program from this file, processing directives and
 % queries.  After this is done, enter interactive mode.
 
@@ -4576,7 +4579,7 @@ prog( FileName ) :-
 setup :-
         retractall( known( _ )   ),
         retractall( is_support( _ ) ),
-        retractall( is_top( _ )     ),
+        retractall( is_topl( _ )     ),
         retractall( defined( _ ) ),
         erase_modules,
         create_modules.
@@ -4596,7 +4599,7 @@ setup :-
 %       "interface".  The module "interface" is created by the top-level from
 %       a declaration of built-ins allowed by the metainterpreter (and provided
 %       by the latter in table "builtin").  The difficulty is that Eclipse does
-%       not allow direct exportation of built-ins: this is solved by defining
+%       not allow direct exportation of built-ins: this is called by defining
 %       yet another module, called "interface_aux".
 %       The exact mechanics are best explained by means of an example:
 %
@@ -4650,7 +4653,7 @@ erase_modules :-
 create_modules :-
         \+ lp_system( eclipse ),
         !.
-
+/*
 create_modules :-
         lp_system( eclipse ),
         create_module( interface_aux ),
@@ -4658,7 +4661,7 @@ create_modules :-
         create_module( interpreted, [], [ interface     ] ),
         create_module( support ),
         fill_interface_modules.
-
+*/
 %
 fill_interface_modules :-
         builtin( Pattern ),
@@ -4678,10 +4681,10 @@ fill_interface_modules.
 
 
 
-% process_file( + file name ):
+% process_file( +file name ):
 % Load a program from this file, processing directives and queries.
 
-% :- mode process_file( + ).
+% :- mode process_file( +).
 
 process_file( FileName ) :-
         open_the_file( FileName, ProgStream ),
@@ -4692,7 +4695,7 @@ process_file( FileName ) :-
 
 %
 
-open_the_file( FileName, ProgStream ) :- to_the_file( FileName, AFN ),!, open( AFN, read, ProgStream ).
+open_the_file( FileName, ProgStream ) :- absolute_file_name( FileName, AFN ),!, open( AFN, read, ProgStream ).
 open_the_file( FileName, ProgStream ) :-   
         ensure_filename_is_an_atom( FileName ),
         name_chars( FileName, FileNameChars ),
@@ -4709,10 +4712,10 @@ open_the_file( FileName, ProgStream ) :-
 
 
 
-% process_input( + input stream ):
+% process_input( +input stream ):
 % Read the stream, processing directives and queries and storing clauses.
 
-% :- mode process_input( + ).
+% :- mode process_input( +).
 
 process_input( ProgStream ) :-
         repeat,
@@ -4731,15 +4734,15 @@ preliminary_processing( Term, VarDict, NewTerm, NewVarDict ) :-
 
 
 
-% process_term( + term, + variable dictionary ):
-% Process a term, which should be a directive, a query, a program clause or
+% process_term( +term, +variable dictionary ):
+% Process a term, which should be a directive, a dra_call, a program clause or
 % end_of_file.
-% The variable dictionary is used for printing out the results of a query.
+% The variable dictionary is used for printing out the results of a dra_call.
 %
 % NOTE: The superficial correctness of this term as a program item has already
 %       been verified by "verify_program_item/2".
 
-% :- mode process_term( +, + ).
+% :- mode process_term( +, +).
 
 process_term( end_of_file, _ ) :-  !.            % just ignore this
 
@@ -4757,7 +4760,7 @@ process_term( (:- Directive), _ ) :-
 
 process_term( (?- Query), VarDict ) :-
         !,
-        process_query( Query, VarDict ),
+        process_dra_call( Query, VarDict ),
         !.                                            % no alternative solutions
 
 process_term( Clause, VarDict ) :-
@@ -4765,20 +4768,20 @@ process_term( Clause, VarDict ) :-
         hook_predicate( Head ),               % metainterpreter's hook predicate
         !,
         check_not_builtin( Clause, VarDict ),      % fatal if redefining builtin
-        contiguity_check( Clause ),
+        contiguity_dra_check( Clause ),
         asserta( Clause ).
 
 process_term( Clause, VarDict ) :-
         check_not_builtin( Clause, VarDict ),      % fatal if redefining builtin
         ensure_dynamic( Clause ),
-        contiguity_check( Clause ),
+        contiguity_dra_check( Clause ),
         assertz_in_module( interpreted, Clause ).
 
 
-% include_files( + list of file names ):
+% include_files( +list of file names ):
 % Process the files whose names are in the list.
 
-% :- mode include_files( + ).
+% :- mode include_files( +).
 
 include_files( List ) :-
         member( FileName, List ),
@@ -4788,7 +4791,7 @@ include_files( List ) :-
 include_files( _ ).
 
 
-% contiguity_check( + clause ):
+% contiguity_dra_check( +clause ):
 % Make sure that each predicate that is defined by a clause is stored in the
 % table "defined/1".
 % If the clause adds to the definition of a predicate that is present in
@@ -4796,7 +4799,7 @@ include_files( _ ).
 % defined by the previous clause), then issue a warning about non-contiguous
 % definitions.
 
-contiguity_check( Clause ) :-
+contiguity_dra_check( Clause ) :-
         get_clause_head( Clause, Head ),
         most_general_instance( Head, Pattern ),
         (
@@ -4816,12 +4819,12 @@ contiguity_check( Clause ) :-
 
 
 
-% ensure_dynamic( + clause ):
+% ensure_dynamic( +clause ):
 % Make sure the predicate of this clause is dynamic.
 % known/1 is used to avoid multiple declarations.
 % (NOTE: This is specific to Eclipse.)
 
-% :- mode ensure_dynamic( + ).
+% :- mode ensure_dynamic( +).
 
 ensure_dynamic( Clause ) :-
         lp_system( eclipse ),
@@ -4837,21 +4840,21 @@ ensure_dynamic( _ ).
 
 
 
-% process_directive( + directive ):
+% process_directive( +directive ):
 % Process a directive.
 
-% :- mode process_directive( + ).
+% :- mode process_directive( +).
 
 process_directive( (topl all) ) :-
         !,
-        assert( is_top( _ ) ).
+        assert( is_topl( _ ) ).
 
 process_directive( (topl PredSpecs) ) :-
         !,
         predspecs_to_patterns( PredSpecs, Patterns ),
         (
             member( Pattern, Patterns ),
-            assert( is_top( Pattern ) ),
+            assert( is_topl( Pattern ) ),
             fail
         ;
             true
@@ -4883,36 +4886,36 @@ process_directive( Directive ) :-                % unsupported directive
         error( lines( [ 'Unknown directive:', [ (:- Directive), '.' ] ] ) ).
 
 
-% process_query( + query, + variable dictionary ):
-% Process a query, i.e., produce and display solutions until
+% process_dra_call( +dra_call, +variable dictionary ):
+% Process a dra_call, i.e., produce and display solutions until
 % no more can be found.
 
-% :- mode process_query( +, + ).
+% :- mode process_dra_call( +, +).
 
-process_query( Query, VarDict ) :-
+process_dra_call( Query, VarDict ) :-
         std_output_stream( Output ),
         write( Output, '-- Query: ' ),
         write( Output, Query ),
         writeln( Output, '.  --' ),
-        execute_query( Query, Result ),
+        execute_dra_call( Query, Result ),
         show_result( Result, VarDict ),
         nl( Output ),
         Result = no.                             % i.e., backtrack if 'yes'.
 
 %
-% :- mode execute_query( +, + ).
+% :- mode execute_dra_call( +, +).
 
-execute_query( Query, yes ) :-
-        query( Query ).                          % provided by a metainterpreter
+execute_dra_call( Query, yes ) :-
+        dra_call( Query ).                          % provided by a metainterpreter
 
-execute_query( _, no ).
+execute_dra_call( _, no ).
 
 
-% show_result( + yes or no, + variable dictionary ).
+% show_result( +yes or no, +variable dictionary ).
 % Write the bindings and "Yes", or just "No".
 % NOTE: the newline is not written here, as it is not wanted in top/0.
 
-% :- mode show_result( +, + ).
+% :- mode show_result( +, +).
 
 show_result( yes, VarDict ) :-
         !,
@@ -4925,13 +4928,13 @@ show_result( no, _ ) :-
         write( Output, 'No' ).
 
 
-% show_bindings( + variable dictionary ):
-% Use the variable dictionary to show the results of a query.
+% show_bindings( +variable dictionary ):
+% Use the variable dictionary to show the results of a dra_call.
 % (Recall that the variable dictionary is in Eclipse format.)
 % This version uses Ronald de Haan's equation generator
 % (see output_equations.pl) to display cyclic terms.
 
-% :- mode show_bindings( + ).
+% :- mode show_bindings( +).
 
 % OLD VERSION:
 % show_bindings( Dict ) :-
@@ -4964,7 +4967,7 @@ show_bindings( VarDict ) :-
         % Create equations for the top variables:
         dra_map( mk_eq, NewVarDict, TopEqs ),
         % Bind all uninstantiated variables to their names:
-        bind_free_variables_to_names( NewVarDict ),         % names in query
+        bind_free_variables_to_names( NewVarDict ),         % names in dra_call
         bind_free_variables_to_names( AuxVarDict ),         % names for new vars
         % A unified list of all the equations:
         append( TopEqs, EquationListSansParcel, AllEquations ),
@@ -5008,7 +5011,7 @@ show_equations( Equations, Output ) :-
 show_equations( _, _ ).
 
 
-% check_not_builtin( + clause, + variable dictionary ):
+% check_not_builtin( +clause, +variable dictionary ):
 % Raise a fatal error if this clause attempts to redefine a built-in predicate.
 
 check_not_builtin( Clause, VarDict ) :-
@@ -5033,8 +5036,8 @@ check_not_builtin( _, _ ).
 
 
 % top:
-% Interactive mode.  Each term that is not a directive or a query is treated
-% as an abbreviated query.  After displaying the results of each query read
+% Interactive mode.  Each term that is not a directive or a dra_call is treated
+% as an abbreviated dra_call.  After displaying the results of each dra_call read
 % characters upto the nearest newline: if the first character is ";",
 % backtrack to find alternative solutions.
 % Exit upon encountering end of file.
@@ -5061,19 +5064,19 @@ old_top :-
         ;
             true
         ),
-        bare_to_query( Term, NTerm ),
+        bare_to_dra_call( Term, NTerm ),
         verify_program_item( NTerm, VarDict ),
         interactive_term( NTerm, VarDict ),
         ( NTerm = end_of_file ; NTerm = quit ),      % i.e., normally fails
         !.
 
 
-% bare_to_query( + term, - term ):
-% A term that is not end_of_file, quit, a directive, or a query is
-% translated to a query.  (So, for example, there will be no check for
+% bare_to_dra_call( +term, - term ):
+% A term that is not end_of_file, quit, a directive, or a dra_call is
+% translated to a dra_call.  (So, for example, there will be no check for
 % singleton variables.)
 
-bare_to_query( Term, Term ) :-
+bare_to_dra_call( Term, Term ) :-
         (
             Term = end_of_file
         ;
@@ -5085,14 +5088,14 @@ bare_to_query( Term, Term ) :-
         ),
         !.
 
-bare_to_query( Bare, (?- Bare) ).
+bare_to_dra_call( Bare, (?- Bare) ).
 
 
-% interactive_term( + term, + variable dictionary ):
+% interactive_term( +term, +variable dictionary ):
 % Process a term in interactive mode.
-% The variable dictionary is used for printing out the results of a query.
+% The variable dictionary is used for printing out the results of a dra_call.
 
-% :- mode interactive_term( +, + ).
+% :- mode interactive_term( +, +).
 
 interactive_term( end_of_file, _ ) :-  !.              % just ignore this
 
@@ -5106,31 +5109,31 @@ interactive_term( (:- Directive), _ ) :-               % directive
         !,
         process_directive( Directive ).
 
-interactive_term( (?- Query), VarDict ) :-             % query
+interactive_term( (?- Query), VarDict ) :-             % dra_call
         iq( Query, VarDict ).
 
 
 iq( Query ) :- term_variables(Query , VarDict), iq( Query, VarDict ).
 iq( Query, VarDict ) :-
         !,
-        execute_query( Query, Result ),
+        execute_dra_call( Query, Result ),
         show_result( Result, VarDict ),
-        satisfied_with_query( Result ),                % or backtrack to retry
+        satisfied_with_dra_call( Result ),                % or backtrack to retry
         !.
 
 
-% satisfied_with_query( + answer ):
+% satisfied_with_dra_call( +answer ):
 % Give the user a chance to type ";" if the answer is "yes".
 
-% :- mode satisfied_with_query( + ).
+% :- mode satisfied_with_dra_call( +).
 
-satisfied_with_query( yes ) :-
+satisfied_with_dra_call( yes ) :-
         std_output_stream( Output ),
         flush_output( Output ),
         user_accepts,
         !.
 
-satisfied_with_query( no ) :-
+satisfied_with_dra_call( no ) :-
         std_output_stream( Output ),
         nl( Output ),
         flush_output( Output ).
@@ -5152,7 +5155,7 @@ user_accepts :-
 
 %%  Built-in predicates for the "dra" interpreter  %
 
-% If the interpreted program invokes a built-in predicate, that predicate must
+% If the interpreted program invokes a built-in predicate, that predicate dra_must
 % be declared in the table "is_builtin/1" below.
 % Every addition should be considered carefully: some built-ins might require
 % special treatment by the interpreter.
@@ -5165,15 +5168,15 @@ user_accepts :-
 :-dynamic(is_builtin/1).
 :-dynamic(is_not_builtin/1).
 
-%is_builtin(_, ',',2          ).  % special treatment in solve/4
-%is_builtin( (_ -> _)           ).  % special treatment in solve/4
-%is_builtin( (_ -> _ ; _)       ).  % special treatment in solve/4
-%is_builtin( (_ ; _)            ).  % special treatment in solve/4
-%is_builtin( \+( _ )            ).  % special treatment in solve/4
-%is_builtin( assert( _ )        ).  % special treatment in solve/4
-%is_builtin( findall( _, _, _ ) ).  % special treatment in solve/4
-%is_builtin( once( _ )          ).  % special treatment in solve/4
-%is_builtin( retractall( _ )    ).  % special treatment in solve/4
+%is_builtin(_, ',',2          ).  % special treatment in dra_interp/4
+%is_builtin( (_ -> _)           ).  % special treatment in dra_interp/4
+%is_builtin( (_ -> _ ; _)       ).  % special treatment in dra_interp/4
+%is_builtin( (_ ; _)            ).  % special treatment in dra_interp/4
+%is_builtin( \+ ( _ )            ).  % special treatment in dra_interp/4
+%is_builtin( assert( _ )        ).  % special treatment in dra_interp/4
+%is_builtin( findall( _, _, _ ) ).  % special treatment in dra_interp/4
+%is_builtin( once( _ )          ).  % special treatment in dra_interp/4
+%is_builtin( retractall( _ )    ).  % special treatment in dra_interp/4
 is_builtin( _ < _              ).
 is_builtin( _ = _              ).
 is_builtin( _ =:= _            ).
@@ -5223,7 +5226,7 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %                                                                          %
 
 % The "set of coinductive hypotheses" contains those ancestors of the current
-% goal that invoke coinductive predicates. It is used by solve/4, and factored
+% goal that invoke coinductive predicates. It is used by dra_interp/4, and factored
 % out as an abstract data type to facilitate changing to a more efficient
 % representation.
 %
@@ -5244,10 +5247,10 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %    empty_hypotheses( - stack of hypotheses ):
 %         Create an empty stack for coinductive hypotheses.
 %
-%    push_is_coinductive0( + goal, + stack of hypotheses , - new stack ):
+%    push_is_coinductive0( +goal, +stack of hypotheses , - new stack ):
 %         Push the coinductive goal onto the stack.
 %
-%    unify_with_coinductive_ancestor( + goal, + stack of hypotheses ):
+%    unify_with_coinductive_ancestor( +goal, +stack of hypotheses ):
 %         Fail if there is no unifiable coinductive ancestor on the stack. If
 %         there is one, succeed after performing the unification with the
 %         most recent such ancestor.  Upon failure undo the unification and
@@ -5270,7 +5273,7 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 % push_is_coinductive0( Goal, Hyp, [ Goal | Hyp ] ).
 %
 %
-% % :- mode unify_with_coinductive_ancestor( +, + ).
+% % :- mode unify_with_coinductive_ancestor( +, +).
 %
 % unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %         once( essence_hook( Goal, Essence ) ),
@@ -5325,7 +5328,7 @@ empty_tree( empty ).
 
 
 %------------------------------------------------------------------------------
-% is_in_tree( + tree, + key, + comparison predicate, - information ):
+% is_in_tree( +tree, +key, +comparison predicate, - information ):
 % If the entry for this key is present in the tree, succeed and return the
 % associated information; if it is not, fail.
 % "comparison predicate" is a binary predicate that succeeds if the first
@@ -5348,11 +5351,11 @@ is_in_tree( Node, Key, LessPred, Info ) :-
 
 
 %------------------------------------------------------------------------------
-% tree_add( + tree,
-%           + key,
-%           + information,
-%           + comparison predicate,
-%           + modification predicate,
+% tree_add( +tree,
+%           +key,
+%           +information,
+%           +comparison predicate,
+%           +modification predicate,
 %           - new tree
 %         ):
 % Make sure that the key is associated with this information in the tree.
@@ -5407,7 +5410,7 @@ empty_goal_table( Table ) :-
 
 
 %------------------------------------------------------------------------------
-% goal_table_member( + goal, + goal table ):
+% goal_table_member( +goal, +goal table ):
 % Check whether any instantiations of the goal are in the table: if there are,
 % unify the goal with the first one (backtracking will unify it with each of
 % them in turn).
@@ -5423,7 +5426,7 @@ goal_table_member( Goal, Table ) :-
 
 
 %------------------------------------------------------------------------------
-% is_a_variant_in_goal_table( + goal, + goal table ):
+% is_a_variant_in_goal_table( +goal, +goal table ):
 % Succeed iff a variant of this goal is present in the table.
 % Do not modify the goal.
 %
@@ -5440,7 +5443,7 @@ is_a_variant_in_goal_table( Goal, Table ) :-
 
 
 %------------------------------------------------------------------------------
-% goal_table_add( + goal table, + goal, - new goal table ):
+% goal_table_add( +goal table, +goal, - new goal table ):
 % Add this goal to the table.
 
 goal_table_add( Table, Goal, NewTable ) :-
@@ -5466,7 +5469,7 @@ push_is_coinductive0( Goal, Hyp, NewHyp ) :-
         goal_table_add( Hyp, Goal, NewHyp ).
 
 
-% :- mode unify_with_coinductive_ancestor( +, + ).
+% :- mode unify_with_coinductive_ancestor( +, +).
 
 unify_with_coinductive_ancestor( Goal, Hyp ) :-
         goal_table_member( Goal, Hyp ).
@@ -5483,7 +5486,7 @@ unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %  Last update: 12 June 2009.                                              %
 %                                                                          %
 
-% The "stack" is the chain of tabled ancestors used by solve/4.  It is
+% The "stack" is the chain of tabled ancestors used by dra_interp/4.  It is
 % factored out as an abstract data type to facilitate changing to a more
 % efficient representation.
 %
@@ -5519,13 +5522,13 @@ unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %    empty_stack( - stack ):
 %            Create an empty stack.
 %
-%    push_is_tabled( + goal, + index, + clause, + stack, - new stack ):
+%    push_is_tabled( +goal, +index, +clause, +stack, - new stack ):
 %            where the first three arguments are the constitutive elements of
 %            a triple.
 %            Push the triple goal onto the stack.
 %
-%    is_variant_of_ancestor( + goal,
-%                            + stack,
+%    is_variant_of_ancestor( +goal,
+%                            +stack,
 %                            - the triple with the variant ancestor,
 %                            - goals between goal and the variant ancestor
 %                          )
@@ -5621,7 +5624,7 @@ default_extension( '.tlp' ).                              % invoked by top_level
 :- setval( unique_index,      0 ).
 
 initialise :-                                             % invoked by top_level
-   must_det_l((
+   dra_must((
         reinitialise_answer,
         reinitialise_result,
         reinitialise_pioneer,
@@ -5636,8 +5639,8 @@ initialise :-                                             % invoked by top_level
         setval( number_of_answers, 0 ),
         setval( unique_index,      0 ),
         setval( step_counter,      0 ),
-        setval( old_table_size,    0 ),
-        dra_version( Version ),
+        setval( old_table_size,    0 ))),
+        dra_must((dra_version( Version ),
         writeln( Version ))),!.
 
 
@@ -5740,14 +5743,14 @@ legal_directive(M:P):-atom(M),M:legal_directive(P).
 legal_directive(P):-compound(P),functor(P,F,1),property_pred(F,_).
 
 
-fresh_multifile(X):- current_module(M), must(M \= user), asserta_new( ((user:X) :- (M:X))).
+fresh_multifile(X):- current_module(M), dra_must(M \= user), asserta_if_new( ((user:X) :- (M:X))).
 
 % Check and process the legal directives (invoked by top_level)
 
 source_context(F):- prolog_load_context(source,F).
 
 execute_directive( (table all) ) :-
-        !, once((source_context(F),add_file_meta(F,is_tabled));assert_if_new( is_tabled( _ ):-! )).
+        !, once((source_context(F),add_file_meta(F,is_tabled));asserta_if_new( is_tabled( _ ):-! )).
 execute_directive( (table none) ) :-
         !, once((source_context(F),retract_all0(is_file_meta(F,is_tabled)));(retract_all0( is_tabled( _ ) ),retract_all0( is_tabled( _ ) :- ! ))).
 
@@ -5755,8 +5758,8 @@ execute_directive( (table PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
         (
             member( Pattern, Patterns ),
-            assert_if_new( is_tabled( Pattern ) ),
-            asserta_new( (Pattern :- !, query(Pattern) )),
+            asserta_if_new( is_tabled( Pattern ) ),
+            asserta_if_new( (Pattern :- !, dra_call(Pattern) )),
             functor(Pattern,F,A),
             discontiguous(F/A),
             dynamic(F/A),            
@@ -5768,15 +5771,15 @@ execute_directive( (table PredSpecs) ) :-
 
 execute_directive( (coinductive0 all) ) :-
         !,
-        assert_if_new( is_coinductive1( _ ) ),
-        assert_if_new( is_coinductive0( _ ) ).
+        asserta_if_new( is_coinductive1( _ ) ),
+        asserta_if_new( is_coinductive0( _ ) ).
 
 execute_directive( (coinductive0 PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
         (
             member( Pattern, Patterns ),
-            assert_if_new( is_coinductive1( Pattern ) ),
-            assert_if_new( is_coinductive0( Pattern ) ),
+            asserta_if_new( is_coinductive1( Pattern ) ),
+            asserta_if_new( is_coinductive0( Pattern ) ),
             fail
         ;
             true
@@ -5792,7 +5795,7 @@ execute_directive( answers( Goal, Pattern ) ) :-
         print_required_answers( Goal, Pattern ).
 
 execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,all],DB=..[DBF,_],
-        !, once((source_context(F),add_file_meta(F,DBF));assert_if_new( DB:-! )).
+        !, once((source_context(F),add_file_meta(F,DBF));asserta_if_new( DB:-! )).
 execute_directive( Dir ) :- property_pred(F,DBF), (Dir=..[F,none];Dir=..[F,-all]),DB=..[DBF,_],
         !, once((source_context(F),retract_all0(is_file_meta(F,DBF)));(retract_all0( DB ),retract_all0( DB :- ! ))).
 execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,PredSpecs],         
@@ -5811,11 +5814,11 @@ add_patterns([],_):-!.
 add_patterns([P|Patterns],DBF):- add_pattern(P,DBF),!,add_patterns(Patterns,DBF).
 
 add_pattern(Pattern, - DBF):- DB=..[DBF,Pattern],retract_all0( DB ).
-add_pattern(Pattern, + DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
-add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],assert_if_new( DB ).
+add_pattern(Pattern, +DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
+add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
 
 
-% will_trace( + list of patterns ):
+% will_trace( +list of patterns ):
 % Store the patterns in tracing/1:
 
 will_trace( Patterns ) :-
@@ -5826,7 +5829,7 @@ will_trace( Patterns ) :-
 will_trace( _ ).
 
 
-% print_required_answers( + goal, + pattern ):
+% print_required_answers( +goal, +pattern ):
 % Print the tabled answers that are associated with this goal and are unifiable
 % with this pattern.  If the goal is a variable, go through all the entries in
 % the table.
@@ -5847,10 +5850,10 @@ print_required_answers( Var, Pattern ) :-
         ).
 
 print_required_answers( Goal, Pattern ) :-
-        copy_term2( Goal, OriginalGoal ),
+        copy_term( Goal, OriginalGoal ),
         get_answer( Goal ),                            % iterate through answers
         Goal = Pattern,
-        mk_variable_dictionary( OriginalGoal + Goal, VarDict ),
+        mk_variable_dictionary( OriginalGoal +Goal, VarDict ),
         bind_variables_to_names( VarDict ),
         write( OriginalGoal ),  write( ' :  ' ),  writeln( Goal ),
         fail.
@@ -5858,7 +5861,7 @@ print_required_answers( Goal, Pattern ) :-
 print_required_answers( _, _ ).
 
 
-% remove_variants( + list, - reduced list ):
+% remove_variants( +list, - reduced list ):
 % Remove each member of the list that is a variant of
 % a member that precedes it.  No need to preserve the order.
 
@@ -5890,12 +5893,12 @@ remove_variants_( [ H | T ], Accumulator, RL ) :-
 %%  The interpreter  %%
 
 
-% Execute a query.
+% Execute a dra_call.
 
-% :- mode query( + ).
+% :- mode dra_call( +).
 
-query( Goals ) :-                                         % invoked by top_level
-  must(b_getval('$tabling_exec',solve_external(Stack, Hyp, ValOld, CuttedOut))),
+dra_call( Goals ) :-                                         % invoked by top_level
+  dra_must(b_getval('$tabling_exec',dra_int_external(Stack, Hyp, ValOld, CuttedOut))),
    ( (ValOld < 0) -> 
      ((
         reinitialise_pioneer,
@@ -5906,7 +5909,7 @@ query( Goals ) :-                                         % invoked by top_level
         getval( number_of_answers, NAns ),
         setval( old_table_size,    NAns ),
         setval( step_counter,      0    ),
-        EXIT = solve_exit_query ));
+        EXIT = dra_int_exit_dra_call ));
 
         (EXIT = print_statistics)),!,
        call_cleanup(
@@ -5914,8 +5917,8 @@ query( Goals ) :-                                         % invoked by top_level
            % empty_hypotheses( Hyp ),
            % empty_stack( Stack ),            
             Level is ValOld +1,
-            solve(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((traces),non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
+            dra_interp(Cutted, Goals, Stack, Hyp, Level ),
+            ((var(Cutted);((trace),non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
              EXIT
             )),        
            (( 
@@ -5923,7 +5926,7 @@ query( Goals ) :-                                         % invoked by top_level
            ))).
 
 
-solve_exit_query:- 
+dra_int_exit_dra_call:- 
             print_statistics,
             setval( step_counter, 0 ),
             getval( number_of_answers, NAns2 ),
@@ -5956,10 +5959,10 @@ plural( _     , 1 ) :-  !.
 plural( Output, N ) :-  N \= 1,  write( Output, 's' ).
 
 
-% solve(Cutted, + sequence of goals,
-%        + stack,
-%        + coinductive hypotheses,
-%        + level
+% dra_interp(Cutted, +sequence of goals,
+%        +stack,
+%        +coinductive hypotheses,
+%        +level
 %      ):
 % Solve the sequence of goals, maintaining information about the current chain
 % of tabled ancestors(stack) and the chain of coinductive0 ancestors
@@ -5984,30 +5987,30 @@ plural( Output, N ) :-  N \= 1,  write( Output, 's' ).
 %       faster access, so the comments in this file ("chain of ancestors" etc.)
 %       might no longer be quite accurate. )
 
-:- meta_predicate  solve(+, :, +, +, + ).
-:- meta_predicate solve4meta(+, +, :, +, +, + ).
-:- meta_predicate solve1p(+, +, +, +, + ).
-:- meta_predicate solve2t(+, +, +, +, + ).
+:- meta_predicate  dra_interp(+, :, +, +, +).
+:- meta_predicate dra_int4meta(+, +, :, +, +, +).
+:- meta_predicate dra_int1p(+, +, +, +, +).
+:- meta_predicate dra_int2t(+, +, +, +, +).
 
 
 :- 
   empty_hypotheses( Hyp ),
   empty_stack( Stack ),
-  nb_setval('$tabling_exec',solve_external(Stack, Hyp, -1, _CuttedOut)).
+  nb_setval('$tabling_exec',dra_int_external(Stack, Hyp, -1, _CuttedOut)).
 
 % tnot/1 must be ran in meta-interp
-tnot(G):-query(tnot(G)).
+tnot(G):-dra_call(tnot(G)).
 
 % A negation.
 
-solve(_ ,     _:true, _, _, _ ) :- !.
+dra_interp(_ ,     _:true, _, _, _ ) :- !.
 
-solve(Cutted, (_ : (\+ Goal)), Stack, Hyp, Level ) :- sanity(nonvar(Goal)),
+dra_interp(Cutted, (_ : (\+ Goal)), Stack, Hyp, Level ) :- assertion(nonvar(Goal)),
         !,
-        NLevel is Level + 1,
+        NLevel is Level +1,
         trace_entry( normal, \+ Goal, '?', Level ),
         (
-            \+ solve(Cutted, Goal, Stack, Hyp, NLevel ),
+            \+ dra_interp(Cutted, Goal, Stack, Hyp, NLevel ),
             trace_success( normal, \+ Goal, '?', Level )
         ;
             trace_failure( normal, \+ Goal, '?', Level ),
@@ -6015,17 +6018,17 @@ solve(Cutted, (_ : (\+ Goal)), Stack, Hyp, Level ) :- sanity(nonvar(Goal)),
         ).
 
 
-solve(Cutted, (_ : (tnot Goal)) , Stack, Hyp, Level ) :- !, findall(Cutted-Goal,solve(Cutted, Goal , Stack, Hyp, Level ),L),L=[].
+dra_interp(Cutted, (_ : (tnot Goal)) , Stack, Hyp, Level ) :- !, findall(Cutted-Goal,dra_interp(Cutted, Goal , Stack, Hyp, Level ),L),L=[].
 
 
 % One solution.
 
-solve(Cutted, _M: once( Goal ), Stack, Hyp, Level ) :-
+dra_interp(Cutted, _M: once( Goal ), Stack, Hyp, Level ) :-
         !,
-        NLevel is Level + 1,
+        NLevel is Level +1,
         trace_entry( normal, once( Goal ), '?', Level ),
         (
-            once( solve(Cutted, Goal, Stack, Hyp, NLevel ) ),
+            once( dra_interp(Cutted, Goal, Stack, Hyp, NLevel ) ),
             trace_success( normal, once( Goal ), '?', Level )
         ;
             trace_failure( normal, once( Goal ), '?', Level ),
@@ -6035,33 +6038,33 @@ solve(Cutted, _M: once( Goal ), Stack, Hyp, Level ) :-
 
 % A conditional with an else.
 
-solve(Cutted, _M:(Cond -> Then ; Else), Stack, Hyp, Level ) :- !,
-      (  solve(Cutted, Cond, Stack, Hyp, Level ) ->        
-        solve(Cutted, Then, Stack, Hyp, Level ) ;
-        solve(Cutted, Else, Stack, Hyp, Level )).
+dra_interp(Cutted, _M:(Cond -> Then ; Else), Stack, Hyp, Level ) :- !,
+      (  dra_interp(Cutted, Cond, Stack, Hyp, Level ) ->        
+        dra_interp(Cutted, Then, Stack, Hyp, Level ) ;
+        dra_interp(Cutted, Else, Stack, Hyp, Level )).
 
 
 % A conditional without an else.
 
-solve(Cutted, _M:(Cond -> Then), Stack, Hyp, Level ) :- !,
-        (solve(Cutted, Cond, Stack, Hyp, Level ) -> solve(Cutted, Then, Stack, Hyp, Level )).
+dra_interp(Cutted, _M:(Cond -> Then), Stack, Hyp, Level ) :- !,
+        (dra_interp(Cutted, Cond, Stack, Hyp, Level ) -> dra_interp(Cutted, Then, Stack, Hyp, Level )).
 
-solve(Cutted, _M:(GoalsL ; GoalsR), Stack, Hyp, Level ) :- !,
-        (solve(Cutted, GoalsL, Stack, Hyp, Level ) ;
-         solve(Cutted, GoalsR, Stack, Hyp, Level )).
+dra_interp(Cutted, _M:(GoalsL ; GoalsR), Stack, Hyp, Level ) :- !,
+        (dra_interp(Cutted, GoalsL, Stack, Hyp, Level ) ;
+         dra_interp(Cutted, GoalsR, Stack, Hyp, Level )).
 
 
 % A conjunction.
 
-solve(Cutted, _M:(Goals1 , Goals2), Stack, Hyp, Level ) :-
+dra_interp(Cutted, _M:(Goals1 , Goals2), Stack, Hyp, Level ) :-
         !,
-        solve(Cutted, Goals1, Stack, Hyp, Level ),
-        solve(Cutted, Goals2, Stack, Hyp, Level ).
+        dra_interp(Cutted, Goals1, Stack, Hyp, Level ),
+        dra_interp(Cutted, Goals2, Stack, Hyp, Level ).
 
 
 % call/1
 
-solve(Cutted, _M:call( Goal ), Stack, Hyp, Level ) :-
+dra_interp(Cutted, _M:call( Goal ), Stack, Hyp, Level ) :-
         (
             ( var( Goal )                          % e.g., Eclipse
             ; Goal = interpreted : V,  var( V )    % e.g., Sicstus
@@ -6069,13 +6072,13 @@ solve(Cutted, _M:call( Goal ), Stack, Hyp, Level ) :-
         ->
             error( [ 'A variable meta-call: ', call( Goal ) ] )
         ;
-            solve(Cutted, Goal, Stack, Hyp, Level )
+            dra_interp(Cutted, Goal, Stack, Hyp, Level )
         ).
 
 
 % assert/1
 
-solve(_Cutted, _M:assert( Clause ), _, _, _ ) :-
+dra_interp(_Cutted, _M:assert( Clause ), _, _, _ ) :-
         !,
         (
             \+ is_a_good_clause( Clause )
@@ -6090,7 +6093,7 @@ solve(_Cutted, _M:assert( Clause ), _, _, _ ) :-
 
 % retractall/1
 
-solve(_Cutted, retractall( C ), _, _, _ ) :-
+dra_interp(_Cutted, retractall( C ), _, _, _ ) :-
         !,
         incval( step_counter ),
         retractall_in_module( interpreted, C ).
@@ -6098,9 +6101,9 @@ solve(_Cutted, retractall( C ), _, _, _ ) :-
 
 % findall/3: note that this is not opaque to coinductive and tabled ancestors!
 
-solve(Cutted, _M:findall( Template, Goal, Bag ), Stack, Hyp, Level ) :-
+dra_interp(Cutted, _M:findall( Template, Goal, Bag ), Stack, Hyp, Level ) :-
         !,
-        NLevel is Level + 1,
+        NLevel is Level +1,
         (
             % Sicstus prefixes the second argument of findall with the module
             % name, but it does not do that for nested findall...
@@ -6111,55 +6114,55 @@ solve(Cutted, _M:findall( Template, Goal, Bag ), Stack, Hyp, Level ) :-
         ;
             G = Goal
         ),
-        findall( Template, solve(Cutted, G, Stack, Hyp, NLevel ), Bag ).
+        findall( Template, dra_interp(Cutted, G, Stack, Hyp, NLevel ), Bag ).
 
-solve(Cutted, _:!, _, _, _ ) :- !, (var(Cutted);Cutted=cut).
-solve(Cutted, _:!(Where), _, _, _ ) :- !, (var(Cutted);Cutted=cut_to(Where)).
+dra_interp(Cutted, _:!, _, _, _ ) :- !, (var(Cutted);Cutted=cut).
+dra_interp(Cutted, _:!(Where), _, _, _ ) :- !, (var(Cutted);Cutted=cut_to(Where)).
 
 % Some other supported built-in.
 
 
-solve(CuttedOut, M:Goal, Stack, Hyp,  Level ):-     
-    pred_metainterp(Goal,Meta), !, solve4meta(Meta, CuttedOut, M:Goal, Stack, Hyp,  Level ).
+dra_interp(CuttedOut, M:Goal, Stack, Hyp,  Level ):-     
+    pred_metainterp(Goal,Meta), !, dra_int4meta(Meta, CuttedOut, M:Goal, Stack, Hyp,  Level ).
 
 
-solve4meta(Meta, CuttedOut, M:BuiltIn, Stack, Hyp,  Level ):-
+dra_int4meta(Meta, CuttedOut, M:BuiltIn, Stack, Hyp,  Level ):-
         arg(_,is_builtin;is_support,Meta),
         !,
-        b_setval('$tabling_exec',solve_external(Stack, Hyp, Level, Cutted)),
+        b_setval('$tabling_exec',dra_int_external(Stack, Hyp, Level, Cutted)),
         incval( step_counter ),
         clause_module(M:BuiltIn,CM),!,
         call(CM: BuiltIn ),        
         ((var(Cutted);(trace,non_cutted(BuiltIn,Cutted, CuttedOut)))->true;(!,fail)). 
 
-solve4meta(Meta,CuttedOut, M:Goal, Stack, Hyp,  Level ):- 
+dra_int4meta(Meta,CuttedOut, M:Goal, Stack, Hyp,  Level ):- 
    arg(_,is_tabled;is_coinductive1,Meta),!,
-  solve2t(Cutted, M:Goal, Stack, Hyp, Level ),
+  dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ),
   ((var(Cutted);non_cutted(Goal,Cutted, CuttedOut))->true;(!,fail)).
 
-solve4meta(_,CuttedOut, M:Goal, Stack, Hyp,  Level ):- !,  
-  solve1p(Cutted, M:Goal, Stack, Hyp, Level ),
+dra_int4meta(_,CuttedOut, M:Goal, Stack, Hyp,  Level ):- !,  
+  dra_int1p(Cutted, M:Goal, Stack, Hyp, Level ),
   ((var(Cutted);non_cutted(Goal,Cutted, CuttedOut))->true;(!,fail)).
 
-solve4meta(_ANYMETA,CuttedOut, M:Goal, Stack, Hyp,  Level ):- 
+dra_int4meta(_ANYMETA,CuttedOut, M:Goal, Stack, Hyp,  Level ):- 
   % Should read the new default
   set_meta(Goal,is_tabled),!,
-  solve2t(Cutted, M:Goal, Stack, Hyp,  Level ),
+  dra_int2t(Cutted, M:Goal, Stack, Hyp,  Level ),
   ((var(Cutted);non_cutted(Goal,Cutted, CuttedOut))->true;(!,fail)). 
 
 
 non_cutted(_,cut,_):-!,fail.
-non_cutted(Goal,cut_to(ToGoal),_):- must(nonvar(ToGoal)), Goal=ToGoal, !,fail.
+non_cutted(Goal,cut_to(ToGoal),_):- dra_must(nonvar(ToGoal)), Goal=ToGoal, !,fail.
 non_cutted(_,Cutted,Cutted).
 
 % A "normal" goal (i.e., not tabled, not coinductive).
-solve1p(Cutted, M:Goal, Stack, Hyp, Level ):- 
+dra_int1p(Cutted, M:Goal, Stack, Hyp, Level ):- 
         incval( step_counter ), !,
         trace_entry( normal, Goal, '?', Level ),
         (
-            NLevel is Level + 1,
+            NLevel is Level +1,
             use_clause( M , Goal, Body ),
-            solve(Cutted, Body, Stack, Hyp, NLevel ),
+            dra_interp(Cutted, Body, Stack, Hyp, NLevel ),
             trace_success( normal, Goal, '?', Level )
         ;
             trace_failure( normal, Goal, '?', Level ),
@@ -6175,7 +6178,7 @@ solve1p(Cutted, M:Goal, Stack, Hyp, Level ):-
 %       follows is an attempt to avoid too much duplication of code and
 %       redundant invocations of the costly check for unifiable ancestors.
 
-solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
+dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
         \+ is_tabled( Goal ),
         is_coinductive1( Goal ),
         !,
@@ -6198,10 +6201,10 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
                 unify_with_coinductive_ancestor( Goal, Hyp ),
                 trace_success( 'coinductive0(hypothesis)', Goal, '?', Level )
             ;
-                NLevel is Level + 1,
+                NLevel is Level +1,
                 use_clause(M, Goal, Body ),
                 push_is_coinductive0( Goal, Hyp, NHyp ),
-                solve(Cutted, Body, Stack, NHyp, NLevel ),
+                dra_interp(Cutted, Body, Stack, NHyp, NLevel ),
                 trace_success( 'coinductive (clause)', Goal, '?', Level )
             ;
                 trace_failure( coinductive, Goal, '?', Level ),
@@ -6213,7 +6216,7 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
 
 % A tabled goal that has been completed: all the results are in "answer".
 
-solve2t(_Cutted, _M:Goal, _, _, Level ) :-
+dra_int2t(_Cutted, _M:Goal, _, _, Level ) :-
         is_completed( Goal ),
         !,
         incval( step_counter ),
@@ -6251,7 +6254,7 @@ solve2t(_Cutted, _M:Goal, _, _, Level ) :-
 %       4. If this goal is coinductive, then we use "result" to avoid
 %          duplicating results.
 
-solve2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
+dra_int2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
         is_variant_of_ancestor( Goal, Stack,
                                 triple( G, I, C ), InterveningTriples
                               ),
@@ -6277,7 +6280,7 @@ solve2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
         (
             is_coinductive1( Goal )
         ->
-            copy_term2( Goal, OriginalGoal ),
+            copy_term( Goal, OriginalGoal ),
             (
                 get_tabled_if_old_first( Goal, Index,
                                          'variant (coinductive0)', Level
@@ -6311,7 +6314,7 @@ solve2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
         ).
 
 
-% A pioneer goal is solved by program clauses, producing results that are stored
+% A pioneer goal is called by program clauses, producing results that are stored
 % in "answer".
 % The goal succeeds as each new answer (i.e., an answer heretofore unknown for
 % this goal) is produced, and tries to come up with more after backtracking.
@@ -6330,7 +6333,7 @@ solve2t(_Cutted, _M:Goal, Stack, Hyp, Level ) :-
 % might not be necessary to continue the computation with the remaining clauses:
 % the rest of the results should be picked up from the table, instead.
 
-solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
+dra_int2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
         (
             is_coinductive1( Goal )
         ->
@@ -6339,7 +6342,7 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
             NHyp = Hyp
         ),
         incval( step_counter ),
-        copy_term2( Goal, OriginalGoal ),
+        copy_term( Goal, OriginalGoal ),
         add_pioneer( Goal, Index ),
         trace_entry( pioneer, Goal, Index, Level ),
 
@@ -6347,12 +6350,12 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
             get_tabled_if_old_first( Goal, Index, pioneer, Level )
         ;
 
-            NLevel is Level + 1,
+            NLevel is Level +1,
             use_clause(M, Goal, Body ),
             \+ is_completed( OriginalGoal ), % might well be, after backtracking
-            copy_term2( (Goal :- Body), ClauseCopy ),
+            copy_term( (Goal :- Body), ClauseCopy ),
             push_is_tabled( OriginalGoal, Index, ClauseCopy, Stack, NStack ),
-            solve(Cutted, Body, NStack, NHyp, NLevel ),
+            dra_interp(Cutted, Body, NStack, NHyp, NLevel ),
             \+ is_answer_known( OriginalGoal, Goal ),   % postpone "old" answers
             memo( OriginalGoal, Goal, Level ),
             new_result_or_fail( Index, Goal ),          % i.e., note the answer
@@ -6408,13 +6411,13 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
 
 
 
-% get_tabled_if_old_first( + goal, + goal index,
-%                          + traces label, + traces level
+% get_tabled_if_old_first( +goal, +goal index,
+%                          +traces label, +traces level
 %                        ):
 % If the goal has been declared as "old_first", produce all the tabled answers,
 % remembering them in "result", then succeed; otherwise just fail.
 
-% :- mode get_tabled_if_old_first( +, +, +, + ).
+% :- mode get_tabled_if_old_first( +, +, +, +).
 
 get_tabled_if_old_first( Goal, Index, Label, Level ) :-
         is_old_first( Goal ),
@@ -6422,25 +6425,25 @@ get_tabled_if_old_first( Goal, Index, Label, Level ) :-
         new_result_or_fail( Index, Goal ).     % i.e., make a note of the answer
 
 
-% get_all_tabled_answers( + goal, + goal index, + traces label, + traces level ):
+% get_all_tabled_answers( +goal, +goal index, +traces label, +traces level ):
 % Return (one by one) all the answers that are currently tabled for this goal.
 % (Each answer is returned by appropriately instantiating the goal.)
 
-% :- mode get_all_tabled_answers( +, +, +, + ).
+% :- mode get_all_tabled_answers( +, +, +, +).
 
 get_all_tabled_answers( Goal, Index, Label, Level ) :-
         get_answer( Goal ),
         trace_success( Label, Goal, Index, Level ).
 
 
-% get_remaining_tabled_answers( + goal,        + goal index,
-%                               + traces label, + traces level
+% get_remaining_tabled_answers( +goal,        +goal index,
+%                               +traces label, +traces level
 %                             ):
 % Return (one by one) all the answers that are currently tabled for this goal
 % but are not present in its "result" entries.
 % (Each answer is returned by appropriately instantiating the goal.)
 
-% :- mode get_remaining_tabled_answers( +, +, +, + ).
+% :- mode get_remaining_tabled_answers( +, +, +, +).
 
 get_remaining_tabled_answers( Goal, Index, Label, Level ) :-
         get_answer( Goal ),
@@ -6449,15 +6452,15 @@ get_remaining_tabled_answers( Goal, Index, Label, Level ) :-
 
 
 
-% use_clause(+ module, + goal, - body ):
+% use_clause(+module, +goal, - body ):
 % Warn and fail if the goal invokes a non-existing predicate.  Otherwise
 % nondeterministically return the appropriately instantiated body of each
 % clause whose head matches the goal.
 
 use_clause(M, Goal, Body ) :- 
-   predicate_property(M:Goal,number_of_clauses(_)),!, clause(M:Goal, Body ), Body \= (!,query(Goal)).
+   predicate_property(M:Goal,number_of_clauses(_)),!, clause(M:Goal, Body ), Body \= (!,dra_call(Goal)).
 use_clause(M, Goal, M:Body ) :- 
-   predicate_property(Goal,number_of_clauses(_)),!, clause(Goal, Body ), Body\= (!,query(Goal)).
+   predicate_property(Goal,number_of_clauses(_)),!, clause(Goal, Body ), Body\= (!,dra_call(Goal)).
 use_clause(M, Goal, Body ) :-  set_meta(Goal, is_builtin),Body = M:Goal.
 
 use_clause_old0(M, Goal, Body ) :- 
@@ -6488,15 +6491,15 @@ use_clause_old(M, Goal, Body ) :-
 
 
 
-% compute_fixed_point( + pioneer goal, + its index, + stack, + level ):
+% compute_fixed_point( +pioneer goal, +its index, +stack, +level ):
 % Solve the goal by associated rules from "looping_alternative", succeeding
 % with each new answer (and tabling it).  Fail when all the possible results
 % are exhausted.
 
-% :- mode compute_fixed_point( +, +, +, +, + ).
+% :- mode compute_fixed_point( +, +, +, +, +).
 
 compute_fixed_point( Goal, Index, Stack, Hyp, Level ) :-
-        NLevel is Level + 1,
+        NLevel is Level +1,
         (
             is_coinductive1( Goal )
         ->
@@ -6508,16 +6511,16 @@ compute_fixed_point( Goal, Index, Stack, Hyp, Level ) :-
         compute_fixed_point_( Goal, Index, Stack, NHyp, NLevel, NAns ).
 
 %
-% :- mode compute_fixed_point_( +, +, +, +, +, + ).
+% :- mode compute_fixed_point_( +, +, +, +, +, +).
 
 compute_fixed_point_( Goal, Index, Stack, Hyp, Level, _ ) :-
-        copy_term2( Goal, OriginalGoal ),
+        copy_term( Goal, OriginalGoal ),
         get_looping_alternative( Index, (G :- Body) ),        % i.e., iterate
         \+ \+ G = Goal,
-        copy_term2( (G :- Body), ClauseCopy ),
+        copy_term( (G :- Body), ClauseCopy ),
         G = Goal,
         push_is_tabled( OriginalGoal, Index, ClauseCopy, Stack, NStack ),
-        solve(Cutted, Body, NStack, Hyp, Level ),
+        dra_interp(Cutted, Body, NStack, Hyp, Level ),
         (nonvar(Cutted)-> warning(['cutted at ',Cutted]); true),
         new_result_or_fail( Index, Goal ),
         memo( OriginalGoal, Goal, Level ).
@@ -6529,7 +6532,7 @@ compute_fixed_point_( Goal, Index, Stack, Hyp, Level, NAns ) :-
 
 
 
-% suppress_pioneers_on_list( + list of triples, + level for tracing ):
+% suppress_pioneers_on_list( +list of triples, +level for tracing ):
 % If any of the triples describe goals that are pioneers, make sure those goals
 % cease to be pioneers.
 
@@ -6544,11 +6547,11 @@ suppress_pioneers_on_list( _, _ ).
 
 
 
-% rescind_pioneer_status( + index ):
+% rescind_pioneer_status( +index ):
 % Remove auxiliary table entries for the pioneer with this index.
 % Specifically, clean up "pioneer", "loop" and "looping_alternative".
 
-% :- mode rescind_pioneer_status( + ).
+% :- mode rescind_pioneer_status( +).
 
 rescind_pioneer_status( Index ) :-
         delete_pioneer( Index ),
@@ -6556,12 +6559,12 @@ rescind_pioneer_status( Index ) :-
         delete_looping_alternatives( Index ).
 
 
-% complete_cluster( + index of a pioneer goal, + level for tracing ):
+% complete_cluster( +index of a pioneer goal, +level for tracing ):
 % If the goal has an associated cluster, make sure all the goals in the cluster
 % are marked as completed.
 % Recall that a cluster may consist of a number of "loops".
 
-% :- mode complete_cluster( +, + ).
+% :- mode complete_cluster( +, +).
 
 complete_cluster( Index, Level ) :-
         get_loop( Index, Gs ),                  % iterate over loops
@@ -6573,7 +6576,7 @@ complete_cluster( _, _ ).
 
 
 
-% extract_goals( + list of triples of goals, indices and clauses,
+% extract_goals( +list of triples of goals, indices and clauses,
 %                - list of goals
 %              ):
 % Filter away the other info in each triple, return list of goals only.
@@ -6612,11 +6615,11 @@ get_unique_index( Index ) :-
 %-----  Custom-tailored utilities  -----
 
 
-% are_essences_variants( + term, + term ):
+% are_essences_variants( +term, +term ):
 % Are both the terms variants of each other after filtering through
 % essence_hook?
 
-% :- mode are_essences_variants( +, + ).
+% :- mode are_essences_variants( +, +).
 
 are_essences_variants( T1, T2 ) :-
         once( essence_hook( T1, ET1 ) ),
@@ -6625,7 +6628,7 @@ are_essences_variants( T1, T2 ) :-
 
 
 
-% trace_entry( + label, + goal, + goal index, + level ):
+% trace_entry( +label, +goal, +goal index, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % entering the goal (at this level, with this label).
 % (The goal index is not always relevant: "?" is used for those cases.)
@@ -6642,7 +6645,7 @@ trace_entry( Label, Goal, Index, Level ) :-
 trace_entry( _, _, _, _ ).
 
 
-% trace_success( + label, + goal, + goal index, + level ):
+% trace_success( +label, +goal, +goal index, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % success of the goal (at this level, with this label).  Moreover, just before
 % backtracking gets back to the goal, print out a traces line about retrying the
@@ -6669,7 +6672,7 @@ trace_success( Label, Goal, Index, Level ) :-
 trace_success( _, _, _, _ ).
 
 
-% trace_failure( + label, + goal, + goal index, + level ):
+% trace_failure( +label, +goal, +goal index, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % failure of the goal (at this level, with this label).
 % (The goal index is not always relevant: "?" is used for those cases.)
@@ -6686,7 +6689,7 @@ trace_failure( Label, Goal, Index, Level ) :-
 trace_failure( _, _, _, _ ).
 
 
-% trace_other( + label, + goal, + goal index, + level ):
+% trace_other( +label, +goal, +goal index, +level ):
 % If the goal matches one of the traced patterns, print out a traces line about
 % this goal (at this level, with this label).
 % (The goal index is not always relevant: "?" is used for those cases.)
@@ -6730,7 +6733,7 @@ write_goal_number( Index ) :-
 
 
 
-% optional_trace( + label, + goal, + term, + level ):
+% optional_trace( +label, +goal, +term, +level ):
 % If the goal matches one of the traced patterns, print out a traces line with
 % this label, the goal and the term.
 
@@ -6750,10 +6753,10 @@ optional_trace( _, _, _, _ ).
 
 
 
-% fatal_error( + message, + stack ):
+% fatal_error( +message, +stack ):
 % Display the message and stack, then abort.
 
-% :- mode fatal_error( +, + ).
+% :- mode fatal_error( +, +).
 
 fatal_error( Message, Stack ) :-
         begin_error,
@@ -6773,7 +6776,7 @@ show_stack( _ ).
 
 %------------------------------------------------------------------------------
 
-% c + r = 7.949 seconds
+% c +r = 7.949 seconds
 
 /*
 % :- pf(library('dra/tabling3/examples/XSB/fib.tlp') ).
@@ -6815,6 +6818,5 @@ t5:- consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/
 
 % :- repeat,logOnErrorIgnore(prolog),fail.
 user:term_expansion((?- G),_):- nonvar(G), format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
-% user:goal_expansion(G,_):- G\=(_,_),G\=(_;_),\+predicate_property(G,_),format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
-
+% user:goal_expansion(G,_):- G\=(_,_),G\=(_;_),\+ predicate_property(G,_),format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
 

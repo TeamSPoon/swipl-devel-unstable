@@ -84,7 +84,7 @@ thread_local(Spec)	 :- '$set_pattr'(Spec, pred, (thread_local)).
 noprofile(Spec)		 :- '$set_pattr'(Spec, pred, (noprofile)).
 public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 '$iso'(Spec)		 :- '$set_pattr'(Spec, pred, (iso)).
-table(Spec)		 :- '$set_pattr'(Spec, pred, (table)).
+% table(Spec)		 :- '$set_pattr'(Spec, pred, (dra_call)).
 
 '$set_pattr'(M:Pred, How, Attr) :-
 	'$set_pattr'(Pred, M, How, Attr).
@@ -131,8 +131,8 @@ table(Spec)		 :- '$set_pattr'(Spec, pred, (table)).
 	'$set_pattr'(Spec, M, directive, (noprofile)).
 '$pattr_directive'(public(Spec), M) :-
 	'$set_pattr'(Spec, M, directive, (public)).
-'$pattr_directive'(table(Spec), M) :-
-	'$set_pattr'(Spec, M, directive, (table)).
+'$pattr_directive'(dra_called(Spec), M) :-
+	'$set_pattr'(Spec, M, directive, (dra_call)).
 
 
 %%	'$hide'(:PI)
