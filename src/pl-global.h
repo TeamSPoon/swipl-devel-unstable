@@ -425,6 +425,10 @@ struct PL_local_data
 #endif
 
   struct
+  { int	in_dra;			/* recursion depth */
+  } dra;
+
+  struct
   { term_t	dummy;			/* see trimStacks() */
   } trim;
 

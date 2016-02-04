@@ -32,7 +32,7 @@
 
 :-  use_module(library(logicmoo_utils)).
 /*
-   % NOTICE:    %%%%%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % NOTICE:    %%%%% %%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
    %                                                                      %
@@ -53,7 +53,7 @@
    %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%%%%%
 
 */
 :- shell(cls).
@@ -86,8 +86,8 @@ property_pred(hilog,is_hilog).
 % :- multifile sandbox:safe_primitive/1.
 % :-asserta((sandbox:safe_primitive(Z):-wdmsg(Z))).
 
-%%% ON :- initialization( profiler(_,walltime) ).
-%%% ON :- initialization(user:use_module(library(swi/pce_profile))).
+% ON :- initialization( profiler(_,walltime) ).
+% ON :- initialization(user:use_module(library(swi/pce_profile))).
 
 % :- user:ensure_loaded(library(ape/get_ape_results)).
 
@@ -128,9 +128,9 @@ clause_module1(Goal,M):-clause(Goal,_,Ref),clause_propery(Ref,module(M)).
 clause_module1(Goal,M):-clause(_:Goal,_,Ref),clause_propery(Ref,module(M)).
 
 
-%% load( + file name ):
-%% Initialise, then load a program from this file, processing directives and
-%% queries.  After this is done, enter interactive mode.
+% load( + file name ):
+% Initialise, then load a program from this file, processing directives and
+% queries.  After this is done, enter interactive mode.
 
 
 :-export(load/1).
@@ -145,8 +145,8 @@ load( FileName ) :-
 
 cputime(X):- statistics(cputime,X).
 
-%% process_file( + file name ):
-%% Load a program from this file, processing directives and queries.
+% process_file( + file name ):
+% Load a program from this file, processing directives and queries.
 
 % :- mode process_file( + ).
 
@@ -206,15 +206,15 @@ add_file_meta(FileName,Type):-to_filename(FileName,File),assert_if_new(is_file_m
 
 
 
-%% top:
-%% Interactive mode.  Each term that is not a directive or a query is treated
-%% as an abbreviated query.  After displaying the results of each query read
-%% characters upto the nearest newline: if the first character is ";",
-%% backtrack to find alternative solutions.
-%% Exit upon encountering end of file.
-%% NOTE: When running on Sicstus, each term must come on a separate line: after
-%%       reading the term the rest of the line is ignored, to facilitate
-%%       interaction with the user when asking whether more answers are needed.
+% top:
+% Interactive mode.  Each term that is not a directive or a query is treated
+% as an abbreviated query.  After displaying the results of each query read
+% characters upto the nearest newline: if the first character is ";",
+% backtrack to find alternative solutions.
+% Exit upon encountering end of file.
+% NOTE: When running on Sicstus, each term must come on a separate line: after
+%       reading the term the rest of the line is ignored, to facilitate
+%       interaction with the user when asking whether more answers are needed.
 
 
 
@@ -382,7 +382,7 @@ print_table_statistics:-print_statistics.
 %load(P):-must(prog0(P)),!.
 
 %:- user:ensure_loaded(library(dra/tabling3/dra_table_assert)).
-   % NOTICE:    %%%%%%%%%%%%%%%%%%%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % NOTICE:    %%%%% %%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
    %                                                                      %
@@ -403,38 +403,38 @@ print_table_statistics:-print_statistics.
    %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%%%%%
 
-%%%  Table-handling procedures for the "dra" interpreter.                    %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (March 2009)           .              %%%
-%%%                                                                          %%%
-%%%  Last update: 25 August 2009.                                            %%%
-%%%                                                                          %%%
+%  Table-handling procedures for the "dra" interpreter.                    %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (March 2009)           .              %
+%                                                                          %
+%  Last update: 25 August 2009.                                            %
+%                                                                          %
 
-%% The tables are normally kept in asserted clauses, but for some systems this
-%% is  not convenient, because asserted clauses are compiled.
-%% For example, this is so in SWI Prolog, which in addition does not assert
-%% cyclic terms, so  for that system the "recorded" database is more
-%% appropriate.
-%% In order to facilitate such changes, routines for handling the table is
-%% factored out of the main program.
+% The tables are normally kept in asserted clauses, but for some systems this
+% is  not convenient, because asserted clauses are compiled.
+% For example, this is so in SWI Prolog, which in addition does not assert
+% cyclic terms, so  for that system the "recorded" database is more
+% appropriate.
+% In order to facilitate such changes, routines for handling the table is
+% factored out of the main program.
 
 
-%% >>>>>>>>>  This version for systems that use assert/1. <<<<<<<<<
+% >>>>>>>>>  This version for systems that use assert/1. <<<<<<<<<
 
 :- dynamic answer/3 .
 
 
-%% Clear all known answers.
+% Clear all known answers.
 
 reinitialise_answer :-
         retractall( answer( _, _, _ ) ).
 
 
-%% is_answer_known( + goal, + fact ):
-%% Does the table "answer" contain a variant of this fact paired with a variant
-%% of this goal?
+% is_answer_known( + goal, + fact ):
+% Does the table "answer" contain a variant of this fact paired with a variant
+% of this goal?
 
 % :- mode is_answer_known( +, + ).
 
@@ -447,10 +447,10 @@ is_answer_known( Goal, Fact ) :-
         !.
 
 
-%% memo( + goal, + fact, + level for tracing ):
-%% If the table "answer" does not contain a variant of this fact paired with
-%% a variant of this goal, then add the pair to the table, increasing
-%% "number_of_answers".
+% memo( + goal, + fact, + level for tracing ):
+% If the table "answer" does not contain a variant of this fact paired with
+% a variant of this goal, then add the pair to the table, increasing
+% "number_of_answers".
 
 % :- mode memo( +, +, + ).
 
@@ -467,9 +467,9 @@ memo( Goal, Fact, Level ) :-
         incval( number_of_answers ).
 
 
-%% get_answer( +- goal ):
-%% Get an instantiation (if any) tabled in "answer" for variants of this goal.
-%% Sequence through all such instantiations on backtracking.
+% get_answer( +- goal ):
+% Get an instantiation (if any) tabled in "answer" for variants of this goal.
+% Sequence through all such instantiations on backtracking.
 
 % :- mode get_answer( ? ).
 
@@ -485,26 +485,26 @@ get_answer( Goal ) :-
         EssenceOfGoal = EssenceOfAns .  % instantiate
 
 
-%% get_all_tabled_goals( - list of goals ):
-%% Get all the goals that were tabled together with their answers.
+% get_all_tabled_goals( - list of goals ):
+% Get all the goals that were tabled together with their answers.
 
 get_all_tabled_goals( Goals ) :-
         findall( Goal, answer( _, Goal, _ ), Goals ).
 
 
 
-%------------------------------------------------------------------------------
+%-----------------------------------------------------------------------------
 
-%% reinitialise_result:
-%% Clear the table of results.
+% reinitialise_result:
+% Clear the table of results.
 
 reinitialise_result :-
         retractall( result( _, _ ) ).
 
 
-%% is_result_known( + index, + fact ):
-%% Does the table "result" contain a variant of this fact associated with this
-%% index?
+% is_result_known( + index, + fact ):
+% Does the table "result" contain a variant of this fact associated with this
+% index?
 
 % :- mode is_result_known( +, + ).
 
@@ -514,9 +514,9 @@ is_result_known( Index, Fact ) :-
         !.
 
 
-%% new_result_or_fail( + index, + fact ):
-%% If the table "result" already contains a variant of this fact associated with
-%% this index, then fail.  Otherwise record the fact in the table and succeed.
+% new_result_or_fail( + index, + fact ):
+% If the table "result" already contains a variant of this fact associated with
+% this index, then fail.  Otherwise record the fact in the table and succeed.
 
 % :- mode new_result_or_fail( +, + ).
 
@@ -526,17 +526,17 @@ new_result_or_fail( Index, Fact ) :-
 
 
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
-%% reinitialise_pioneer:
-%% Clear the table of pioneers.
+% reinitialise_pioneer:
+% Clear the table of pioneers.
 
 reinitialise_pioneer :-
         retractall( pioneer( _, _, _ ) ).
 
-%% is_a_variant_of_a_pioneer( + goal, - index ):
-%% Succeeds if the goal is a variant of a goal that is tabled in "pioneer";
-%% returns the index of the relevant entry in table "pioneer".
+% is_a_variant_of_a_pioneer( + goal, - index ):
+% Succeeds if the goal is a variant of a goal that is tabled in "pioneer";
+% returns the index of the relevant entry in table "pioneer".
 
 % :- mode is_a_variant_of_a_pioneer( +, - ).
 
@@ -548,8 +548,8 @@ is_a_variant_of_a_pioneer( Goal, Index ) :-
         !.
 
 
-%% add_pioneer( + goal, - index ):
-%% Add an entry for this goal to "pioneer", return the unique index.
+% add_pioneer( + goal, - index ):
+% Add an entry for this goal to "pioneer", return the unique index.
 
 % :- mode add_pioneer( +, - ).
 
@@ -560,8 +560,8 @@ add_pioneer( Goal, Index ) :-
         assert( pioneer( CopyEssence, Goal, Index ) ).
 
 
-%% delete_pioneer( + index ):
-%% Remove the entry in "pioneer" associated with this index.
+% delete_pioneer( + index ):
+% Remove the entry in "pioneer" associated with this index.
 
 % :- mode delete_pioneer( + ).
 
@@ -570,17 +570,17 @@ delete_pioneer( Index ) :-
 
 
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
-%% reinitialise_loop:
-%% Clear the table of pioneers.
+% reinitialise_loop:
+% Clear the table of pioneers.
 
 reinitialise_loop :-
         retractall( loop( _, _ ) ).
 
 
-%% add_loop( + index, + list of goals ):
-%% Add an entry to "loop".
+% add_loop( + index, + list of goals ):
+% Add an entry to "loop".
 
 % :- mode add_loop( +, + ).
 
@@ -596,33 +596,33 @@ add_loop( Index, Goals ) :-
         assert( loop( Index, Goals ) ).
 
 
-%% delete_loops( + index ):
-%% Remove all the entries in "loop" that are associated with this index.
+% delete_loops( + index ):
+% Remove all the entries in "loop" that are associated with this index.
 
 delete_loops( Index ) :-
         retractall( loop( Index, _ ) ).
 
 
-%% get_loop( + index, - Goals ):
-%% Get an entry from table "loop" that is associated with this index;
-%% another such entry (if it exists) on backtracking etc.
+% get_loop( + index, - Goals ):
+% Get an entry from table "loop" that is associated with this index;
+% another such entry (if it exists) on backtracking etc.
 
 get_loop( Index, Gs ) :-
         loop( Index, Gs ).
 
 
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
-%% reinitialise_looping_alternative:
-%% Clear the table of pioneers.
+% reinitialise_looping_alternative:
+% Clear the table of pioneers.
 
 reinitialise_looping_alternative :-
         retractall( looping_alternative( _, _ ) ).
 
 
-%% add_looping_alternative( + index, + Clause ):
-%% Add and entry to "looping_alternative".
+% add_looping_alternative( + index, + Clause ):
+% Add and entry to "looping_alternative".
 
 % :- mode add_looping_alternative( +, + ).
 
@@ -635,34 +635,34 @@ add_looping_alternative( Index, Clause ) :-
         assert( looping_alternative( Index, Clause ) ).
 
 
-%% delete_looping_alternatives( + index ):
-%% Remove all the entries in "loop" that are associated with this index.
+% delete_looping_alternatives( + index ):
+% Remove all the entries in "loop" that are associated with this index.
 
 delete_looping_alternatives( Index ) :-
         retractall( looping_alternative( Index, _ ) ).
 
 
-%% get_looping_alternative( + index, - clause ):
-%% Get an entry from table "looping_alternative" that is associated with this
-%% index; another such entry (if it exists) on backtracking etc.
+% get_looping_alternative( + index, - clause ):
+% Get an entry from table "looping_alternative" that is associated with this
+% index; another such entry (if it exists) on backtracking etc.
 
 get_looping_alternative( Index, Clause ) :-
         looping_alternative( Index, Clause ).
 
 
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
-%% reinitialise_completed:
-%% Clear the table of completed goals.
+% reinitialise_completed:
+% Clear the table of completed goals.
 
 reinitialise_completed :-
         retractall( completed( _, _ ) ).
 
 
-%% is_completed( + goal ):
-%% Succeeds iff the goal is a variant of a goal that has been stored in
-%% the table "completed".
+% is_completed( + goal ):
+% Succeeds iff the goal is a variant of a goal that has been stored in
+% the table "completed".
 
 % :- mode is_completed( + ).
 
@@ -673,8 +673,8 @@ is_completed( Goal ) :-
         are_essences_variants( Goal, G ).
 
 
-%% complete_goal( + goal, + index for tracing ):
-%% Make sure the goal is marked as completed.
+% complete_goal( + goal, + index for tracing ):
+% Make sure the goal is marked as completed.
 
 % :- mode complete_goal( +, + ).
 
@@ -689,42 +689,42 @@ complete_goal( Goal, Level ) :-
         trace_other( 'Completing', Goal, '?', Level ),
         assert( completed( CopyEssence, Goal ) ).
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
 %:- user:ensure_loaded(library(dra/tabling3/dra_table_record)).
 %:- user:ensure_loaded(library(dra/tabling3/compatibility_utilities_swi)).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Predicates specific to SWI Prolog.                                      %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (February, August 2009)               %%%
-%%%                                                                          %%%
+%  Predicates specific to SWI Prolog.                                      %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (February, August 2009)               %
+%                                                                          %
 
 % :- ensure_loaded( higher_order ).
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%
 
-   %%%  Some "higher order" predicates for Prolog.                              %%%
-   %%%  This particular version was                                             %%%
-   %%%  written by Feliks Kluzniak at UTD (February 2009).                      %%%
-   %%%                                                                          %%%
-   %%%  Last update: 11 June 2009.                                              %%%
-   %%%                                                                          %%%
+   %  Some "higher order" predicates for Prolog.                              %
+   %  This particular version was                                             %
+   %  written by Feliks Kluzniak at UTD (February 2009).                      %
+   %                                                                          %
+   %  Last update: 11 June 2009.                                              %
+   %                                                                          %
 
-   %%% NOTE: Throughout the file "predicate name" will be used either for
-   %%        the name of a predicate, or for a predicate with an incomplete
-   %%        list of arguments (a partially applied predicate): see apply/2.
+   % NOTE: Throughout the file "predicate name" will be used either for
+   %        the name of a predicate, or for a predicate with an incomplete
+   %        list of arguments (a partially applied predicate): see apply/2.
 
 
-   %%------------------------------------------------------------------------------
-   %% apply( + predicate name (possibly with arguments), + list of arguments ):
-   %% Extend the list of arguments of the first argument with the second argument
-   %% and invoke the result.
-   %% For example, if we have
-   %%     sum( A, B, C ) :-  C is A + B.
-   %% then
-   %%     map( sum(5 ), [ 1, 2, 3 ], Result )
-   %% will bind Result to [ 6, 7, 8 ].
+   %------------------------------------------------------------------------------
+   % apply( + predicate name (possibly with arguments), + list of arguments ):
+   % Extend the list of arguments of the first argument with the second argument
+   % and invoke the result.
+   % For example, if we have
+   %     sum( A, B, C ) :-  C is A + B.
+   % then
+   %     dra_map( sum(5 ), [ 1, 2, 3 ], Result )
+   % will bind Result to [ 6, 7, 8 ].
 
    apply( PredNameArgs, Arguments ) :-
            PredNameArgs =.. [ PredName | Args ],
@@ -733,34 +733,34 @@ complete_goal( Goal, Level ) :-
            call( Literal ).
 
 
-   %%------------------------------------------------------------------------------
-   %% map( + predicate name, + list, - mapped list ):
-   %% The predicate should implement a unary function, i.e.,
-   %%   - it should take two arguments, the first of which is an input argument,
-   %%     and the second of which is an output argument;
-   %%   - it should always succeed, and the first result should be "what we want".
-   %% The predicate is applied to input arguments from the list, and the
-   %% corresponding outputs are returned in the second list.
-   %%
-   %% Example:
-   %%          square( M, N ) :-  N is M * M.
-   %%
-   %%          ?- map( square, [ 1, 2, 3 ], Ans ).
-   %%
-   %%          Ans = [ 1, 4, 9 ].
+   %------------------------------------------------------------------------------
+   % dra_map( + PredicateName, +List, -MappedList )
+   % The predicate should implement a unary function, i.e.,
+   %   - it should take two arguments, the first of which is an input argument,
+   %     and the second of which is an output argument;
+   %   - it should always succeed, and the first result should be "what we want".
+   % The predicate is applied to input arguments from the list, and the
+   % corresponding outputs are returned in the second list.
+   %
+   % Example:
+   %          square( M, N ) :-  N is M * M.
+   %
+   %          ?- dra_map( square, [ 1, 2, 3 ], Ans ).
+   %
+   %          Ans = [ 1, 4, 9 ].
 
-   map( _, [], [] ).
+   dra_map( _, [], [] ).
 
-   map( PredName, [ H | T ], [ NH | NT ] ) :-
+   dra_map( PredName, [ H | T ], [ NH | NT ] ) :-
            apply( PredName, [ H, NH ] ),
-           map( PredName, T, NT ).
+           dra_map( PredName, T, NT ).
 
 
-   %%------------------------------------------------------------------------------
-   %% filter( + predicate name, + list, - filtered list ):
-   %% The predicate should take one argument.
-   %% The output list will contain only those elements of the input list for which
-   %% the predicate succeeds.
+   %------------------------------------------------------------------------------
+   % filter( + predicate name, + list, - filtered list ):
+   % The predicate should take one argument.
+   % The output list will contain only those elements of the input list for which
+   % the predicate succeeds.
 
    filter( _, [], [] ).
 
@@ -775,12 +775,12 @@ complete_goal( Goal, Level ) :-
            filter( PredName, T, NT ).
 
 
-   %%------------------------------------------------------------------------------
-   %% filter2( + predicate name, + list, - yes list, - no list ):
-   %% The predicate should take one argument.
-   %% The first output list will contain only those elements of the input list for
-   %% which the predicate succeeds; the second output list will contain only those
-   %% elements of the input list for which the predicate fails.
+   %------------------------------------------------------------------------------
+   % filter2( + predicate name, + list, - yes list, - no list ):
+   % The predicate should take one argument.
+   % The first output list will contain only those elements of the input list for
+   % which the predicate succeeds; the second output list will contain only those
+   % elements of the input list for which the predicate fails.
 
    filter2( _, [], [], [] ) :-  !.
 
@@ -794,70 +794,70 @@ complete_goal( Goal, Level ) :-
            filter2( PredName, T, Yes, No ).
 
 
-   %%------------------------------------------------------------------------------
-   %% fold( + predicate name,+ initial value, + list, - final value ):
-   %% The predicate should implement a binary function, i.e.,
-   %%   - it should take three arguments, the first two of which are input
-   %%     arguments, and the third of which is an output argument;
-   %%   - it should always succeed, and the first result should be "what we want".
-   %% If the list is empty, the initial value is returned; otherwise the predicate
-   %% is applied to the initial value and the first member of the list, and then
-   %% to the result and the third member, and so on.
-   %% For example, if "sum( A, B, C )" unifies "C" with the sum of "A" and "B",
-   %% then "fold( sum, 0, [1,2,3], S )" unifies "S" with "6".
+   %------------------------------------------------------------------------------
+   % dra_fold( + predicate name,+ initial value, + list, - final value ):
+   % The predicate should implement a binary function, i.e.,
+   %   - it should take three arguments, the first two of which are input
+   %     arguments, and the third of which is an output argument;
+   %   - it should always succeed, and the first result should be "what we want".
+   % If the list is empty, the initial value is returned; otherwise the predicate
+   % is applied to the initial value and the first member of the list, and then
+   % to the result and the third member, and so on.
+   % For example, if "sum( A, B, C )" unifies "C" with the sum of "A" and "B",
+   % then "dra_fold( sum, 0, [1,2,3], S )" unifies "S" with "6".
 
-   fold( _, Initial, [], Initial ).
+   dra_fold( _, Initial, [], Initial ).
 
-   fold( PredName, Initial, [ H | T ], Result ) :-
+   dra_fold( PredName, Initial, [ H | T ], Result ) :-
            apply( PredName, [ Initial, H, R ] ),
-           fold( PredName, R, T, Result ).
+           dra_fold( PredName, R, T, Result ).
 
-   %%------------------------------------------------------------------------------
+   %------------------------------------------------------------------------------
 
 :- ensure_loaded( library( lists ) ). % An SWI library, for reverse/2.
 %:- ensure_loaded( utilities ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Some generally-useful utilities.                                        %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 28 August 2009.                                            %%%
-%%%                                                                          %%%
+%  Some generally-useful utilities.                                        %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 28 August 2009.                                            %
+%                                                                          %
 
 
 %:- ensure_loaded( set_in_list ).
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%
 
-   %%%  Simple, but useful operations on sets.                                  %%%
-   %%%                                                                          %%%
-   %%%  Written by Feliks Kluzniak at UTD (February 2009).                      %%%
-   %%%                                                                          %%%
-   %%%  Last update: 30 March 2009.                                             %%%
-   %%%                                                                          %%%
-   %%%  NOTE: Different Prolog variables are treated as different items: this   %%%
-   %%%        is so by design!                                                  %%%
-   %%%                                                                          %%%
-   %%%        This implementation should only be used for smallish sets.        %%%
-   %%%        The cost of insertion or membership check is proportional to      %%%
-   %%%        the size of the set, the cost of set operations (union, equality  %%%
-   %%%        etc.) is quadratic in the size of the sets.                       %%%
-   %%%                                                                          %%%
+   %  Simple, but useful operations on sets.                                  %
+   %                                                                          %
+   %  Written by Feliks Kluzniak at UTD (February 2009).                      %
+   %                                                                          %
+   %  Last update: 30 March 2009.                                             %
+   %                                                                          %
+   %  NOTE: Different Prolog variables are treated as different items: this   %
+   %        is so by design!                                                  %
+   %                                                                          %
+   %        This implementation should only be used for smallish sets.        %
+   %        The cost of insertion or membership check is proportional to      %
+   %        the size of the set, the cost of set operations (union, equality  %
+   %        etc.) is quadratic in the size of the sets.                       %
+   %                                                                          %
 
-   %%% Sets are represented as unordered lists.
+   % Sets are represented as unordered lists.
 
 
-   %%------------------------------------------------------------------------------
-   %% empty_set( +- set ) :
-   %% Create an empty set, or check that the given set is empty.
+   %------------------------------------------------------------------------------
+   % empty_set( +- set ) :
+   % Create an empty set, or check that the given set is empty.
 
    empty_set( set( [] ) ).
 
 
-   %%------------------------------------------------------------------------------
-   %% same_set_element( + item, + item ):
-   %% Succeeds iff the two items are identical
-   %% when treated as elements of a set.
+   %------------------------------------------------------------------------------
+   % same_set_element( + item, + item ):
+   % Succeeds iff the two items are identical
+   % when treated as elements of a set.
 
    same_set_element( A, B ) :-
            (
@@ -871,9 +871,9 @@ complete_goal( Goal, Level ) :-
            ).
 
 
-   %%------------------------------------------------------------------------------
-   %% is_in_set( + item, + set ):
-   %% Is the item a member of the set?
+   %------------------------------------------------------------------------------
+   % is_in_set( + item, + set ):
+   % Is the item a member of the set?
 
    is_in_set( Item, set( List ) ) :-
            once( is_in_set_( Item, List ) ).
@@ -887,18 +887,18 @@ complete_goal( Goal, Level ) :-
            is_in_set_( Item, T ).
 
 
-   %%------------------------------------------------------------------------------
-   %% from_set( + set, - member, - new set ):
-   %% Remove an arbitrary member from the set;
-   %% fail if the set is empty.
+   %------------------------------------------------------------------------------
+   % from_set( + set, - member, - new set ):
+   % Remove an arbitrary member from the set;
+   % fail if the set is empty.
 
    from_set( set( [ H | T ] ),  H, set( T ) ).
 
 
-   %%------------------------------------------------------------------------------
-   %% remove_from_set( + item, + set, - new set ):
-   %% Remove the given item from the set;
-   %% fail if the item is not a member.
+   %------------------------------------------------------------------------------
+   % remove_from_set( + item, + set, - new set ):
+   % Remove the given item from the set;
+   % fail if the item is not a member.
 
    remove_from_set( M, set( L ), set( NL ) ) :-
            once( remove_from_set_( M, L, NL ) ).
@@ -912,11 +912,11 @@ complete_goal( Goal, Level ) :-
            remove_from_set_( M, T, NT ).
 
 
-   %%------------------------------------------------------------------------------
-   %% add_to_set( + item, + set, - new set ):
-   %% Add the item to the set.
-   %%
-   %% WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
+   %------------------------------------------------------------------------------
+   % add_to_set( + item, + set, - new set ):
+   % Add the item to the set.
+   %
+   % WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
 
    add_to_set( Item, Set, NewSet ) :-
            once( add_to_set_( Item, Set, NewSet ) ).
@@ -929,11 +929,11 @@ complete_goal( Goal, Level ) :-
            % \+ is_in_set( Item, set( L ) ).
 
 
-   %%------------------------------------------------------------------------------
-   %% sub_set( + set, + set ):
-   %% Succeed iff the first set is a subset of the second set.
-   %%
-   %% NOTE: In Eclipse the name "subset" is reserved for a built-in.
+   %------------------------------------------------------------------------------
+   % sub_set( + set, + set ):
+   % Succeed iff the first set is a subset of the second set.
+   %
+   % NOTE: In Eclipse the name "subset" is reserved for a built-in.
 
    sub_set( set( L1 ), Set2 ) :-
            once( subset_( L1, Set2 ) ).
@@ -946,18 +946,18 @@ complete_goal( Goal, Level ) :-
            subset_( T, Set ).
 
 
-   %%------------------------------------------------------------------------------
-   %% equal_sets( + set, + set ):
-   %% Are the two sets equal?
+   %------------------------------------------------------------------------------
+   % equal_sets( + set, + set ):
+   % Are the two sets equal?
 
    equal_sets( A, B ) :-
            sub_set( A, B ),
            sub_set( B, A ).
 
 
-   %%------------------------------------------------------------------------------
-   %% set_union( + set, + set, - the union ):
-   %% Compute the union of two sets.
+   %------------------------------------------------------------------------------
+   % set_union( + set, + set, - the union ):
+   % Compute the union of two sets.
 
    set_union( set( L1 ), S2, set( Union ) ) :-
            once( set_union_( L1, S2, Union ) ).
@@ -974,9 +974,9 @@ complete_goal( Goal, Level ) :-
            set_union_( T, S, NS ).
 
 
-   %%------------------------------------------------------------------------------
-   %% set_intersection( + set, + set, - the intersection ):
-   %% Compute the intersection of two sets.
+   %------------------------------------------------------------------------------
+   % set_intersection( + set, + set, - the intersection ):
+   % Compute the intersection of two sets.
 
    set_intersection( set( L1 ), S2, set( Intersection ) ) :-
            once( set_intersection_( L1, S2, Intersection ) ).
@@ -993,9 +993,9 @@ complete_goal( Goal, Level ) :-
            set_intersection_( T, S, NS ).
 
 
-   %%------------------------------------------------------------------------------
-   %% set_difference( + set, + set, - the difference ):
-   %% Subtract the second set from the first.
+   %------------------------------------------------------------------------------
+   % set_difference( + set, + set, - the difference ):
+   % Subtract the second set from the first.
 
    set_difference( set( L1 ), S2, set( Difference ) ) :-
            once( set_difference_( L1, S2, Difference ) ).
@@ -1012,11 +1012,11 @@ complete_goal( Goal, Level ) :-
            set_difference_( T, S, NS ).
 
 
-   %%------------------------------------------------------------------------------
-   %% symmetric_set_difference( + set, + set,
-   %%                           - the symmetric difference
-   %%                         ):
-   %% Compute the symmetric difference of two sets.
+   %------------------------------------------------------------------------------
+   % symmetric_set_difference( + set, + set,
+   %                           - the symmetric difference
+   %                         ):
+   % Compute the symmetric difference of two sets.
 
    symmetric_set_difference( A, B, SymmetricDiff ) :-
            set_difference( A, B, DiffAB ),
@@ -1024,11 +1024,11 @@ complete_goal( Goal, Level ) :-
            set_union( DiffAB, DiffBA, SymmetricDiff ).
 
 
-   %%------------------------------------------------------------------------------
-   %% set_from_list( + list, - set ):
-   %% Form a set with all the elements of the list.
-   %%
-   %% WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
+   %------------------------------------------------------------------------------
+   % set_from_list( + list, - set ):
+   % Form a set with all the elements of the list.
+   %
+   % WARNING: DO NOT INSTANTIATE THE ITEM WHILE IT IS IN SOME SET!
 
    set_from_list( List, Set ) :-
            empty_set( Empty ),
@@ -1041,32 +1041,32 @@ complete_goal( Goal, Level ) :-
            add_to_set( H, Set, Set2 ),
            set_from_list_( T, Set2, NSet ).
 
-   %%------------------------------------------------------------------------------
+   %------------------------------------------------------------------------------
 
 %:- ensure_loaded( higher_order ).
 %:- ensure_loaded( vardict_utilities ).
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%
 
-   %%%  Utilities that have to do with variable dictionaries.                   %%%
-   %%%                                                                          %%%
-   %%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-   %%%                                                                          %%%
-   %%%  Last update: 2 April 2009.                                              %%%
-   %%%                                                                          %%%
+   %  Utilities that have to do with variable dictionaries.                   %
+   %                                                                          %
+   %  Written by Feliks Kluzniak at UTD (January 2009).                       %
+   %                                                                          %
+   %  Last update: 2 April 2009.                                              %
+   %                                                                          %
 
 
 %   :- ensure_loaded( higher_order ).
 
 
 
-   %%------------------------------------------------------------------------------
-   %% expand_variable_dictionary( + term,
-   %%                             + variable dictionary,
-   %%                             - variable dictionary expanded as needed
-   %%                           ):
-   %% The variable dictionary is for the term in the form it was read in, but the
-   %% term may have been expanded (in particular: it may have been a DCG rule).
-   %% Make sure that all the variables are present in the dictionary.
+   %------------------------------------------------------------------------------
+   % expand_variable_dictionary( + term,
+   %                             + variable dictionary,
+   %                             - variable dictionary expanded as needed
+   %                           ):
+   % The variable dictionary is for the term in the form it was read in, but the
+   % term may have been expanded (in particular: it may have been a DCG rule).
+   % Make sure that all the variables are present in the dictionary.
 
    expand_variable_dictionary( ExpandedTerm, VarDict, ExpandedVarDict ) :-
            ordered_term_variables( ExpandedTerm, Vars ),
@@ -1096,24 +1096,24 @@ complete_goal( Goal, Level ) :-
            in_vardict( V, RestOfVarDict ).
 
 
-   %%------------------------------------------------------------------------------
-   %% extract_vars_from_dict( + variable dictionary, - list of variables ) :
-   %% Produce a list of the (current instantiations of) the variables that
-   %% occur in this dictionary.
+   %------------------------------------------------------------------------------
+   % extract_vars_from_dict( + variable dictionary, - list of variables ) :
+   % Produce a list of the (current instantiations of) the variables that
+   % occur in this dictionary.
 
    extract_vars_from_dict( VarDict, Vars ) :-
-           map( drop_name, VarDict, Vars ).
+           dra_map( drop_name, VarDict, Vars ).
 
    %
    drop_name( [ _Name | Var ], Var ).
 
 
-   %%------------------------------------------------------------------------------
-   %% bind_all_variables_to_names( +- term, +- variable dictionary  ):
-   %% Make sure that all the variables in this term are instantiated to their
-   %% names. This is not quite the same as bind_variables_to_names/1 (see below),
-   %% because variables that were originally represented by underscores do not find
-   %% their way into the variable dictionary.
+   %------------------------------------------------------------------------------
+   % bind_all_variables_to_names( +- term, +- variable dictionary  ):
+   % Make sure that all the variables in this term are instantiated to their
+   % names. This is not quite the same as bind_variables_to_names/1 (see below),
+   % because variables that were originally represented by underscores do not find
+   % their way into the variable dictionary.
 
    bind_all_variables_to_names( Term, VarDict ) :-
            bind_variables_to_names( VarDict ),
@@ -1128,26 +1128,26 @@ complete_goal( Goal, Level ) :-
 
 
 
-   %%------------------------------------------------------------------------------
-   %% bind_variables_to_names( +- variable dictionary  ):
-   %% The variable dictionary is of the format returned by readvar/3, i.e., a list
-   %% of pairs of the form "[ name | variable ]".  Go through the dictionary,
-   %% binding each variable to the associated name.
-   %% NOTE: 1. The assumption is that none of the variables has been instantiated!
-   %%       2. See also bind_all_variables_to_names/2 above!
+   %------------------------------------------------------------------------------
+   % bind_variables_to_names( +- variable dictionary  ):
+   % The variable dictionary is of the format returned by readvar/3, i.e., a list
+   % of pairs of the form "[ name | variable ]".  Go through the dictionary,
+   % binding each variable to the associated name.
+   % NOTE: 1. The assumption is that none of the variables has been instantiated!
+   %       2. See also bind_all_variables_to_names/2 above!
 
    bind_variables_to_names( VarDict ) :-
-           map( bind_var_to_name, VarDict, _ ).
+           dra_map( bind_var_to_name, VarDict, _ ).
 
    %
    bind_var_to_name( [ Name | Name ], _ ).
 
 
 
-   %%------------------------------------------------------------------------------
-   %% bind_free_variables_to_names( +- variable dictionary  ):
-   %% Like bind_variables_to_names/1, but done only for those items in the
-   %% dictionary that are still variables.
+   %------------------------------------------------------------------------------
+   % bind_free_variables_to_names( +- variable dictionary  ):
+   % Like bind_variables_to_names/1, but done only for those items in the
+   % dictionary that are still variables.
 
    bind_free_variables_to_names( [] ).
 
@@ -1160,17 +1160,17 @@ complete_goal( Goal, Level ) :-
 
 
 
-   %%------------------------------------------------------------------------------
-   %% mk_variable_dictionary( + term, - a variable dictionary ):
-   %% Produce a variable dictionary for this term, as if it had been read by
-   %% readvar/3.
-   %% Since the original variable names are not available, we will use the names
-   %% _A, _B, _C, ... _Z, _V0, _V1 etc. (The underscore is added to avoid spurious
-   %% messages about singleton variables in case these names are used for output
-   %% that will subsequently be read by Prolog again.)
-   %%
-   %% (All this is done "by hand", since numbervars/3 are not very useful in
-   %% Eclipse: the writing predicates are not "aware" of '$VAR'(n).)
+   %------------------------------------------------------------------------------
+   % mk_variable_dictionary( + term, - a variable dictionary ):
+   % Produce a variable dictionary for this term, as if it had been read by
+   % readvar/3.
+   % Since the original variable names are not available, we will use the names
+   % _A, _B, _C, ... _Z, _V0, _V1 etc. (The underscore is added to avoid spurious
+   % messages about singleton variables in case these names are used for output
+   % that will subsequently be read by Prolog again.)
+   %
+   % (All this is done "by hand", since numbervars/3 are not very useful in
+   % Eclipse: the writing predicates are not "aware" of '$VAR'(n).)
 
    mk_variable_dictionary( T, VarDict ) :-
            ordered_term_variables( T, Vars ),
@@ -1201,47 +1201,47 @@ complete_goal( Goal, Level ) :-
            name_chars( NextNumber, NewDigitChars ),
            name_chars( Next, [ CodeOfUndercore, CodeOfV | NewDigitChars ] ).
 
-   %%------------------------------------------------------------------------------
+   %------------------------------------------------------------------------------
 
 %:- ensure_loaded( clause_verification ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Utilities for verifying well-formedness of clauses.                     %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 7 June 2010 (fixing errors found by Abramo Bagnara).       %%%
-%%%                                                                          %%%
+%  Utilities for verifying well-formedness of clauses.                     %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 7 June 2010 (fixing errors found by Abramo Bagnara).       %
+%                                                                          %
 
 %:- ensure_loaded( boolean_operations ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Utilities for performing operations on boolean expressions.             %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (March 2009).                         %%%
-%%%                                                                          %%%
-%%%  Last update: 2 March 2009.                                              %%%
-%%%                                                                          %%%
+%  Utilities for performing operations on boolean expressions.             %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (March 2009).                         %
+%                                                                          %
+%  Last update: 2 March 2009.                                              %
+%                                                                          %
 
 %:- ensure_loaded( errors_and_warnings ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Utilities for producing warning and error messages.                     %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 2 March 2009.                                              %%%
-%%%                                                                          %%%
+%  Utilities for producing warning and error messages.                     %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 2 March 2009.                                              %
+%                                                                          %
 
 
-%%------------------------------------------------------------------------------
-%% warning( + term ):
-%% warning( + list of terms ):
-%% Print this term or list of terms as a warning.
-%% There are no spaces between items on the list.
-%% Strings are printed without quotes.
-%% NOTE: If the term is "lines/1", then the argument should be a non-empty list.
-%%       Each of the top level items on the list is printed in a separate line.
+%------------------------------------------------------------------------------
+% warning( + term ):
+% warning( + list of terms ):
+% Print this term or list of terms as a warning.
+% There are no spaces between items on the list.
+% Strings are printed without quotes.
+% NOTE: If the term is "lines/1", then the argument should be a non-empty list.
+%       Each of the top level items on the list is printed in a separate line.
 
 warning( V ) :-
         var( V ),
@@ -1299,18 +1299,18 @@ warning_line( WS, Term ) :-
         writeln( WS, Term ).
 
 
-%%------------------------------------------------------------------------------
-%% begin_warning:
-%% Begin a warning printout.
+%------------------------------------------------------------------------------
+% begin_warning:
+% Begin a warning printout.
 
 begin_warning :-
         std_warning_stream( WS ),
         write( WS, '--- WARNING: ' ).
 
 
-%%------------------------------------------------------------------------------
-%% end_warning:
-%% End a warning printout.
+%------------------------------------------------------------------------------
+% end_warning:
+% End a warning printout.
 
 end_warning :-
         std_warning_stream( WS ),
@@ -1318,14 +1318,14 @@ end_warning :-
 
 
 
-%%------------------------------------------------------------------------------
-%% error( + term ):
-%% error( + list of terms ):
-%% Print this term or list of terms as an error, then abort the computation.
-%% There are no spaces between items on the list.
-%% Strings are printed without quotes.
-%% NOTE: If the term is "lines/1", then the argument should be a non-empty list.
-%%       Each of the top level items on the list is printed in a separate line.
+%------------------------------------------------------------------------------
+% error( + term ):
+% error( + list of terms ):
+% Print this term or list of terms as an error, then abort the computation.
+% There are no spaces between items on the list.
+% Strings are printed without quotes.
+% NOTE: If the term is "lines/1", then the argument should be a non-empty list.
+%       Each of the top level items on the list is printed in a separate line.
 
 error( V ) :-
         var( V ),
@@ -1380,25 +1380,25 @@ error_line( ES, Term ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% begin_error:
-%% Begin an error printout.
+%------------------------------------------------------------------------------
+% begin_error:
+% Begin an error printout.
 
 begin_error :-
         std_error_stream( ES ),
         write( ES, '*** ERROR: ' ).
 
 
-%%------------------------------------------------------------------------------
-%% end_error:
-%% End an error printout.
+%------------------------------------------------------------------------------
+% end_error:
+% End an error printout.
 
 end_error :-
         std_error_stream( ES ),
         writeln( ES, '***' ),
         abort.
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
 :- op( 500, yfx, and ).
@@ -1406,9 +1406,9 @@ end_error :-
 :- op( 490, fy , neg ).
 
 
-%%------------------------------------------------------------------------------
-%% bool_eval( + boolean expression, - true or false ):
-%% Evaluate the expression.
+%------------------------------------------------------------------------------
+% bool_eval( + boolean expression, - true or false ):
+% Evaluate the expression.
 
 bool_eval( V, _ ) :-
         var( V ),
@@ -1458,8 +1458,8 @@ beval( A or B, Value ) :-
         beval( VA or VB, Value ).
 
 
-%%------------------------------------------------------------------------------
-%% Predicates for the operators.
+%------------------------------------------------------------------------------
+% Predicates for the operators.
 
 bool_and( EA, EB, V ) :-
         bool_eval( EA and EB, V ).
@@ -1470,19 +1470,19 @@ bool_or( EA, EB, V ) :-
 bool_neg( E, V ) :-
         bool_eval( neg E, V ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 %:- ensure_loaded( vardict_utilities ).
 %:- ensure_loaded( errors_and_warnings ).
 %:- ensure_loaded( set_in_list ).
-%% NOTE: requires proper compatibility_utilities_....
+% NOTE: requires proper compatibility_utilities_....
 
 
-%%------------------------------------------------------------------------------
-%% verify_program_with_vars( + list of pairs ):
-%% Like verify_program/1 below, but instead of a list of terms we have a list
-%% of pairs (pair( term, variable dictionary for the term)), i.e., we can use
-%% information about original variable names.
+%------------------------------------------------------------------------------
+% verify_program_with_vars( + list of pairs ):
+% Like verify_program/1 below, but instead of a list of terms we have a list
+% of pairs (pair( term, variable dictionary for the term)), i.e., we can use
+% information about original variable names.
 
 % :- mode verify_program_with_vars( + ).
 
@@ -1496,11 +1496,11 @@ verify_program_with_vars( _ ).
 
 
 
-%%------------------------------------------------------------------------------
-%% verify_program( + list of terms ):
-%% Given a list of terms that should all be clauses, directives, or queries,
-%% raise an error if any of the terms is obviously incorrect.
-%% See also verify_program_with_vars/1 above.
+%------------------------------------------------------------------------------
+% verify_program( + list of terms ):
+% Given a list of terms that should all be clauses, directives, or queries,
+% raise an error if any of the terms is obviously incorrect.
+% See also verify_program_with_vars/1 above.
 
 % :- mode verify_program( + ).
 
@@ -1513,10 +1513,10 @@ verify_program( Terms ) :-
 verify_program( _ ).
 
 
-%%------------------------------------------------------------------------------
-%% verify_program_item( + list of terms, + variable dictionary ):
-%% Given a term that should  be a clause, a directive, or a query,
-%% raise an error if it is obviously incorrect.
+%------------------------------------------------------------------------------
+% verify_program_item( + list of terms, + variable dictionary ):
+% Given a term that should  be a clause, a directive, or a query,
+% raise an error if it is obviously incorrect.
 
 verify_program_item( Var, VarDict ) :-
         var( Var ),
@@ -1552,18 +1552,18 @@ verify_program_item( _, _ ).
 
 
 
-%%------------------------------------------------------------------------------
-%% is_a_good_clause( + term ):
-%% Is this term a reasonable clause?  Even if it is,  warnings may be produced.
+%------------------------------------------------------------------------------
+% is_a_good_clause( + term ):
+% Is this term a reasonable clause?  Even if it is,  warnings may be produced.
 
 is_a_good_clause( T ) :-
         mk_variable_dictionary( T, VarDict ),
         is_a_good_clause( T, VarDict ).
 
 
-%%------------------------------------------------------------------------------
-%% is_a_good_clause( + term, + variable dictionary ):
-%% Is this term a reasonable clause?  Even if it is,  warnings may be produced.
+%------------------------------------------------------------------------------
+% is_a_good_clause( + term, + variable dictionary ):
+% Is this term a reasonable clause?  Even if it is,  warnings may be produced.
 
 is_a_good_clause( T, VarDict ) :-
         nonvar( T ),
@@ -1572,9 +1572,9 @@ is_a_good_clause( T, VarDict ) :-
         has_a_good_clause_body( T, VarDict ).
 
 
-%%------------------------------------------------------------------------------
-%% get_clause_head( + term, - head ):
-%% Treat this non-variable term as a clause, get its head.
+%------------------------------------------------------------------------------
+% get_clause_head( + term, - head ):
+% Treat this non-variable term as a clause, get its head.
 
 % :- mode get_clause_head( +, - ).
 
@@ -1582,9 +1582,9 @@ get_clause_head( (H :- _), H ) :-  !.
 get_clause_head( H       , H ).
 
 
-%%------------------------------------------------------------------------------
-%% is_a_good_clause_head( + term ):
-%% Is this term a good head for a clause?
+%------------------------------------------------------------------------------
+% is_a_good_clause_head( + term ):
+% Is this term a good head for a clause?
 
 is_a_good_clause_head( Var ) :-
         var( Var ),
@@ -1599,19 +1599,19 @@ is_a_good_clause_head( Hd ) :-
         Hd \= [ _ | _ ].
 
 
-%%------------------------------------------------------------------------------
-%% has_a_good_clause_body( + term, + variable dictionary ):
-%% Treat this non-variable term as a clause, check it for elementary sanity.
-%% Assume that the head is not a variable.
-%%
-%% NOTE: The check is mainly to ensure that there are no variable literals.
-%%       Invocations of call/1 are allowed, but an error will be raised if
-%%       the argument is a variable that had no earlier occurrences.
-%%       As an added bonus, we produce warnings about singleton variables.
-%%
-%% Throughout most of the code we carry a context argument (Ctxt): this is
-%% a structure that holds the entire clause and the variable dictionary, and
-%% we use it to produce better diagnostics.
+%------------------------------------------------------------------------------
+% has_a_good_clause_body( + term, + variable dictionary ):
+% Treat this non-variable term as a clause, check it for elementary sanity.
+% Assume that the head is not a variable.
+%
+% NOTE: The check is mainly to ensure that there are no variable literals.
+%       Invocations of call/1 are allowed, but an error will be raised if
+%       the argument is a variable that had no earlier occurrences.
+%       As an added bonus, we produce warnings about singleton variables.
+%
+% Throughout most of the code we carry a context argument (Ctxt): this is
+% a structure that holds the entire clause and the variable dictionary, and
+% we use it to produce better diagnostics.
 
 % :- mode has_a_good_clause_body( ?, + ).
 
@@ -1696,13 +1696,13 @@ check_for_variable_calls( _, _, _ ).
 
 
 
-%% check_for_singleton_variables( + clause, + context ):
-%% Produce a warning if there is a path in the clause on which a variable occurs
-%% only once, that occurrence of the variable is not a unique occurrence of the
-%% variable on other paths, and the name of the variable does not begin with an
-%% underscore.
-%% Always succeed.
-%% Assume the clause has been verified by is_a_good_clause/1.
+% check_for_singleton_variables( + clause, + context ):
+% Produce a warning if there is a path in the clause on which a variable occurs
+% only once, that occurrence of the variable is not a unique occurrence of the
+% variable on other paths, and the name of the variable does not begin with an
+% underscore.
+% Always succeed.
+% Assume the clause has been verified by is_a_good_clause/1.
 
 check_for_singleton_variables( Clause, Ctxt ) :-
         % expand a DCG rule
@@ -1915,18 +1915,18 @@ cs_join( ((A ; B) , C), Ctxt, MustFail, SeenFromFront, SeenFromBehind, Single
        ) :-
         cs( C, Ctxt, MustFailC, SeenFromFrontC, SeenFromBehindC, SingleC ),
         unfold_disjunction( (A ; B), Disjunctions ),
-        map( cs2( Ctxt ), Disjunctions, Results ),
-        map( cs_adjust( SeenFromFrontC ), Results, Adjusted ),
-        map( result1, Adjusted, ListMustFail   ),
-        map( result2, Adjusted, ListFromFront  ),
-        map( result3, Adjusted, ListFromBehind ),
-        map( result4, Adjusted, ListSingle     ),
-        fold( bool_and, true, ListMustFail, AllMustFailExp ),
+        dra_map( cs2( Ctxt ), Disjunctions, Results ),
+        dra_map( cs_adjust( SeenFromFrontC ), Results, Adjusted ),
+        dra_map( result1, Adjusted, ListMustFail   ),
+        dra_map( result2, Adjusted, ListFromFront  ),
+        dra_map( result3, Adjusted, ListFromBehind ),
+        dra_map( result4, Adjusted, ListSingle     ),
+        dra_fold( bool_and, true, ListMustFail, AllMustFailExp ),
         bool_eval( AllMustFailExp, MustFailAlt ),
         empty_set( Empty ),
-        fold( set_union, Empty, ListFromFront , SeenFromFrontAlt  ),
-        fold( set_union, Empty, ListFromBehind, SeenFromBehindAlt ),
-        fold( set_union, Empty, ListSingle    , SingleAlt         ),
+        dra_fold( set_union, Empty, ListFromFront , SeenFromFrontAlt  ),
+        dra_fold( set_union, Empty, ListFromBehind, SeenFromBehindAlt ),
+        dra_fold( set_union, Empty, ListSingle    , SingleAlt         ),
         (
             MustFailAlt = true
         ->
@@ -1985,7 +1985,7 @@ result4( result( _, _, _ , D ), D ).
 
 
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 % clause_error( + list to be displayed (the error message), + the context ):
 % Show the error and the entire clause, with proper variable names.
 % For the time being V and 'V' will both appear as V on output.
@@ -1996,7 +1996,7 @@ clause_error( MsgList, ctxt( VarDict, Clause ) ) :-
         error( lines( [ FullMsgList, [ Clause, '.' ] ] ) ).
 
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 % clause_warning( + list to be displayed (the warning message), + the context ):
 % Show the warning and the entire clause, with proper variable names.
 % For the time being V and 'V' will both appear as V on output.
@@ -2010,26 +2010,26 @@ clause_warning( MsgList, ctxt( VarDict, Clause ) ) :-
 clause_warning( _, _ ).
 
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 %:- ensure_loaded( io_utilities ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
 
-%%%  Utilities that have to do with input and output.                        %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 12 June 2009.                                              %%%
-%%%                                                                          %%%
+%  Utilities that have to do with input and output.                        %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 12 June 2009.                                              %
+%                                                                          %
 
 
-%% NOTE: requires proper compatibility_utilities_....
+% NOTE: requires proper compatibility_utilities_....
 
 
-%%------------------------------------------------------------------------------
-%% ensure_filename_is_an_atom( + filename ):
-%% Verify that the filename is an atom.  If not, produce a fatal error.
+%------------------------------------------------------------------------------
+% ensure_filename_is_an_atom( + filename ):
+% Verify that the filename is an atom.  If not, produce a fatal error.
 
 ensure_filename_is_an_atom( FileName ) :-
         atom( FileName ),
@@ -2042,16 +2042,16 @@ ensure_filename_is_an_atom( FileName ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% ensure_extension( + file name chars,
-%%                   + extension chars,
-%%                   - the root file name,
-%%                   - file name, possibly extended
-%%                 ):
-%% If the file name has no extension, add the provided extension (which must
-%% include the period; it can also be empty) and return the file name as the
-%% root name; if the file name has an extension, don't change it, but extract
-%% the root name.
+%------------------------------------------------------------------------------
+% ensure_extension( + file name chars,
+%                   + extension chars,
+%                   - the root file name,
+%                   - file name, possibly extended
+%                 ):
+% If the file name has no extension, add the provided extension (which must
+% include the period; it can also be empty) and return the file name as the
+% root name; if the file name has an extension, don't change it, but extract
+% the root name.
 
 % :- mode ensure_extension( +, +, -, - ).
 
@@ -2067,13 +2067,13 @@ ensure_extension( FileNameChars, ExtChars,
 
 
 
-%%------------------------------------------------------------------------------
-%% read_terms_with_vars( + input stream,
-%%                       - list of terms with variable dictionaries
-%%                     ):
-%% Like read_terms/2 (see below), but each item on the resulting list is of
-%% the form "pair( term, variable dictionary )", where the variable dictionary
-%% is of the format returned by readvar.
+%------------------------------------------------------------------------------
+% read_terms_with_vars( + input stream,
+%                       - list of terms with variable dictionaries
+%                     ):
+% Like read_terms/2 (see below), but each item on the resulting list is of
+% the form "pair( term, variable dictionary )", where the variable dictionary
+% is of the format returned by readvar.
 
 % :- mode read_terms_with_vars( +, - ).
 
@@ -2101,13 +2101,13 @@ process_if_op_directive( pair( (:- op( P, F, Ops)), _ ) ) :-
 process_if_op_directive( _ ).
 
 
-%%------------------------------------------------------------------------------
-%% read_terms( + input stream, - list of terms ):
-%% Given an open input stream, produce all the terms that can be read from it.
-%%
-%% NOTE: Operator declarations are interpreted on the fly, but not deleted from
-%%       output.
-%%       See also read_terms_with_vars/2 above.
+%------------------------------------------------------------------------------
+% read_terms( + input stream, - list of terms ):
+% Given an open input stream, produce all the terms that can be read from it.
+%
+% NOTE: Operator declarations are interpreted on the fly, but not deleted from
+%       output.
+%       See also read_terms_with_vars/2 above.
 
 % :- mode read_terms( +, - ).
 
@@ -2127,10 +2127,10 @@ read_terms_( InputStream, Term, [ Term | Terms ] ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% write_terms( + list of terms, + output stream ):
-%% Given an open output stream, write onto it all the terms from the list,
-%% one per line but without any other pretty-printing.
+%------------------------------------------------------------------------------
+% write_terms( + list of terms, + output stream ):
+% Given an open output stream, write onto it all the terms from the list,
+% one per line but without any other pretty-printing.
 
 % :- mode write_terms( +, + ).
 
@@ -2143,9 +2143,9 @@ write_terms( Terms, OutputStream ) :-
 write_terms( _, _ ).
 
 
-%%------------------------------------------------------------------------------
-%% write_clauses( + list of clauses, + output stream ):
-%% Given an open output stream, write onto it all the clauses from the list.
+%------------------------------------------------------------------------------
+% write_clauses( + list of clauses, + output stream ):
+% Given an open output stream, write onto it all the clauses from the list.
 
 % :- mode write_clauses( +, + ).
 
@@ -2158,11 +2158,11 @@ write_clauses( _, _ ).
 
 
 
-%%------------------------------------------------------------------------------
-%% write_list( +stream, +list ):
-%% Output the items on this list to this stream.
-%% There are no spaces between items on the list.
-%% Strings are printed without quotes.
+%------------------------------------------------------------------------------
+% write_list( +stream, +list ):
+% Output the items on this list to this stream.
+% There are no spaces between items on the list.
+% Strings are printed without quotes.
 
 write_list( S, V ) :-
         var( V ),
@@ -2191,11 +2191,11 @@ write_list( S, NotAList ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% getline( + input stream, - list of character atoms ) :
-%%    Reads characters from this input stream upto (and including) the nearest
-%%    newline.  The newline is not included in the list of characters that is
-%%    returned.
+%------------------------------------------------------------------------------
+% getline( + input stream, - list of character atoms ) :
+%    Reads characters from this input stream upto (and including) the nearest
+%    newline.  The newline is not included in the list of characters that is
+%    returned.
 
 % :- mode getline( +, - ).
 
@@ -2213,9 +2213,9 @@ getline_( InputStream, C   , [ C | Cs ] ) :-
         getline_( InputStream, NC, Cs ).
 
 
-%%------------------------------------------------------------------------------
-%% putline( + output stream, + list of character strings ) :
-%%    Writes the characters to this stream and follows them with a newline.
+%------------------------------------------------------------------------------
+% putline( + output stream, + list of character strings ) :
+%    Writes the characters to this stream and follows them with a newline.
 
 % :- mode putline( +, + ).
 
@@ -2224,9 +2224,9 @@ putline( OutputStream, Cs ) :-
         nl( OutputStream ).
 
 
-%%------------------------------------------------------------------------------
-%% putchars( + output stream, + list of character strings ) :
-%%    Writes the characters to the current output stream.
+%------------------------------------------------------------------------------
+% putchars( + output stream, + list of character strings ) :
+%    Writes the characters to the current output stream.
 
 % :- mode putchars( +, + ).
 
@@ -2236,16 +2236,16 @@ putchars( OutputStream, [ C | Cs ] ) :-
         put_char( OutputStream, C ),
         putchars( OutputStream, Cs ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 % :- ensure_loaded( errors_and_warnings ).
 
 
 
-%%------------------------------------------------------------------------------
-%% check( + goal ) :
-%%    Succeeds iff goal succeeds, but without instantiating any variables
-%%    (side-effects may appear, though).
+%------------------------------------------------------------------------------
+% check( + goal ) :
+%    Succeeds iff goal succeeds, but without instantiating any variables
+%    (side-effects may appear, though).
 
 % :- mode check( + ).
 
@@ -2253,17 +2253,17 @@ check( Goal ) :-  \+ \+ call( Goal ) .
 
 
 
-%%------------------------------------------------------------------------------
-%% mk_ground( +- term ) :
-%%    Instantiates all the unbound variables in the term as terms of
-%%    the form ' V'( 0 ), ' V'( 0 ). ' V'( 0 ) etc.
-%%    (Note: This is mainly for "safety". If the strange names of the functors
-%%           are not needed, consider using:
-%%              mk_ground( T ) :- numbervars( T, 0, _ ).
-%%           on Prolog systems that support numbervars/3.
-%%    )
-%%
-%% NOTE: The following implementation is no good for cyclic terms.
+%------------------------------------------------------------------------------
+% mk_ground( +- term ) :
+%    Instantiates all the unbound variables in the term as terms of
+%    the form ' V'( 0 ), ' V'( 0 ). ' V'( 0 ) etc.
+%    (Note: This is mainly for "safety". If the strange names of the functors
+%           are not needed, consider using:
+%              mk_ground( T ) :- numbervars( T, 0, _ ).
+%           on Prolog systems that support numbervars/3.
+%    )
+%
+% NOTE: The following implementation is no good for cyclic terms.
 
 % :- mode mk_ground( ? ).
 
@@ -2296,9 +2296,9 @@ mk_ground_auxs( [ T | Ts ], N, N2 ) :-
         mk_ground_auxs( Ts, N1, N2 ).
 
 
-%%------------------------------------------------------------------------------
-%% is_ground_var( + term ):
-%% Is this term a variable that was ground by mk_ground/1?
+%------------------------------------------------------------------------------
+% is_ground_var( + term ):
+% Is this term a variable that was ground by mk_ground/1?
 
 is_ground_var( Var ) :-
         var( Var ),
@@ -2309,12 +2309,12 @@ is_ground_var( ' V'( N ) ) :-
         integer( N ).
 
 
-%%------------------------------------------------------------------------------
-%% ground_term_variables( + term, - set of variables ):
-%% Given a term grounded by mk_ground/1, produce the set of the grounded form of
-%% variables occurring in the term.
-%% (Note that the term may be a subset of a larger term grounded by mk_ground/1,
-%%  so the variable numbers need not be contiguous.)
+%------------------------------------------------------------------------------
+% ground_term_variables( + term, - set of variables ):
+% Given a term grounded by mk_ground/1, produce the set of the grounded form of
+% variables occurring in the term.
+% (Note that the term may be a subset of a larger term grounded by mk_ground/1,
+%  so the variable numbers need not be contiguous.)
 
 % :- mode ground_term_variables( +, - ).
 
@@ -2353,11 +2353,11 @@ gtv_( T, S, NS ) :-
         gtv_( Args, S, NS ).
 
 
-%%------------------------------------------------------------------------------
-%% is_an_instance( + term, + term ) :
-%%    Succeeds iff arg1 is an instance of arg2, but does not instantiate any
-%%    variables.
-%% NOTE: In Eclipse this loops on cyclic terms.
+%------------------------------------------------------------------------------
+% is_an_instance( + term, + term ) :
+%    Succeeds iff arg1 is an instance of arg2, but does not instantiate any
+%    variables.
+% NOTE: In Eclipse this loops on cyclic terms.
 
 is_an_instance( T1, T2 ) :-
         check( T1 = T2 ),                     % quickly weed out obvious misfits
@@ -2365,13 +2365,13 @@ is_an_instance( T1, T2 ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% mk_pattern( + an atom representing the name of a predicate,
-%%             + an integer representing the arity of the predicate,
-%%             - the most general pattern that matches all invocations of the
-%%               predicate
-%%           )
-%% Given p/k, produce p( _, _, ... _ )  (of arity k)
+%------------------------------------------------------------------------------
+% mk_pattern( + an atom representing the name of a predicate,
+%             + an integer representing the arity of the predicate,
+%             - the most general pattern that matches all invocations of the
+%               predicate
+%           )
+% Given p/k, produce p( _, _, ... _ )  (of arity k)
 
 % :- mode mk_pattern( +, +, - ).
 
@@ -2384,11 +2384,11 @@ mk_pattern( P, K, Pattern ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% most_general_instance( + a term,
-%%                        - a most general instance with the same main functor
-%%                      ):
-%% E.g., p( a, q( X, Y ) )  is transformed to  p( _, _ ).
+%------------------------------------------------------------------------------
+% most_general_instance( + a term,
+%                        - a most general instance with the same main functor
+%                      ):
+% E.g., p( a, q( X, Y ) )  is transformed to  p( _, _ ).
 
 % :- mode most_general_instance( +, - ).
 
@@ -2398,14 +2398,14 @@ most_general_instance( Term, Pattern ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% predspecs_to_patterns( + a conjunction of predicate specifications,
-%%                        - list of most general instances of these predicates
-%%                      ):
-%% Given one or several predicate specifications (in the form "p/k" or
-%% "p/k, q/l, ...") check whether they are well-formed: if not, raise a fatal
-%% error; otherwise return a list of the most general instances that correspond
-%% to the predicate specifications.
+%------------------------------------------------------------------------------
+% predspecs_to_patterns( + a conjunction of predicate specifications,
+%                        - list of most general instances of these predicates
+%                      ):
+% Given one or several predicate specifications (in the form "p/k" or
+% "p/k, q/l, ...") check whether they are well-formed: if not, raise a fatal
+% error; otherwise return a list of the most general instances that correspond
+% to the predicate specifications.
 
 predspecs_to_patterns( Var, _ ) :-
         var( Var ),
@@ -2429,13 +2429,13 @@ predspecs_to_patterns( PredSpec, [ Pattern ] ) :-
         predspec_to_pattern( PredSpec, Pattern ).
 
 
-%%------------------------------------------------------------------------------
-%% predspec_to_pattern( + a predicate specification,
-%%                      - a most general instance of this predicate
-%%                    ):
-%% Given a predicate specification (in the form "p/k") check whether it is
-%% well-formed: if not, raise a fatal error; otherwise return a most general
-%% instance that correspond to the predicate specification.
+%------------------------------------------------------------------------------
+% predspec_to_pattern( + a predicate specification,
+%                      - a most general instance of this predicate
+%                    ):
+% Given a predicate specification (in the form "p/k") check whether it is
+% well-formed: if not, raise a fatal error; otherwise return a most general
+% instance that correspond to the predicate specification.
 
 predspec_to_pattern( + PredSpec, + Pattern ) :- !,predspec_to_pattern( PredSpec, Pattern ).
 predspec_to_pattern( - PredSpec, - Pattern ) :- !,predspec_to_pattern( PredSpec, Pattern ).
@@ -2447,9 +2447,9 @@ predspec_to_pattern( PredSpec, Pattern ) :-
         mk_pattern( P, K, Pattern ).
 
 
-%%------------------------------------------------------------------------------
-%% check_predspec:
-%% Raise an error if this is not a good predicate specification.
+%------------------------------------------------------------------------------
+% check_predspec:
+% Raise an error if this is not a good predicate specification.
 check_predspec( Var ) :-
         var( Var ),
         !,
@@ -2469,9 +2469,9 @@ check_predspec( PredSpec ) :- trace,
         error( [ 'An incorrect predicate specification: \"', PredSpec, '\"' ] ).
 
 
-%%------------------------------------------------------------------------------
-%% is_a_variable_name( + term ):
-%% Is this the name of a variable?
+%------------------------------------------------------------------------------
+% is_a_variable_name( + term ):
+% Is this the name of a variable?
 
 is_a_variable_name( Term ) :-
         atom( Term ),
@@ -2494,10 +2494,10 @@ uc( 'S' ).  uc( 'T' ). uc( 'U' ).  uc( 'V' ).  uc( 'W' ).  uc( 'X' ).
 uc( 'Y' ).  uc( 'Z' ).
 
 
-%%------------------------------------------------------------------------------
-%% between( + integer, +- integer, + integer ):
-%% Succeed if arg1 =< arg2 < arg3.
-%% If arg2 is a variable, generate the appropriate values
+%------------------------------------------------------------------------------
+% between( + integer, +- integer, + integer ):
+% Succeed if arg1 =< arg2 < arg3.
+% If arg2 is a variable, generate the appropriate values
 
 old_between( A, V, B ) :-
         integer( A ),
@@ -2522,18 +2522,18 @@ between_generate( A, V, B ) :-
         between_generate( NA, V, B ).
 
 
-%%------------------------------------------------------------------------------
-%% member_reversed( +- item, + list of items ):
-%% Like member/2, but the order of searching/generation is reversed.
+%------------------------------------------------------------------------------
+% member_reversed( +- item, + list of items ):
+% Like member/2, but the order of searching/generation is reversed.
 
 member_reversed( M, [ _ | L ] ) :-
         member_reversed( M, L ).
 member_reversed( M, [ M | _ ] ).
 
 
-%%------------------------------------------------------------------------------
-%% remove( + item, + list, - list sans item ) :
-%% The item is in the list: remove the first occurrence.
+%------------------------------------------------------------------------------
+% remove( + item, + list, - list sans item ) :
+% The item is in the list: remove the first occurrence.
 
 remove( Item, List, ListSansItem ) :-
         append( Prefix, [ Item | Postfix ], List ),
@@ -2541,12 +2541,12 @@ remove( Item, List, ListSansItem ) :-
         !.
 
 
-%%------------------------------------------------------------------------------
-%% write_shallow_with_eq( + output stream, + term, + maximum depth ):
-%% Like write_shallow/3, but instead of relying on the underlying mechanism of
-%% Prolog write equations for terms that are cyclical at a depth that does not
-%% excceed the maximum depth.  This procedure is due to Ronald de Haan of TU
-%% Dresden.
+%------------------------------------------------------------------------------
+% write_shallow_with_eq( + output stream, + term, + maximum depth ):
+% Like write_shallow/3, but instead of relying on the underlying mechanism of
+% Prolog write equations for terms that are cyclical at a depth that does not
+% excceed the maximum depth.  This procedure is due to Ronald de Haan of TU
+% Dresden.
 
 write_shallow_with_eq( OutputStream, Term, MaxDepth ) :-
         cyclic( Term, MaxDepth ),
@@ -2562,7 +2562,7 @@ write_shallow_with_eq( OutputStream, Term, MaxDepth ) :-
         write_shallow( OutputStream, Term, MaxDepth ).
 
 
-%% Print the list of equations.
+% Print the list of equations.
 
 print_equations( _OutputStream, [] ) :-
         !.
@@ -2571,18 +2571,18 @@ print_equations( OutputStream, [ H | T ] ) :-
         write_term( OutputStream, H, [] ),
         print_equations( OutputStream, T ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
 
-%%------------------------------------------------------------------------------
-%% Identify the system.
+%------------------------------------------------------------------------------
+% Identify the system.
 
 lp_system( 'SWI Prolog' ).
 
 
-%%------------------------------------------------------------------------------
-%% The standard streams.
+%------------------------------------------------------------------------------
+% The standard streams.
 
 std_input_stream(   user_input  ).
 std_output_stream(  user_output ).
@@ -2590,40 +2590,40 @@ std_error_stream(   user_error  ).
 std_warning_stream( user_error  ).
 
 
-%%------------------------------------------------------------------------------
-%% getchar( + input stream, - character in the form of an atom ):
-%% This is introduced because the built-in get_char/2 returns strings on
-%% Eclipse and atoms on Sicstus.
+%------------------------------------------------------------------------------
+% getchar( + input stream, - character in the form of an atom ):
+% This is introduced because the built-in get_char/2 returns strings on
+% Eclipse and atoms on Sicstus.
 
 getchar( Stream, Atom ) :-
         get_char( Stream, Atom ).
 
 
-%%------------------------------------------------------------------------------
-%% name_chars( +- atom or number,
-%%             -+ list of characters (codes) that form its name
-%%           ):
-%% Used because Eclipse complains about name/2 being obsolete.
+%------------------------------------------------------------------------------
+% name_chars( +- atom or number,
+%             -+ list of characters (codes) that form its name
+%           ):
+% Used because Eclipse complains about name/2 being obsolete.
 
 name_chars( Atomic, NameCharCodes ) :-
         name( Atomic, NameCharCodes ).
 
 
-%%------------------------------------------------------------------------------
-%% clause_in_module( + module name, +- clause head, - clause body ):
-%% Like clause/2, but from the named module.
-%%
-%% NOTE: For the module 'interpreted' we provide special treatment.  Instead of
-%%       asserting clauses, we record them in the database, to avoid the
-%%       overhead of decompilation.
-%%       "Head :- Body" is recorded as "interpreted_clause( Head, Body )"
-%%       under the key "Head" (i.e., effectively under the name and arity of the
-%%       predicate). The effective key is also recorded, under the key
-%%       "interpreted_clause_key".
-%%   ->  This has been commented out for the time being, as the win is not all
-%%       that clear.  Just search for "interpreted" and uncomment to get back to
-%%       that version, but NOTE that it is unclear whether essence_hook/2 would
-%%       then work properly.
+%------------------------------------------------------------------------------
+% clause_in_module( + module name, +- clause head, - clause body ):
+% Like clause/2, but from the named module.
+%
+% NOTE: For the module 'interpreted' we provide special treatment.  Instead of
+%       asserting clauses, we record them in the database, to avoid the
+%       overhead of decompilation.
+%       "Head :- Body" is recorded as "interpreted_clause( Head, Body )"
+%       under the key "Head" (i.e., effectively under the name and arity of the
+%       predicate). The effective key is also recorded, under the key
+%       "interpreted_clause_key".
+%   ->  This has been commented out for the time being, as the win is not all
+%       that clear.  Just search for "interpreted" and uncomment to get back to
+%       that version, but NOTE that it is unclear whether essence_hook/2 would
+%       then work properly.
 
 % clause_in_module( interpreted, Head, Body ) :-
 %        !,
@@ -2633,11 +2633,11 @@ clause_in_module( ModuleName, Head, Body ) :-
         clause( ModuleName : Head, Body ).
 
 
-%%------------------------------------------------------------------------------
-%% current_predicate_in_module( + module name, +- predicate specification ):
-%% Like current_predicate/2, but from the named module.
-%%
-%% NOTE: See the note to clause_in_module/3 above.
+%------------------------------------------------------------------------------
+% current_predicate_in_module( + module name, +- predicate specification ):
+% Like current_predicate/2, but from the named module.
+%
+% NOTE: See the note to clause_in_module/3 above.
 
 % current_predicate_in_module( interpreted, PredSpec ) :-
 %        !,
@@ -2647,21 +2647,21 @@ current_predicate_in_module( ModuleName, PredSpec ) :-
         current_predicate( ModuleName : PredSpec ).
 
 
-%%------------------------------------------------------------------------------
-%% assert_in_module( + module name, + clause ):
-%% Like assert/1, but into this module.
-%%
-%% NOTE: See the note to clause_in_module/3 above.
+%------------------------------------------------------------------------------
+% assert_in_module( + module name, + clause ):
+% Like assert/1, but into this module.
+%
+% NOTE: See the note to clause_in_module/3 above.
 
 assert_in_module( Module, Clause ) :-
         assertz_in_module( Module, Clause ).
 
 
-%%------------------------------------------------------------------------------
-%% assertz_in_module( + module name, + clause ):
-%% Like assertz/1, but into this module.
-%%
-%% NOTE: See the note to clause_in_module/3 above.
+%------------------------------------------------------------------------------
+% assertz_in_module( + module name, + clause ):
+% Like assertz/1, but into this module.
+%
+% NOTE: See the note to clause_in_module/3 above.
 
 % assertz_in_module( interpreted, Clause ) :-
 %         !,
@@ -2687,11 +2687,11 @@ assertz_in_module( Module, Clause ) :-
         assertz( Module : Clause ).
 
 
-%%------------------------------------------------------------------------------
-%% retractall_in_module( + module name, + head pattern ):
-%% Like retractall/1, but into this module.
-%%
-%% NOTE: See the note to clause_in_module/3 above.
+%------------------------------------------------------------------------------
+% retractall_in_module( + module name, + head pattern ):
+% Like retractall/1, but into this module.
+%
+% NOTE: See the note to clause_in_module/3 above.
 
 % retractall_in_module( interpreted, Head ) :-
 %         recorded( Head, interpreted_clause( Head, _ ), RefClause ),
@@ -2705,95 +2705,95 @@ retractall_in_module( Module, Head ) :-
         retractall( Module : Head ).
 
 
-%%------------------------------------------------------------------------------
-%% call_in_module( + module name, + head pattern ):
-%% Like call/1, but into this module.
+%------------------------------------------------------------------------------
+% call_in_module( + module name, + head pattern ):
+% Like call/1, but into this module.
 
 call_in_module( Module, Head ) :-
         call( Module : Head ).
 
 
-%%------------------------------------------------------------------------------
-%% export_from_module( + module name, + predicate specification ):
-%% For Sicstus this is a no-op.
+%------------------------------------------------------------------------------
+% export_from_module( + module name, + predicate specification ):
+% For Sicstus this is a no-op.
 
 export_from_module( _, _ ).
 
 
-%%------------------------------------------------------------------------------
-%% dynamic_in_module( + module name, + predicate specification ):
-%% For Sicstus this is a no-op.
+%------------------------------------------------------------------------------
+% dynamic_in_module( + module name, + predicate specification ):
+% For Sicstus this is a no-op.
 
 dynamic_in_module( _, _ ).
 
 
-%%------------------------------------------------------------------------------
-%% compile_to_module( + module name, + file name ):
-%% Compile the program in this file into this module.
+%------------------------------------------------------------------------------
+% compile_to_module( + module name, + file name ):
+% Compile the program in this file into this module.
 
 compile_to_module( Module, FileName ) :-
         compile( Module : FileName ).
 
 
-%%------------------------------------------------------------------------------
-%% copy_term2( + term, - term ):
-%% Same as copy_term/2, but safe for cyclic terms.
-%% In the case of Sicstus there are no problems.
+%------------------------------------------------------------------------------
+% copy_term2( + term, - term ):
+% Same as copy_term/2, but safe for cyclic terms.
+% In the case of Sicstus there are no problems.
 
 copy_term2( Term, Copy ) :-
         copy_term( Term, Copy ).
 
 
-%%------------------------------------------------------------------------------
-%% are_variants( + term, + term ) :
-%%    Succeeds only if both arguments are variants of each other.
-%%    Does not instantiate any variables.
-%% NOTE:
-%%   If variant/2 turns out to be broken, replace the last call with the
-%%    following three:
-%%        check( T1 = T2 ),                   % quickly weed out obvious misfits
-%%        copy_term( T2, CT2 ),
-%%        check( (numbervars( T1, 0, N ), numbervars( CT2, 0, N ), T1 = CT2) ).
+%------------------------------------------------------------------------------
+% are_variants( + term, + term ) :
+%    Succeeds only if both arguments are variants of each other.
+%    Does not instantiate any variables.
+% NOTE:
+%   If variant/2 turns out to be broken, replace the last call with the
+%    following three:
+%        check( T1 = T2 ),                   % quickly weed out obvious misfits
+%        copy_term( T2, CT2 ),
+%        check( (numbervars( T1, 0, N ), numbervars( CT2, 0, N ), T1 = CT2) ).
 
 are_variants( T1, T2 ) :-
         variant( T1, T2 ).
 
 
-%%------------------------------------------------------------------------------
-%% write_shallow( + output stream, + term, + maximum depth ):
-%% Like write/2, but only to a limited print depth.
+%------------------------------------------------------------------------------
+% write_shallow( + output stream, + term, + maximum depth ):
+% Like write/2, but only to a limited print depth.
 
 write_shallow( OutputStream, Term, MaxDepth ) :-
        write_term( OutputStream, Term, [ max_depth( MaxDepth ) ] ).
 
 
-%%------------------------------------------------------------------------------
-%% is_built_in( +- goal ):
-%% Does this goal call a built-in predicate?  Or generate a built-in goal.
+%------------------------------------------------------------------------------
+% is_built_in( +- goal ):
+% Does this goal call a built-in predicate?  Or generate a built-in goal.
 
 is_swi_builtin( Pred ) :-
         ( \+ ( \+ predicate_property( Pred, built_in ))).
 
 
-%%------------------------------------------------------------------------------
-%% ordered_term_variables( + term, - list of variables ):
-%% Produce the set of variables in this term in the order of their occurrence.
-%% (term_variables/2 does it in that order in Sicstus, but in reverse order in
-%%  Eclipse.)
+%------------------------------------------------------------------------------
+% ordered_term_variables( + term, - list of variables ):
+% Produce the set of variables in this term in the order of their occurrence.
+% (term_variables/2 does it in that order in Sicstus, but in reverse order in
+%  Eclipse.)
 
 ordered_term_variables( Term, Variables ) :-
         term_variables( Term, Variables ).
 
 
-%%------------------------------------------------------------------------------
-%% readvar( + input stream, - term, - variable dictionary  ):
-%% Simulates Eclipse's readvar/3.  The variable dictionary will be in the format
-%% used by Eclipse, not by Sicstus (i.e., an entry has the form
-%% "[ name | Variable ]" rather than "name = variable".
+%------------------------------------------------------------------------------
+% readvar( + input stream, - term, - variable dictionary  ):
+% Simulates Eclipse's readvar/3.  The variable dictionary will be in the format
+% used by Eclipse, not by Sicstus (i.e., an entry has the form
+% "[ name | Variable ]" rather than "name = variable".
 
 readvar( InputStream, Term, EclipseVarDict ) :-
         read_term( InputStream, Term, [ variable_names( SicstusVarDict ) ] ),
-        map( translate_vardict_entry, SicstusVarDict, EclipseVarDict ),
+        dra_map( translate_vardict_entry, SicstusVarDict, EclipseVarDict ),
         !.
 
 %
@@ -2801,11 +2801,11 @@ translate_vardict_entry( N = V, [ N | V ] ).
 
 
 
-%%------------------------------------------------------------------------------
-%% erase_module( + module name ):
-%% Simulates Eclipse's erase_module/1.
-%%
-%% NOTE: See the note to clause_in_module/3 above.
+%------------------------------------------------------------------------------
+% erase_module( + module name ):
+% Simulates Eclipse's erase_module/1.
+%
+% NOTE: See the note to clause_in_module/3 above.
 
 % erase_module( interpreted ) :-
 %         recorded( interpreted_clause_key,  Name / Arity, RefKey ),
@@ -2829,29 +2829,29 @@ erase_module( Module ) :-
 erase_module( _ ).
 
 
-%%------------------------------------------------------------------------------
-%% setval( + name, + value ):
-%% Set this counter to this value.
-%%
-%% NOTE: Since DRA uses global variables to store only integers, we use the
-%%       flag/3 facility of SWI Prolog.  For more general values we would have
-%%       to use nb_setval/nb_getval.  See also getval/2 and incval/1 below.
+%------------------------------------------------------------------------------
+% setval( + name, + value ):
+% Set this counter to this value.
+%
+% NOTE: Since DRA uses global variables to store only integers, we use the
+%       flag/3 facility of SWI Prolog.  For more general values we would have
+%       to use nb_setval/nb_getval.  See also getval/2 and incval/1 below.
 
 setval( Name, Value ) :-
         flag( Name, _Old, Value ).
 
 
-%%------------------------------------------------------------------------------
-%% getval( + name, - value ):
-%% Get the value associated with this counter.
+%------------------------------------------------------------------------------
+% getval( + name, - value ):
+% Get the value associated with this counter.
 
 getval( Name, Value ) :-
         flag( Name, Value, Value ).
 
 
-%%------------------------------------------------------------------------------
-%% incval( + name ):
-%% Increment this counter by 1.
+%------------------------------------------------------------------------------
+% incval( + name ):
+% Increment this counter by 1.
 incval( Name ) :- !, flag( Name, Value, Value+1 ).
 incval( Name ) :-
         getval( Name, Value ),
@@ -2859,9 +2859,9 @@ incval( Name ) :-
         setval( Name, NewValue ).
 
 
-%%------------------------------------------------------------------------------
-%% writeclause( + output stream, + clause ):
-%% Given an open output stream, write the clause onto it.
+%------------------------------------------------------------------------------
+% writeclause( + output stream, + clause ):
+% Given an open output stream, write the clause onto it.
 
 writeclause( OutputStream, (:- Directive) ) :-
         !,
@@ -2883,28 +2883,28 @@ writeclause( OutputStream, Clause ) :-
         nl( OutputStream ).
 
 
-%%------------------------------------------------------------------------------
-%% writeln( + output stream, + term ):
-%% Write the term, followed by a newline.
+%------------------------------------------------------------------------------
+% writeln( + output stream, + term ):
+% Write the term, followed by a newline.
 
 writeln( OutputStream, Term ) :-
         write( OutputStream, Term ),
         nl(    OutputStream ).
 
 
-%%------------------------------------------------------------------------------
-%% writeln( + term ):
-%% Write the term to the standard output stream, followed by a newline.
+%------------------------------------------------------------------------------
+% writeln( + term ):
+% Write the term to the standard output stream, followed by a newline.
 
 writeln( Term ) :-
         std_output_stream( OutputStream ),
         writeln( OutputStream, Term ).
 
 
-%%------------------------------------------------------------------------------
-%% concat_atoms( + atom, + atom, - atom ):
-%% Return an atom whose name is the concatenation of the names of the first two
-%% atoms.
+%------------------------------------------------------------------------------
+% concat_atoms( + atom, + atom, - atom ):
+% Return an atom whose name is the concatenation of the names of the first two
+% atoms.
 
 concat_atoms( A, B, AB ) :-
         name( A, AChars ),
@@ -2912,20 +2912,20 @@ concat_atoms( A, B, AB ) :-
         append( AChars, BChars, ABChars ),
         name( AB, ABChars ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 % :- user:ensure_loaded(library(dra/tabling3/dra_common)).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
 % :- use_module(library(memo)).
 
-%%%                                                                          %%%
-%%%  An interpreter for tabled logic programming with coinduction:           %%%
-%%%  see the description below for more information.                         %%%
-%%%  Written by Feliks Kluzniak at UTD (January-February 2009).              %%%
-%%%                                                                          %%%
-%%%  Last update: 30 November 2009                                           %%%
-%%%                                                                          %%%
+%                                                                          %
+%  An interpreter for tabled logic programming with coinduction:           %
+%  see the description below for more information.                         %
+%  Written by Feliks Kluzniak at UTD (January-February 2009).              %
+%                                                                          %
+%  Last update: 30 November 2009                                           %
+%                                                                          %
 dra_version( Version ) :-
         name_chars( 'DRA ((c) UTD 2009) version 0.97 (beta), June 2011 (',
                     VCodes
@@ -2937,121 +2937,121 @@ dra_version( Version ) :-
         append( VCodes, SPar, VersionCodes ),
         name_chars( Version, VersionCodes ).
 
-%%% NOTE:
-%%%
-%%%    1. See ../general/top_level.ecl for a description of how to load
-%%%       and run programs.
-%%%       Please note that in Eclipse after loading this interpreter you
-%%%       should issue
-%%%            :- import dra.
-%%%       if you don't want to keep writing
-%%%            dra:prog( filename )
-%%%       every time.
-%%%
-%%%    2. The interpreter supports a number of directives:
-%%%
-%%%       a) Tabled and coinductive predicates should be declared as such in
-%%%          the program file, e.g.,
-%%%              :- table       ancestor/2.
-%%%              :- coinductive0  comember/2.
-%%%              :- coinductive1 comember/2.
-%%%
-%%%          "coinductive1" means that if there are coinductive hypotheses
-%%%          with which a goal unifies, then the usual clauses will not be tried
-%%%          after the hypotheses are exhausted (this is "new style"
-%%%          coinduction).
-%%%
-%%%       b) To include files use the usual Prolog syntax:
-%%%              :- [ file1, file2, ... ].
-%%%
-%%%       c) To declare predicates used in an interpreted program as dynamic,
-%%%          use
-%%%              :- dynamic p/k.
-%%%
-%%%       d) By default, a goal produces new (i.e., heretofore unknown) answers
-%%%          before producing old ones.  To reverse this behaviour, use
-%%%
-%%%              :- old_first p/k.
-%%%          or
-%%%              :- old_first all.
-%%%
-%%%       e) To produce a wallpaper traces use the traces directive. For example,
-%%%
-%%%              :- traces p/3, q/0, r/1.
-%%%
-%%%          will traces predicates "p/3", "q/0" and "r/1".  If you want to traces
-%%%          everything, use
-%%%
-%%%              :- traces all.
-%%%
-%%%          These directives are cumulative.
-%%%
-%%%       f) To print out subsets of the current answer table, use
-%%%
-%%%              :- answers( Goal, Pattern ).
-%%%
-%%%          this will print all tabled answers that are associated with a
-%%%          variant of Goal and unifiable with Pattern.
-%%%          To get a dump of the entire table, use just
-%%%
-%%%              :- answers( _, _ ).
-%%%
-%%%    2. The program should contain no other directives. It may, however,
-%%%       contain queries, which will be executed immediately upon reading.
-%%%
-%%%    3. Just before the result of a query is reported, the interpreter
-%%%       produces a printout with statistics accummulated since the previous
-%%%       printout (or since the beginning, if this is the first printout during
-%%%       this session with the interpreted program). The printout looks like
-%%%       this:
-%%%
-%%%           [K steps, M new answers tabled (N in all)]
-%%%
-%%%       where K, M and N are some natural numbers. K is the number of
-%%%       evaluated goals, M is the number of new additions to the answer table,
-%%%       N is the current size of the answer table.
-%%%
-%%%    4. If the program invokes a built-in predicate, that predicate must
-%%%       be declared in the table "is_builtin/1" (see file "dra_builtins.pl").
-%%%       Every addition should be considered carefully: some built-ins might
-%%%       require special treatment by the interpreter.
-%%%
-%%%    5. The program may contain clauses that modify the definition of the
-%%%       interpreter's predicate "essence_hook/2" (the clauses will be asserted
-%%%       at the front of the predicate, and will thus override the default
-%%%       definition for some cases).  The default definition is
-%%%
-%%%          essence_hook( T, T ).
-%%%
-%%%       This predicate is invoked _in certain contexts_ when:
-%%%          - two terms are about to be compared (either for equality or to
-%%%            check whether they are variants of each other);
-%%%          - an answer is tabled;
-%%%          - an answer is retrieved from the table.
-%%%
-%%%       The primary intended use is to suppress arguments that carry only
-%%%       administrative information and that may differ in two terms that are
-%%%       "semantically" equal or variants of each other. (Such, for example, is
-%%%       the argument that carries the set of coinductive hypotheses in a
-%%%       co-logic program translated into Prolog: see "../coind/translate_clp".
-%%%       Mind you, that translation need not be applied to programs executed by
-%%%       this interpreter).
-%%%
-%%%       For example, the presence of
-%%%
-%%%          essence_hook( p( A, B, _ ),  p( A, B ) ).
-%%%
-%%%       will result in "p( a, b, c )" and "p( a, b, d )" being treated as
-%%%       identical, as each of them will be translated to "p( a, b )" before
-%%%       comparison.
-%%%
-%%%       NOTE: This facility should be used with the utmost caution, as it
-%%%             may drastically affect the semantics of the interpreted program
-%%%             in a fashion that would be hard to understand for someone who
-%%%             does not understand the details of the interpreter.
-%%%
-%%% LIMITATIONS: - The interpreted program should not contain cuts.
-%%%              - Error detection is quite rudimentary.
+% NOTE:
+%
+%    1. See ../general/top_level.ecl for a description of how to load
+%       and run programs.
+%       Please note that in Eclipse after loading this interpreter you
+%       should issue
+%            :- import dra.
+%       if you don't want to keep writing
+%            dra:prog( filename )
+%       every time.
+%
+%    2. The interpreter supports a number of directives:
+%
+%       a) Tabled and coinductive predicates should be declared as such in
+%          the program file, e.g.,
+%              :- table       ancestor/2.
+%              :- coinductive0  comember/2.
+%              :- coinductive1 comember/2.
+%
+%          "coinductive1" means that if there are coinductive hypotheses
+%          with which a goal unifies, then the usual clauses will not be tried
+%          after the hypotheses are exhausted (this is "new style"
+%          coinduction).
+%
+%       b) To include files use the usual Prolog syntax:
+%              :- [ file1, file2, ... ].
+%
+%       c) To declare predicates used in an interpreted program as dynamic,
+%          use
+%              :- dynamic p/k.
+%
+%       d) By default, a goal produces new (i.e., heretofore unknown) answers
+%          before producing old ones.  To reverse this behaviour, use
+%
+%              :- old_first p/k.
+%          or
+%              :- old_first all.
+%
+%       e) To produce a wallpaper traces use the traces directive. For example,
+%
+%              :- traces p/3, q/0, r/1.
+%
+%          will traces predicates "p/3", "q/0" and "r/1".  If you want to traces
+%          everything, use
+%
+%              :- traces all.
+%
+%          These directives are cumulative.
+%
+%       f) To print out subsets of the current answer table, use
+%
+%              :- answers( Goal, Pattern ).
+%
+%          this will print all tabled answers that are associated with a
+%          variant of Goal and unifiable with Pattern.
+%          To get a dump of the entire table, use just
+%
+%              :- answers( _, _ ).
+%
+%    2. The program should contain no other directives. It may, however,
+%       contain queries, which will be executed immediately upon reading.
+%
+%    3. Just before the result of a query is reported, the interpreter
+%       produces a printout with statistics accummulated since the previous
+%       printout (or since the beginning, if this is the first printout during
+%       this session with the interpreted program). The printout looks like
+%       this:
+%
+%           [K steps, M new answers tabled (N in all)]
+%
+%       where K, M and N are some natural numbers. K is the number of
+%       evaluated goals, M is the number of new additions to the answer table,
+%       N is the current size of the answer table.
+%
+%    4. If the program invokes a built-in predicate, that predicate must
+%       be declared in the table "is_builtin/1" (see file "dra_builtins.pl").
+%       Every addition should be considered carefully: some built-ins might
+%       require special treatment by the interpreter.
+%
+%    5. The program may contain clauses that modify the definition of the
+%       interpreter's predicate "essence_hook/2" (the clauses will be asserted
+%       at the front of the predicate, and will thus override the default
+%       definition for some cases).  The default definition is
+%
+%          essence_hook( T, T ).
+%
+%       This predicate is invoked _in certain contexts_ when:
+%          - two terms are about to be compared (either for equality or to
+%            check whether they are variants of each other);
+%          - an answer is tabled;
+%          - an answer is retrieved from the table.
+%
+%       The primary intended use is to suppress arguments that carry only
+%       administrative information and that may differ in two terms that are
+%       "semantically" equal or variants of each other. (Such, for example, is
+%       the argument that carries the set of coinductive hypotheses in a
+%       co-logic program translated into Prolog: see "../coind/translate_clp".
+%       Mind you, that translation need not be applied to programs executed by
+%       this interpreter).
+%
+%       For example, the presence of
+%
+%          essence_hook( p( A, B, _ ),  p( A, B ) ).
+%
+%       will result in "p( a, b, c )" and "p( a, b, d )" being treated as
+%       identical, as each of them will be translated to "p( a, b )" before
+%       comparison.
+%
+%       NOTE: This facility should be used with the utmost caution, as it
+%             may drastically affect the semantics of the interpreted program
+%             in a fashion that would be hard to understand for someone who
+%             does not understand the details of the interpreter.
+%
+% LIMITATIONS: - The interpreted program should not contain cuts.
+%              - Error detection is quite rudimentary.
 
 
 
@@ -3443,280 +3443,280 @@ dra_version( Version ) :-
                   ]
                 ).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
 
-%%%                                                                          %%%
-%%%  A simple (!) general top level for metainterpreters.                    %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 12 June 2009.                                              %%%
-%%%                                                                          %%%
-%%%  NOTE: This code runs on Sicstus and Eclipse.  It may require some       %%%
-%%%        tweaking for other Prolog systems.                                %%%
-%%%                                                                          %%%
+%                                                                          %
+%  A simple (!) general top level for metainterpreters.                    %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 12 June 2009.                                              %
+%                                                                          %
+%  NOTE: This code runs on Sicstus and Eclipse.  It may require some       %
+%        tweaking for other Prolog systems.                                %
+%                                                                          %
 
-%%% NOTES FOR USERS:
-%%%
-%%%    1. To use this top level, just include it in your the file that
-%%%       contains the code for your metainterpreter:
-%%%
-%%%           :- ensure_loaded( 'top_level' ).
-%%%
-%%%       Then load the metainterpreter into your logic programming system.
-%%%
-%%%
-%%%    2. To begin execution by loading a new program, invoke
-%%%
-%%%           prog( filename ).
-%%%
-%%%       If the filename has no extension, the default extension will be
-%%%       used if provided (see the description of "default_extension" below).
-%%%
-%%%       As the file is loaded, directives and queries are executed on-the-fly
-%%%       by invoking the metainterpreter (except the ":- op ..." directive,
-%%%       which is interpreted directly). A query is evaluated to give all
-%%%       solutions (it is as if the user kept responding with a semicolon):
-%%%       to avoid that use the built-in predicate once/1 .
-%%%
-%%%       After the file is loaded (and all the directives and queries it
-%%%       contains are executed), interactive mode is started.  This is very
-%%%       much like the usual top-level loop, except that the associated
-%%%       metainterpreter -- and not the underlying Logic Programming system --
-%%%       is used to evaluate queries and directives.
-%%%
-%%%
-%%%       To just enter interactive mode invoke
-%%%
-%%%           top
-%%%
-%%%       To exit interactive mode enter end of file (^D), or just write
-%%%
-%%%           quit.
-%%%
-%%%       (the former method appears not to work with tkeclipse).
-%%%
-%%%       NOTE: 1. In the interactive mode one cannot input more than one term
-%%%                per line.
-%%%
-%%%             2. When a query succeeds, the bindings of variables should be
-%%%                printed upto a certain maximum depth.  The default value is
-%%%                given in print_depth/1 below.  The maximum depth can be
-%%%                changed from the interpreted program by invoking
-%%%
-%%%                   set_print_depth( N )
-%%%
-%%%                where N is a positive integer.
-%%%
-%%%                Please note that on some Prolog implementations (e.g.,
-%%%                Eclipse) this might not prevent a loop if the printed term
-%%%                is cyclic (as will often happen for coinductive programs).
-%%%
-%%%                Note also that the foregoing does not apply to invocations of
-%%%                builtins in the interpreted program.  It is up to the user to
-%%%                apply the builtin appropriate for the host logic programming
-%%%                system.  For example, in the case of Sicstus, use
-%%%                "write_term( T, [ max_depth( 10 ) ] )" rather than just
-%%%                "write( T )", especially if you expect T to be a cyclic term.
-%%%
-%%%
-%%%    3. To include files (interactively or from other files) use
-%%%       the usual Prolog syntax:
-%%%
-%%%           :- [ file1, file2, ... ].
-%%%
-%%%       Please note that there is a difference between "prog( file )" and
-%%%       ":- [ file ].".  If the former is used, the metainterpreter is
-%%%       (re)initialised before loading the file (see description of
-%%%       initialise/0  below); if the latter is used, the file is just loaded.
-%%%
-%%%
-%%%    4. The program that is read in must not contain variable literals.  It
-%%%       may, however, contain invocations of call/1.
-%%%
-%%%
-%%%    5. The interpreted program may contain declarations of "top" and
-%%%       "support" predicates, in the form of directives:
-%%%
-%%%           :- topl p/1, q/2.
-%%%           :- support check_consistency/1.
-%%%
-%%%       The "top" declaration indicates predicates that will be called "from
-%%%       the outside", so if they are not called in the program, there will be
-%%%       no warning.
-%%%       (This declaration is also recognized when translating coinductive
-%%%        programs into Prolog: see "../coind/translate_colp".)
-%%%
-%%%       The "support" declaration means that the metainterpreter should treat
-%%%       this predicate as a built-in, i.e., just let Prolog execute it.  This
-%%%       can be useful for increasing the efficiency of interpreted programs
-%%%       that make use of support routines that are written in "straight"
-%%%       Prolog.  (Please note also that support predicates can use the full
-%%%       range of built-in predicates available in the host logic programming
-%%%       system.)
-%%%
-%%%       Predicates that are declared as "support" must be defined in other
-%%%       files.  To compile and load such files, use
-%%%
-%%%           :- load_is_support( filename ).
+% NOTES FOR USERS:
+%
+%    1. To use this top level, just include it in your the file that
+%       contains the code for your metainterpreter:
+%
+%           :- ensure_loaded( 'top_level' ).
+%
+%       Then load the metainterpreter into your logic programming system.
+%
+%
+%    2. To begin execution by loading a new program, invoke
+%
+%           prog( filename ).
+%
+%       If the filename has no extension, the default extension will be
+%       used if provided (see the description of "default_extension" below).
+%
+%       As the file is loaded, directives and queries are executed on-the-fly
+%       by invoking the metainterpreter (except the ":- op ..." directive,
+%       which is interpreted directly). A query is evaluated to give all
+%       solutions (it is as if the user kept responding with a semicolon):
+%       to avoid that use the built-in predicate once/1 .
+%
+%       After the file is loaded (and all the directives and queries it
+%       contains are executed), interactive mode is started.  This is very
+%       much like the usual top-level loop, except that the associated
+%       metainterpreter -- and not the underlying Logic Programming system --
+%       is used to evaluate queries and directives.
+%
+%
+%       To just enter interactive mode invoke
+%
+%           top
+%
+%       To exit interactive mode enter end of file (^D), or just write
+%
+%           quit.
+%
+%       (the former method appears not to work with tkeclipse).
+%
+%       NOTE: 1. In the interactive mode one cannot input more than one term
+%                per line.
+%
+%             2. When a query succeeds, the bindings of variables should be
+%                printed upto a certain maximum depth.  The default value is
+%                given in print_depth/1 below.  The maximum depth can be
+%                changed from the interpreted program by invoking
+%
+%                   set_print_depth( N )
+%
+%                where N is a positive integer.
+%
+%                Please note that on some Prolog implementations (e.g.,
+%                Eclipse) this might not prevent a loop if the printed term
+%                is cyclic (as will often happen for coinductive programs).
+%
+%                Note also that the foregoing does not apply to invocations of
+%                builtins in the interpreted program.  It is up to the user to
+%                apply the builtin appropriate for the host logic programming
+%                system.  For example, in the case of Sicstus, use
+%                "write_term( T, [ max_depth( 10 ) ] )" rather than just
+%                "write( T )", especially if you expect T to be a cyclic term.
+%
+%
+%    3. To include files (interactively or from other files) use
+%       the usual Prolog syntax:
+%
+%           :- [ file1, file2, ... ].
+%
+%       Please note that there is a difference between "prog( file )" and
+%       ":- [ file ].".  If the former is used, the metainterpreter is
+%       (re)initialised before loading the file (see description of
+%       initialise/0  below); if the latter is used, the file is just loaded.
+%
+%
+%    4. The program that is read in must not contain variable literals.  It
+%       may, however, contain invocations of call/1.
+%
+%
+%    5. The interpreted program may contain declarations of "top" and
+%       "support" predicates, in the form of directives:
+%
+%           :- topl p/1, q/2.
+%           :- support check_consistency/1.
+%
+%       The "top" declaration indicates predicates that will be called "from
+%       the outside", so if they are not called in the program, there will be
+%       no warning.
+%       (This declaration is also recognized when translating coinductive
+%        programs into Prolog: see "../coind/translate_colp".)
+%
+%       The "support" declaration means that the metainterpreter should treat
+%       this predicate as a built-in, i.e., just let Prolog execute it.  This
+%       can be useful for increasing the efficiency of interpreted programs
+%       that make use of support routines that are written in "straight"
+%       Prolog.  (Please note also that support predicates can use the full
+%       range of built-in predicates available in the host logic programming
+%       system.)
+%
+%       Predicates that are declared as "support" must be defined in other
+%       files.  To compile and load such files, use
+%
+%           :- load_is_support( filename ).
 
 
 
-%%% NOTES FOR AUTHORS OF METAINTERPRETERS:
-%%%
-%%%    6. The clauses read in by the top level are loaded into the module
-%%%       "interpreted".  This is done to avoid conflicts with predicates
-%%%       used in the metainterpreter (and the top level).  The metainterpreter
-%%%       must access them by using the predicate imported from
-%%%       "compatibility_utilties_...":
-%%%           clause_in_module( interpreted, ... )
-%%%
-%%%       The predicates defined by these clauses are stored in the table
-%%%       defined/1, in the form of patterns, e.g.,
-%%%           defined( p( _, _ ) ).
-%%%
-%%%
-%%%    7. The top level notes "support" declarations in the table "support".
-%%%       For example,
-%%%
-%%%           :- support p/1, q/2.
-%%%
-%%%       will be stored as
-%%%
-%%%           is_support( p( _ ) ).
-%%%           is_support( q( _, _ ) ).
-%%%
-%%%       The intended meaning is that "support" predicates do not make use
-%%%       (directly or indirectly) of the special features provided by the
-%%%       metainterpreter, so their invocations can be handled just by handing
-%%%       them over to Prolog (which would presumably speed up the computation).
-%%%
-%%%       Please note that the support predicates (which should be defined in
-%%%       files mentioned in ":- load_is_support( filename )." directives) are
-%%%       compiled into the module "support" (unless they are defined within
-%%%       other modules).
-%%%
-%%%
-%%%    8. The metainterpreter should provide the following predicates
-%%%       ("hooks") that will be called by the top level:
-%%%
-%%%          - builtin/1:
-%%%                 Defines patterns for built-in predicates from the host
-%%%                 system that can be invoked by the interpreted program.
-%%%                 For example, to allow writeln/2, declare:
-%%%                     builtin( writeln( _, _ ) ).
-%%%
-%%%          - default_extension/1:
-%%%                 This predicate is optional.  If present, its argument
-%%%                 should be an atom whose name is the extension string to be
-%%%                 added to file names that do not already have an extension.
-%%%                 (The string should begin with a period!)
-%%%                 For example, a metainterpreter for coinductive logic
-%%%                 programming might contain the following fact:
-%%%                      default_extension( '.clp' ).
-%%%
-%%%          - initialise/0:
-%%%                 This will be called before loading a new program,
-%%%                 giving the metainterpreter an opportunity to
-%%%                 (re)initialise its data structures.
-%%%
-%%%          - program_loaded/0:
-%%%                 This will be called after a program has been read in from
-%%%                 its file and stored in memory.  The interpreter can use
-%%%                 the opportunity to check the program's consistency, to
-%%%                 transform the program, etc.
-%%%
-%%%          - legal_directive/1:
-%%%                 Whenever the top level encounters a directive
-%%%                 (of the form ":- D."), it will call "legal_directive( D )".
-%%%                 If the call succeeds, the interpreter will be given
-%%%                 a chance to process the directive (see below), otherwise
-%%%                 the directive will be ignored (with a suitable warning).
-%%%
-%%%          - execute_directive/1:
-%%%                 Whenever the top level encounters a legal directive
-%%%                 ":- D" (see above), it invokes "execute_directive( D )"
-%%%                 to give the interpreter a chance to act upon the
-%%%                 directive.
-%%%
-%%%          - query/1:
-%%%                 This would be the main entry point of the metainterpreter.
-%%%                 Whenever the top level encounters a query (of the form
-%%%                 "?- Q."), it will display the query and then call
-%%%                 "query( Q )".  Depending on the result, it will then
-%%%                 display "No", or "Yes" (preceded by a display of bindings
-%%%                 acquired by the variables occurring in "Q"); in the latter
-%%%                 case it will also backtrack to obtain more solutions.
-%%%
-%%%
-%%%    9. The metainterpreter can also define hooks of its own.  A hook
-%%%       predicate should be declared in a fact of "hook_predicate/1".
-%%%       For example,
-%%%
-%%%           hook_predicate( essence_hook( _, _ ) ).
-%%%
-%%%       declares that "essence_hook/2" is a metainterpreter hook.  A hook
-%%%       predicate (essence_hook/2 in this case) should be dynamic.  When
-%%%       the top level encounters a clause whose head matches a hook predicate
-%%%       declaration, the clause is asserted at the front (!) of the predicate
-%%%       (in the module of the running program, not in "interpreted").
-%%%
-%%%       NOTE: If the interpreter does not use hook predicates, it must contain
-%%%             the definition
-%%%                 hook_predicate( '' ).
+% NOTES FOR AUTHORS OF METAINTERPRETERS:
+%
+%    6. The clauses read in by the top level are loaded into the module
+%       "interpreted".  This is done to avoid conflicts with predicates
+%       used in the metainterpreter (and the top level).  The metainterpreter
+%       must access them by using the predicate imported from
+%       "compatibility_utilties_...":
+%           clause_in_module( interpreted, ... )
+%
+%       The predicates defined by these clauses are stored in the table
+%       defined/1, in the form of patterns, e.g.,
+%           defined( p( _, _ ) ).
+%
+%
+%    7. The top level notes "support" declarations in the table "support".
+%       For example,
+%
+%           :- support p/1, q/2.
+%
+%       will be stored as
+%
+%           is_support( p( _ ) ).
+%           is_support( q( _, _ ) ).
+%
+%       The intended meaning is that "support" predicates do not make use
+%       (directly or indirectly) of the special features provided by the
+%       metainterpreter, so their invocations can be handled just by handing
+%       them over to Prolog (which would presumably speed up the computation).
+%
+%       Please note that the support predicates (which should be defined in
+%       files mentioned in ":- load_is_support( filename )." directives) are
+%       compiled into the module "support" (unless they are defined within
+%       other modules).
+%
+%
+%    8. The metainterpreter should provide the following predicates
+%       ("hooks") that will be called by the top level:
+%
+%          - builtin/1:
+%                 Defines patterns for built-in predicates from the host
+%                 system that can be invoked by the interpreted program.
+%                 For example, to allow writeln/2, declare:
+%                     builtin( writeln( _, _ ) ).
+%
+%          - default_extension/1:
+%                 This predicate is optional.  If present, its argument
+%                 should be an atom whose name is the extension string to be
+%                 added to file names that do not already have an extension.
+%                 (The string should begin with a period!)
+%                 For example, a metainterpreter for coinductive logic
+%                 programming might contain the following fact:
+%                      default_extension( '.clp' ).
+%
+%          - initialise/0:
+%                 This will be called before loading a new program,
+%                 giving the metainterpreter an opportunity to
+%                 (re)initialise its data structures.
+%
+%          - program_loaded/0:
+%                 This will be called after a program has been read in from
+%                 its file and stored in memory.  The interpreter can use
+%                 the opportunity to check the program's consistency, to
+%                 transform the program, etc.
+%
+%          - legal_directive/1:
+%                 Whenever the top level encounters a directive
+%                 (of the form ":- D."), it will call "legal_directive( D )".
+%                 If the call succeeds, the interpreter will be given
+%                 a chance to process the directive (see below), otherwise
+%                 the directive will be ignored (with a suitable warning).
+%
+%          - execute_directive/1:
+%                 Whenever the top level encounters a legal directive
+%                 ":- D" (see above), it invokes "execute_directive( D )"
+%                 to give the interpreter a chance to act upon the
+%                 directive.
+%
+%          - query/1:
+%                 This would be the main entry point of the metainterpreter.
+%                 Whenever the top level encounters a query (of the form
+%                 "?- Q."), it will display the query and then call
+%                 "query( Q )".  Depending on the result, it will then
+%                 display "No", or "Yes" (preceded by a display of bindings
+%                 acquired by the variables occurring in "Q"); in the latter
+%                 case it will also backtrack to obtain more solutions.
+%
+%
+%    9. The metainterpreter can also define hooks of its own.  A hook
+%       predicate should be declared in a fact of "hook_predicate/1".
+%       For example,
+%
+%           hook_predicate( essence_hook( _, _ ) ).
+%
+%       declares that "essence_hook/2" is a metainterpreter hook.  A hook
+%       predicate (essence_hook/2 in this case) should be dynamic.  When
+%       the top level encounters a clause whose head matches a hook predicate
+%       declaration, the clause is asserted at the front (!) of the predicate
+%       (in the module of the running program, not in "interpreted").
+%
+%       NOTE: If the interpreter does not use hook predicates, it must contain
+%             the definition
+%                 hook_predicate( '' ).
 
 
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( program_consistency ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%                                                                          %%%
-%%%  Check the consistency of the loaded program.                            %%%
-%%%  An auxiliary of top_level.                                              %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (January 2009).                       %%%
-%%%                                                                          %%%
-%%%  Last update: 11 June 2009.                                              %%%
-%%%                                                                          %%%
+%                                                                          %
+%  Check the consistency of the loaded program.                            %
+%  An auxiliary of top_level.                                              %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (January 2009).                       %
+%                                                                          %
+%  Last update: 11 June 2009.                                              %
+%                                                                          %
 
 
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( open_set_in_tree ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Simple, but useful operations on sets.  The sets are open, i.e.,        %%%
-%%%  insertion is a destructive operation.                                   %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (February 2009).                      %%%
-%%%                                                                          %%%
-%%%  Last update: 20 February 2009.                                          %%%
-%%%                                                                          %%%
-%%%  NOTE: Terms that are variants are treated as the same item: this is     %%%
-%%%        so because comparison of variables is unreliable.                 %%%
-%%%                                                                          %%%
-%%%        The cost of insertion or membership check can be logarithmic      %%%
-%%%        in the size of the set, but can be proportional to the size if    %%%
-%%%        the ordering in which elements are inserted is far from random.   %%%
-%%%        The cost of set operations (union, equality etc.) can also be     %%%
-%%%        logarithmic, but quadratic in the worst case.                     %%%
-%%%                                                                          %%%
-
-
-%%% Sets are represented as open binary trees.
+%  Simple, but useful operations on sets.  The sets are open, i.e.,        %
+%  insertion is a destructive operation.                                   %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (February 2009).                      %
+%                                                                          %
+%  Last update: 20 February 2009.                                          %
+%                                                                          %
+%  NOTE: Terms that are variants are treated as the same item: this is     %
+%        so because comparison of variables is unreliable.                 %
+%                                                                          %
+%        The cost of insertion or membership check can be logarithmic      %
+%        in the size of the set, but can be proportional to the size if    %
+%        the ordering in which elements are inserted is far from random.   %
+%        The cost of set operations (union, equality etc.) can also be     %
+%        logarithmic, but quadratic in the worst case.                     %
+%                                                                          %
 
 
-%%------------------------------------------------------------------------------
-%% empty_oset( +- open set ) :
-%% Create an empty set, or check that the given set is empty.
+% Sets are represented as open binary trees.
+
+
+%------------------------------------------------------------------------------
+% empty_oset( +- open set ) :
+% Create an empty set, or check that the given set is empty.
 
 empty_oset( V ) :-
         var( V ).
 
 
-%%------------------------------------------------------------------------------
-%% add_to_oset( + item, +- open set ):
-%% Add the item to the set.
+%------------------------------------------------------------------------------
+% add_to_oset( + item, +- open set ):
+% Add the item to the set.
 
 add_to_oset( Item, Set ) :-
         (
@@ -3740,9 +3740,9 @@ add_to_oset( Item, Set ) :-
         ).
 
 
-%%------------------------------------------------------------------------------
-%% is_in_oset( + item, + open set ):
-%% Is the given item a member of the set?
+%------------------------------------------------------------------------------
+% is_in_oset( + item, + open set ):
+% Is the given item a member of the set?
 
 is_in_oset( Item, Set ) :-
         (
@@ -3766,9 +3766,9 @@ is_in_oset( Item, Set ) :-
         ).
 
 
-%%------------------------------------------------------------------------------
-%% generate_member_of_oset( + open set, - item ):
-%% Nondeterministically generate members of the set.
+%------------------------------------------------------------------------------
+% generate_member_of_oset( + open set, - item ):
+% Nondeterministically generate members of the set.
 
 generate_member_of_oset( Set, Item ) :-
         nonvar( Set ),
@@ -3782,18 +3782,18 @@ generate_member_of_oset( Set, Item ) :-
         ).
 
 
-%%------------------------------------------------------------------------------
-%% equal_osets( + open set, + open set ):
-%% Are the two sets equal?
+%------------------------------------------------------------------------------
+% equal_osets( + open set, + open set ):
+% Are the two sets equal?
 
 equal_osets( S1, S2 ) :-
         symmetric_oset_difference( S1, S2, SD ),
         empty_oset( SD ).
 
 
-%%------------------------------------------------------------------------------
-%% oset_union( + open set, + open set, - open set ):
-%% Compute the union of two sets.
+%------------------------------------------------------------------------------
+% oset_union( + open set, + open set, - open set ):
+% Compute the union of two sets.
 
 oset_union( S1, S2, Result ) :-
         copy_items( S1, Result ),
@@ -3810,9 +3810,9 @@ copy_items( t( I, L, R ), Result ) :-
         copy_items( R, Result ).
 
 
-%%------------------------------------------------------------------------------
-%% oset_intersection( + open set, + open set, - open set ):
-%% Compute the intersection of two sets.
+%------------------------------------------------------------------------------
+% oset_intersection( + open set, + open set, - open set ):
+% Compute the intersection of two sets.
 
 oset_intersection( S1, S2, Result ) :-
         copy_shared( S1, S2, Result ).
@@ -3834,9 +3834,9 @@ copy_shared( t( I, L, R ), S, Result ) :-
         copy_shared( R, S, Result ).
 
 
-%%------------------------------------------------------------------------------
-%% oset_difference( + open set, + open set, - open set ):
-%% Subtract the second set from the first.
+%------------------------------------------------------------------------------
+% oset_difference( + open set, + open set, - open set ):
+% Subtract the second set from the first.
 
 oset_difference( S1, S2, Result ) :-
         copy_not_shared( S1, S2, Result ).
@@ -3858,18 +3858,18 @@ copy_not_shared( t( I, L, R ), S, Result ) :-
         copy_not_shared( R, S, Result ).
 
 
-%%------------------------------------------------------------------------------
-%% symmetric_oset_difference( + open set, + open set, - open set ):
-%% Compute the symmetric difference of two sets.
+%------------------------------------------------------------------------------
+% symmetric_oset_difference( + open set, + open set, - open set ):
+% Compute the symmetric difference of two sets.
 
 symmetric_oset_difference( S1, S2, Result ) :-
         oset_difference( S1, S2, Result ),
         oset_difference( S2, S1, Result ).
 
 
-%%------------------------------------------------------------------------------
-%% oset_to_list( + open set, - list ):
-%% Create a list that contains all the elements of the set.
+%------------------------------------------------------------------------------
+% oset_to_list( + open set, - list ):
+% Create a list that contains all the elements of the set.
 
 oset_to_list( Set, List ) :-
         to_list( Set, [], List ).
@@ -3884,10 +3884,10 @@ to_list( t( I, L, R ), ListSoFar, List ) :-
         to_list( L, [ I | ListWithRight ], List ).
 
 
-%%------------------------------------------------------------------------------
-%% list_to_oset( + list, - set ):
-%% Create a set that contains all the elements from the list (without
-%% duplicates, of course).
+%------------------------------------------------------------------------------
+% list_to_oset( + list, - set ):
+% Create a set that contains all the elements from the list (without
+% duplicates, of course).
 
 list_to_oset( List, Set ) :-
         empty_oset( Set ),
@@ -3900,15 +3900,15 @@ list_to_oset_( [ H | T ], S ) :-
         add_to_oset( H, S ),
         list_to_oset_( T, S ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
 
-%% The following things are being checked:
-%%  - is there a call to an undefined predicate?
-%%  - is there a defined predicate that is not called and not declared as top?
-%%  - is there a predicate that was declared as top, but not defined?
-%%  - is there a predicate that was declared as support, but not defined?
+% The following things are being checked:
+%  - is there a call to an undefined predicate?
+%  - is there a defined predicate that is not called and not declared as top?
+%  - is there a predicate that was declared as top, but not defined?
+%  - is there a predicate that was declared as support, but not defined?
 
 check_general_consistency :-
 %        findall( PredSpec,
@@ -3996,22 +3996,22 @@ uncalled_warnings( _ ).
 
 
 
-%% get_called_predicates( + open set of predicates,
-%%                        + open set of all defined predicates,
-%%                        - open set of predicates called from the defined ones
-%%                      ):
-%% Produce the set of predicates called from the first set, at the same time
-%% producing warnings about calls to predicates that are not in the second set.
+% get_called_predicates( + open set of predicates,
+%                        + open set of all defined predicates,
+%                        - open set of predicates called from the defined ones
+%                      ):
+% Produce the set of predicates called from the first set, at the same time
+% producing warnings about calls to predicates that are not in the second set.
 
 get_called_predicates( OSetOfPredicates, OSetOfDefined, OSetOfCalled ) :-
         sets_of_called( OSetOfPredicates, OSetOfDefined, ListOfSetsOfCalled ),
         empty_oset( Empty ),
-        fold( oset_union, Empty, ListOfSetsOfCalled, OSetOfCalled ).
+        dra_fold( oset_union, Empty, ListOfSetsOfCalled, OSetOfCalled ).
 
 %
 sets_of_called( OsetOfPredicates, OSetOfDefined, ListOfSetsOfCalled ) :-
         oset_to_list( OsetOfPredicates, ListOfPredicates ),
-        map( set_of_called( OSetOfDefined ),
+        dra_map( set_of_called( OSetOfDefined ),
              ListOfPredicates, ListOfSetsOfCalled
            ).
 
@@ -4025,7 +4025,7 @@ set_of_called( OSetOfDefined, PredSpec, OSetOfCalled ) :-
                , OSetsOfCalled
                ),
         empty_oset( Empty ),
-        fold( oset_union, Empty, OSetsOfCalled, OSetOfCalled ),
+        dra_fold( oset_union, Empty, OSetsOfCalled, OSetOfCalled ),
         oset_difference( OSetOfCalled, OSetOfDefined, OSetOfCallsToUndefined ),
         warnings_about_called( OSetOfCallsToUndefined, PredSpec ).
 
@@ -4043,9 +4043,9 @@ warnings_about_called( OSetOfPredSpecsBad, ParentPredSpec ) :-
 warnings_about_called( _, _ ).
 
 
-%% extract_called( + clause body, - open set of called predicates ):
-%% Extract the list of predicates called by this body, except for predicates
-%% declared as builtin.
+% extract_called( + clause body, - open set of called predicates ):
+% Extract the list of predicates called by this body, except for predicates
+% declared as builtin.
 
 extract_called( Var, _ ) :-
         var( Var ),
@@ -4095,15 +4095,15 @@ extract_called( Predicate, OSetOfCalled ) :-
 extract_called( _, Empty ) :-
         empty_oset( Empty ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 %:- ensure_loaded( output_equation ).
-%%%  Output cyclic terms as equations.                                       %%%
-%%%                                                                          %%%
-%%%  Written by Ronald de Haan at UT Dresden (January, April 2011).          %%%
-%%%                                                                          %%%
-%%%  Reformatted and extensively modified by FK.                             %%%
-%%%                                                                          %%%
+%  Output cyclic terms as equations.                                       %
+%                                                                          %
+%  Written by Ronald de Haan at UT Dresden (January, April 2011).          %
+%                                                                          %
+%  Reformatted and extensively modified by FK.                             %
+%                                                                          %
 
 
 % :- module( output_equation,
@@ -4114,25 +4114,25 @@ extract_called( _, Empty ) :-
 % 	  ]).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%% Output cyclic terms as equations                           %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%                                                            %%%
-%%% Example of use:                                            %%%
-%%%                                                            %%%
-%%% ?- X = f(Y), Y = g(Y), get_term_equation(X, Eq, InitVar).  %%%
-%%% X = f(g(**)),                                              %%%
-%%% Y = g(**),                                                 %%%
-%%% Eq = [InitVar=f(_G805), _G805=g(_G805)] .                  %%%
-%%%                                                            %%%
-%%%                                                            %%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%
+% Output cyclic terms as equations                           %
+%%%%%%%%%%%%%%%%%
+%                                                            %
+% Example of use:                                            %
+%                                                            %
+% ?- X = f(Y), Y = g(Y), get_term_equation(X, Eq, InitVar).  %
+% X = f(g(**)),                                              %
+% Y = g(**),                                                 %
+% Eq = [InitVar=f(_G805), _G805=g(_G805)] .                  %
+%                                                            %
+%                                                            %
+%%%%%%%%%%%%%%%%%
 
 
 
-%%------------------------------------------------------------------------------
-%% cyclic( + Term, + Max ) :
-%% Succeeds iff the term Term is cyclic within a depth of Max.
+%------------------------------------------------------------------------------
+% cyclic( + Term, + Max ) :
+% Succeeds iff the term Term is cyclic within a depth of Max.
 
 cyclic( Term, Max ) :-
         cyclic_term( Term ),  % if the term is not cyclic at all, don't even try
@@ -4140,8 +4140,8 @@ cyclic( Term, Max ) :-
         check_list_for_duplicates( Subterms ).
 
 
-%% list_subterms_up_to_depth( + Term, + MaxDepth, - Subterms ) :
-%% Produces a list of all subterms of Term upto the given depth.
+% list_subterms_up_to_depth( + Term, + MaxDepth, - Subterms ) :
+% Produces a list of all subterms of Term upto the given depth.
 
 list_subterms_up_to_depth( Term, MaxDepth, Subterms ) :-
         aux_subterms_up_to_depth( [ Term ], MaxDepth, Subterms, [] ).
@@ -4174,9 +4174,9 @@ aux_subterms_up_to_depth( [ Term | Terms ], MaxDepth, Subterms, End ) :-
         aux_subterms_up_to_depth( Terms, MaxDepth, RestOfSubterms, End ).
 
 
-%% check_list_for_duplicates( + List ) :
-%% Checks whether the list contains duplicates, i.e., at least two identical
-%% terms ("identical" as opposed to "unifiable").
+% check_list_for_duplicates( + List ) :
+% Checks whether the list contains duplicates, i.e., at least two identical
+% terms ("identical" as opposed to "unifiable").
 %
 % Ronald's original version was very elegant:
 %
@@ -4199,18 +4199,18 @@ check_list_for_duplicates( List ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% get_equation( + Term, - Equation ) :
+%------------------------------------------------------------------------------
+% get_equation( + Term, - Equation ) :
 %  Gets the equation corresponding to a term in
-%% the form of a list of equalities in which the cyclic points are marked with
-%% x/1 markers. The argument of x/1 is the integer that is paired with the
-%% replaced term.
-%%
-%% Example:
-%%    ?-  X = [ a | Y ],  Y = [ b | Y ],  get_equation( X, E ).
-%%    X = [ a, b | ** ],
-%%    Y = [ b | ** ],
-%%    E = [ (0 , [ a | x( 1 ) ]), (1 , [ b | x( 1 ) ]) ].
+% the form of a list of equalities in which the cyclic points are marked with
+% x/1 markers. The argument of x/1 is the integer that is paired with the
+% replaced term.
+%
+% Example:
+%    ?-  X = [ a | Y ],  Y = [ b | Y ],  get_equation( X, E ).
+%    X = [ a, b | ** ],
+%    Y = [ b | ** ],
+%    E = [ (0 , [ a | x( 1 ) ]), (1 , [ b | x( 1 ) ]) ].
 
 get_equation( Term, Equation ) :-
         obtain_all_cyclic_subterms( Term, List ),
@@ -4220,40 +4220,40 @@ get_equation( Term, Equation ) :-
                ).
 
 
-%% obtain_all_cyclic_subterms( + Term, - List ) :
-%% Create a list of all the cyclic subterms of this term.
-%% A "cyclic term" in this context is a term whose main functor is involved in a
-%% cycle, as opposed to a term that only contains cyclic subterms.  For example,
-%%    ?-  X = f( X ), obtain_all_cyclic_subterms( t( a( X ), b( X ) ), L ).
-%% will yield only  f( X ) and not, for example, a( X ).
+% obtain_all_cyclic_subterms( + Term, - List ) :
+% Create a list of all the cyclic subterms of this term.
+% A "cyclic term" in this context is a term whose main functor is involved in a
+% cycle, as opposed to a term that only contains cyclic subterms.  For example,
+%    ?-  X = f( X ), obtain_all_cyclic_subterms( t( a( X ), b( X ) ), L ).
+% will yield only  f( X ) and not, for example, a( X ).
 
 obtain_all_cyclic_subterms( Term, List ) :-
         obtain_all_cyclic_subterms( [ Term ], [], root, [], RList ),
         reverse( RList, List ).
 
 
-%% obtain_all_cyclic_subterms( Terms, SeenBefore, Root, Acc, Ans ) :
-%%  - Terms are the terms that still have to be handled;
-%%  - SeenBefore is the list of terms that have already been seen;
-%%  - Root = root if we are at the root of the term;
-%%  - Acc is an accumulator (for Ans);
-%%  - Ans will contain the list of different subterms.
-%%
-%% Additional explanation (FK):
-%% When first seen, a cyclic subterm is added to SeenBefore.
-%% Since it is cyclic, it will be seen again, and at that point it will be added
-%% to the accumulator. This ensures that a term that satisfies cyclic_term/1 by
-%% virtue of containing cyclic subterms will not be put on the list unless its
-%% main functor is actually a part of the cycle.
-%% MODIFIED by FK:
-%%    1. Replaced counter with Root (i.e., just a flag).
-%%    2. Suppressed repetitions in the resulting list.
-%%    3. Replaced the call to append/3 with a recursive invocation. So the first
-%%       argument is now always a list of remaining siblings.  Notice that this
-%%       change makes SeenBefore shorter, but that is a good thing. There
-%%       is no need to check whether a sibling has been seen before: all we care
-%%       about is whether this term is identical with one of its ancestors.
-%%    4. Suppressed addition of siblings to SeenBefore.
+% obtain_all_cyclic_subterms( Terms, SeenBefore, Root, Acc, Ans ) :
+%  - Terms are the terms that still have to be handled;
+%  - SeenBefore is the list of terms that have already been seen;
+%  - Root = root if we are at the root of the term;
+%  - Acc is an accumulator (for Ans);
+%  - Ans will contain the list of different subterms.
+%
+% Additional explanation (FK):
+% When first seen, a cyclic subterm is added to SeenBefore.
+% Since it is cyclic, it will be seen again, and at that point it will be added
+% to the accumulator. This ensures that a term that satisfies cyclic_term/1 by
+% virtue of containing cyclic subterms will not be put on the list unless its
+% main functor is actually a part of the cycle.
+% MODIFIED by FK:
+%    1. Replaced counter with Root (i.e., just a flag).
+%    2. Suppressed repetitions in the resulting list.
+%    3. Replaced the call to append/3 with a recursive invocation. So the first
+%       argument is now always a list of remaining siblings.  Notice that this
+%       change makes SeenBefore shorter, but that is a good thing. There
+%       is no need to check whether a sibling has been seen before: all we care
+%       about is whether this term is identical with one of its ancestors.
+%    4. Suppressed addition of siblings to SeenBefore.
 
 obtain_all_cyclic_subterms( [], _, _, Acc, Acc ) :- !.
 
@@ -4287,11 +4287,11 @@ obtain_all_cyclic_subterms( [ T | TS ], SeenBefore, _Root, Acc, List ) :-
         obtain_all_cyclic_subterms( TS, SeenBefore, noroot, NAcc, List ).
 
 
-%% number_list_starting_at( + List, + InitialNr, - NumberedList ) :
-%%  - List is the list to be numbered;
-%%  - InitialNr is the number to start numbering with;
-%%  - NumberedList is the result of numbering elements of List from InitialNr
-%%    on.
+% number_list_starting_at( + List, + InitialNr, - NumberedList ) :
+%  - List is the list to be numbered;
+%  - InitialNr is the number to start numbering with;
+%  - NumberedList is the result of numbering elements of List from InitialNr
+%    on.
 
 number_list_starting_at( [], _, [] ).
 
@@ -4300,28 +4300,28 @@ number_list_starting_at( [ H | T ], N, [ (N , H) | A ] ) :-
         number_list_starting_at( T, M, A ).
 
 
-%% convert( + Terms, + CyclicSubterms, + EquationAccumulator, - Equation,
-%%          - NewTerms
-%%        ) :
-%%    - Terms is (the remainder of) a list containing one term, or all the
-%%      arguments of one term (sibling terms);
-%%    - CyclicSubterms is a list of cyclic subterms (produced by
-%%      obtain_all_cyclic_subterms/2), each paired with a unique number;
-%%    - EquationAccumulator is the accumulator for the sub-equations of the
-%%      entire equation: each element is a pair consisting of a number and
-%%      a term;
-%%    - Equation is the accumulator, augmented with information produced in this
-%%      instance of convert/5;
-%%    - NewTerms is a list with the converted forms of the input terms;
-%%
-%% Conversion consists in replacing each occurrence of a (sub)term that is
-%% identical to one of the terms on CyclicSubterms with x( N ), where N is the
-%% number that is associated with the term on CyclicSubterms.  For each such
-%% replacement a "subequation" of the form (N , Term) must appear on Equation:
-%% however, care is taken not to allow repetitions on that list.  Replacement is
-%% carried out also for the arguments of the cyclic subterms: to prevent
-%% infinite looping, it is not carried out if an argument already has its number
-%% on the Equation list.
+% convert( + Terms, + CyclicSubterms, + EquationAccumulator, - Equation,
+%          - NewTerms
+%        ) :
+%    - Terms is (the remainder of) a list containing one term, or all the
+%      arguments of one term (sibling terms);
+%    - CyclicSubterms is a list of cyclic subterms (produced by
+%      obtain_all_cyclic_subterms/2), each paired with a unique number;
+%    - EquationAccumulator is the accumulator for the sub-equations of the
+%      entire equation: each element is a pair consisting of a number and
+%      a term;
+%    - Equation is the accumulator, augmented with information produced in this
+%      instance of convert/5;
+%    - NewTerms is a list with the converted forms of the input terms;
+%
+% Conversion consists in replacing each occurrence of a (sub)term that is
+% identical to one of the terms on CyclicSubterms with x( N ), where N is the
+% number that is associated with the term on CyclicSubterms.  For each such
+% replacement a "subequation" of the form (N , Term) must appear on Equation:
+% however, care is taken not to allow repetitions on that list.  Replacement is
+% carried out also for the arguments of the cyclic subterms: to prevent
+% infinite looping, it is not carried out if an argument already has its number
+% on the Equation list.
 
 convert( [], _, Acc, Acc, [] ).
 
@@ -4369,11 +4369,11 @@ convert( [ T | Ts ],  CyclicSubterms, Acc, Equation, [ NewT | NewTs ] ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% get_printable_term_equation( + Term, - Head, - List ) :
-%% Returns the equation of a term as a list of strings.
-%% Head is a string containing the initial variable of the equation.
-%% List is a list of strings containing parts of the equation.
+%------------------------------------------------------------------------------
+% get_printable_term_equation( + Term, - Head, - List ) :
+% Returns the equation of a term as a list of strings.
+% Head is a string containing the initial variable of the equation.
+% List is a list of strings containing parts of the equation.
 
 get_printable_term_equation( Term, Head, List ) :-
         get_term_equation( Term, Eq, H ),
@@ -4390,10 +4390,10 @@ get_printable_list( [ ( A = B ) | T ], [ String | Rest ] ) :-
         get_printable_list( T, Rest ).
 
 
-%% get_term_equation( + Term, - EquationList, - HeadVar ) :
-%% Obtains a list of equations corresponding to the cyclic term Term, in which
-%% HeadVar is the variable corresponding to Term.
-%% Added conversion to more sensible variable names. [FK]
+% get_term_equation( + Term, - EquationList, - HeadVar ) :
+% Obtains a list of equations corresponding to the cyclic term Term, in which
+% HeadVar is the variable corresponding to Term.
+% Added conversion to more sensible variable names. [FK]
 
 get_term_equation( Term, EquationList, HeadVar ) :-
         get_equation( Term, Equation ),
@@ -4409,18 +4409,18 @@ get_term_equation( Term, EquationList, HeadVar ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% get_equation_with_variables( + Equation, - EquationList, - HeadVar ) :
-%% Turns an equation with x/1 markers into an equation with variables for the
-%% cyclic points.
-%%
-%% Example:
-%%    ?- X = [ a | Y ], Y = [ b | Y ],  get_equation( X, E ),
-%%       get_equation_with_variables( E, EL, HV ).
-%%    X = [ a, b | ** ],
-%%    Y = [ b | ** ],
-%%    E = [ (0 , [ a | x( 1 ) ]), (1 , [ b | x( 1 ) ]) ],
-%%    EL = [ HV=[ a | _G930 ], _G930=[ b | _G930 ] ] .
+%------------------------------------------------------------------------------
+% get_equation_with_variables( + Equation, - EquationList, - HeadVar ) :
+% Turns an equation with x/1 markers into an equation with variables for the
+% cyclic points.
+%
+% Example:
+%    ?- X = [ a | Y ], Y = [ b | Y ],  get_equation( X, E ),
+%       get_equation_with_variables( E, EL, HV ).
+%    X = [ a, b | ** ],
+%    Y = [ b | ** ],
+%    E = [ (0 , [ a | x( 1 ) ]), (1 , [ b | x( 1 ) ]) ],
+%    EL = [ HV=[ a | _G930 ], _G930=[ b | _G930 ] ] .
 
 get_equation_with_variables( Equation, EquationList, HeadVar ) :-
         variable_list( Equation, VarList ),
@@ -4429,8 +4429,8 @@ get_equation_with_variables( Equation, EquationList, HeadVar ) :-
 
 
 
-%% variable_list( + Equation, - VariableList ) :
-%% Gets a list of numbered variables for every term in the list of equations.
+% variable_list( + Equation, - VariableList ) :
+% Gets a list of numbered variables for every term in the list of equations.
 
 variable_list( [], [] ).
 
@@ -4452,12 +4452,12 @@ convert_markers_to_vars( [ (N , T) | Rest ], VarList, [ V = NT | RestAns ] ) :-
         convert_markers_to_vars( Rest, VarList, RestAns ).
 
 
-%% replace_markers_by_variable( + Term, + NumberedVarList, - NewTerm ) :
-%% Replaces cyclic positions, marked with x/1, with corresponding variables from
-%% a numbered list of variables.
-%%
-%% The original version spuriously unified a variable term with x( N ), which
-%% led to wrong results.  This is fixed below.  [FK]
+% replace_markers_by_variable( + Term, + NumberedVarList, - NewTerm ) :
+% Replaces cyclic positions, marked with x/1, with corresponding variables from
+% a numbered list of variables.
+%
+% The original version spuriously unified a variable term with x( N ), which
+% led to wrong results.  This is fixed below.  [FK]
 
 replace_markers_by_variables( T, _VL, T ) :-
         \+ compound( T ),
@@ -4484,10 +4484,10 @@ replace_markers_by_variables_in_list( [ T | Ts ], VL, [ V | Vs ] ) :-
 
 
 
-%%------------------------------------------------------------------------------
-%% identical_member( + term, + list ) :
-%% Succeed if the list contains this term (as opposed to something that is
-%% unifiable with this term).
+%------------------------------------------------------------------------------
+% identical_member( + term, + list ) :
+% Succeed if the list contains this term (as opposed to something that is
+% unifiable with this term).
 
 old_identical_member( X, Items ) :-
         member( T, Items ),
@@ -4495,17 +4495,17 @@ old_identical_member( X, Items ) :-
         !.
 
 
-%% identical_member2( (-+ number , + term), + list of pairs ) :
-%% Succeed if the list contains a pair whose second element is identical to the
-%% second element of arg1, and whose first element unifies with the first
-%% element of arg1.
+% identical_member2( (-+ number , + term), + list of pairs ) :
+% Succeed if the list contains a pair whose second element is identical to the
+% second element of arg1, and whose first element unifies with the first
+% element of arg1.
 
 identical_member2( (N , Term), Items ) :-
         member( (N, T), Items ),
         Term == T,
         !.
 
-%%==============================================================================
+%==============================================================================
 
 
 :- op( 1010, fy, topl          ).     % allow  ":- topl p/k ."
@@ -4535,8 +4535,8 @@ identical_member2( (N , Term), Items ) :-
 :- dynamic known/1 .
 
 
-%% Default print depth.  (May be changed by the metainterpreter by invoking
-%% set_print_depth( N ).)
+% Default print depth.  (May be changed by the metainterpreter by invoking
+% set_print_depth( N ).)
 
 :- dynamic print_depth/1 .
 
@@ -4559,9 +4559,9 @@ set_print_depth( Strange ) :-
 
 
 
-%% prog( + file name ):
-%% Initialise, then load a program from this file, processing directives and
-%% queries.  After this is done, enter interactive mode.
+% prog( + file name ):
+% Initialise, then load a program from this file, processing directives and
+% queries.  After this is done, enter interactive mode.
 
 
 prog( FileName ) :-
@@ -4583,51 +4583,51 @@ setup :-
 
 
 
-%% NOTE: In Eclipse it is possible to use the module facility in a way that
-%%       allows redeclaration of predicates that are built-ins, but that are
-%%       not wanted (see below).  It is not obvious how to do it in Sicstus, so
-%%       the interpreted program cannot define predicates whose names happen to
-%%       clash with the names of built-ins. Hence in the Sicstus version
-%%       the only modules that are created are "interpreted" and support.
-%%
-%% NOTE (Specific to Eclipse):
-%%       In order to avoid name conflicts with the numerous built-in predicates
-%%       of Eclipse, the only thing "interpreted" imports is the module
-%%       "interface".  The module "interface" is created by the top-level from
-%%       a declaration of built-ins allowed by the metainterpreter (and provided
-%%       by the latter in table "builtin").  The difficulty is that Eclipse does
-%%       not allow direct exportation of built-ins: this is solved by defining
-%%       yet another module, called "interface_aux".
-%%       The exact mechanics are best explained by means of an example:
-%%
-%%       1. Let the metainterpreter contain a declaration of only one built-in:
-%%             builtin( writeln( _ ) ).
-%%
-%%       2. The top level will add the following clause to module
-%%          "interface_aux" (which imports all the built-ins by default):
-%%             xxx_writeln( X ) :-  writeln( X ).
-%%
-%%       3. "xxx_writeln/1" will be exported by "interface_aux".
-%%
-%%       4. Module "interface" will import only "interface_aux", and will be
-%%          closed to default importation of built-ins.  It will define clause:
-%%             writeln( X) :- xxx_writeln( X ).
-%%
-%%       5. "writeln/1" is now a user-defined predicate and can be exported from
-%%          "interface".
-%%
-%%       6. "interpreted" will import only "interface", and will be closed to
-%%          default importation of built-ins.  The interpreted program can use
-%%          "writeln/1" and no other built-ins.  It can also define predicates
-%%          whose names would normally clash with names of built-ins (e.g.,
-%%          "connect/2", which might be useful in, say, a graph-processing
-%%          application).
-%%
-%%       Please note that all this does not apply to "support".
+% NOTE: In Eclipse it is possible to use the module facility in a way that
+%       allows redeclaration of predicates that are built-ins, but that are
+%       not wanted (see below).  It is not obvious how to do it in Sicstus, so
+%       the interpreted program cannot define predicates whose names happen to
+%       clash with the names of built-ins. Hence in the Sicstus version
+%       the only modules that are created are "interpreted" and support.
+%
+% NOTE (Specific to Eclipse):
+%       In order to avoid name conflicts with the numerous built-in predicates
+%       of Eclipse, the only thing "interpreted" imports is the module
+%       "interface".  The module "interface" is created by the top-level from
+%       a declaration of built-ins allowed by the metainterpreter (and provided
+%       by the latter in table "builtin").  The difficulty is that Eclipse does
+%       not allow direct exportation of built-ins: this is solved by defining
+%       yet another module, called "interface_aux".
+%       The exact mechanics are best explained by means of an example:
+%
+%       1. Let the metainterpreter contain a declaration of only one built-in:
+%             builtin( writeln( _ ) ).
+%
+%       2. The top level will add the following clause to module
+%          "interface_aux" (which imports all the built-ins by default):
+%             xxx_writeln( X ) :-  writeln( X ).
+%
+%       3. "xxx_writeln/1" will be exported by "interface_aux".
+%
+%       4. Module "interface" will import only "interface_aux", and will be
+%          closed to default importation of built-ins.  It will define clause:
+%             writeln( X) :- xxx_writeln( X ).
+%
+%       5. "writeln/1" is now a user-defined predicate and can be exported from
+%          "interface".
+%
+%       6. "interpreted" will import only "interface", and will be closed to
+%          default importation of built-ins.  The interpreted program can use
+%          "writeln/1" and no other built-ins.  It can also define predicates
+%          whose names would normally clash with names of built-ins (e.g.,
+%          "connect/2", which might be useful in, say, a graph-processing
+%          application).
+%
+%       Please note that all this does not apply to "support".
 
-%% erase_modules:
-%% Erase the modules that might be there after interpreting the previous
-%% program.
+% erase_modules:
+% Erase the modules that might be there after interpreting the previous
+% program.
 
 erase_modules :-
         erase_module( interpreted ),
@@ -4642,10 +4642,10 @@ erase_modules :-
         ).
 
 
-%% create_modules:
-%% Create the modules.
-%% (In Sicstus this is a no-op: the module "interpreted" will be created
-%%  dynamically with the first assertion.)
+% create_modules:
+% Create the modules.
+% (In Sicstus this is a no-op: the module "interpreted" will be created
+%  dynamically with the first assertion.)
 
 create_modules :-
         \+ lp_system( eclipse ),
@@ -4678,8 +4678,8 @@ fill_interface_modules.
 
 
 
-%% process_file( + file name ):
-%% Load a program from this file, processing directives and queries.
+% process_file( + file name ):
+% Load a program from this file, processing directives and queries.
 
 % :- mode process_file( + ).
 
@@ -4709,8 +4709,8 @@ open_the_file( FileName, ProgStream ) :-
 
 
 
-%% process_input( + input stream ):
-%% Read the stream, processing directives and queries and storing clauses.
+% process_input( + input stream ):
+% Read the stream, processing directives and queries and storing clauses.
 
 % :- mode process_input( + ).
 
@@ -4731,13 +4731,13 @@ preliminary_processing( Term, VarDict, NewTerm, NewVarDict ) :-
 
 
 
-%% process_term( + term, + variable dictionary ):
-%% Process a term, which should be a directive, a query, a program clause or
-%% end_of_file.
-%% The variable dictionary is used for printing out the results of a query.
-%%
-%% NOTE: The superficial correctness of this term as a program item has already
-%%       been verified by "verify_program_item/2".
+% process_term( + term, + variable dictionary ):
+% Process a term, which should be a directive, a query, a program clause or
+% end_of_file.
+% The variable dictionary is used for printing out the results of a query.
+%
+% NOTE: The superficial correctness of this term as a program item has already
+%       been verified by "verify_program_item/2".
 
 % :- mode process_term( +, + ).
 
@@ -4775,8 +4775,8 @@ process_term( Clause, VarDict ) :-
         assertz_in_module( interpreted, Clause ).
 
 
-%% include_files( + list of file names ):
-%% Process the files whose names are in the list.
+% include_files( + list of file names ):
+% Process the files whose names are in the list.
 
 % :- mode include_files( + ).
 
@@ -4788,13 +4788,13 @@ include_files( List ) :-
 include_files( _ ).
 
 
-%% contiguity_check( + clause ):
-%% Make sure that each predicate that is defined by a clause is stored in the
-%% table "defined/1".
-%% If the clause adds to the definition of a predicate that is present in
-%% the table but is not the most recent entry (i.e., is not the predicate
-%% defined by the previous clause), then issue a warning about non-contiguous
-%% definitions.
+% contiguity_check( + clause ):
+% Make sure that each predicate that is defined by a clause is stored in the
+% table "defined/1".
+% If the clause adds to the definition of a predicate that is present in
+% the table but is not the most recent entry (i.e., is not the predicate
+% defined by the previous clause), then issue a warning about non-contiguous
+% definitions.
 
 contiguity_check( Clause ) :-
         get_clause_head( Clause, Head ),
@@ -4816,10 +4816,10 @@ contiguity_check( Clause ) :-
 
 
 
-%% ensure_dynamic( + clause ):
-%% Make sure the predicate of this clause is dynamic.
-%% known/1 is used to avoid multiple declarations.
-%% (NOTE: This is specific to Eclipse.)
+% ensure_dynamic( + clause ):
+% Make sure the predicate of this clause is dynamic.
+% known/1 is used to avoid multiple declarations.
+% (NOTE: This is specific to Eclipse.)
 
 % :- mode ensure_dynamic( + ).
 
@@ -4837,8 +4837,8 @@ ensure_dynamic( _ ).
 
 
 
-%% process_directive( + directive ):
-%% Process a directive.
+% process_directive( + directive ):
+% Process a directive.
 
 % :- mode process_directive( + ).
 
@@ -4883,9 +4883,9 @@ process_directive( Directive ) :-                % unsupported directive
         error( lines( [ 'Unknown directive:', [ (:- Directive), '.' ] ] ) ).
 
 
-%% process_query( + query, + variable dictionary ):
-%% Process a query, i.e., produce and display solutions until
-%% no more can be found.
+% process_query( + query, + variable dictionary ):
+% Process a query, i.e., produce and display solutions until
+% no more can be found.
 
 % :- mode process_query( +, + ).
 
@@ -4908,9 +4908,9 @@ execute_query( Query, yes ) :-
 execute_query( _, no ).
 
 
-%% show_result( + yes or no, + variable dictionary ).
-%% Write the bindings and "Yes", or just "No".
-%% NOTE: the newline is not written here, as it is not wanted in top/0.
+% show_result( + yes or no, + variable dictionary ).
+% Write the bindings and "Yes", or just "No".
+% NOTE: the newline is not written here, as it is not wanted in top/0.
 
 % :- mode show_result( +, + ).
 
@@ -4925,11 +4925,11 @@ show_result( no, _ ) :-
         write( Output, 'No' ).
 
 
-%% show_bindings( + variable dictionary ):
-%% Use the variable dictionary to show the results of a query.
-%% (Recall that the variable dictionary is in Eclipse format.)
-%% This version uses Ronald de Haan's equation generator
-%% (see output_equations.pl) to display cyclic terms.
+% show_bindings( + variable dictionary ):
+% Use the variable dictionary to show the results of a query.
+% (Recall that the variable dictionary is in Eclipse format.)
+% This version uses Ronald de Haan's equation generator
+% (see output_equations.pl) to display cyclic terms.
 
 % :- mode show_bindings( + ).
 
@@ -4962,7 +4962,7 @@ show_bindings( VarDict ) :-
         mk_variable_dictionary( p( HeadVar, EquationListSansParcel ), AuxVarDict
                               ),
         % Create equations for the top variables:
-        map( mk_eq, NewVarDict, TopEqs ),
+        dra_map( mk_eq, NewVarDict, TopEqs ),
         % Bind all uninstantiated variables to their names:
         bind_free_variables_to_names( NewVarDict ),         % names in query
         bind_free_variables_to_names( AuxVarDict ),         % names for new vars
@@ -5008,8 +5008,8 @@ show_equations( Equations, Output ) :-
 show_equations( _, _ ).
 
 
-%% check_not_builtin( + clause, + variable dictionary ):
-%% Raise a fatal error if this clause attempts to redefine a built-in predicate.
+% check_not_builtin( + clause, + variable dictionary ):
+% Raise a fatal error if this clause attempts to redefine a built-in predicate.
 
 check_not_builtin( Clause, VarDict ) :-
         get_clause_head( Clause, Head ),
@@ -5032,15 +5032,15 @@ check_not_builtin( _, _ ).
 
 
 
-%% top:
-%% Interactive mode.  Each term that is not a directive or a query is treated
-%% as an abbreviated query.  After displaying the results of each query read
-%% characters upto the nearest newline: if the first character is ";",
-%% backtrack to find alternative solutions.
-%% Exit upon encountering end of file.
-%% NOTE: When running on Sicstus, each term must come on a separate line: after
-%%       reading the term the rest of the line is ignored, to facilitate
-%%       interaction with the user when asking whether more answers are needed.
+% top:
+% Interactive mode.  Each term that is not a directive or a query is treated
+% as an abbreviated query.  After displaying the results of each query read
+% characters upto the nearest newline: if the first character is ";",
+% backtrack to find alternative solutions.
+% Exit upon encountering end of file.
+% NOTE: When running on Sicstus, each term must come on a separate line: after
+%       reading the term the rest of the line is ignored, to facilitate
+%       interaction with the user when asking whether more answers are needed.
 
 old_top :-
         std_input_stream( Input ),
@@ -5068,10 +5068,10 @@ old_top :-
         !.
 
 
-%% bare_to_query( + term, - term ):
-%% A term that is not end_of_file, quit, a directive, or a query is
-%% translated to a query.  (So, for example, there will be no check for
-%% singleton variables.)
+% bare_to_query( + term, - term ):
+% A term that is not end_of_file, quit, a directive, or a query is
+% translated to a query.  (So, for example, there will be no check for
+% singleton variables.)
 
 bare_to_query( Term, Term ) :-
         (
@@ -5088,9 +5088,9 @@ bare_to_query( Term, Term ) :-
 bare_to_query( Bare, (?- Bare) ).
 
 
-%% interactive_term( + term, + variable dictionary ):
-%% Process a term in interactive mode.
-%% The variable dictionary is used for printing out the results of a query.
+% interactive_term( + term, + variable dictionary ):
+% Process a term in interactive mode.
+% The variable dictionary is used for printing out the results of a query.
 
 % :- mode interactive_term( +, + ).
 
@@ -5119,8 +5119,8 @@ iq( Query, VarDict ) :-
         !.
 
 
-%% satisfied_with_query( + answer ):
-%% Give the user a chance to type ";" if the answer is "yes".
+% satisfied_with_query( + answer ):
+% Give the user a chance to type ";" if the answer is "yes".
 
 % :- mode satisfied_with_query( + ).
 
@@ -5136,9 +5136,9 @@ satisfied_with_query( no ) :-
         flush_output( Output ).
 
 
-%% user_accepts:
-%% Read input upto the nearest newline.
-%% If the first character is a semicolon, fail.
+% user_accepts:
+% Read input upto the nearest newline.
+% If the first character is a semicolon, fail.
 
 user_accepts :-
         std_input_stream( Input ),
@@ -5148,19 +5148,19 @@ user_accepts :-
         getline( Input, Line ),
         Line \= [ ';' | _ ].             % i.e., fail if 1st char is a semicolon
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
-%%%%%  Built-in predicates for the "dra" interpreter  %%%%
+%%  Built-in predicates for the "dra" interpreter  %
 
-%%% If the interpreted program invokes a built-in predicate, that predicate must
-%%% be declared in the table "is_builtin/1" below.
-%%% Every addition should be considered carefully: some built-ins might require
-%%% special treatment by the interpreter.
+% If the interpreted program invokes a built-in predicate, that predicate must
+% be declared in the table "is_builtin/1" below.
+% Every addition should be considered carefully: some built-ins might require
+% special treatment by the interpreter.
 
-%%  NOTE: findall/3 is not opaque to coinductive and tabled ancestors.
+%  NOTE: findall/3 is not opaque to coinductive and tabled ancestors.
 
-%%  NOTE: Just adding "!" won't do the trick, the main interpreter would
-%%        have to be modified substantially (but first: what are the semantics?)
+%  NOTE: Just adding "!" won't do the trick, the main interpreter would
+%        have to be modified substantially (but first: what are the semantics?)
 
 :-dynamic(is_builtin/1).
 :-dynamic(is_not_builtin/1).
@@ -5212,53 +5212,53 @@ is_builtin0(Pred) :- functor(Pred,F,_),atom_concat('$',_,F).
 is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ clause(is_tabled(Pred),true).
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
 
-%%%  The "set of coinductive hypotheses" for the "dra" interpreter.          %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (March 2009)           .              %%%
-%%%                                                                          %%%
-%%%  Last update: 12 June 2009.                                              %%%
-%%%                                                                          %%%
+%  The "set of coinductive hypotheses" for the "dra" interpreter.          %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (March 2009)           .              %
+%                                                                          %
+%  Last update: 12 June 2009.                                              %
+%                                                                          %
 
-%%% The "set of coinductive hypotheses" contains those ancestors of the current
-%%% goal that invoke coinductive predicates. It is used by solve/4, and factored
-%%% out as an abstract data type to facilitate changing to a more efficient
-%%% representation.
-%%%
-%%% The requirements are as follows:
-%%%
-%%%       (a) We must be able to check whether a coinductive goal G can be
-%%%           unified with one of its ancestors.
-%%%
-%%%       (b) Ancestors that might be unifiable with G must be available in
-%%%           reverse chronological order (i.e., the nearest ancestor first).
-%%%
-%%%       NOTE: Before checking for unifiability the goals must be passed
-%%%             through essence_hook/2.
-%%%
-%%%
-%%% The operations are:
-%%%
-%%%    empty_hypotheses( - stack of hypotheses ):
-%%%         Create an empty stack for coinductive hypotheses.
-%%%
-%%%    push_is_coinductive0( + goal, + stack of hypotheses , - new stack ):
-%%%         Push the coinductive goal onto the stack.
-%%%
-%%%    unify_with_coinductive_ancestor( + goal, + stack of hypotheses ):
-%%%         Fail if there is no unifiable coinductive ancestor on the stack. If
-%%%         there is one, succeed after performing the unification with the
-%%%         most recent such ancestor.  Upon failure undo the unification and
-%%%         unify with the next such ancestor, and so on (in reverse
-%%%         chronological order), failing after all unifiable ancestors are
-%%%         exhausted.
+% The "set of coinductive hypotheses" contains those ancestors of the current
+% goal that invoke coinductive predicates. It is used by solve/4, and factored
+% out as an abstract data type to facilitate changing to a more efficient
+% representation.
+%
+% The requirements are as follows:
+%
+%       (a) We must be able to check whether a coinductive goal G can be
+%           unified with one of its ancestors.
+%
+%       (b) Ancestors that might be unifiable with G must be available in
+%           reverse chronological order (i.e., the nearest ancestor first).
+%
+%       NOTE: Before checking for unifiability the goals must be passed
+%             through essence_hook/2.
+%
+%
+% The operations are:
+%
+%    empty_hypotheses( - stack of hypotheses ):
+%         Create an empty stack for coinductive hypotheses.
+%
+%    push_is_coinductive0( + goal, + stack of hypotheses , - new stack ):
+%         Push the coinductive goal onto the stack.
+%
+%    unify_with_coinductive_ancestor( + goal, + stack of hypotheses ):
+%         Fail if there is no unifiable coinductive ancestor on the stack. If
+%         there is one, succeed after performing the unification with the
+%         most recent such ancestor.  Upon failure undo the unification and
+%         unify with the next such ancestor, and so on (in reverse
+%         chronological order), failing after all unifiable ancestors are
+%         exhausted.
 
 
-% %%--------------  The minimal implementation:  --------------%%
-% %%
-% %% The set of coinductive hypotheses is just a list.
+% %--------------  The minimal implementation:  --------------%
+% %
+% % The set of coinductive hypotheses is just a list.
 %
 % % :- mode empty_hypotheses( - ).
 %
@@ -5278,17 +5278,17 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %         once( essence_hook( G, Essence ) ).
 
 
-%%--------------  An implementation that uses goal_table:  --------------%%
+%--------------  An implementation that uses goal_table:  --------------%
 
 %:- ensure_loaded( 'goal_table_in_tree' ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  A goal table implemented by a binary tree with lists.                   %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (February 2009).                      %%%
-%%%                                                                          %%%
-%%%  Last update: 16 May 2009.                                               %%%
-%%%                                                                          %%%
+%  A goal table implemented by a binary tree with lists.                   %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (February 2009).                      %
+%                                                                          %
+%  Last update: 16 May 2009.                                               %
+%                                                                          %
 
 
 % :- ensure_loaded( goal_table_in_open_tree ).
@@ -5297,40 +5297,40 @@ is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ cl
 %:- ensure_loaded( utilities ).
 %:- ensure_loaded( higher_order ).
 %:- ensure_loaded( tree ).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  Operations on binary trees.                                             %%%
-%%%                                                                          %%%
-%%%  This particular version                                                 %%%
-%%%   written by Feliks Kluzniak at UTD (May 2009).                          %%%
-%%%                                                                          %%%
-%%%  Last update: 16 May 2009.                                               %%%
-%%%                                                                          %%%
+%  Operations on binary trees.                                             %
+%                                                                          %
+%  This particular version                                                 %
+%   written by Feliks Kluzniak at UTD (May 2009).                          %
+%                                                                          %
+%  Last update: 16 May 2009.                                               %
+%                                                                          %
 
 %:- ensure_loaded( higher_order ).
 
 
-%%%
-%%%  The format of a node is:
-%%%       t( key, information, left subtree, right subtree )
-%%%  or
-%%%       empty.
+%
+%  The format of a node is:
+%       t( key, information, left subtree, right subtree )
+%  or
+%       empty.
 
 
-%%------------------------------------------------------------------------------
-%% empty_otree( +- tree ):
-%% Create an empty tree, or check that the provided tree is empty.
+%------------------------------------------------------------------------------
+% empty_otree( +- tree ):
+% Create an empty tree, or check that the provided tree is empty.
 
 empty_tree( empty ).
 
 
-%%------------------------------------------------------------------------------
-%% is_in_tree( + tree, + key, + comparison predicate, - information ):
-%% If the entry for this key is present in the tree, succeed and return the
-%% associated information; if it is not, fail.
-%% "comparison predicate" is a binary predicate that succeeds if the first
-%% argument is smaller than the second argument.  Any predicate that implements
-%% a total ordering will do.
+%------------------------------------------------------------------------------
+% is_in_tree( + tree, + key, + comparison predicate, - information ):
+% If the entry for this key is present in the tree, succeed and return the
+% associated information; if it is not, fail.
+% "comparison predicate" is a binary predicate that succeeds if the first
+% argument is smaller than the second argument.  Any predicate that implements
+% a total ordering will do.
 
 is_in_tree( Node, Key, LessPred, Info ) :-
         Node = t( K, I, L, R ),
@@ -5347,22 +5347,22 @@ is_in_tree( Node, Key, LessPred, Info ) :-
         ).
 
 
-%%------------------------------------------------------------------------------
-%% tree_add( + tree,
-%%           + key,
-%%           + information,
-%%           + comparison predicate,
-%%           + modification predicate,
-%%           - new tree
-%%         ):
-%% Make sure that the key is associated with this information in the tree.
-%% If the entry for this key is already present, modify the existing
-%% information.
-%% "less predicate" is the name of a binary predicate that succeeds if the first
-%% argument is smaller than the second argument.
-%% "modification predicate" is a predicate of three arguments that will add
-%% information from its second argument to its first argument, thus obtaining
-%% the third argument.
+%------------------------------------------------------------------------------
+% tree_add( + tree,
+%           + key,
+%           + information,
+%           + comparison predicate,
+%           + modification predicate,
+%           - new tree
+%         ):
+% Make sure that the key is associated with this information in the tree.
+% If the entry for this key is already present, modify the existing
+% information.
+% "less predicate" is the name of a binary predicate that succeeds if the first
+% argument is smaller than the second argument.
+% "modification predicate" is a predicate of three arguments that will add
+% information from its second argument to its first argument, thus obtaining
+% the third argument.
 
 tree_add( Node, Key, Info, LessPred, ModifyPred, NewNode ) :-
         (
@@ -5389,30 +5389,30 @@ tree_add( Node, Key, Info, LessPred, ModifyPred, NewNode ) :-
             )
         ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
-%%% In this implementation the goal table is a binary tree.
-%%% Each key is a predicate specification.
-%%% The information associated with a key is a list of goals
-%%% that invoke the predicate specified by the key.
+% In this implementation the goal table is a binary tree.
+% Each key is a predicate specification.
+% The information associated with a key is a list of goals
+% that invoke the predicate specified by the key.
 
 
-%%------------------------------------------------------------------------------
-%% empty_goal_table( +- goal table ):
-%% Create an empty goal table, or check that the provided table is empty.
+%------------------------------------------------------------------------------
+% empty_goal_table( +- goal table ):
+% Create an empty goal table, or check that the provided table is empty.
 
 empty_goal_table( Table ) :-
         empty_tree( Table ).
 
 
-%%------------------------------------------------------------------------------
-%% goal_table_member( + goal, + goal table ):
-%% Check whether any instantiations of the goal are in the table: if there are,
-%% unify the goal with the first one (backtracking will unify it with each of
-%% them in turn).
-%%
-%% NOTE: Using essence hook before comparison!
+%------------------------------------------------------------------------------
+% goal_table_member( + goal, + goal table ):
+% Check whether any instantiations of the goal are in the table: if there are,
+% unify the goal with the first one (backtracking will unify it with each of
+% them in turn).
+%
+% NOTE: Using essence hook before comparison!
 
 goal_table_member( Goal, Table ) :-
         functor( Goal, P, K ),
@@ -5422,12 +5422,12 @@ goal_table_member( Goal, Table ) :-
         once( essence_hook( G, Essence ) ).
 
 
-%%------------------------------------------------------------------------------
-%% is_a_variant_in_goal_table( + goal, + goal table ):
-%% Succeed iff a variant of this goal is present in the table.
-%% Do not modify the goal.
-%%
-%% NOTE: Using essence hook before comparison!
+%------------------------------------------------------------------------------
+% is_a_variant_in_goal_table( + goal, + goal table ):
+% Succeed iff a variant of this goal is present in the table.
+% Do not modify the goal.
+%
+% NOTE: Using essence hook before comparison!
 
 is_a_variant_in_goal_table( Goal, Table ) :-
         once( essence_hook( Goal, GoalEssence ) ),
@@ -5439,9 +5439,9 @@ is_a_variant_in_goal_table( Goal, Table ) :-
         !.
 
 
-%%------------------------------------------------------------------------------
-%% goal_table_add( + goal table, + goal, - new goal table ):
-%% Add this goal to the table.
+%------------------------------------------------------------------------------
+% goal_table_add( + goal table, + goal, - new goal table ):
+% Add this goal to the table.
 
 goal_table_add( Table, Goal, NewTable ) :-
         functor( Goal, P, K ),
@@ -5450,7 +5450,7 @@ goal_table_add( Table, Goal, NewTable ) :-
 %
 add_to_list( List, [ Item ], [ Item | List ] ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
 
@@ -5471,72 +5471,72 @@ push_is_coinductive0( Goal, Hyp, NewHyp ) :-
 unify_with_coinductive_ancestor( Goal, Hyp ) :-
         goal_table_member( Goal, Hyp ).
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%
 
-%%%  The "stack" data type for the "dra" interpreter.                        %%%
-%%%                                                                          %%%
-%%%  Written by Feliks Kluzniak at UTD (March 2009)           .              %%%
-%%%                                                                          %%%
-%%%  Last update: 12 June 2009.                                              %%%
-%%%                                                                          %%%
+%  The "stack" data type for the "dra" interpreter.                        %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (March 2009)           .              %
+%                                                                          %
+%  Last update: 12 June 2009.                                              %
+%                                                                          %
 
-%%% The "stack" is the chain of tabled ancestors used by solve/4.  It is
-%%% factored out as an abstract data type to facilitate changing to a more
-%%% efficient representation.
-%%%
-%%% The requirements are as follows:
-%%%
-%%%       (a) It must be possible to check whether a tabled goal G and one of
-%%%           its ancestors are variants. There can be at most one such
-%%%           ancestor, call it A.
-%%%
-%%%       (b) We must be able to identify the "current clause" that was used by
-%%%           A and that led to the creation of G.
-%%%
-%%%       (c) We must be able to identify all the tabled goals that are
-%%%           descendants of A and ancestors of G (i.e., all tabled goals
-%%%           "between" G and A).
-%%%
-%%%       NOTE: Before checking for variance the goals must be passed
-%%%             through essence_hook/2.
-%%%
-%%%
-%%% Information about an ancestor goal is kept in the form of a triple:
-%%%    triple( goal, index, clause )
-%%% where
-%%%    goal    is the (current instantiation of the) goal;
-%%%    index   is the unique index of the goal;
-%%%    clause  is the clause that is currently used by the goal (it has been
-%%%               instantiated by matching with the goal in its original form,
-%%%               but does not share variables with the goal).
-%%%
-%%%
-%%% The operations are:
-%%%
-%%%    empty_stack( - stack ):
-%%%            Create an empty stack.
-%%%
-%%%    push_is_tabled( + goal, + index, + clause, + stack, - new stack ):
-%%%            where the first three arguments are the constitutive elements of
-%%%            a triple.
-%%%            Push the triple goal onto the stack.
-%%%
-%%%    is_variant_of_ancestor( + goal,
-%%%                            + stack,
-%%%                            - the triple with the variant ancestor,
-%%%                            - goals between goal and the variant ancestor
-%%%                          )
-%%%         Succeed if the tabled goal is a variant of some goal in the stack.
-%%%         If successful, return the first such member and the list of
-%%%         intervening triples.
+% The "stack" is the chain of tabled ancestors used by solve/4.  It is
+% factored out as an abstract data type to facilitate changing to a more
+% efficient representation.
+%
+% The requirements are as follows:
+%
+%       (a) It must be possible to check whether a tabled goal G and one of
+%           its ancestors are variants. There can be at most one such
+%           ancestor, call it A.
+%
+%       (b) We must be able to identify the "current clause" that was used by
+%           A and that led to the creation of G.
+%
+%       (c) We must be able to identify all the tabled goals that are
+%           descendants of A and ancestors of G (i.e., all tabled goals
+%           "between" G and A).
+%
+%       NOTE: Before checking for variance the goals must be passed
+%             through essence_hook/2.
+%
+%
+% Information about an ancestor goal is kept in the form of a triple:
+%    triple( goal, index, clause )
+% where
+%    goal    is the (current instantiation of the) goal;
+%    index   is the unique index of the goal;
+%    clause  is the clause that is currently used by the goal (it has been
+%               instantiated by matching with the goal in its original form,
+%               but does not share variables with the goal).
+%
+%
+% The operations are:
+%
+%    empty_stack( - stack ):
+%            Create an empty stack.
+%
+%    push_is_tabled( + goal, + index, + clause, + stack, - new stack ):
+%            where the first three arguments are the constitutive elements of
+%            a triple.
+%            Push the triple goal onto the stack.
+%
+%    is_variant_of_ancestor( + goal,
+%                            + stack,
+%                            - the triple with the variant ancestor,
+%                            - goals between goal and the variant ancestor
+%                          )
+%         Succeed if the tabled goal is a variant of some goal in the stack.
+%         If successful, return the first such member and the list of
+%         intervening triples.
 
 
-% %%--------------  The minimal implementation:  --------------%%
-% %%
-% %% The stack is just a list of triples.
+% %--------------  The minimal implementation:  --------------%
+% %
+% % The stack is just a list of triples.
 %
 % % :- mode empty_stack( - ).
 %
@@ -5559,12 +5559,12 @@ unify_with_coinductive_ancestor( Goal, Hyp ) :-
 %         !.
 
 
-%%--------------  An implementation that uses goal_table:  --------------%%
-%%
-%% The goal table is used to speed up the check whether there is a variant
-%% ancestor.  We still need a standard stack for getting the intermediate tabled
-%% goals.  So the "stack" is represented by
-%%    tstack( stack, goal table )
+%--------------  An implementation that uses goal_table:  --------------%
+%
+% The goal table is used to speed up the check whether there is a variant
+% ancestor.  We still need a standard stack for getting the intermediate tabled
+% goals.  So the "stack" is represented by
+%    tstack( stack, goal table )
 
 
 %:- ensure_loaded( 'goal_table_in_tree' ).
@@ -5597,14 +5597,14 @@ is_variant_of_ancestor( Goal,
         are_essences_variants( Goal, G ),
         !.
 
-%-------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 % If a file name has no extension, add ".tlp"
 
 default_extension( '.tlp' ).                              % invoked by top_level
 
 
-%% Initialization of tables:
+% Initialization of tables:
 
 :- dynamic (is_coinductive0)/1 .
 :- dynamic (is_coinductive1)/1 .
@@ -5641,16 +5641,16 @@ initialise :-                                             % invoked by top_level
         writeln( Version ))),!.
 
 
-%% Checking consistency:
+% Checking consistency:
 
 program_loaded :-                                         % invoked by top_level
         check_consistency.
 
 
-%% check_consistency:
-%% Produce a warning if predicates were declared but not defined (this may well
-%% be due to a "tabled" directive giving the wrong arity), or if tabled/
-%% coinductive predicates have been declared as "suppport".
+% check_consistency:
+% Produce a warning if predicates were declared but not defined (this may well
+% be due to a "tabled" directive giving the wrong arity), or if tabled/
+% coinductive predicates have been declared as "suppport".
 
 check_consistency :-
         is_tabled( Head ),
@@ -5686,14 +5686,14 @@ check_consistency.
 
 
 
-%%%%  Hooks
+%  Hooks
 
-%% Declarations of hook predicates (for the top level):
+% Declarations of hook predicates (for the top level):
 
 hook_predicate( essence_hook( _, _ ) ).
 
 
-%% The default essence_hook:
+% The default essence_hook:
 
 :- dynamic essence_hook/2.
 
@@ -5702,7 +5702,7 @@ essence_hook( T, T ).    % default, may be overridden by the interpreted program
 
 
 
-%%%%%  Administration  %%%%%
+%  Administration  %
 
 :- op( 1010, fy, coinductive0  ).    % allow  ":- coinductive0 p/k ."
 :- op( 1010, fy, coinductive1 ).    % allow  ":- coinductive1 p/k ."
@@ -5715,7 +5715,7 @@ essence_hook( T, T ).    % default, may be overridden by the interpreted program
 
 
 
-%% The legal directives (check external form only).  (Used by the top level.)
+% The legal directives (check external form only).  (Used by the top level.)
 
 
 legal_directive((coinductive( _))  ).
@@ -5742,7 +5742,7 @@ legal_directive(P):-compound(P),functor(P,F,1),property_pred(F,_).
 
 fresh_multifile(X):- current_module(M), must(M \= user), asserta_new( ((user:X) :- (M:X))).
 
-%% Check and process the legal directives (invoked by top_level)
+% Check and process the legal directives (invoked by top_level)
 
 source_context(F):- prolog_load_context(source,F).
 
@@ -5815,8 +5815,8 @@ add_pattern(Pattern, + DBF):- DB=..[DBF,Pattern],asserta_if_new( DB ).
 add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],assert_if_new( DB ).
 
 
-%% will_trace( + list of patterns ):
-%% Store the patterns in tracing/1:
+% will_trace( + list of patterns ):
+% Store the patterns in tracing/1:
 
 will_trace( Patterns ) :-
         member( Pattern, Patterns ),
@@ -5826,10 +5826,10 @@ will_trace( Patterns ) :-
 will_trace( _ ).
 
 
-%% print_required_answers( + goal, + pattern ):
-%% Print the tabled answers that are associated with this goal and are unifiable
-%% with this pattern.  If the goal is a variable, go through all the entries in
-%% the table.
+% print_required_answers( + goal, + pattern ):
+% Print the tabled answers that are associated with this goal and are unifiable
+% with this pattern.  If the goal is a variable, go through all the entries in
+% the table.
 
 print_required_answers( Var, Pattern ) :-
         var( Var ),
@@ -5858,9 +5858,9 @@ print_required_answers( Goal, Pattern ) :-
 print_required_answers( _, _ ).
 
 
-%% remove_variants( + list, - reduced list ):
-%% Remove each member of the list that is a variant of
-%% a member that precedes it.  No need to preserve the order.
+% remove_variants( + list, - reduced list ):
+% Remove each member of the list that is a variant of
+% a member that precedes it.  No need to preserve the order.
 
 remove_variants( List, ReducedList ) :-
         remove_variants_( List, [], ReducedList ).
@@ -5885,12 +5885,12 @@ remove_variants_( [ H | T ], Accumulator, RL ) :-
 
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
 
-%%%%%  The interpreter  %%%%%
+%%  The interpreter  %%
 
 
-%% Execute a query.
+% Execute a query.
 
 % :- mode query( + ).
 
@@ -5929,7 +5929,7 @@ solve_exit_query:-
             getval( number_of_answers, NAns2 ),
             setval( old_table_size, NAns2 ).
 
-%% Print information about the number of steps and the answer table.
+% Print information about the number of steps and the answer table.
 
 print_statistics :-
         std_output_stream( Output ),
@@ -5956,33 +5956,33 @@ plural( _     , 1 ) :-  !.
 plural( Output, N ) :-  N \= 1,  write( Output, 's' ).
 
 
-%% solve(Cutted, + sequence of goals,
-%%        + stack,
-%%        + coinductive hypotheses,
-%%        + level
-%%      ):
-%% Solve the sequence of goals, maintaining information about the current chain
-%% of tabled ancestors(stack) and the chain of coinductive0 ancestors
-%%(coinductive hypotheses).  The level is the level of recursion, and is used
-%% only for tracing.
-%%
-%% Each link in the chain of tabled ancestors is of the form
-%%    triple( goal, index, clause )
-%% where
-%%    goal    is the (current instantiation of the) goal;
-%%    index   is the unique index of the goal (every goal that is stacked starts
-%%               out as a pioneer!)
-%%    clause  is the clause that is currently used by the goal (it has been
-%%               instantiated by matching with the goal in its original form,
-%%               but does not share variables with the goal).
-%%
-%% NOTE: The set of coinductive hypotheses and the stack of tabled ancestors
-%%       have been factored out (see files "dra_coinductive_hypotheses.pl" and
-%%       "dra_stack.pl" 
-%%       )
-%%   The representations may have changed (to enable
-%%       faster access, so the comments in this file ("chain of ancestors" etc.)
-%%       might no longer be quite accurate. )
+% solve(Cutted, + sequence of goals,
+%        + stack,
+%        + coinductive hypotheses,
+%        + level
+%      ):
+% Solve the sequence of goals, maintaining information about the current chain
+% of tabled ancestors(stack) and the chain of coinductive0 ancestors
+%(coinductive hypotheses).  The level is the level of recursion, and is used
+% only for tracing.
+%
+% Each link in the chain of tabled ancestors is of the form
+%    triple( goal, index, clause )
+% where
+%    goal    is the (current instantiation of the) goal;
+%    index   is the unique index of the goal (every goal that is stacked starts
+%               out as a pioneer!)
+%    clause  is the clause that is currently used by the goal (it has been
+%               instantiated by matching with the goal in its original form,
+%               but does not share variables with the goal).
+%
+% NOTE: The set of coinductive hypotheses and the stack of tabled ancestors
+%       have been factored out (see files "dra_coinductive_hypotheses.pl" and
+%       "dra_stack.pl" 
+%       )
+%   The representations may have changed (to enable
+%       faster access, so the comments in this file ("chain of ancestors" etc.)
+%       might no longer be quite accurate. )
 
 :- meta_predicate  solve(+, :, +, +, + ).
 :- meta_predicate solve4meta(+, +, :, +, +, + ).
@@ -6408,11 +6408,11 @@ solve2t(Cutted, M:Goal, Stack, Hyp, Level ) :-
 
 
 
-%% get_tabled_if_old_first( + goal, + goal index,
-%%                          + traces label, + traces level
-%%                        ):
-%% If the goal has been declared as "old_first", produce all the tabled answers,
-%% remembering them in "result", then succeed; otherwise just fail.
+% get_tabled_if_old_first( + goal, + goal index,
+%                          + traces label, + traces level
+%                        ):
+% If the goal has been declared as "old_first", produce all the tabled answers,
+% remembering them in "result", then succeed; otherwise just fail.
 
 % :- mode get_tabled_if_old_first( +, +, +, + ).
 
@@ -6422,9 +6422,9 @@ get_tabled_if_old_first( Goal, Index, Label, Level ) :-
         new_result_or_fail( Index, Goal ).     % i.e., make a note of the answer
 
 
-%% get_all_tabled_answers( + goal, + goal index, + traces label, + traces level ):
-%% Return (one by one) all the answers that are currently tabled for this goal.
-%% (Each answer is returned by appropriately instantiating the goal.)
+% get_all_tabled_answers( + goal, + goal index, + traces label, + traces level ):
+% Return (one by one) all the answers that are currently tabled for this goal.
+% (Each answer is returned by appropriately instantiating the goal.)
 
 % :- mode get_all_tabled_answers( +, +, +, + ).
 
@@ -6433,12 +6433,12 @@ get_all_tabled_answers( Goal, Index, Label, Level ) :-
         trace_success( Label, Goal, Index, Level ).
 
 
-%% get_remaining_tabled_answers( + goal,        + goal index,
-%%                               + traces label, + traces level
-%%                             ):
-%% Return (one by one) all the answers that are currently tabled for this goal
-%% but are not present in its "result" entries.
-%% (Each answer is returned by appropriately instantiating the goal.)
+% get_remaining_tabled_answers( + goal,        + goal index,
+%                               + traces label, + traces level
+%                             ):
+% Return (one by one) all the answers that are currently tabled for this goal
+% but are not present in its "result" entries.
+% (Each answer is returned by appropriately instantiating the goal.)
 
 % :- mode get_remaining_tabled_answers( +, +, +, + ).
 
@@ -6449,10 +6449,10 @@ get_remaining_tabled_answers( Goal, Index, Label, Level ) :-
 
 
 
-%% use_clause(+ module, + goal, - body ):
-%% Warn and fail if the goal invokes a non-existing predicate.  Otherwise
-%% nondeterministically return the appropriately instantiated body of each
-%% clause whose head matches the goal.
+% use_clause(+ module, + goal, - body ):
+% Warn and fail if the goal invokes a non-existing predicate.  Otherwise
+% nondeterministically return the appropriately instantiated body of each
+% clause whose head matches the goal.
 
 use_clause(M, Goal, Body ) :- 
    predicate_property(M:Goal,number_of_clauses(_)),!, clause(M:Goal, Body ), Body \= (!,query(Goal)).
@@ -6488,10 +6488,10 @@ use_clause_old(M, Goal, Body ) :-
 
 
 
-%% compute_fixed_point( + pioneer goal, + its index, + stack, + level ):
-%% Solve the goal by associated rules from "looping_alternative", succeeding
-%% with each new answer (and tabling it).  Fail when all the possible results
-%% are exhausted.
+% compute_fixed_point( + pioneer goal, + its index, + stack, + level ):
+% Solve the goal by associated rules from "looping_alternative", succeeding
+% with each new answer (and tabling it).  Fail when all the possible results
+% are exhausted.
 
 % :- mode compute_fixed_point( +, +, +, +, + ).
 
@@ -6529,9 +6529,9 @@ compute_fixed_point_( Goal, Index, Stack, Hyp, Level, NAns ) :-
 
 
 
-%% suppress_pioneers_on_list( + list of triples, + level for tracing ):
-%% If any of the triples describe goals that are pioneers, make sure those goals
-%% cease to be pioneers.
+% suppress_pioneers_on_list( + list of triples, + level for tracing ):
+% If any of the triples describe goals that are pioneers, make sure those goals
+% cease to be pioneers.
 
 suppress_pioneers_on_list( Triples, Level ) :-
         member( triple( M, MI, _ ), Triples ),
@@ -6544,9 +6544,9 @@ suppress_pioneers_on_list( _, _ ).
 
 
 
-%% rescind_pioneer_status( + index ):
-%% Remove auxiliary table entries for the pioneer with this index.
-%% Specifically, clean up "pioneer", "loop" and "looping_alternative".
+% rescind_pioneer_status( + index ):
+% Remove auxiliary table entries for the pioneer with this index.
+% Specifically, clean up "pioneer", "loop" and "looping_alternative".
 
 % :- mode rescind_pioneer_status( + ).
 
@@ -6556,10 +6556,10 @@ rescind_pioneer_status( Index ) :-
         delete_looping_alternatives( Index ).
 
 
-%% complete_cluster( + index of a pioneer goal, + level for tracing ):
-%% If the goal has an associated cluster, make sure all the goals in the cluster
-%% are marked as completed.
-%% Recall that a cluster may consist of a number of "loops".
+% complete_cluster( + index of a pioneer goal, + level for tracing ):
+% If the goal has an associated cluster, make sure all the goals in the cluster
+% are marked as completed.
+% Recall that a cluster may consist of a number of "loops".
 
 % :- mode complete_cluster( +, + ).
 
@@ -6573,10 +6573,10 @@ complete_cluster( _, _ ).
 
 
 
-%% extract_goals( + list of triples of goals, indices and clauses,
-%%                - list of goals
-%%              ):
-%% Filter away the other info in each triple, return list of goals only.
+% extract_goals( + list of triples of goals, indices and clauses,
+%                - list of goals
+%              ):
+% Filter away the other info in each triple, return list of goals only.
 
 % :- mode extract_goals( +, - ).
 
@@ -6589,15 +6589,15 @@ extract_goals( [ triple( G, _, _ ) | Ts ], [ G | Gs ] ) :-
 
 
 
-%%-----  The tables: access and modification  -----
+%-----  The tables: access and modification  -----
 
-%% NOTE: See file dra_table_assert.pl or dra_table_record.pl for manipulation of
-%%       the tables "answer", "result", "pioneer", "loop",
-%%       "looping_alternative" and "completed".
+% NOTE: See file dra_table_assert.pl or dra_table_record.pl for manipulation of
+%       the tables "answer", "result", "pioneer", "loop",
+%       "looping_alternative" and "completed".
 
 
-%% get_unique_index( - ):
-%% Produce a new unique index.
+% get_unique_index( - ):
+% Produce a new unique index.
 
 % :- mode get_unique_index( - ).
 
@@ -6609,12 +6609,12 @@ get_unique_index( Index ) :-
 
 
 
-%%-----  Custom-tailored utilities  -----
+%-----  Custom-tailored utilities  -----
 
 
-%% are_essences_variants( + term, + term ):
-%% Are both the terms variants of each other after filtering through
-%% essence_hook?
+% are_essences_variants( + term, + term ):
+% Are both the terms variants of each other after filtering through
+% essence_hook?
 
 % :- mode are_essences_variants( +, + ).
 
@@ -6625,10 +6625,10 @@ are_essences_variants( T1, T2 ) :-
 
 
 
-%% trace_entry( + label, + goal, + goal index, + level ):
-%% If the goal matches one of the traced patterns, print out a traces line about
-%% entering the goal (at this level, with this label).
-%% (The goal index is not always relevant: "?" is used for those cases.)
+% trace_entry( + label, + goal, + goal index, + level ):
+% If the goal matches one of the traced patterns, print out a traces line about
+% entering the goal (at this level, with this label).
+% (The goal index is not always relevant: "?" is used for those cases.)
 
 trace_entry( Label, Goal, Index, Level ) :-
         is_tracing( Goal ),
@@ -6642,12 +6642,12 @@ trace_entry( Label, Goal, Index, Level ) :-
 trace_entry( _, _, _, _ ).
 
 
-%% trace_success( + label, + goal, + goal index, + level ):
-%% If the goal matches one of the traced patterns, print out a traces line about
-%% success of the goal (at this level, with this label).  Moreover, just before
-%% backtracking gets back to the goal, print out a traces line about retrying the
-%% goal.
-%% (The goal index is not always relevant: "?" is used for those cases.)
+% trace_success( + label, + goal, + goal index, + level ):
+% If the goal matches one of the traced patterns, print out a traces line about
+% success of the goal (at this level, with this label).  Moreover, just before
+% backtracking gets back to the goal, print out a traces line about retrying the
+% goal.
+% (The goal index is not always relevant: "?" is used for those cases.)
 
 trace_success( Label, Goal, Index, Level ) :-
         is_tracing( Goal ),
@@ -6669,10 +6669,10 @@ trace_success( Label, Goal, Index, Level ) :-
 trace_success( _, _, _, _ ).
 
 
-%% trace_failure( + label, + goal, + goal index, + level ):
-%% If the goal matches one of the traced patterns, print out a traces line about
-%% failure of the goal (at this level, with this label).
-%% (The goal index is not always relevant: "?" is used for those cases.)
+% trace_failure( + label, + goal, + goal index, + level ):
+% If the goal matches one of the traced patterns, print out a traces line about
+% failure of the goal (at this level, with this label).
+% (The goal index is not always relevant: "?" is used for those cases.)
 
 trace_failure( Label, Goal, Index, Level ) :-
         is_tracing( Goal ),
@@ -6686,10 +6686,10 @@ trace_failure( Label, Goal, Index, Level ) :-
 trace_failure( _, _, _, _ ).
 
 
-%% trace_other( + label, + goal, + goal index, + level ):
-%% If the goal matches one of the traced patterns, print out a traces line about
-%% this goal (at this level, with this label).
-%% (The goal index is not always relevant: "?" is used for those cases.)
+% trace_other( + label, + goal, + goal index, + level ):
+% If the goal matches one of the traced patterns, print out a traces line about
+% this goal (at this level, with this label).
+% (The goal index is not always relevant: "?" is used for those cases.)
 
 trace_other( Label, Goal, Index, Level ) :-
         is_tracing( Goal ),
@@ -6702,7 +6702,7 @@ trace_other( Label, Goal, Index, Level ) :-
 trace_other( _, _, _, _ ).
 
 
-%% Auxiliaries for tracing:
+% Auxiliaries for tracing:
 
 write_level( Level ) :-
         std_output_stream( Output ),
@@ -6730,9 +6730,9 @@ write_goal_number( Index ) :-
 
 
 
-%% optional_trace( + label, + goal, + term, + level ):
-%% If the goal matches one of the traced patterns, print out a traces line with
-%% this label, the goal and the term.
+% optional_trace( + label, + goal, + term, + level ):
+% If the goal matches one of the traced patterns, print out a traces line with
+% this label, the goal and the term.
 
 optional_trace( Label, Goal, Term, Level ) :-
         is_tracing( Goal ),
@@ -6750,8 +6750,8 @@ optional_trace( _, _, _, _ ).
 
 
 
-%% fatal_error( + message, + stack ):
-%% Display the message and stack, then abort.
+% fatal_error( + message, + stack ):
+% Display the message and stack, then abort.
 
 % :- mode fatal_error( +, + ).
 
@@ -6771,7 +6771,7 @@ show_stack( Stream, Stack ) :-
 
 show_stack( _ ).
 
-%%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
 
 % c + r = 7.949 seconds
 
