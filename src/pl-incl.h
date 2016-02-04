@@ -1963,7 +1963,7 @@ size N on the global stack AND  can   use  bindConst()  to bind it to an
 (attributed) variable.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#define BIND_GLOBAL_SPACE (8)
+#define BIND_GLOBAL_SPACE (10)
 #define BIND_TRAIL_SPACE (6)
 #define hasGlobalSpace(n) \
 	(likely(gTop+(n)+BIND_GLOBAL_SPACE <= gMax) && \
@@ -2037,6 +2037,8 @@ typedef struct
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
                                     as the result of unification.                                    
                                  */
+
+#define META_DISABLE_SWAP   0x0200 /* check attvars for undo hooks (perfomance checking) */
 
 #define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
 #define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */

@@ -502,6 +502,7 @@ A posix			"posix"
 A post_unify		"post_unify"
 A powm			"powm"
 A predicate_indicator	"predicate_indicator"
+A pre_unify		"pre_unify"
 A predicates		"predicates"
 A print			"print"
 A print_message		"print_message"
@@ -948,9 +949,10 @@ F plus			1
 F plus			2
 F popcount		1
 F portray		1
-F post_unify	3
+F post_unify		4
 F position		1
 F powm			3
+F pre_unify		4
 F print			1
 F print_message		2
 F priority		1

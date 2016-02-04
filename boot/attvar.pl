@@ -43,40 +43,6 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-%%	unify(Atts, Next, Var, Value)
-%
-%	Called from the kernel if assignments will be made to attributed
-%	variables.
-%
-%       1) Call pre_unify hooks for Var
-%       2) Call pre_unify hooks for Value (If attvar)
-%       3) Bind the Var with Value
-%       4) Check on post_unify hooks on Var
-%		5) Finally call post binding closures/hooks for Var.
-%       6) Does not implicitly run post hooks on Value
-%
-
-:- meta_predicate(system:unify(+,0,+,+)).
-system:unify(Atts, Next, Var, Value):- fail,
-    format(string(VarId),'~q',[Var]),
-   %  metaflag_set(Var,0x0060), % no_wake + no_inherit
-     (attvar(Var)-> 
-			(put_attr(Var,'$in_unify',VarId),
-			   user:pre_unify(Atts,true, Var, Value), Goals= true,
-			    ((attvar(Var),get_attr(Var,'$in_unify',NextId))->
-			      (del_attr(Var,'$in_unify'),
-			      (NextId==VarId->'attv_unify'(Var,Value);true));true)
-			   ); true=Goals),
-     user:post_unify(Atts,(Next,Goals), Var, Value).
-     
-
-system:unify(Atts, Next, Var, Value):-
- metaflag_set(Var,0x0860), % disable+no_wake+no_inherit
- (attvar(Var)->
- user:pre_unify(Atts,'attv_unify'(Var,Value), Var, Value); true),
-     user:post_unify(Atts, Next, Var, Value).
-
-
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
@@ -93,15 +59,13 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 %	has an attribute. During this process,   modules  may remove and
 %	change each others attributes.
 %
-%       when a callee removes the '$in_unify' property we succeed unconditionally
+%       If a callee removes the '$in_unify' property we succeed unconditionally
 
 /*
 
-:- meta_predicate(system:pre_unify(+,0,+,+,+,-)).
-
 system:pre_unify(att(Module, _AttVal, Rest), Next, VarId, Var, Value,  (goals_with_module(Goals,Module),G)):- 
             /* For XSB compat */
-	get_attr(Var,'$in_unify',CookieM),VarId==CookieM, 
+	
 	!,
 	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
 	system:pre_unify(Rest, Next,VarId, Var, Value, G).
@@ -111,20 +75,26 @@ system:pre_unify(_, Next, _, Var, Value, Goals):-    set_prolog_flag(access_leve
 	system:peer_unify(Atts,Next,Value, Var, Goals).
 
 system:pre_unify(_, Next, _, _, _, Next).
+
 */
-   
+
+
 :- meta_predicate(system:pre_unify(+,0,+,+)).
-system:pre_unify(att(Module, _AttVal, Rest), Next, Var, Value):- !,
-        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest, Next, Var, Value),
-        goals_with_module(Goals,Module).
 
-system:pre_unify(_, Next,Var, Value):- fail, % for leq
-        attvar(Value), get_attrs(Value,Atts),!,
-        system:peer_unify(Atts,Next,Value, Var, Goals),
-        Goals.
+system:pre_unify(_,Next,Var,Value):- nonvar(Var),!,Var=Value,call(Next).
+system:pre_unify(Atts,Next,Var,Value):- 
+     format(string(VarId),'~q',[Var]),
+     put_attr(Var,'$in_unify',VarId),!,
+     pre_unify(Atts,Next,Var,Value,VarId).
 
-system:pre_unify(_, Next,_, _):- call(Next).
+system:verify_attributes(_Var, _Value, []).
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+system:pre_unify(_, Next, Var, Value,VarId):- \+ ((get_attr(Var,'$in_unify',CookieM),VarId==CookieM)),!, call(Next).
+system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarId):- !,
+        Module:verify_attributes(Var, Value, Goals),
+        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarId).
+system:pre_unify([], Next, Var, Value,VarId):- attv_unify(Var,Value),call(Next).
+        
 
                    /*******************************
                    *	  PEER UNIFY HOOKS	*
@@ -143,12 +113,13 @@ system:peer_unify(_,Next,_, _, Next).
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
+system:attr_unify_hook(_AttVal, _Value).
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
-system:post_unify(att(Module, AttVal, Rest), Next, Var, Value) :- !,
-	ifdef(Module:attr_unify_hook(AttVal, Value),true),
-	system:post_unify(Rest, Next, Var, Value).
-system:post_unify(_,Next,_,_):- Next.
+system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):-!,
+        Module:attr_unify_hook(AttVal, Value),
+        post_unify(Rest, Next, Var, Value).
+system:post_unify(_,Next,_Var,_Value):- call(Next).
 
 
 
@@ -479,13 +450,3 @@ call_goals([G|Gs],M):-
 	M:call(G),
 	call_goals(Gs,M).
 
-system:verify_attributes(_Var, _Value, []).
-
-
-
-system:attr_unify_hook(_Att, _Value).
-
-system:post_unify(att(Module, AttVal, Rest), Next, Value ):-!,
-        Module:attr_unify_hook(AttVal, Value),
-        post_unify(Rest, Next, Value).
-system:post_unify(_,Next,_):- call(Next).

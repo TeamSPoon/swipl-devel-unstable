@@ -222,6 +222,7 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 void
 assignAttVar(Word av, Word value, int flags ARG_LD)
 { mark m;
+
   
   assert(isAttVar(*av));
   assert(!isRef(*value));
@@ -230,14 +231,27 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
 
-  flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+  flags |= METATERM_GLOBAL_FLAGS;
+
+  if (!IS_META(DISABLE_SWAP))
+  if( isAttVar(*value) )
+  { if(av==value) return;
+    if (av < value) 
+    { Word tmp = value;
+       value = av;
+       av = tmp;
+    }
+  }
+
+  flags |= getMetaFlags(av, flags PASS_LD);
 
   bool did_wake = FALSE;
+
 
   if( !(flags& ATTV_ASSIGNONLY) )
    if(!(IS_META(NO_WAKEUP))) 
    { did_wake = TRUE;
-     registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
+     registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
   }
 
  if ( (flags& ATTV_WAKEBINDS) && did_wake )
@@ -255,8 +269,9 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
      return;
 
 // if( !(flags& ATTV_ASSIGNONLY) ) return;
-  if ( isAttVar(*value) )
+ if ( isAttVar(*value) )
  { 
+     registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
     
     if ( av == value) return;
 
@@ -267,10 +282,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
     if (av > value)
     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
-    *av = makeRef(value);
+        *av = makeRef(value);
     } else
     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av -> value\n"));
-      *value = makeRef(av);
+        *value = makeRef(av);
     }
     
  } else if ( isVar(*value) )  /* JW: Does this happen? */ 
@@ -281,14 +296,15 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
          { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Upgraging to an ATTVAR ref\n"));
            make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
            deRef(value);
-           *value = *valPAttVar(*av);
-  } else
+           *valPAttVar(*value) = *valPAttVar(*av);
+         } else
          { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
            *av = makeRef(value);			            
          }
 	 } else
      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
-  
+
+         registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
          if(IS_META(KEEP_BOTH)) return;
 
          if(!IS_META(PEER_NO_TRAIL))
@@ -298,8 +314,11 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
          { *value = makeRef(av);
          }
      }
-  } else
-    *av = *value;
+  } else {
+      registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+      *av = *value;
+  }
+
 
 }
 
