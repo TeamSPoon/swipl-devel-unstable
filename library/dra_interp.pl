@@ -28,8 +28,8 @@
     the GNU General Public License.
 
 */
-
-:-  module(dra,[]).
+:-  module(dra_interp,[]).
+:-  use_module(library(logicmoo_utils)).
 /*
    % NOTICE:    %%%%% %%%%%%%%%%%
    %                                                                      %
