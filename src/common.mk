@@ -57,7 +57,13 @@ PLLIBS= MANUAL helpidx.pl help.pl explain.pl sort.pl \
 	solution_sequences.pl iostream.pl dicts.pl yall.pl
 
 CLP=	bounds.pl clp_events.pl clp_distinct.pl simplex.pl clpfd.pl clpb.pl
-DRA=	dra_interp.pl  dra.pl  dra_table_assert.pl  dra_table_record.pl
+
+TABLING=assoc.pl double_linked_list.pl dra.pl dra_table_record.pl \
+        globalWorklist.pl table_datastructure.pl table_print.pl tabling.pl testlib.pl utils.pl \
+	batched-worklist.pl dra_interp.pl dra_table_assert.pl gensymlib.pl \
+	README.md table_link_manager.pl tabling_library testlib2.pl trie.pl variantlib.pl
+
+
 DCG=	basics.pl
 
 # Dialect library files
