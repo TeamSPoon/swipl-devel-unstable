@@ -25,6 +25,14 @@
 #include "pl-incl.h"
 #include "../pl-codelist.h"
 
+Word 
+valPHandle(term_t r ARG_LD)
+{ Word p = valTermRef(r);
+
+  deRef(p);
+  return p;
+}
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 codes_or_chars_to_buffer(term_t l, unsigned int flags, int wide, CVT_code *status)
 

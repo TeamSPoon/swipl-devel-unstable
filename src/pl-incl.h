@@ -156,6 +156,13 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
+
+#define O_METATERM 1
+/*#undef O_METATERM*/
+
+#define O_UNDO_HOOK 1
+/*#undef O_UNDO_HOOK*/
+
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1
 #endif
@@ -1956,7 +1963,7 @@ size N on the global stack AND  can   use  bindConst()  to bind it to an
 (attributed) variable.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-#define BIND_GLOBAL_SPACE (7)
+#define BIND_GLOBAL_SPACE (8)
 #define BIND_TRAIL_SPACE (6)
 #define hasGlobalSpace(n) \
 	(likely(gTop+(n)+BIND_GLOBAL_SPACE <= gMax) && \
@@ -2004,10 +2011,76 @@ typedef struct
 		 *******************************/
 
 /* assignAttVar() flags */
-#define ATTV_BINDCONST   0x1			/* bindConst() */
-#define ATTV_ASSIGNONLY  0x2			/* attv_unify/2 */
-#define ATTV_DO_UNIFY    0x4			/* unify: assign and wakeup */
-#define ATTV_UNIFY_CHECK 0x2			/* 'unifiable'/3 */
+
+#define ATTV_WAKEBINDS   0x01			/* bindConst() */
+#define ATTV_ASSIGNONLY  0x02			/* '$attvar_assign'/2 */
+#define ATTV_DO_UNIFY       0x04			/* unify: assign and wakeup */
+
+
+#define LD_no_wakeup LD->attvar.no_wakeups
+
+#define IS_META(option) ((flags & META_ ## option) != 0)
+
+		 /*******************************
+		 *	      METATERMS           	*
+		 *******************************/
+
+#define META_PEER_NO_TRAIL  0x0008 /* peer no trail */
+#define META_NO_BIND        0x0010 /* C should let only prolog do binding */
+#define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
+#define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
+#define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
+
+#define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
+                                    Goal, really I would like to figure out the best way to allow unification to 
+                                    a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
+                                    I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
+                                    as the result of unification.                                    
+                                 */
+
+#define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */
+
+#define META_ENABLE_VMI  	0x1000 /* Hook WAM */
+#define META_ENABLE_CPREDS	0x2000 /* Hook CPREDS (WAM can misses a few)*/
+#define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
+#define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
+
+
+#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS)
+
+#ifdef O_METATERM
+
+#define METATERM_GLOBAL_FLAGS valInteger(*METATERM_GLOBAL)
+#define METATERM_GLOBAL valPHandle(LD->attvar.metaterm_opts PASS_LD)
+#define METATERM_CURRENT LD->attvar.metaterm_current
+
+/*
+ METATERM_SKIP_HIDDEN(.)
+ Only when "$meta" is present as an attribute:
+   A feature for prolog programmers who want to hide their attributes from value 
+  based term comparisons like "=@=" and "=="  
+  They do so by put_attrs/2 their attrbute "imhiden" as parent of "$meta" like:
+      att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
+  ( "$meta" attribute is also hidden. )
+  */
+
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD))
+#define METATERM_HOOK(atom,t1,t2,rc)  (META_ENABLE_CPREDS & METATERM_ENABLED && \
+                    (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
+                      (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
+                       metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
+
+/*#define IS_META_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,META_NO_INHERIT)),option))))*/
+
+#else  /* for less noisey undefing of O_METATERM */
+#define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
+#define METATERM_OVERIDES(var,functor) (0)
+#define METATERM_HOOK(what,t1,t2,rc) (0)
+#define METATERM_ENABLED (0)
+#endif
 
 		 /*******************************
 		 *	      WAKEUP		*

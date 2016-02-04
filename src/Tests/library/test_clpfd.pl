@@ -104,8 +104,11 @@ solve(N,[A1,A2,A3,A4],[B1,B2,B3,B4],[C1,C2,C3,C4],[D1,D2,D3,D4]) :-
     A1 + B2 + C3 + D4 #= A4 + B3 + C2 + D1.
 
 
-test(num3,X==2492):- num(3,X).
-test(num4,X==13240):- num(4,X).
+test(num1,X==20):- num(1,X).
+test(num2,X==323):- num(2,X).
+%test(num3,X==2492):- num(3,X).
+% 24 seconds
+% test(num4,X==13240):- num(4,X).
 % 60 seconds
 % test(num5,X==52400):- num(5,X).
 

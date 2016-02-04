@@ -886,7 +886,6 @@ state(S0, S), [S] --> [S0].
    Unification. X = Expr is equivalent to sat(X =:= Expr).
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-/* newer version */
 verify_attributes(Var, Other, Gs) :-
         % format("~w = ~w\n", [Var,Other]),
         (   get_attr(Var, clpb, index_root(I,Root)) ->
@@ -916,41 +915,6 @@ verify_attributes(Var, Other, Gs) :-
             )
         ;   Gs = []
         ).
-
-/* older version */
-verify_attributes_old(Var, Other, Gs) :-
-        % format("~w = ~w\n", [Var,Other]),
-        (   get_attr(Var, clpb, index_root(I,Root)) ->
-            (   integer(Other) ->
-                (   between(0, 1, Other) ->
-                    root_get_formula_bdd(Root, Sat, BDD0),
-                    bdd_restriction(BDD0, I, Other, BDD),
-                    root_put_formula_bdd(Root, Sat, BDD),
-   /*Prefixing is impl'd by VM and not a forced requirement in code */
-                    Gs = [satisfiable_bdd(BDD)]
-                ;   no_truth_value(Other)
-                )
-            ;   atom(Other) ->
-                root_get_formula_bdd(Root, Sat0, _),
-                Gs = [root_rebuild_bdd(Root, Sat0)]
-            ;   % due to variable aliasing, any BDDs may become unordered,
-                % so we need to rebuild the new BDD from the conjunction
-                % after the unification is in place
-                root_get_formula_bdd(Root, Sat0, _),
-                Sat = Sat0*OtherSat,
-                parse_sat(Other, OtherSat),
-                sat_roots(Sat, Roots),
-                phrase(formulas_(Roots), Fs),
-                foldl(and, Fs, 1, And),
-                maplist(del_bdd, Roots),
-                maplist(=(NewRoot), Roots),
-                Gs = [root_rebuild_bdd(NewRoot, And)]
-            )
-        ;   Gs = []
-        ).
-
-
-
 
 formulas_([]) --> [].
 formulas_([Root|Roots]) -->
@@ -1710,16 +1674,6 @@ clpb_atom_var(Atom, Var) :-
 
 clpb_hash:verify_attributes(_,_, []).  % this unification is always admissible
 
-/* DM: TODO - WILL BE REMOVED AFTER TESTING */
-:- if(current_prolog_flag(auh2,supplement)).
-:- public
-        clpb_hash:attr_unify_hook/2,
-		clpb_omit_boolean:attr_unify_hook/2,
-        clpb_atom:attr_unify_hook/2.
-
-clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
-:- endif.
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    If a universally quantified variable is unified to a Boolean value,
    it indicates that the formula does not hold for the other value, so
@@ -1729,11 +1683,6 @@ clpb_hash:attr_unify_hook(_,_).  % this unification is always admissible
 clpb_atom:verify_attributes(_, _, [false]).
 
 clpb_omit_boolean:verify_attributes(_, _, []).
-
-:- if(\+ current_prolog_flag(wakeups,va3)).
-clpb_atom:attr_unify_hook(_, _) :- false.
-clpb_omit_boolean:attr_unify_hook(_,_).
-:- endif.
 
 clpb_bdd:attribute_goals(_)          --> [].
 clpb_hash:attribute_goals(_)         --> [].

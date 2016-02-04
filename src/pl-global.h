@@ -270,6 +270,7 @@ struct PL_global_data
     Procedure   dc_call_prolog0;	/* $c_call_prolog/0 */
     Procedure   dinit_goal3;		/* $init_goal/3 */
 #ifdef O_ATTVAR
+    Procedure	dwakeup1;		/* system:$wakeup/1 */
     Procedure	call1;		/* call/1 */
     Procedure	portray_attvar1;	/* $attvar:portray_attvar/1 */
 #endif
@@ -413,7 +414,13 @@ struct PL_local_data
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
-    int     attv_mode;  /* DM: TODO - Will convert to term_t */
+    int		no_wakeups;  /* >0 Dont register wakeups (also to trap recursion) */
+
+#ifdef O_METATERM
+    term_t  metaterm_regs;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+    term_t  metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
+    int     metaterm_current; /* flags for current matts () */
+#endif
   } attvar;
 #endif
 
