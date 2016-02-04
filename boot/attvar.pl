@@ -30,7 +30,7 @@
 
 :- module('$attvar',
 	  [ undo/1,                     % :Goal
-        freeze/2,			% +Var, :Goal
+            freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
 	    copy_term/3                 % +Term, -Copy, -Residue
@@ -42,59 +42,6 @@ Attributed  variable  and  coroutining  support    based  on  attributed
 variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
-
-:- meta_predicate(system:ifdef(0,0)).
-system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
-
-       /*******************************
-           *	  VERIFY ATTRIBUTES	* 
-       *******************************/
-
-%%	pre_unify(+Att3s, +Next, +Var, +Value)
-%
-%	Called from the kernel if assignments will be made to attributed
-%	variables.
-%
-%	First calls Module:verify_attributes/3 for each `Module` for which Var
-%	has an attribute. During this process,   modules  may remove and
-%	change each others attributes.
-%
-%       If a callee removes the '$in_unify' property we succeed unconditionally
-
-no_pre_unify:- true.
-
-:- meta_predicate(system:pre_unify(+,0,+,+)).
-
-system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
-system:pre_unify(_,Next,Var,Value):- no_pre_unify, !,'$trail_assignment'(Var),attv_unify(Var,Value),call(Next).
-system:pre_unify(Atts,Next,Var,Value):- 
-     format(string(VarId),'~q',[Var]),
-     put_attr(Var,'$in_unify',VarId),!,
-     pre_unify(Atts,Next,Var,Value,VarId).
-
-system:verify_attributes(_Var, _Value, []).
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
-
-system:pre_unify(_, Next, Var, Value,VarId):- \+ ((get_attr(Var,'$in_unify',CookieM),VarId==CookieM)),!, call(Next).
-system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarId):- !,
-        Module:verify_attributes(Var, Value, Goals),
-        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarId).
-system:pre_unify(_, Next, _Var, _Value,_VarId):- call(Next).
-        
-
-                   /*******************************
-                   *	  PEER UNIFY HOOKS	*
-                   *******************************/
-
-:- meta_predicate(system:peer_unify(+,0,+,+,-)).
-
-system:peer_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_module(Goals,Module),G)):- !,
-	metaflag_set(Var,0x0060), % no_wake + no_inherit
-	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-	system:peer_unify(Rest, Next, Var, Value, G).
-
-system:peer_unify(_,Next,_, _, Next).
-
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
@@ -121,6 +68,7 @@ system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
 undo(Goal):- 
         metaflag_set(global,0x8000),
         put_attr(Var,'$undo_unify',Goal),
+        '$trail_assignment'(Var),
         attv_unify(Var,Goal).
 
 
@@ -354,6 +302,9 @@ frozen_residuals(X, V) -->
 
 
 
+end_of_file.
+
+
 
 % nop/1 is for disabling code while staying in syntax
 system:nop(_).
@@ -393,7 +344,60 @@ system:goals_with_module(_,_).
 
 
 
-end_of_file.
+
+
+:- meta_predicate(system:ifdef(0,0)).
+system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
+
+       /*******************************
+           *	  VERIFY ATTRIBUTES	* 
+       *******************************/
+
+%%	pre_unify(+Att3s, +Next, +Var, +Value)
+%
+%	Called from the kernel if assignments will be made to attributed
+%	variables.
+%
+%	First calls Module:verify_attributes/3 for each `Module` for which Var
+%	has an attribute. During this process,   modules  may remove and
+%	change each others attributes.
+%
+%       If a callee removes the '$in_unify' property we succeed unconditionally
+
+no_pre_unify:- true.
+
+:- meta_predicate(system:pre_unify(+,0,+,+)).
+
+system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
+system:pre_unify(_,Next,Var,Value):- no_pre_unify, !,'$trail_assignment'(Var),attv_unify(Var,Value),call(Next).
+system:pre_unify(Atts,Next,Var,Value):- 
+     format(string(VarId),'~q',[Var]),https://github.com/logicmoo/swipl-devel/tree/ATT_LOGICMOO
+     put_attr(Var,'$in_unify',VarId),!,
+     pre_unify(Atts,Next,Var,Value,VarId).
+
+system:verify_attributes(_Var, _Value, []).
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+
+system:pre_unify(_, Next, Var, Value,VarId):- \+ ((get_attr(Var,'$in_unify',CookieM),VarId==CookieM)),!, call(Next).
+system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarId):- !,
+        Module:verify_attributes(Var, Value, Goals),
+        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarId).
+system:pre_unify(_, Next, _Var, _Value,_VarId):- call(Next).
+        
+
+                   /*******************************
+                   *	  PEER UNIFY HOOKS	*
+                   *******************************/
+
+:- meta_predicate(system:peer_unify(+,0,+,+,-)).
+
+system:peer_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_module(Goals,Module),G)):- !,
+	metaflag_set(Var,0x0060), % no_wake + no_inherit
+	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+	system:peer_unify(Rest, Next, Var, Value, G).
+
+system:peer_unify(_,Next,_, _, Next).
+
 
 
        /*******************************
@@ -426,13 +430,7 @@ system:verify_attributes(Var, Value):- Var=Value.
 system:pre_unify(att(Module, _, Rest), Var, Value ):- !,
         Module:verify_attributes(Var, Value, VAGoals),
 	pre_unify(Rest,Var, Value),
-	call_goals(VAGoals,Module).
+	goals_with_module(VAGoals,Module).
 system:pre_unify(_,Var,Value):- attv_unify(Var,Value).
 
-
-
-call_goals([],_).
-call_goals([G|Gs],M):-
-	M:call(G),
-	call_goals(Gs,M).
 
