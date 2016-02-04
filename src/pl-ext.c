@@ -381,6 +381,8 @@ DECL_PLIST(debug);
 DECL_PLIST(locale);
 DECL_PLIST(dict);
 DECL_PLIST(cont);
+DECL_PLIST(dra);
+
 
 void
 initBuildIns(void)
