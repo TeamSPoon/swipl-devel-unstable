@@ -824,23 +824,25 @@ with one operation, it turns out to be faster as well.
 
 /* Flags on predicates (packed in unsigned int */
 
+/* O_TABLING */
+#define P_TABLE        (0x00000002) /* TABLED predicates */
 #define P_QUASI_QUOTATION_SYNTAX (0x00000004) /* {|Type||Quasi Quote|} */
-#define P_NON_TERMINAL		(0x00000008) /* Grammar rule (Name//Arity) */
-#define P_SHRUNKPOW2		(0x00000010) /* See reconsider_index() */
+#define P_NON_TERMINAL	(0x00000008) /* Grammar rule (Name//Arity) */
+#define P_SHRUNKPOW2	(0x00000010) /* See reconsider_index() */
 #define P_FOREIGN		(0x00000020) /* Implemented in C */
 #define P_NONDET		(0x00000040) /* Foreign: nondet */
 #define P_VARARG		(0x00000080) /* Foreign: use alt calling API */
-#define P_FOREIGN_CREF		(0x00000100) /* Foreign: ndet ctx is clause */
+#define P_FOREIGN_CREF	(0x00000100) /* Foreign: ndet ctx is clause */
 #define P_DYNAMIC		(0x00000200) /* Dynamic predicate */
-#define P_THREAD_LOCAL		(0x00000400) /* Thread local dynamic predicate */
+#define P_THREAD_LOCAL	(0x00000400) /* Thread local dynamic predicate */
 #define P_VOLATILE		(0x00000800) /* Clauses are not saved */
-#define P_DISCONTIGUOUS		(0x00001000) /* Clauses are not together */
+#define P_DISCONTIGUOUS	(0x00001000) /* Clauses are not together */
 #define P_MULTIFILE		(0x00002000) /* Clauses are in multiple files */
 #define P_PUBLIC		(0x00004000) /* Called from somewhere */
 #define P_ISO			(0x00008000) /* Part of the ISO standard */
 #define P_LOCKED		(0x00010000) /* Locked as system predicate */
 #define P_NOPROFILE		(0x00020000) /* Profile children, not me */
-#define P_TRANSPARENT		(0x00040000) /* Inherit calling module */
+#define P_TRANSPARENT	(0x00040000) /* Inherit calling module */
 #define P_META			(0x00080000) /* Has meta_predicate declaration */
 #define P_MFCONTEXT		(0x00100000) /* Used for Goal@Module */
 #define P_DIRTYREG		(0x00200000) /* Part of GD->procedures.dirty */
@@ -850,9 +852,9 @@ with one operation, it turns out to be faster as well.
 #define TRACE_ME		(0x02000000) /* Can be debugged */
 #define TRACE_CALL		(0x04000000) /* Trace calls */
 #define TRACE_REDO		(0x08000000) /* Trace redo */
-#define TRACE_EXIT		(0x10000000) /* Trace edit */
+#define TRACE_EXIT		(0x10000000) /* Trace exit */
 #define TRACE_FAIL		(0x20000000) /* Trace fail */
-#define FILE_ASSIGNED		(0x40000000) /* Is assigned to a file */
+#define FILE_ASSIGNED	(0x40000000) /* Is assigned to a file */
 #define P_REDEFINED		(0x80000000) /* Overrules a definition */
 #define PROC_DEFINED		(P_DYNAMIC|P_FOREIGN|P_MULTIFILE|P_DISCONTIGUOUS)
 /* flags for p_reload data (reconsult) */

@@ -354,7 +354,7 @@ variant(argPairs *agenda, Buffer buf ARG_LD)
     if ( tag(wl) == TAG_ATTVAR )
     { l = METATERM_SKIP_HIDDEN(valPAttVar(wl));
       r = METATERM_SKIP_HIDDEN(valPAttVar(wr));
-      if (*l==*r && *l==ATOM_nil) continue;
+      POST_SKIP_HIDDEN(l,r);
       goto attvar;
     }
 

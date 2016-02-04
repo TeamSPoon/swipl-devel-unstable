@@ -101,6 +101,13 @@ scanSum(Acc) :-
 	yield(NAcc),
 	scanSum(NAcc).
 
+
+/*
+Transducers A transducer transforms an iterator of one kind into an iterator of another
+kind. A transducer communicates with two parties: it asks values from an underlying
+iterator and uses these to produce other values it yields to an iteratee.
+*/
+
 transduce(IG,TG) :-
 	reset(TG,ContT,TermT),
 	transduce_(TermT,ContT,IG).
@@ -123,6 +130,38 @@ doubler :-
 	yield(NValue),
 	doubler.
 
+
+
+
+my_catch(Goal,_Catcher,_Handler) :- 
+   nb_setval(thrown,nothrow),
+   my_catch1(Goal).
+my_catch(_Goal,Catcher,Handler) :- 
+  nb_getval(thrown,Term), 
+  Term = ball(Ball),
+  nb_setval(thrown,nothrow), 
+ (Ball = Catcher -> call(Handler) ; my_throw(Term)).
+
+
+my_catch1(Goal) :- 
+  reset(Goal,Cont,Term),
+  (Cont == 0  % no ball was thrown
+   -> 
+    true 
+   ; 
+   (!, nb_setval(thrown,Term),fail)).
+
+my_throw(Ball) :- copy_term(Ball,BC), shift(ball(BC)).
+
+
+p(Term) :- reset(q,Cont,Term), writeln(Term), call_continuation(Cont).
+q :- catch(r,Ball,writeln(Ball)).
+r :- shift(rterm), throw(rball).
+
+test_p(Must_Rball+Term):- catch(p(Term),Rball,Must_Rball=Rball).
+% rterm
+% Uncaught exception(rball)
+
 :- begin_tests(continuation).
 
 test(sum, Sum == 12) :-
@@ -137,5 +176,15 @@ test(play, L == [1,3,6,10]) :-
 	play(mapL([1,2,3,4],L), scanSum(0)).
 test(transducer, Sum == 6) :-
 	play(sum(Sum),transduce(fromList([1,2]), doubler)).
+
+test(tch1,[Won==one]):-
+  my_catch(my_throw(bar(one)),bar(One),Won=One).
+
+
+call_continuation([]).
+call_continuation([TB|RestCC]) :-
+   call_tailbody1(TB),
+   call_continuation(RestCC).
+
 
 :- end_tests(continuation).
