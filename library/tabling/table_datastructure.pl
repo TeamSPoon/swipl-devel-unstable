@@ -105,7 +105,7 @@ get_call_variant_(complete_table(CallVariant,_AnswerTrie),CallVariant).
 
 add_answer(TableIdentifier,A) :-
   p_get_table_for_identifier(TableIdentifier,Table),
-  arg(1,Table,CallVariant),
+  arg(1,Table,_SINGLETON_CallVariant),
   arg(3,Table,AnswerTrie),
   arg(4,Table,Worklist), 
   copy_term(A,A2),
@@ -170,11 +170,11 @@ tbd_status_transition_no_check(TableIdentifier,NewStatus) :-
   p_get_table_for_identifier(TableIdentifier,Table),
   tbd_status_transition_no_check_(TableIdentifier,Table,NewStatus).
 
-tbd_status_transition_no_check_(TableIdentifier,Table,NewStatus) :-
+tbd_status_transition_no_check_(_SINGLETON_TableIdentifier,Table,NewStatus) :-
     nb_setarg(2,Table,NewStatus).
 
 % Set Table's status to NewStatus if current status is RequiredOldStatus, otherwise throw an exception mentioning CallerAsString: attempt to set NewStatus for table TableIdentifier, but current status was ActualOldStatus instead of RequiredOldStatus
-tbd_status_transition(TableIdentifier,NewStatus,RequiredOldStatus,CallerAsString) :-
+tbd_status_transition(TableIdentifier,NewStatus,_SINGLETON_RequiredOldStatus,_SINGLETON_CallerAsString) :-
   p_get_table_for_identifier(TableIdentifier,Table),
   tbd_status_transition_no_check_(TableIdentifier,Table,NewStatus).
 

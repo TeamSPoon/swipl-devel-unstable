@@ -109,6 +109,7 @@ is_answer_cluster_or_dummy_pointer(Worklist,Pointer) :-
     wkl_p_is_answer_cluster(A)
   ).
 
+/*
 % Failure-driven loop
 wkl_clusters_cartesian_product(AnswerCluster,SuspensionCluster) :-
   ( member(Answer,AnswerCluster),
@@ -121,7 +122,7 @@ wkl_clusters_cartesian_product(AnswerCluster,SuspensionCluster) :-
     % Loop base case
     true
   ).
-
+*/
 wkl_both_flags_unset(wkl_worklist(_Dll,_Riac,false,false,_TableIdentifier)).
 
 set_global_worklist_presence_flag(Worklist) :-

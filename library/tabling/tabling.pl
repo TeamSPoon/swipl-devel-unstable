@@ -152,3 +152,29 @@ worklist_do_all_work(Worklist,Answer,Dependency) :-
   dll_get_data(SCP,wkl_suspension_cluster(SList)),
   member(Answer,AList),
   member(Dependency,SList).
+
+
+:-multifile( expected_answers_for_variant/2).
+:-multifile( expected_variants/1).
+:-multifile( variant_for_xsb_comparison/1).
+
+:-dynamic( expected_answers_for_variant/2).
+:-dynamic( expected_variants/1).
+:-dynamic( variant_for_xsb_comparison/1).
+
+
+:- meta_predicate activate(*,0,*).
+:- meta_predicate any(1,*).
+:- meta_predicate assert_empty_list(*,*,0).
+:- meta_predicate assert_false(0).
+:- meta_predicate assert_true(0).
+:- meta_predicate compare_real_expected_answers(*,*,1).
+:- meta_predicate delim(*,0,*).
+:- meta_predicate expect_fail(0).
+:- meta_predicate expect_true(0).
+:- meta_predicate flip(2,?,?).
+:- meta_predicate foreach_table(1).
+:- meta_predicate foreach_table_with_print(1).
+:- meta_predicate run_follower(*,*,0,*).
+:- meta_predicate run_leader(*,0,*).
+:- meta_predicate start_tabling(*,0).

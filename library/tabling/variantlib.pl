@@ -14,7 +14,7 @@ t_variant_alt :-
   expect_true(variant_alt(x(_A6,_B6),x(_C6,_D6))),
   expect_true(variant_alt(x(A7,B7),x(B7,A7))),
   expect_true(variant_alt(x(A8,_B8),x(_C8,A8))),
-  % One extra, which made us aware of the existence of two alternatives for variant/2.
+  % One extra, which made us aware of the existence of two alternatives for our_variant/2.
   expect_true(variant_alt(x(A9,_B9),x(A9,_C9))).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -24,10 +24,10 @@ t_variant_alt :-
 % In SWI-Prolog:
 %   benoit we02c131 tabling$ swipl
 %   ...
-%   ?- variant(p(X,Y),p(X,Z)).
+%   ?- our_variant(p(X,Y),p(X,Z)).
 %   true.
 % This version in hProlog:
-%   ?- variant(p(X,Y),p(X,Z)).
+%   ?- our_variant(p(X,Y),p(X,Z)).
 %   No more!
 %   The cause seems to be numbervars:
 %   ?- numbervars(p(X,Y),0,N),numbervars(p(X,Z),0,M).
@@ -36,19 +36,19 @@ t_variant_alt :-
 %   N = 2
 %   Y = B
 % For our purpose we expected M to be 2.
-% ?- variant(X,X).
+% ?- our_variant(X,X).
 %  No more !
 % 
-% ?- variant(f(a,_),f(a,_)).
+% ?- our_variant(f(a,_),f(a,_)).
 % 
 % Yes
-% ?- variant(f(a,X),f(a,X)).
+% ?- our_variant(f(a,X),f(a,X)).
 % No more !
-variant(T1,T2) :-
+our_variant(T1,T2) :-
   \+(\+(v(T1,T2))).
 
 % Alternative that has the SWI-behaviour.
-% The right implementation for variant/2 has been a topic of discussion in the community.
+% The right implementation for our_variant/2 has been a topic of discussion in the community.
 % Thanks to Bart for making me aware of this alternative.
 variant_alt(T1,T2) :-
   copy_term(T2,T3),

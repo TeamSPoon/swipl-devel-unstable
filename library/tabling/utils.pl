@@ -12,12 +12,12 @@ print_trail_size :-
   trail_size(S),
   format:format('Trail size is now ~w~n',[S]).
 
-trail_size(S) :-
-  sysh:internalstat(3,_,S,_,x).
+trail_size(S) :- statistics(trailused,S).
+  /*sysh:internalstat(3,_,S,_,x).*/
 
 % Utility function to construct internal sanity checks, only done in DEBUG mode.
 % Throws an exception when called outside of DEBUG mode.
-assert_initialized(InitializedCheckPredicate,CheckDescription,ContextualInfo) :-
+assert_initialized(_SINGLETON_InitializedCheckPredicate,CheckDescription,_SINGLETON_ContextualInfo) :-
   format:format('call to assert_initialized in nondebug mode: ~w~n',[CheckDescription]),
   throw('call to assert_initialized in nondebug mode').
 
@@ -102,7 +102,8 @@ foreach_table(Goal) :-
 % Perform goal for all existing tables
 % Goal should take 1 parameter: the name of the table.
 % PreForeachGoal and PostForeachGoal should not take any more parameters.
-% SWI-Prolog :- meta_predicate foreach_table(1,0,0).
+% SWI-Prolog 
+:- meta_predicate foreach_table(1,0,0).
 foreach_table(Goal,PreForeachGoal,PostForeachGoal) :-
   call(PreForeachGoal),
   get_existing_tables(Ts),
@@ -191,10 +192,11 @@ list_to_tuple([First|Rest],Tuple) :-
 to_tuple(E,Ai,Ai-E).
 
 % SWI-Prolog: available in autoloadable library(apply).
-foldl(_FoldFunction,[],Zero,Zero) :- !.
+/*foldl(_FoldFunction,[],Zero,Zero) :- !.
 foldl(FoldFunction,[X|Xs],InAcc,Result) :-
   call(FoldFunction,X,InAcc,TempAcc),
   foldl(FoldFunction,Xs,TempAcc,Result).
+*/
 
   % Succeeds if L1 and L2 have the same length and their elements are pairwise unifiable.
   % Unificiation on the elements is undone after the test (by using \+ \=)

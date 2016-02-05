@@ -52,9 +52,9 @@ expect_same_size(E,A) :-
 % E = list having expected elements
 % A = list having actual elements
 expect_lists_equal_sets(E,A) :-
-  remove_duplicates(E,Es), % SWI: list_to_set
-  remove_duplicates(A,As),
-  ((list_difference_eq(As,Es,[]), list_difference_eq(Es,As,[])) -> % SWI: subtract
+  list_to_set(E,Es), % SWI: list_to_set
+  list_to_set(A,As),
+  ((subtract(As,Es,[]), subtract(Es,As,[])) -> % SWI: subtract
       writeln('Success: lists represent equal sets.')
   ;
     format('BUG: lists do not represent equal sets. Expected list was ~w, actual list was ~w~n',[E,A])

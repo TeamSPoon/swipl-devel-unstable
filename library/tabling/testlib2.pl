@@ -30,7 +30,7 @@ test_expected_variants_present_([]).
 test_expected_variants_present_([X|Xs]) :-
   ( p_existing_table(X,_), ! % CUT ALTERNATIVE
   ;
-    format:format('test_expected_variants_present: expected table for variant ~w was not there~n',[X]),
+    format:format('test_expected_variants_present: expected table for our_variant ~w was not there~n',[X]),
     throw('test_expected_variants_present: an expected table was not there!')
   ),
   test_expected_variants_present_(Xs).
@@ -49,7 +49,7 @@ test_tables_cleaned_([X|Xs]) :-
     nb_getval(TableIdentifier,Table),
     functor(Table,complete_table,2), ! % CUT ALTERNATIVE
   ;
-    format:format('test_tables_cleaned: table for variant ~w did not receive proper cleanup~n',[X]),
+    format:format('test_tables_cleaned: table for our_variant ~w did not receive proper cleanup~n',[X]),
     throw('test_tables_cleaned: a table did not receive proper cleanup')
   ),
   test_tables_cleaned_(Xs).
@@ -63,8 +63,8 @@ test_answers_expected_tables_([]) :-
 test_answers_expected_tables_([Variant|Rest]) :-
   ( test_answers_for_expected_variant(Variant), ! % CUT ALTERNATIVE
   ;
-    format:format('test_answers_expected_tables: could not test answers for expected variant ~w~n',[Variant]),
-    throw('test_answers_expected_tables: could not test answers for an expected variant')
+    format:format('test_answers_expected_tables: could not test answers for expected our_variant ~w~n',[Variant]),
+    throw('test_answers_expected_tables: could not test answers for an expected our_variant')
   ),
   test_answers_expected_tables_(Rest).
 
@@ -72,9 +72,9 @@ test_answers_expected_tables_([Variant|Rest]) :-
 % Requires a predicate expected_answers_for_variant/2 in the example.
 % Uses "private" predicate from table_datastructure.gpp or table_link_manager.gpp depending on the version.
 test_answers_for_expected_variant(Variant) :-
-  % We really want a variant check here, not unification...
+  % We really want a our_variant check here, not unification...
   expected_answers_for_variant(SomeVariant,ExpectedAnswers),
-  variant(Variant,SomeVariant),
+  our_variant(Variant,SomeVariant),
   p_existing_table(Variant,TableIdentifier),
   test_answers_for_variant_(ExpectedAnswers,TableIdentifier),
   % Now check that there are not more answers than expected
@@ -82,7 +82,7 @@ test_answers_for_expected_variant(Variant) :-
   get_num_answers(TableIdentifier,NumActual),
   assert_equal(NumExpected,NumActual,'test_answers_for_expected_variant'),
   % If we get here, write a success message.
-  format:format('test_answers_for_expected_variant succeeded for variant ~w~n',[Variant]).
+  format:format('test_answers_for_expected_variant succeeded for our_variant ~w~n',[Variant]).
 
 % Slow, but only used for testing. We don't need to keep the number of answers at runtime, so we don't keep track of it (for performance).
 get_num_answers(TableIdentifier,NumActual) :-

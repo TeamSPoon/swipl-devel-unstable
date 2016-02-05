@@ -1,3 +1,5 @@
+end_of_file.
+
 %   Copyright(C) 1994, Swedish Institute of Computer Science
 
 %   File       : ASSOC.PL
