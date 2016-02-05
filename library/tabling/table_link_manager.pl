@@ -34,13 +34,13 @@ variant_canonical_representation(Variant,CanonicalRepresentation) :-
 
 % Succeeds if there is a table TableIdentifier in existance for the given call variant Variant.
 p_existing_table(Variant,TableIdentifier) :-
-  nb_getval(trie_table_link,Trie),
+  nb_getval_ne(trie_table_link,Trie),
   variant_canonical_representation(Variant,CanonicalRepresentation),
   trie_lookup(Trie,CanonicalRepresentation,TableIdentifier).
 
 % Important remark: we cannot use an out-of-the-box association list, because we need a lookup based on variant checking, which is not available for such lists. Converting the association list to a regular list => why would you use an association list in the first place...
 p_link_variant_identifier(Variant,TableIdentifier) :-
-  nb_getval(trie_table_link,Trie),
+  nb_getval_ne(trie_table_link,Trie),
   variant_canonical_representation(Variant,CanonicalRepresentation),
   trie_insert_succeed(Trie,CanonicalRepresentation,TableIdentifier),
   nb_setval(trie_table_link,Trie).
@@ -48,7 +48,7 @@ p_link_variant_identifier(Variant,TableIdentifier) :-
 % Returns a list of existing table identifiers.
 % Rather costly.
 get_existing_tables(Ts) :-
-  nb_getval(trie_table_link,Trie),
+  nb_getval_ne(trie_table_link,Trie),
   findall(T,trie_get_all_values(Trie,T),Ts).
 
 % A very unefficient way of implementing this predicate. But it is only used for unit testing, so it doesn't really matter.

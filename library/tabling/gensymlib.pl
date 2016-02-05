@@ -12,7 +12,7 @@
 :- nb_setval(gensym_value,1).
 
 gensym(Base,Unique) :-
-  nb_getval(gensym_value,Counter),
+  nb_getval_ne(gensym_value,Counter),
   NewCounter is Counter + 1,
   nb_setval(gensym_value,NewCounter),
   atom_concat(Base,Counter,Unique).
