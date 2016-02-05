@@ -1,5 +1,7 @@
 :- ensure_loaded('testlib.pl'). 
 
+end_of_file.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 auto_test(t_variant_alt).

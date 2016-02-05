@@ -1,5 +1,5 @@
 :- expects_dialect(hprolog).
-% :- use_module(library(format)).
+:- use_module(library(format)).
 
 % Predicates of a general nature that may be useful in a lot of places.
 
@@ -103,7 +103,7 @@ foreach_table(Goal) :-
 % Goal should take 1 parameter: the name of the table.
 % PreForeachGoal and PostForeachGoal should not take any more parameters.
 % SWI-Prolog 
-:- meta_predicate foreach_table(1,0,0).
+% :- meta_predicate foreach_table(1,0,0).
 foreach_table(Goal,PreForeachGoal,PostForeachGoal) :-
   call(PreForeachGoal),
   get_existing_tables(Ts),
@@ -192,11 +192,10 @@ list_to_tuple([First|Rest],Tuple) :-
 to_tuple(E,Ai,Ai-E).
 
 % SWI-Prolog: available in autoloadable library(apply).
-/*foldl(_FoldFunction,[],Zero,Zero) :- !.
+foldl(_FoldFunction,[],Zero,Zero) :- !.
 foldl(FoldFunction,[X|Xs],InAcc,Result) :-
   call(FoldFunction,X,InAcc,TempAcc),
   foldl(FoldFunction,Xs,TempAcc,Result).
-*/
 
   % Succeeds if L1 and L2 have the same length and their elements are pairwise unifiable.
   % Unificiation on the elements is undone after the test (by using \+ \=)

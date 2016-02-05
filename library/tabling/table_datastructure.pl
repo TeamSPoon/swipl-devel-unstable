@@ -22,7 +22,7 @@
 % where AnswerTrie contains a trie of unique answers
 %
 % Remember that a table may also be nonexistent!
-% nb_getval_ne(nonexistent,X) then gives [].
+% nb_getval(nonexistent,X) then gives [].
 
 % Initialization!
 % This predicate should be called exactly once.
@@ -39,17 +39,18 @@ table_datastructure_initialize :-
 table_datastructure_initialized :-
   table_link_manager_initialized.
 
+
 % Returns a list of newly created table identifiers since the last call to reset_newly_created_table_identifiers/0, as well as the length of the list.
 get_newly_created_table_identifiers(NewlyCreatedTableIdentifiers,NumIdentifiers) :-
-  nb_getval_ne(newly_created_table_identifiers,NewlyCreatedTableIdentifiers-NumIdentifiers).
+  hprolog_nb_getval(newly_created_table_identifiers,NewlyCreatedTableIdentifiers-NumIdentifiers).
 
 reset_newly_created_table_identifiers :-
-  nb_setval(newly_created_table_identifiers,[]-0).
+  hprolog_nb_setval(newly_created_table_identifiers,[]-0).
 
 add_to_newly_created_table_identifiers(TableIdentifier) :-
-  nb_getval_ne(newly_created_table_identifiers,L1-Num1),
+  hprolog_nb_getval(newly_created_table_identifiers,L1-Num1),
   Num2 is Num1 + 1,
-  nb_setval(newly_created_table_identifiers,[TableIdentifier|L1]-Num2).
+  hprolog_nb_setval(newly_created_table_identifiers,[TableIdentifier|L1]-Num2).
 
 % PRIVATE
 % Mode: + -
@@ -63,7 +64,7 @@ p_create_table(CallVariant,TableIdentifier) :-
   % Create a trie and a worklist.
   trie_new(EmptyTrie),
   wkl_new_worklist(TableIdentifier,NewWorklist),
-  nb_setval(TableIdentifier,table(CallVariant2,fresh,EmptyTrie,NewWorklist)),
+  hprolog_nb_setval(TableIdentifier,table(CallVariant2,fresh,EmptyTrie,NewWorklist)),
   p_link_variant_identifier(CallVariant2,TableIdentifier),
   add_to_newly_created_table_identifiers(TableIdentifier).
 
@@ -80,7 +81,7 @@ tbd_table_status_(complete_table(_,_),complete).
 % PRIVATE
 % Table must already exist.
 p_get_table_for_identifier(TableIdentifier,Table) :-
-  nb_getval_ne(TableIdentifier,Table).
+  hprolog_nb_getval(TableIdentifier,Table).
 
 % Get the table identifier (!!) for call variant V, creating a new one if necessary.
 %
@@ -152,7 +153,7 @@ cleanup_after_complete_(
     table(CallVariant,_ActualOldStatus,AnswerTrie,_Worklist),
     TableIdentifier
   ) :-
-  nb_setval(TableIdentifier,complete_table(CallVariant,AnswerTrie)).
+  hprolog_nb_setval(TableIdentifier,complete_table(CallVariant,AnswerTrie)).
 % If necessary for debugging add second clause for complete_table.
 
 % Set status of table TableIdentifier to complete.

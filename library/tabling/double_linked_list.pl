@@ -20,9 +20,9 @@
 %   --------------
 %   front-of-the-list | ... | back-of-the-list
 
-% :- use_module(library(format)). % hProlog-specific
+:- use_module(library(format)). % hProlog-specific
 
-:- ensure_loaded('utils.pl').
+:- ['utils.pl'].
 
 dll_new_double_linked_list(List) :-
   % Nonused cell dll_start at the beginning, points to itself (this is easy when adding elements).

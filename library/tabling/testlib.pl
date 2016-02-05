@@ -1,7 +1,7 @@
 :- expects_dialect(hprolog).
-% :- use_module(library(format)).
+:- use_module(library(format)).
 :- use_module(library(lists)).
-:- ensure_loaded('utils.pl').
+:- ['utils.pl'].
 
 % Notes about testing:
 % - name of a test should start with t_, optionally followed by a number
@@ -54,7 +54,7 @@ expect_same_size(E,A) :-
 expect_lists_equal_sets(E,A) :-
   list_to_set(E,Es), % SWI: list_to_set
   list_to_set(A,As),
-  ((subtract(As,Es,[]), subtract(Es,As,[])) -> % SWI: subtract
+    ((list_difference_eq(As,Es,[]), list_difference_eq(Es,As,[])) -> % SWI: subtract
       writeln('Success: lists represent equal sets.')
   ;
     format('BUG: lists do not represent equal sets. Expected list was ~w, actual list was ~w~n',[E,A])

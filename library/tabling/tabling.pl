@@ -1,7 +1,11 @@
 :- expects_dialect(hprolog).
 
-nb_getval_ne(Name,Value):-nb_current(Name,Value),!.
-nb_getval_ne(Name,[]):-nb_setval(Name,[]),!.
+cputime(Time):- 
+	statistics(cputime, Time).
+
+hprolog_nb_setval(N,V):-nb_linkval(N,V).
+hprolog_nb_getval(N,V):- nb_current(N,V)->true;V=[].
+
 
 :- ensure_loaded('table_datastructure.pl'). 
 :- ensure_loaded('batched-worklist.pl'). 
@@ -54,14 +58,14 @@ run_leader(Wrapper,Worker,T) :-
   unset_scheduling_component.
 
 exists_scheduling_component :-
-  nb_getval_ne(leader,Leader),
+  hprolog_nb_getval(leader,Leader),
   Leader == []. 
 
 create_scheduling_component :-
-  nb_setval(leader,leaderCreated).
+  hprolog_nb_setval(leader,leaderCreated).
 
 unset_scheduling_component :-
-  nb_setval(leader,[]).
+  hprolog_nb_setval(leader,[]).
 
 set_all_complete :-
   get_newly_created_table_identifiers(Ts,_NumIdentifiers),
@@ -105,7 +109,9 @@ completion :-
   ( worklist_empty ->
     set_all_complete,
     cleanup_all_complete,
-    % The place of the call to reset is really important: it must happen after the completion. If you do it before, you will wrongly remove yourself from the list of newly created table identifiers. On starting hProlog there are no newly created table identifiers, and nb_getval_ne gives [] which is the perfect value.
+    % The place of the call to reset is really important: it must happen after the completion. 
+    % If you do it before, you will wrongly remove yourself from the list of newly created table identifiers. 
+    % On starting hProlog there are no newly created table identifiers, and hprolog_nb_getval gives [] which is the perfect value.
     reset_newly_created_table_identifiers
   ;
     pop_worklist(Table),
@@ -155,6 +161,7 @@ worklist_do_all_work(Worklist,Answer,Dependency) :-
   member(Answer,AList),
   member(Dependency,SList).
 
+end_of_file.
 
 :-multifile( expected_answers_for_variant/2).
 :-multifile( expected_variants/1).
@@ -180,3 +187,5 @@ worklist_do_all_work(Worklist,Answer,Dependency) :-
 :- meta_predicate run_follower(*,*,0,*).
 :- meta_predicate run_leader(*,0,*).
 :- meta_predicate start_tabling(*,0).
+
+

@@ -46,7 +46,7 @@ test_tables_cleaned :-
 test_tables_cleaned_([]).
 test_tables_cleaned_([X|Xs]) :-
   ( p_existing_table(X,TableIdentifier),
-    nb_getval_ne(TableIdentifier,Table),
+    hprolog_nb_getval(TableIdentifier,Table),
     functor(Table,complete_table,2), ! % CUT ALTERNATIVE
   ;
     format:format('test_tables_cleaned: table for our_variant ~w did not receive proper cleanup~n',[X]),
