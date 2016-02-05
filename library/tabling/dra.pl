@@ -384,7 +384,7 @@ print_table_statistics:-print_statistics.
 %load(P):-dra_must(prog0(P)),!.
 
 
-:- ensure_loaded(library(dra_table_record)).
+:- ensure_loaded((dra_table_record)).
 %:- user:ensure_loaded(library(dra/tabling3/compatibility_utilities_swi)).
 %
 

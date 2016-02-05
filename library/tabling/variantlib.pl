@@ -1,7 +1,5 @@
 :- ensure_loaded('testlib.pl'). 
 
-end_of_file.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 auto_test(t_variant_alt).
@@ -19,6 +17,31 @@ t_variant_alt :-
   % One extra, which made us aware of the existence of two alternatives for our_variant/2.
   expect_true(variant_alt(x(A9,_B9),x(A9,_C9))).
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+auto_test(t_variant_our).
+t_variant_our :-
+  expect_fail(our_variant(a,_A1)),
+  expect_true(our_variant(_A2,_B2)),
+  expect_fail(our_variant(x(A3,A3),x(_B3,_C3))),
+  expect_true(our_variant(x(A4,A4),x(B4,B4))),
+  expect_fail(our_variant(x(A5,A5),x(A5,_B5))),
+  expect_true(our_variant(x(_A6,_B6),x(_C6,_D6))),
+  expect_true(our_variant(x(A7,B7),x(B7,A7))),
+  expect_true(our_variant(x(A8,_B8),x(_C8,A8))),
+  % One extra, which made us aware of the existence of two alternatives for our_variant/2.
+  expect_true(our_variant(x(A9,_B9),x(A9,_C9))).
+
+auto_test(t_variant_swi).
+t_variant_swi :-
+  expect_fail(variant(a,_A1)),
+  expect_true(variant(_A2,_B2)),
+  expect_fail(variant(x(A3,A3),x(_B3,_C3))),
+  expect_true(variant(x(A4,A4),x(B4,B4))),
+  expect_fail(variant(x(A5,A5),x(A5,_B5))),
+  expect_true(variant(x(_A6,_B6),x(_C6,_D6))),
+  expect_true(variant(x(A7,B7),x(B7,A7))),
+  expect_true(variant(x(A8,_B8),x(_C8,A8))),
+  % One extra, which made us aware of the existence of two alternatives for variant/2.
+  expect_true(variant(x(A9,_B9),x(A9,_C9))).
 
 
 % Variant/2
@@ -46,6 +69,7 @@ t_variant_alt :-
 % Yes
 % ?- our_variant(f(a,X),f(a,X)).
 % No more !
+
 our_variant(T1,T2) :-
   \+(\+(v(T1,T2))).
 
