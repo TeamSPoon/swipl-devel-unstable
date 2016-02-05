@@ -2028,10 +2028,10 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_PEER_NO_TRAIL  0x0008 /* peer no trail */
+#define META_OPTIMIZE_TRAIL 0x0008 /* Optimize Trail */
 #define META_NO_BIND        0x0010 /* C should let only prolog do binding */
-#define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
-#define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
+// #define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
+// #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
 
 #define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 

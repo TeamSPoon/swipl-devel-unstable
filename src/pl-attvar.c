@@ -115,9 +115,8 @@ void
 registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  if(LD_no_wakeup > 0 && FALSE)
+  if(LD_no_wakeup > 0)
   { DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
-	return;
   }
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
@@ -144,7 +143,6 @@ scheduleWakeup(word g, int alert_flags ARG_LD)
   LD->alerted |= alert_flags;
   appendWakeup(wake PASS_LD);
 }
-
 
 
 static void
@@ -222,176 +220,159 @@ SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 void
-assignAttVar(Word av, Word value, int flags ARG_LD)
-{ Word a;
+assignAttVarBinding(Word av, Word value, int flags ARG_LD)
+{
+ assert(isAttVar(*av));
+ assert(!isRef(*value));
+ DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
+ if ( isAttVar(*value) )
+ { 
+    if ( av == value) return;
+
+    if(IS_META(KEEP_BOTH))
+    { DEBUG(MSG_METATERM, Sdprintf("META_KEEP_BOTH\n"));
+      return;
+    }
+
+    if (av > value)
+    { 
+        if (IS_META(NO_BIND))
+        {  DEBUG(MSG_METATERM, Sdprintf("NO_BIND Unifying av <- value\n"));           
+        } else
+        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
+           *av = makeRef(value);			            
+        }
+
+    } else
+    {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Reversing value <- av\n"));
+       TrailAssignment(value);
+       *value = makeRef(av);
+    }
+    
+ } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
+ {   if( (flags& ATTV_ASSIGNONLY) )
+	 {  if(IS_META(KEEP_BOTH))
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Upgraging VAR to an ATTVAR ref\n"));
+           TrailAssignment(value);
+           make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
+           deRef(value);
+           *valPAttVar(*value) = *valPAttVar(*av);
+         } else
+         { if (IS_META(NO_BIND))
+           { DEBUG(MSG_METATERM, Sdprintf("NO_BIND attvar with a plain putting into VAR maybe ref\n"));
+             return;
+           }
+           DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
+           *av = makeRef(value);			            
+         }
+	 } else
+     { DEBUG(MSG_WAKEUPS, Sdprintf("FUNCTOR_unify4 with a plain VAR ref\n"));
+       registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);       
+     }
+  } else 
+  { if (IS_META(NO_BIND))
+    { DEBUG(MSG_METATERM, Sdprintf("NO_BIND attvar with a value\n"));
+      return;
+    } else
+    { *av = *value;
+    }
+  }
+}
+
+void
+assignAttVarPreUnify(Word av, Word value, int flags ARG_LD)
+{ 
+
+  if ( isAttVar(*value) )
+  { if ( value > av )
+    {   if (!IS_META(DISABLE_SWAP))
+        {
+          Word tmp = av;
+          av = value;
+          value = tmp;
+        } else
+        { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVarPreUnify DISABLE_SWAP(%s)\n", vName(av)));
+        }
+    } else if ( av == value )
+    { DEBUG(MSG_WAKEUPS, Sdprintf("no_self_unify(%s)\n", vName(av)));
+      return;
+    }
+  }
+
+
+  if((flags& ATTV_WAKEBINDS) )
+  { registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
+    return;
+  }
+
+  if((flags& ATTV_DO_UNIFY) )
+  { registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
+  } else
+  { registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+  }
+
+  if(flags& META_OPTIMIZE_TRAIL)
+  { mark m;
+    Mark(m);		/* must be trailed, even if above last choice */
+    LD->mark_bar = NO_MARK_BAR;
+    TrailAssignment(av);
+    DiscardMark(m);
+   if ( needsRef(*value) )
+   { if (!IS_META(NO_BIND)) *av = makeRef(value);
+   } else 
+   { if (!IS_META(NO_BIND)) *av = *value;
+   }
+   return;
+  } else
+  { TrailAssignment(av);
+    assignAttVarBinding(av,value,flags PASS_LD);
+    return;
+  }
+}
+
+void
+assignAttVar(Word av, Word value, int flags ARG_LD)
+{ 
   assert(isAttVar(*av));
   assert(!isRef(*value));
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(1, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+
+  if(flags&META_ENABLE_PREUNIFY) 
+  { assignAttVarPreUnify(av,value,flags PASS_LD);
+    return;
+  }
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    { Word tmp = av;
-      av = value;
-      value = tmp;
+    {   if (!IS_META(DISABLE_SWAP))
+        {
+          Word tmp = av;
+          av = value;
+          value = tmp;
+        } else
+        { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar DISABLE_SWAP(%s)\n", vName(av)));
+        }
     } else if ( av == value )
+    { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar no_self_unify(%s)\n", vName(av)));
       return;
+    }
   }
 
-  a = valPAttVar(*av);
-  registerWakeup(FUNCTOR_post_unify4, av, a, value PASS_LD);
+  registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
 
   TrailAssignment(av);
   if ( isAttVar(*value) )
-  { DEBUG(1, Sdprintf("Unifying two attvars\n"));
+  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
   } else
     *av = *value;
 
   return;
-}
-
-void
-assignAttVarPostUnify(Word av, Word value, int flags ARG_LD)
-{ Word a;
-
-  registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-
-  TrailAssignment(av);
-
-}
-
-
-
-
-void
-assignAttVarWierd(Word av, Word value, int flags ARG_LD)
-{ mark m;
-
-  /*temporarly confirming do_unify can use ATTV_WAKEBINDS will make it fail dif(10)*/
-  //if(flags==ATTV_DO_UNIFY) flags = ATTV_WAKEBINDS;
-  
-  assert(isAttVar(*av));
-  assert(!isRef(*value));
-  assert(gTop+8 <= gMax && tTop+6 <= tMax);
-  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
-
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
-
-  flags |= METATERM_GLOBAL_FLAGS;
-
-  if (!IS_META(DISABLE_SWAP))
-  if( isAttVar(*value) )
-  { if(av==value) return;
-    if (av < value) 
-    { Word tmp = value;
-       value = av;
-       av = tmp;
-    }
-  }
-
-  flags |= getMetaFlags(av, flags PASS_LD);
-
-  bool did_wake = FALSE;
-
-  if( !(flags& ATTV_ASSIGNONLY) )
-   if(!(IS_META(NO_WAKEUP))) 
-   { if ( av == value) 
-     {
-         DEBUG(MSG_WAKEUPS, Sdprintf("no_self_unify(%s)\n", vName(av)));
-         return;
-     }
-    if(IS_META(ENABLE_PREUNIFY))
-    {
-      registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
-      did_wake = TRUE;
-    }
-  }
-
- if ( (flags& ATTV_WAKEBINDS) && did_wake )
-    return;
-
- if(!IS_META(ENABLE_PREUNIFY)) 
- {
-     registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-     did_wake = TRUE;
- }
- if(!(IS_META(NO_TRAIL)))
- {
-  Mark(m);		/* must be trailed, even if above last choice */
-  LD->mark_bar = NO_MARK_BAR;
-  TrailAssignment(av);
-  DiscardMark(m);
- }
- 
- if (IS_META(NO_BIND))
-     return;
-
-}
-
-void
-assignAttVarNoWake(Word av, Word value, int flags ARG_LD)
-{
- 
- assert(isAttVar(*av));
- assert(!isRef(*value));
- DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
-
- flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
-
- if ( isAttVar(*value) )
- { 
-     if ( av == value) return;
-
-    if(IS_META(KEEP_BOTH))
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("META_KEEP_BOTH\n"));
-      return;
-    }
-
-    if (av > value)
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
-        *av = makeRef(value);
-    } else
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Reversing value <- av\n"));
-        *value = makeRef(av);
-    }
-    
- } else if ( isVar(*value) )  /* JW: Does this happen? */ 
- {  /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
-     if( (flags& ATTV_ASSIGNONLY) )
-	 { 
-         if(IS_META(KEEP_BOTH))
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Upgraging to an ATTVAR ref\n"));
-           make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
-           deRef(value);
-           *valPAttVar(*value) = *valPAttVar(*av);
-         } else
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
-           *av = makeRef(value);			            
-         }
-	 } else
-     { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Putting ORIGINAL attvar into plain var\n"));
-
-         if(IS_META(KEEP_BOTH))
-         {  registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
-            return;
-         }
-
-         if(!IS_META(PEER_NO_TRAIL))
-         { /*This is what do_unify() would do*/
-           Trail(value, makeRef(av));
-         } else
-         { registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
-           //*value = makeRef(av);
-         }
-     }
-  } else 
-  {
-     *av = *value;
-  }
 }
 
 
@@ -1617,7 +1598,7 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    assignAttVarNoWake(av, value, ATTV_ASSIGNONLY PASS_LD);
+    assignAttVarBinding(av, value, ATTV_ASSIGNONLY PASS_LD);
     return TRUE;
   } else if ( isVar(*av) )
   { unify_vp(av,valTermRef(A2) PASS_LD);

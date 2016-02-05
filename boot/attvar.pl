@@ -43,14 +43,49 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
+       /*******************************
+       *         VERIFY_ATTRIBUTES    *
+       *******************************/
+
+:- meta_predicate(system:pre_unify(+,:,+,+)).
+
+system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
+system:pre_unify(Atts,Next,Var,Value):-
+     format(string(VarID),'~q',[Var]),
+     put_attrs(Var,att('$in_unify',VarID,Atts)),!,
+     pre_unify(Atts,Next,Var,Value,VarID).
+
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+
+system:pre_unify(_, Next, Var, Value,VarID):- \+ ((get_attr(Var,'$in_unify',CookieM),VarID==CookieM)),!, call(Next).
+system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
+        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
+
+system:pre_unify(_, Next, Var, Value,VarID):-
+   del_attr(Var,'$in_unify'),
+   '$trail_assignment'(Var),
+   attv_unify(Var,Value),
+   call(Next).
+
+system:goals_with_module([G|Gs], M):- !,
+	M:call(G),
+	system:goals_with_module(Gs, M).
+system:goals_with_module(_,_).
+
+
+
+:- meta_predicate(system:ifdef(0,0)).
+system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
+
+
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
-system:attr_unify_hook(_AttVal, _Value).
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
-        Module:attr_unify_hook(AttVal, Value),
+        ifdef(Module:attr_unify_hook(AttVal, Value),true),
         post_unify(Rest, Next, Var, Value).
 system:post_unify(_,Next,Var,Value):- Var==Value, call(Next).
 
@@ -333,22 +368,6 @@ check_var_cookie(Var,FirstID:Expect):-
        nop(throw(Expect==SAtts)))),!.
 
 
-
-
-
-system:goals_with_module([G|Gs], M):- !,
-	M:call(G),
-	system:goals_with_module(Gs, M).
-system:goals_with_module(_,_).
-
-
-
-
-
-
-:- meta_predicate(system:ifdef(0,0)).
-system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
-
        /*******************************
            *	  VERIFY ATTRIBUTES	* 
        *******************************/
@@ -366,23 +385,6 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 no_pre_unify:- true.
 
-:- meta_predicate(system:pre_unify(+,0,+,+)).
-
-system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
-system:pre_unify(_,Next,Var,Value):- no_pre_unify, !,'$trail_assignment'(Var),attv_unify(Var,Value),call(Next).
-system:pre_unify(Atts,Next,Var,Value):- 
-     format(string(VarId),'~q',[Var]),https://github.com/logicmoo/swipl-devel/tree/ATT_LOGICMOO
-     put_attr(Var,'$in_unify',VarId),!,
-     pre_unify(Atts,Next,Var,Value,VarId).
-
-system:verify_attributes(_Var, _Value, []).
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
-
-system:pre_unify(_, Next, Var, Value,VarId):- \+ ((get_attr(Var,'$in_unify',CookieM),VarId==CookieM)),!, call(Next).
-system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarId):- !,
-        Module:verify_attributes(Var, Value, Goals),
-        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarId).
-system:pre_unify(_, Next, _Var, _Value,_VarId):- call(Next).
         
 
                    /*******************************
@@ -400,9 +402,6 @@ system:peer_unify(_,Next,_, _, Next).
 
 
 
-       /*******************************
-       *         VERIFY_ATTRIBUTES    *
-       *******************************/
 
 %%	wakeup(+Var, +NextOnChain, +Value)
 %
