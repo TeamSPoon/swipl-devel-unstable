@@ -54,7 +54,7 @@ PLLIBS= MANUAL helpidx.pl help.pl explain.pl sort.pl \
 	prolog_colour.pl varnumbers.pl codesio.pl prolog_codewalk.pl \
 	prolog_pack.pl git.pl prolog_metainference.pl quasi_quotations.pl \
 	sandbox.pl prolog_format.pl prolog_install.pl check_installation.pl \
-	solution_sequences.pl iostream.pl dicts.pl yall.pl
+	solution_sequences.pl iostream.pl dicts.pl yall.pl atts.pl
 
 CLP=	bounds.pl clp_events.pl clp_distinct.pl simplex.pl clpfd.pl clpb.pl
 
@@ -71,7 +71,7 @@ DCG=	basics.pl
 DIALECT=yap.pl hprolog.pl commons.pl ciao.pl sicstus.pl bim.pl ifprolog.pl xsb.pl
 YAP=	README.TXT
 SICSTUS=block.pl timeout.pl system.pl arrays.pl lists.pl terms.pl \
-	sockets.pl swipl-lfr.pl atts.pl
+	sockets.pl swipl-lfr.pl
 CIAO=	assertions.pl basicmodes.pl isomodes.pl regtypes.pl sockets.pl \
 	read.pl write.pl strings.pl format.pl lists.pl dcg.pl freeze.pl \
 	terms.pl system.pl iso_misc.pl aggregates.pl hiordlib.pl \
