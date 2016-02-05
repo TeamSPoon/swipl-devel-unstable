@@ -1,7 +1,7 @@
 :- expects_dialect(hprolog).
 
 nb_getval_ne(Name,Value):-nb_current(Name,Value),!.
-nb_getval_ne(_,[]).
+nb_getval_ne(Name,[]):-nb_setval(Name,[]),!.
 
 :- ensure_loaded('table_datastructure.pl'). 
 :- ensure_loaded('batched-worklist.pl'). 
