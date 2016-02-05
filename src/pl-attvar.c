@@ -306,7 +306,7 @@ assignAttVarPreUnify(Word av, Word value, int flags ARG_LD)
     return;
   }
 
-  if((flags& ATTV_DO_UNIFY) )
+  if((flags& ATTV_IN_UNIFY) )
   { registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
   } else
   { registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
@@ -1598,7 +1598,8 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   deRef(av);
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
-    assignAttVarBinding(av, value, ATTV_ASSIGNONLY PASS_LD);
+    int flags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+    assignAttVarBinding(av, value, ATTV_ASSIGNONLY|flags PASS_LD);
     return TRUE;
   } else if ( isVar(*av) )
   { unify_vp(av,valTermRef(A2) PASS_LD);

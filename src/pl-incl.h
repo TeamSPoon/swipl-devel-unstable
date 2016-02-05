@@ -2016,7 +2016,7 @@ typedef struct
 
 #define ATTV_WAKEBINDS   0x01			/* bindConst() */
 #define ATTV_ASSIGNONLY  0x02			/* '$attvar_assign'/2 */
-#define ATTV_DO_UNIFY       0x04			/* unify: assign and wakeup */
+#define ATTV_IN_UNIFY       0x04			/* unify: assign and wakeup */
 
 #define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
