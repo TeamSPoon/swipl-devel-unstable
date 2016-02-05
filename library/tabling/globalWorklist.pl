@@ -9,3 +9,5 @@ pop_worklist(TableIdentifier) :-
   nb_getval(globalWorklist,L1),
   L1 = [TableIdentifier|L2],
   nb_setval(globalWorklist,L2).
+
+:-nb_setval(globalWorklist,[]).

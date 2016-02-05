@@ -1,5 +1,5 @@
 :- expects_dialect(hprolog).
-:- use_module(library(format)).
+% :- use_module(library(format)).
 
 :- ensure_loaded('table_link_manager.pl'). 
 :- ensure_loaded('variantlib.pl'). 
@@ -46,7 +46,7 @@ test_tables_cleaned :-
 test_tables_cleaned_([]).
 test_tables_cleaned_([X|Xs]) :-
   ( p_existing_table(X,TableIdentifier),
-    nb_getval(TableIdentifier,Table),
+    nb_getval_ne(TableIdentifier,Table),
     functor(Table,complete_table,2), ! % CUT ALTERNATIVE
   ;
     format:format('test_tables_cleaned: table for our_variant ~w did not receive proper cleanup~n',[X]),

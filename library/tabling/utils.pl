@@ -1,5 +1,5 @@
 :- expects_dialect(hprolog).
-:- use_module(library(format)).
+% :- use_module(library(format)).
 
 % Predicates of a general nature that may be useful in a lot of places.
 

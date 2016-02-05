@@ -22,7 +22,7 @@
 % where AnswerTrie contains a trie of unique answers
 %
 % Remember that a table may also be nonexistent!
-% nb_getval(nonexistent,X) then gives [].
+% nb_getval_ne(nonexistent,X) then gives [].
 
 % Initialization!
 % This predicate should be called exactly once.
@@ -41,13 +41,13 @@ table_datastructure_initialized :-
 
 % Returns a list of newly created table identifiers since the last call to reset_newly_created_table_identifiers/0, as well as the length of the list.
 get_newly_created_table_identifiers(NewlyCreatedTableIdentifiers,NumIdentifiers) :-
-  nb_getval(newly_created_table_identifiers,NewlyCreatedTableIdentifiers-NumIdentifiers).
+  nb_getval_ne(newly_created_table_identifiers,NewlyCreatedTableIdentifiers-NumIdentifiers).
 
 reset_newly_created_table_identifiers :-
   nb_setval(newly_created_table_identifiers,[]-0).
 
 add_to_newly_created_table_identifiers(TableIdentifier) :-
-  nb_getval(newly_created_table_identifiers,L1-Num1),
+  nb_getval_ne(newly_created_table_identifiers,L1-Num1),
   Num2 is Num1 + 1,
   nb_setval(newly_created_table_identifiers,[TableIdentifier|L1]-Num2).
 
@@ -80,7 +80,7 @@ tbd_table_status_(complete_table(_,_),complete).
 % PRIVATE
 % Table must already exist.
 p_get_table_for_identifier(TableIdentifier,Table) :-
-  nb_getval(TableIdentifier,Table).
+  nb_getval_ne(TableIdentifier,Table).
 
 % Get the table identifier (!!) for call variant V, creating a new one if necessary.
 %

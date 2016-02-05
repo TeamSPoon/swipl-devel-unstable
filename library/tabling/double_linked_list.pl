@@ -20,7 +20,7 @@
 %   --------------
 %   front-of-the-list | ... | back-of-the-list
 
-:- use_module(library(format)). % hProlog-specific
+% :- use_module(library(format)). % hProlog-specific
 
 :- ensure_loaded('utils.pl').
 

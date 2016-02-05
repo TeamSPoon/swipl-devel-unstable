@@ -2,7 +2,7 @@
 :- ensure_loaded('trie.pl').
 :- ensure_loaded('utils.pl').
  
-:- use_module(library(format)).
+% :- use_module(library(format)).
 
 % This file defines a call pattern trie.
 %

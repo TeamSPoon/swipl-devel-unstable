@@ -8,7 +8,7 @@
 
 % Inspiration from http://en.wikipedia.org/wiki/Trie
 
-:- use_module(library(format)).
+% :- use_module(library(format)).
 % :- use_module(library(assoc)).
 % We have copied this code to assoc.pl
 :- ensure_loaded('assoc.pl'). 

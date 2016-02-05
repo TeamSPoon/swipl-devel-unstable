@@ -1,5 +1,7 @@
 :- expects_dialect(hprolog).
 
+nb_getval_ne(Name,Value):-nb_current(Name,Value),!.
+nb_getval_ne(_,[]).
 
 :- ensure_loaded('table_datastructure.pl'). 
 :- ensure_loaded('batched-worklist.pl'). 
@@ -52,7 +54,7 @@ run_leader(Wrapper,Worker,T) :-
   unset_scheduling_component.
 
 exists_scheduling_component :-
-  nb_getval(leader,Leader),
+  nb_getval_ne(leader,Leader),
   Leader == []. 
 
 create_scheduling_component :-
@@ -103,7 +105,7 @@ completion :-
   ( worklist_empty ->
     set_all_complete,
     cleanup_all_complete,
-    % The place of the call to reset is really important: it must happen after the completion. If you do it before, you will wrongly remove yourself from the list of newly created table identifiers. On starting hProlog there are no newly created table identifiers, and nb_getval gives [] which is the perfect value.
+    % The place of the call to reset is really important: it must happen after the completion. If you do it before, you will wrongly remove yourself from the list of newly created table identifiers. On starting hProlog there are no newly created table identifiers, and nb_getval_ne gives [] which is the perfect value.
     reset_newly_created_table_identifiers
   ;
     pop_worklist(Table),
