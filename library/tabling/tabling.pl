@@ -1,9 +1,9 @@
 :- expects_dialect(hprolog).
 
-cputime(Time):- 
-	statistics(cputime, Time).
+cputime(TimeMS):- 
+	statistics(runtime,[TimeMS,_]).
 
-hprolog_nb_setval(N,V):-nb_linkval(N,V).
+hprolog_nb_setval(N,V):- nb_linkval(N,V).
 hprolog_nb_getval(N,V):- nb_current(N,V)->true;V=[].
 
 
