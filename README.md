@@ -17,12 +17,13 @@ This is a highly unstable theoretical fork of SWI-Prolog
 ===========================================
 * eclipse:meta_attributes/1  (copy_term/2, ==/2, =@=/2, etc)
 * sicstus:verify_attributes/3 (90%)
-* dra-tabling interpretor (works .. needs C storage)
+* dra-tabling interpretor (works .. needs C storage)  https://github.com/logicmoo/swipl-devel/blob/ATT_LOGICMOO/library/tabling/dra_interp.pl#L5692-L6101
 ````
 [11979 steps, 1001 new answers tabled (1001 in all)]
 Fib of 1000 is 70330367711422815821835254877183549770181269836358732742604905087154537118196933579742249494562611733487750449241765991088186363265450223647106012053374121273867339111198139373125598767690091902245245323403501
 % 6,729,826 inferences, 4.405 CPU in 4.410 seconds (100% CPU, 1527685 Lips)
 ````
+
 
 * delimited continuations tabling (60%)
 ````
@@ -30,6 +31,8 @@ work in progress
 ````
  * This library is described in the paper "Tabling as Library with Delimited Control" 
  * by Benoit Desouter, Marko van Dooren and Tom Schrijvers. (Email: Benoit dot Desouter at UGent dot be)
+ * http://www-ps.informatik.uni-kiel.de/kdpd2013/talks/schrijvers.pdf
+ * http://arxiv.org/pdf/1507.08087v1.pdf
 
 (0% complete)
 ===========================================
