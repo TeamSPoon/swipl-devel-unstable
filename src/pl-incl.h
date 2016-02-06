@@ -2012,27 +2012,30 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
-/* assignAttVar() flags */
+/* assignAttVar() flags  - All defaulted to false */
 
-#define ATTV_WAKEBINDS   0x01			/* bindConst() */
-#define ATTV_ASSIGNONLY  0x02			/* '$attvar_assign'/2 */
-#define ATTV_IN_UNIFY       0x04			/* unify: assign and wakeup */
+/* This adds wakeups to attvars rather than binding them */
+#define ATTV_DEFAULT     META_DEFAULT   /* bindConst() */
+#define ATTV_ASSIGNONLY  0x02		 /* '$attvar_assign'/2 */
+#define ATTV_MUST_TRAIL  0x04        /* unifiable/3 and Occurs checking needs attvars trailed  */
+#define ATTV_WILL_UNBIND 0x08        /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
 
 #define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
 #define LD_no_wakeup LD->attvar.no_wakeups
 
-#define IS_META(option) ((flags & META_ ## option) != 0)
+#define IS_META(option) ((flags & option) != 0)
 
 		 /*******************************
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_OPTIMIZE_TRAIL 0x0008 /* Optimize Trail */
-#define META_NO_BIND        0x0010 /* C should let only prolog do binding */
-// #define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
+#define META_NO_BIND        0x0010 /* C should not bind attvar even in ASSIGNONLY  */
+#define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
+#define META_NO_OPTIMIZE_TRAIL 0x0040 /* Dont Optimize Trail (Multiple wakeups) */
 // #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
+
 
 #define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
@@ -2051,13 +2054,21 @@ typedef struct
 #define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
 #define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
 #define META_ENABLE_PREUNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
+#define META_WAKEBINDS       0x020000 /* C should let only prolog do binding */
+
+#define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
 
 
-#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS)
+#define SLOW_UNIFY_DEFAULT TRUE
+#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_NO_OPTIMIZE_TRAIL)
+
+#define  B_PUTATTS 0x0
+#define NB_PUTATTS 0x1
+
 
 #ifdef O_METATERM
 
-#define METATERM_GLOBAL_FLAGS valInteger(*METATERM_GLOBAL)
+#define METATERM_GLOBAL_FLAGS (METATERM_CURRENT = isVar(*METATERM_GLOBAL)?META_DEFAULT:valInteger(*METATERM_GLOBAL))
 #define METATERM_GLOBAL valPHandle(LD->attvar.metaterm_opts PASS_LD)
 #define METATERM_CURRENT LD->attvar.metaterm_current
 
@@ -2073,7 +2084,7 @@ typedef struct
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
-#define METATERM_OVERIDES(var,atom) (METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD))
+#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (META_ENABLE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
@@ -2083,8 +2094,8 @@ typedef struct
 
 #else  /* for less noisey undefing of O_METATERM */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar
-#define METATERM_OVERIDES(var,functor) (0)
-#define METATERM_HOOK(what,t1,t2,rc) (0)
+#define METATERM_OVERIDES(var,atom) (0)
+#define METATERM_HOOK(atom,t1,t2,rc) (0)
 #define POST_SKIP_HIDDEN(l,r) (void)0
 #define METATERM_ENABLED (0)
 #endif

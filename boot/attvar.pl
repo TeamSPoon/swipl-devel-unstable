@@ -29,7 +29,7 @@
 */
 
 :- module('$attvar',
-	  [ undo/1,                     % :Goal
+	  [ % undo/1,                     % :Goal
             freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
@@ -57,12 +57,12 @@ system:pre_unify(Atts,Next,Var,Value):-
 
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
-system:pre_unify(_, Next, Var, Value,VarID):- \+ ((get_attr(Var,'$in_unify',CookieM),VarID==CookieM)),!, call(Next).
+system:pre_unify(_, Next, Var, _Value,VarID):- \+ ((get_attr(Var,'$in_unify',CookieM),VarID==CookieM)),!, call(Next).
 system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
         ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
         system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
 
-system:pre_unify(_, Next, Var, Value,VarID):-
+system:pre_unify(_, Next, Var, Value, _):-
    del_attr(Var,'$in_unify'),
    '$trail_assignment'(Var),
    attv_unify(Var,Value),
@@ -99,10 +99,12 @@ system:post_unify(_,Next,Var,Value):- Var==Value, call(Next).
     BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail. % crashes ssytem
 */
 system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
-:- meta_predicate(undo(:)).
-undo(Goal):- 
-        metaflag_set(global,0x8000),
+
+:- meta_predicate(system:undo(:)).
+system:undo(Goal):-        
+        metaterm_flags(current,_,0x8000),
         put_attr(Var,'$undo_unify',Goal),
+        % trace, notrace,
         '$trail_assignment'(Var),
         attv_unify(Var,Goal).
 
@@ -394,7 +396,7 @@ no_pre_unify:- true.
 :- meta_predicate(system:peer_unify(+,0,+,+,-)).
 
 system:peer_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_module(Goals,Module),G)):- !,
-	metaflag_set(Var,0x0060), % no_wake + no_inherit
+	metaterm_flags(Var,set,0x0060), % no_wake + no_inherit
 	system:ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
 	system:peer_unify(Rest, Next, Var, Value, G).
 

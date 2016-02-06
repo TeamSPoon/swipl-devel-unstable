@@ -1246,7 +1246,10 @@ __do_undo(mark *m ARG_LD)
        word newer = *location;
        *location = older; 
        if(isAttVar(older) && find_attr(location, ATOM_dundo_unify, &unused PASS_LD))
-       { metatermOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD);
+       { DEBUG(MSG_METATERM, Sdprintf("UNDO-ing\n"));
+         if(!metatermOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD))
+         { DEBUG(MSG_METATERM, Sdprintf("UNDO FAILED"));
+         }
         /* DM:  I would have prefered to...
             scheduleWakeup(newer, TRUE PASS_LD); <- problem was the when wakeups ran 'newer's inner arguments are already gone (untrailed)
           Slightly confused why this doesnt happen to the metatermOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */      
@@ -2661,7 +2664,7 @@ PL_next_solution(qid_t qid)
   Code	     PC = NULL;			/* program counter */
   Definition DEF = NULL;		/* definition of current procedure */
   unify_mode umode = uread;		/* Unification mode */
-  int slow_unify = FALSE;		/* B_UNIFY_FIRSTVAR */
+  int slow_unify = SLOW_UNIFY_DEFAULT; /* B_UNIFY_FIRSTVAR */
   exception_frame throw_env;		/* PL_thow() environment */
 #ifdef O_DEBUG
   int	     throwed_from_line=0;	/* Debugging: line we came from */

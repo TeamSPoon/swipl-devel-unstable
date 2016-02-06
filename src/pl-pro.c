@@ -55,6 +55,8 @@ resetProlog(int clear_stacks)
     LD->shift_status.blocked = 0;
     LD->in_arithmetic        = 0;
     LD->in_print_message     = 0;
+    LD->slow_unify     = SLOW_UNIFY_DEFAULT;
+    
   }
 
 #ifdef O_LIMIT_DEPTH

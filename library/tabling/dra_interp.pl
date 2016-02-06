@@ -29,7 +29,7 @@
 
 */
 
-% :-  module(dra_interp,[]).
+% :- module(dra,[]).
    % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
@@ -78,7 +78,7 @@ property_pred((traces),is_tracing).
 property_pred(set_default_extension,default_extension).
 property_pred(hilog,is_hilog).
 
-:- forall(property_pred(D,F) ,((DG=..[D,_],asserta((DG:-execute_directive(DG)))), 
+:- forall(property_pred(D,F) ,((DG=..[D,_],asserta((user:DG:-execute_directive(DG)))), 
    ( \+ current_op(_,fy,D) -> op(900,fy,D) ; true),  multifile(F/1),dynamic(F/1))).
 
 
@@ -6506,6 +6506,6 @@ t4:- pf(('dra/tabling3/examples/coind_new.tlp') ).
 t5:- consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/dra/tabling3/Bench/tabling/tcl.pl').
 
 % :- repeat,logOnErrorIgnore(prolog),fail.
-user:term_expansion((?- G),_):- nonvar(G), format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
+%user:term_expansion((?- G),_):- nonvar(G), format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
 % user:goal_expansion(G,_):- G\=(_,_),G\=(_;_),\+ predicate_property(G,_),format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
 

@@ -1193,6 +1193,7 @@ emptyStacks(void)
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
     METATERM_CURRENT =  META_DEFAULT;
     *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
+    LD->slow_unify     = SLOW_UNIFY_DEFAULT;
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif
 #ifdef O_GVAR

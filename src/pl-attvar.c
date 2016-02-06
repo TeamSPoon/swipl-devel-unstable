@@ -172,9 +172,17 @@ appendWakeup(Word wake ARG_LD)
   }
 }
 
+static int put_attr(Word av, atom_t name, Word value, int backtrack_flags ARG_LD);
+void
+setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
+{   if(!isAttVar(*av)) return;
+    word wval = consUInt(value);
+    put_attr(av, ATOM_datts, &wval, backtrack_flags PASS_LD);
+}
+
 /*
  Returns the "$atts" attvar property (supposed to be a small int)
- Ideally mattss will have them at the begining
+ Ideally metaterms will have them at the begining
 */
 
 int
@@ -184,15 +192,18 @@ getMetaFlags(Word av, int flags ARG_LD)
     if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
         value = 0;
     else value = valInteger(*found);
-    if (IS_META(NO_INHERIT))
-        return METATERM_CURRENT = value;
+    if (IS_META(META_NO_INHERIT))
+        return value;
+
+    if (value==0) return META_DEFAULT;
+
     flags = value;
-    if (value==0 || IS_META(DISABLED))
-        return META_DEFAULT;
+    if (IS_META(META_DISABLED)) return META_DISABLED|META_DEFAULT;
+
     flags = METATERM_GLOBAL_FLAGS;
-    if (IS_META(NO_INHERIT)) 
-        return(METATERM_CURRENT = value);
-    return METATERM_CURRENT =(value | METATERM_GLOBAL_FLAGS);
+    if (IS_META(META_NO_INHERIT)) 
+        return(value);
+    return (value | flags);
 }
 
 
@@ -226,53 +237,63 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  assert(!isRef(*value));
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
+ if(!(flags& ATTV_ASSIGNONLY) && (flags& META_WAKEBINDS) )
+ { registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
+   return;
+ }
+
  if ( isAttVar(*value) )
  { 
     if ( av == value) return;
 
-    if(IS_META(KEEP_BOTH))
+    if(IS_META(META_KEEP_BOTH))
     { DEBUG(MSG_METATERM, Sdprintf("META_KEEP_BOTH\n"));
       return;
     }
 
     if (av > value)
     { 
-        if (IS_META(NO_BIND))
-        {  DEBUG(MSG_METATERM, Sdprintf("NO_BIND Unifying av <- value\n"));           
+        if (IS_META(META_NO_BIND))
+        {  DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND Unifying av <- value\n"));
         } else
         {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
-           *av = makeRef(value);			            
+           *av = makeRef(value);		            
         }
 
     } else
-    {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Reversing value <- av\n"));
-       TrailAssignment(value);
-       *value = makeRef(av);
+    {  if (!IS_META(META_DISABLE_SWAP))
+       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("SWAPPING value <- av\n"));
+         TrailAssignment(value);
+         *value = makeRef(av);
+       } else
+       { DEBUG(MSG_METATERM, Sdprintf("META_DISABLE_SWAP value -> av\n"));
+         *av = makeRef(value);
+       }
     }
     
  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
  {   if( (flags& ATTV_ASSIGNONLY) )
-	 {  if(IS_META(KEEP_BOTH))
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Upgraging VAR to an ATTVAR ref\n"));
+	 {  if(IS_META(META_KEEP_BOTH))
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref\n"));
            TrailAssignment(value);
            make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
            deRef(value);
            *valPAttVar(*value) = *valPAttVar(*av);
          } else
-         { if (IS_META(NO_BIND))
-           { DEBUG(MSG_METATERM, Sdprintf("NO_BIND attvar with a plain putting into VAR maybe ref\n"));
+         { if (IS_META(META_NO_BIND))
+           { DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
              return;
            }
            DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
            *av = makeRef(value);			            
          }
 	 } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf("FUNCTOR_unify4 with a plain VAR ref\n"));
+     { DEBUG(MSG_WAKEUPS, Sdprintf("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref\n"));
        registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);       
      }
   } else 
-  { if (IS_META(NO_BIND))
-    { DEBUG(MSG_METATERM, Sdprintf("NO_BIND attvar with a value\n"));
+  { if (IS_META(META_NO_BIND))
+    { DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND attvar with a value\n"));
       return;
     } else
     { *av = *value;
@@ -286,7 +307,7 @@ assignAttVarPreUnify(Word av, Word value, int flags ARG_LD)
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    {   if (!IS_META(DISABLE_SWAP))
+    {   if (!IS_META(META_DISABLE_SWAP))
         {
           Word tmp = av;
           av = value;
@@ -301,33 +322,22 @@ assignAttVarPreUnify(Word av, Word value, int flags ARG_LD)
   }
 
 
-  if((flags& ATTV_WAKEBINDS) )
+  if(!(flags& META_NO_WAKEUP))
   { registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
-    return;
-  }
+  } 
 
-  if((flags& ATTV_IN_UNIFY) )
-  { registerWakeup(FUNCTOR_pre_unify4, av, valPAttVar(*av), value PASS_LD);
-  } else
-  { registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
-  }
-
-  if(flags& META_OPTIMIZE_TRAIL)
-  { mark m;
-    Mark(m);		/* must be trailed, even if above last choice */
-    LD->mark_bar = NO_MARK_BAR;
-    TrailAssignment(av);
-    DiscardMark(m);
-   if ( needsRef(*value) )
-   { if (!IS_META(NO_BIND)) *av = makeRef(value);
-   } else 
-   { if (!IS_META(NO_BIND)) *av = *value;
-   }
-   return;
+ if((flags& ATTV_MUST_TRAIL))
+ { mark m;
+   Mark(m);		/* must be trailed, even if above last choice */
+   LD->mark_bar = NO_MARK_BAR;
+   TrailAssignment(av);
+   DiscardMark(m);
   } else
   { TrailAssignment(av);
-    assignAttVarBinding(av,value,flags PASS_LD);
-    return;
+  }
+
+  if((flags& ATTV_WILL_UNBIND) )
+  {  assignAttVarBinding(av,value,flags PASS_LD);
   }
 }
 
@@ -349,7 +359,7 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    {   if (!IS_META(DISABLE_SWAP))
+    {   if (!IS_META(META_DISABLE_SWAP))
         {
           Word tmp = av;
           av = value;
@@ -363,9 +373,21 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
     }
   }
 
-  registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+ if(!(flags& META_NO_WAKEUP)) registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
 
-  TrailAssignment(av);
+ if((flags& ATTV_MUST_TRAIL))
+ { mark m;
+   Mark(m);		/* must be trailed, even if above last choice */
+   LD->mark_bar = NO_MARK_BAR;
+   TrailAssignment(av);
+   DiscardMark(m);
+ } else
+ { TrailAssignment(av);
+ }
+
+ if( (flags& META_NO_BIND) ) return;
+ 
+
   if ( isAttVar(*value) )
   { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
     *av = makeRef(value);
@@ -595,7 +617,7 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
 }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-put_attr(Word attvar, atom_t name, Word value)
+put_attr(Word attvar, atom_t name, Word value,  [N]B_PUTATTS)
 
 Destructive assignment or adding in a list  of the form att(Name, Value,
 Rest).
@@ -604,7 +626,7 @@ SHIFT-SAFE: Requires max 5 global + 2 trail
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 static inline void
-put_att_value(Word vp, atom_t name, Word value ARG_LD)
+put_att_value(Word vp, atom_t name, Word value, int backtrack_flags ARG_LD)
 { Word at = gTop;
 
   gTop += 4;
@@ -613,22 +635,24 @@ put_att_value(Word vp, atom_t name, Word value ARG_LD)
   at[2] = linkVal(value);
   at[3] = ATOM_nil;
 
+  if(!(backtrack_flags & NB_PUTATTS))
   TrailAssignment(vp);
   *vp = consPtr(at, TAG_COMPOUND|STG_GLOBAL);
 }
 
 
 static int
-put_attr(Word av, atom_t name, Word value ARG_LD)
+put_attr(Word av, atom_t name, Word value, int backtrack_flags ARG_LD)
 { Word vp;
 
   assert(gTop+5 <= gMax && tTop+2 <= tMax);
 
   if ( find_attr(av, name, &vp PASS_LD) )
-  { TrailAssignment(vp);
+  { if(!(backtrack_flags & NB_PUTATTS))
+    TrailAssignment(vp);
     *vp = linkVal(value);
   } else if ( vp )
-  { put_att_value(vp, name, value PASS_LD);
+  { put_att_value(vp, name, value, backtrack_flags PASS_LD);
   } else
     return FALSE;			/* Bad attribute list */
 
@@ -906,7 +930,7 @@ PRED_IMPL("put_attr", 3, put_attr, 0)	/* +Var, +Name, +Value */
   { put_new_attvar(av, name, vp PASS_LD);
     return TRUE;
   } else if ( isAttVar(*av) )
-  { if ( put_attr(av, name, vp PASS_LD) )
+  { if ( put_attr(av, name, vp, B_PUTATTS PASS_LD) )
       return TRUE;
     return PL_error("put_attr", 3, "invalid attribute structure",
 		    ERR_TYPE, ATOM_attributes, A1);
@@ -1337,7 +1361,7 @@ PRED_IMPL("$suspend", 3, suspend, PL_FA_TRANSPARENT)
       t[1] = FUNCTOR_call1,
       t[2] = linkVal(g);
 
-      put_att_value(vp, name, t PASS_LD);
+      put_att_value(vp, name, t, B_PUTATTS PASS_LD);
       return TRUE;
     }
   } else
@@ -1611,51 +1635,87 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   
 }
 
+
 static
-PRED_IMPL("metaflag_set", 2, metaflag_set, 0)
-{ PRED_LD
-  int val;
-  if(!PL_get_integer_ex(A2,&val)) return FALSE;
-  Word av = valTermRef(A1);
-  deRef(av);
-  if ( isAttVar(*av) )
+int
+setFlagOptions(int *flag, term_t opval, term_t new)
+{ GET_LD
+
+  atom_t math;
+  int was = *flag;
+
+  if(PL_get_atom(opval, &math))
   { 
-    int flags = getMetaFlags(av,META_NO_INHERIT PASS_LD);    
-    word w = consUInt(val | flags);
-    return put_attr(av,ATOM_datts,&w PASS_LD);
-  } else
-  { if(PL_unify_atom(A1,ATOM_global))
-     { TrailAssignment(METATERM_GLOBAL);
-        *METATERM_GLOBAL = consUInt(METATERM_GLOBAL_FLAGS | val);
-     } else if(PL_unify_atom(A1,ATOM_current))
-     { METATERM_CURRENT = METATERM_CURRENT | val;
-     }
-  }
-  return TRUE;
+      int value;
+
+        if(!PL_get_integer_ex(new, &value)) return FALSE;
+
+        if(math==ATOM_bitor || math==ATOM_set)
+        { *flag = was | value;
+          return TRUE;
+        }
+        if(math==ATOM_and)
+        { *flag = was & value;
+          return TRUE;
+        }
+        if(math==ATOM_tilde || math==ATOM_not_provable)
+        { *flag = was & ~value;
+          return TRUE;
+        }
+        if(math==ATOM_equals)
+        { *flag = value;
+          return TRUE;
+        }
+
+        return PL_error(NULL, 0, "options_set_unset", ERR_DOMAIN, opval, "options_set_unset");
+
+  } 
+  if ( !PL_unify_integer(opval, *flag) ) fail;
+  if ( PL_compare(opval,new) == CMP_EQUAL )
+       return TRUE;
+  return PL_get_integer_ex(new, flag);
 }
 
 static
-PRED_IMPL("metaflag_unset", 2, metaflag_unset, 0)
+PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
 { PRED_LD
-  int val;
-  if(!PL_get_integer_ex(A2,&val)) return FALSE;
+
   Word av = valTermRef(A1);
   deRef(av);
   if ( isAttVar(*av) )
-  { 
-    int flags = getMetaFlags(av,META_NO_INHERIT PASS_LD);    
-    word w = consUInt(~val & flags);
-    return put_attr(av,ATOM_datts,&w PASS_LD);
-  } else
-  { if(PL_unify_atom(A1,ATOM_global))
-     { TrailAssignment(METATERM_GLOBAL);
-        *METATERM_GLOBAL = consUInt(METATERM_GLOBAL_FLAGS & ~val);
-     } else if(PL_unify_atom(A1,ATOM_current))
-     { METATERM_CURRENT = METATERM_CURRENT & ~val;
-     }
+  { int backtrack_flags = PL_is_variable(A2) ? NB_PUTATTS : B_PUTATTS;
+    int inherit_flags = PL_is_variable(A3) ? METATERM_GLOBAL_FLAGS : META_NO_INHERIT;
+    int flags = getMetaFlags(av, inherit_flags PASS_LD);
+    int was = flags;
+    if(!setFlagOptions(&flags,A2,A3)) return FALSE;    
+    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags %s %sflags %d -> %d",vName(av),(backtrack_flags & NB_PUTATTS)?"NB-":"backtracking ",was,flags));
+    if(was == flags) return TRUE;
+    setMetaFlags(av, flags, backtrack_flags PASS_LD);
+    return TRUE;
+  } else if (!isAtom(*av) )
+  { return TRUE;
+  } else if(*av == ATOM_global)
+  { int flags = METATERM_GLOBAL_FLAGS;
+    int was = flags;
+    if(!setFlagOptions(&flags,A2,A3)) return FALSE;    
+    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags global defaults NB-flags %d -> %d",was,flags));
+    if(was == flags) return TRUE;
+    *METATERM_GLOBAL = consUInt(flags);
+    return TRUE;
+  } else if(*av == ATOM_current)
+  { int flags = METATERM_GLOBAL_FLAGS;
+    int was = flags;
+    if(!setFlagOptions(&flags,A2,A3)) return FALSE;
+    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags global current backtracking %d -> %d",was,flags));
+    TrailAssignment(METATERM_GLOBAL);
+    if(was == flags) return TRUE;
+    *METATERM_GLOBAL = consUInt(flags);
+    return TRUE;    
   }
-  return TRUE;
+  return FALSE;
 }
+
+
 
 #ifdef O_METATERM
 
@@ -1746,15 +1806,17 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 
 bool 
 isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
-{ Word fdattrs,found;
-  if(!(METATERM_ENABLED)) return FALSE;
+{ Word fdattrs,fdattrs2,found;
+  if(!(override_flags & METATERM_ENABLED)) return FALSE;
   deRef(av);
   if(!isAttVar(*av)) return FALSE;
   if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
   { word fallback;
     if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD)) return FALSE;
+    if(!fallback)  return FALSE;
     if(!isAttVar(fallback)) return FALSE;       
-    if(!find_attr(&fallback, ATOM_dmeta, &fdattrs PASS_LD)) return FALSE;
+    if(!find_attr(&fallback, ATOM_dmeta, &fdattrs2 PASS_LD)) return FALSE;
+    fdattrs = fdattrs2;
   }
   if(fdattrs==0) return FALSE;
   deRef(fdattrs);
@@ -1762,19 +1824,6 @@ isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
   DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s,%s)\n",vName(av),print_val(f,0),print_val(*found,0)));
   return !isVar(*found);
 }
-
-void
-setMetaFlags(Word av, int value ARG_LD)
-{ Word found;
-    if(!isAttVar(*av)) return;
-    if (find_attr(av, ATOM_datts, &found PASS_LD) && isInteger(*found))
-    {  *found = consInt(value);
-    } else
-    { word wval = consInt(value);
-      put_att_value(av,ATOM_datts,&wval PASS_LD);
-    }
-}
-
 
 static
 PRED_IMPL("$get_delayed", 2, dget_delayed, 0)
@@ -1900,12 +1949,6 @@ PRED_IMPL("$visible_attrs", 2, dvisible_attrs, 0)
   }
   fail;
 }
-static
-PRED_IMPL("metaflag_options", 2, metaflag_options, 0)
-{ PRED_LD
-    METATERM_CURRENT = METATERM_GLOBAL_FLAGS;
-    return setInteger(&METATERM_CURRENT, A1, A2);
-}
 
 /* For a heuristic used elsewhere from mattss */
 static
@@ -1968,11 +2011,9 @@ BeginPredDefs(attvar)
   PRED_DEF("$get_delayed", 2, dget_delayed, 0)
   PRED_DEF("$depth_of_var",    2, ddepth_of_var,    0)
   PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
-  PRED_DEF("metaflag_options", 2, metaflag_options, 0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
+  PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
-  PRED_DEF("metaflag_set", 2, metaflag_set, 0)
-  PRED_DEF("metaflag_unset", 2, metaflag_unset, 0)
 #endif
 
 EndPredDefs
