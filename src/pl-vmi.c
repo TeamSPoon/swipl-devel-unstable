@@ -1628,64 +1628,6 @@ true:
 normal_call:
 
   CHECK_METATERM(ARGP);
-    if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
-    {   LD->dra.in_dra++;
-    
-        { Word a;
-
-              if ( !hasGlobalSpace(2) )
-              { int rc;
-    
-                SAVE_REGISTERS(qid);
-                rc = ensureGlobalSpace(2, ALLOW_GC);
-                LOAD_REGISTERS(qid);
-                if ( rc != TRUE )
-                { raiseStackOverflow(rc);
-                    THROW_EXCEPTION;
-                }
-              }
-            
-            a = argFrameP(NFR, 0);		/* get the goal */
-            deRef(a);
-            if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
-
-            DEBUG(MSG_DRA,
-              { term_t gg = pushWordAsTermRef(a);
-                LocalFrame ot = lTop;
-                lTop += 100;
-                Sdprintf("DRA GOAL: ");
-                pl_writeln(gg);
-                popTermRef();
-                lTop = ot;
-              });
-
-          *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
-          NFR = lTop;
-          DEF = PROCEDURE_dra_call1->definition;
-          setNextFrameFlags(NFR, FR);
-
-              DEBUG(MSG_DRA,
-            { Sdprintf("DRA CALL: ");
-              a = argFrameP(NFR, 0);		/* get the goal */
-              deRef(a);
-              if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
-              term_t gg = pushWordAsTermRef(a);
-                  LocalFrame ot = lTop;
-                  lTop += 100;
-                  pl_writeln(gg);
-                  popTermRef();
-                  lTop = ot;
-                });
-        }
-
-
-     /*
-      ARGP = argFrameP(NFR, 0);
-
-      for(; arity-- > 0; ARGP++, args++)
-        *ARGP = linkVal(args);
-        */
-    }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
@@ -4593,11 +4535,47 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	{ term_t g = pushWordAsTermRef(a);
 	  LocalFrame ot = lTop;
 	  lTop += 100;
+      DEBUG(MSG_DRA, Sdprintf("DRA I_USERCALL0: "));
 	  pl_writeln(g);
 	  popTermRef();
 	  lTop = ot;
 	});
+
+#ifdef O_DRA_TABLING
+  if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
+  {   LD->dra.in_dra++;
+
+       Word a;
+
+       functor_t dra_interp = DEF->dra_interp;
+       
+       if(dra_interp==NULL) dra_interp = FUNCTOR_dra_call1;
+       
+        ARGP = argFrameP(lTop, 0);
+        *ARGP++ = linkVal(a);
+        NFR = lTop;
+        DEF = resolveProcedure(dra_interp, module)->definition;
+        setNextFrameFlags(NFR, FR);
+
+         DEBUG(MSG_DRA,
+          { Sdprintf("DRA CALL: ");
+            a = argFrameP(NFR, 0);		/* get the goal */
+            deRef(a);
+            if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
+            term_t gg = pushWordAsTermRef(a);
+            LocalFrame ot = lTop;
+            lTop += 100;
+            pl_writeln(gg);
+            popTermRef();
+            lTop = ot;
+          });
+      
+ }
+#endif  
+
   DEBUG(CHK_SECURE, checkStacks(NULL));
+
+
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Determine the functor definition associated with the goal as well as the
@@ -4833,7 +4811,6 @@ mcall_cont:
   { DEF = getProcDefinition__LD(DEF PASS_LD);
 #endif
   }
-
 
 
   if ( true(DEF, P_TRANSPARENT) )

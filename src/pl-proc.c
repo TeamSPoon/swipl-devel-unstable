@@ -2702,8 +2702,16 @@ pl_get_predicate_attribute(term_t pred,
     }
 
     return rc;
-  } else if ( key == ATOM_dra_meta )
-  { return PL_unify_integer(value, true(def, P_DRA_CALL_META) ? 1 : 0);
+#ifdef O_DRA_TABLING
+  } else if ( key == ATOM_dra_call )
+  { if (false(def, P_DRA_CALL_META)) fail;
+    FunctorDef interp = def->dra_interp;
+    if(interp==NULL) return PL_unify_atom(value,ATOM_dra_call);
+    return PL_unify_atom(value,interp->name);
+  }  else if ( key == ATOM_dra_meta )
+  { if (false(def, P_DRA_CALL_META)) fail;
+    return PL_unify_integer(value, def->flags_ext);
+#endif 
   }  else if ( key == ATOM_foreign )
   { return PL_unify_integer(value, true(def, P_FOREIGN) ? 1 : 0);
   } else if ( key == ATOM_number_of_clauses )

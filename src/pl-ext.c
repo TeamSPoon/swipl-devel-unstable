@@ -469,7 +469,6 @@ initBuildIns(void)
   LOOKUPPROC(dinit_goal3);
 #ifdef O_ATTVAR
   LOOKUPPROC(call1);
-  LOOKUPPROC(dra_call1);
 //  PROCEDURE_dra_call1 = PL_predicate("dra_call", 1, "system");
 #endif
 #if O_DEBUGGER

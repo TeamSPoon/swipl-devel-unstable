@@ -156,7 +156,7 @@ handy for it someone wants to add a data type to the system.
 #define O_GVAR			1
 #define O_CYCLIC		1
 
-
+#define O_DRA_TABLING 1
 #define O_METATERM 1
 /*#undef O_METATERM*/
 
@@ -1350,6 +1350,7 @@ struct definition
   meta_mask	meta_info;		/* meta-predicate info */
   unsigned int  flags;			/* booleans (P_*) */
   unsigned int  flags_ext;			/* more booleans (P_EXT_*) */
+  FunctorDef dra_interp;         /* VMI calls this instead */
   unsigned int  shared;			/* #procedures sharing this def */
 #ifdef O_PROF_PENTIUM
   int		prof_index;		/* index in profiling */
@@ -2213,7 +2214,6 @@ typedef struct
 #define PROCEDURE_setup_call_catcher_cleanup4 \
 				(GD->procedures.setup_call_catcher_cleanup4)
 #define PROCEDURE_dwakeup1		(GD->procedures.call1)
-#define PROCEDURE_dra_call1		(GD->procedures.dra_call1)
 #define PROCEDURE_dthread_init0		(GD->procedures.dthread_init0)
 #define PROCEDURE_exception_hook4	(GD->procedures.exception_hook4)
 #define PROCEDURE_dc_call_prolog	(GD->procedures.dc_call_prolog0)
