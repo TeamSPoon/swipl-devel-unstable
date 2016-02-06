@@ -3,7 +3,7 @@
     Author:        Markus Triska
     E-mail:        triska@gmx.at
     WWW:           http://www.swi-prolog.org
-    Copyright (C): 2007-2015 Markus Triska
+    Copyright (C): 2007-2016 Markus Triska
 
     This program is free software; you can redistribute it and/or
     modify it under the terms of the GNU General Public License
@@ -273,18 +273,20 @@ For supported expressions, CLP(FD) constraints are drop-in
 replacements of these low-level arithmetic predicates, often yielding
 more general programs.
 
-Here is an example:
+Here is an example, relating each natural number to its factorial:
 
 ==
 :- use_module(library(clpfd)).
 
 n_factorial(0, 1).
 n_factorial(N, F) :-
-        N #> 0, N1 #= N - 1, F #= N * F1,
+        N #> 0,
+        N1 #= N - 1,
+        F #= N * F1,
         n_factorial(N1, F1).
 ==
 
-This predicate can be used in all directions. For example:
+This relation can be used in all directions. For example:
 
 ==
 ?- n_factorial(47, F).
@@ -6396,7 +6398,10 @@ list_first_rest([L|Ls], L, Ls).
 %% zcompare(?Order, ?A, ?B)
 %
 % Analogous to compare/3, with finite domain variables A and B.
-% Example:
+%
+% This predicate allows you to make several predicates over integers
+% deterministic while preserving their generality and completeness.
+% For example:
 %
 % ==
 % :- use_module(library(clpfd)).
@@ -6411,11 +6416,24 @@ list_first_rest([L|Ls], L, Ls).
 %         n_factorial(N1, F0).
 % ==
 %
-% This version is deterministic if the first argument is instantiated:
+% This version is deterministic if the first argument is instantiated,
+% because first argument indexing can distinguish the two different
+% clauses:
 %
 % ==
 % ?- n_factorial(30, F).
 % F = 265252859812191058636308480000000.
+% ==
+%
+% The predicate can still be used in all directions, including the
+% most general query:
+%
+% ==
+% ?- n_factorial(N, F).
+% N = 0,
+% F = 1 ;
+% N = F, F = 1 ;
+% N = F, F = 2 .
 % ==
 
 zcompare(Order, A, B) :-
