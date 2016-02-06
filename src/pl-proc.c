@@ -2616,6 +2616,12 @@ static const patt_mask patt_masks[] =
   { (atom_t)0,		   0 }
 };
 
+static const patt_mask dra_masks[] =
+{ 
+  { (atom_t)0,		   0 }
+};
+
+
 static unsigned int
 attribute_mask(atom_t key)
 { const patt_mask *p;
@@ -2702,16 +2708,20 @@ pl_get_predicate_attribute(term_t pred,
     }
 
     return rc;
+
 #ifdef O_DRA_TABLING
+
   } else if ( key == ATOM_dra_call )
   { if (false(def, P_DRA_CALL_META)) fail;
-    FunctorDef interp = def->dra_interp;
-    if(interp==NULL) return PL_unify_atom(value,ATOM_dra_call);
-    return PL_unify_atom(value,interp->name);
-  }  else if ( key == ATOM_dra_meta )
+    FunctorDef draFunctorDef = def->dra_interp;
+    if(draFunctorDef==NULL) return PL_unify_atom(value,ATOM_dra_call);
+    return PL_unify_atom(value,draFunctorDef->name);
+  } else if ( key == ATOM_dra_meta )
   { if (false(def, P_DRA_CALL_META)) fail;
-    return PL_unify_integer(value, def->flags_ext);
+    return PL_get_integer_ex(value, &def->flags_ext);
+
 #endif 
+
   }  else if ( key == ATOM_foreign )
   { return PL_unify_integer(value, true(def, P_FOREIGN) ? 1 : 0);
   } else if ( key == ATOM_number_of_clauses )

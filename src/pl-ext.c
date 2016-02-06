@@ -481,7 +481,7 @@ initBuildIns(void)
   clear(PROCEDURE_dcall1->definition, HIDE_CHILDS|TRACE_ME);
   set(PROCEDURE_dcall1->definition, P_DYNAMIC|P_LOCKED);
 
-  PL_meta_predicate(PL_predicate("dra_call",         1, "system"), ":");
+  /* PL_meta_predicate(PL_predicate("dra_call",         1, "system"), ":");*/
 
   PL_meta_predicate(PL_predicate("assert",           1, "system"), ":");
   PL_meta_predicate(PL_predicate("asserta",          1, "system"), ":");

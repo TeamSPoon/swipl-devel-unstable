@@ -1606,7 +1606,7 @@ The task of I_CALL is to  save  necessary  information  in  the  current
 frame,  fill  the next frame and initialise the machine registers.  Then
 execution can continue at `next_instruction'
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-BEGIN_SHAREDVARS
+/* BEGIN_SHAREDVARS */
 Module module;
 
 VMI(I_CALL, VIF_BREAK, 1, (CA1_PROC))
@@ -1628,6 +1628,57 @@ true:
 normal_call:
 
   CHECK_METATERM(ARGP);
+
+#ifdef O_DRA_TABLING
+
+    if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2)
+    {  DEBUG(MSG_DRA,Sdprintf("DRA I_CALL: "));
+        LD->dra.in_dra++;
+
+        { Word a;
+
+            if (!hasGlobalSpace(2))
+            {
+                int rc;
+
+                SAVE_REGISTERS(qid);
+                rc = ensureGlobalSpace(2, ALLOW_GC);
+                LOAD_REGISTERS(qid);
+                if (rc != TRUE)
+                {
+                    raiseStackOverflow(rc);
+                    THROW_EXCEPTION;
+                }
+            }
+            NFR = lTop;
+            a = argFrameP(NFR, 0);      /* get the goal */
+            deRef(a);
+            Module module0 = NULL;
+            if (!(a = stripModule(a, &module0 PASS_LD))) THROW_EXCEPTION;
+
+            *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
+            NFR = lTop;
+            // DEF = PROCEDURE_dra_call1->definition;
+            setNextFrameFlags(NFR, FR);
+
+            {
+                NFR = lTop;
+                a = argFrameP(NFR, 0);  /* get the goal */
+                if (!(a = stripModule(a, &module0 PASS_LD))) THROW_EXCEPTION;
+
+                DEBUG(MSG_DRA,{ term_t gg = pushWordAsTermRef(a);
+                     LocalFrame ot = lTop;
+                     lTop += 100;
+                     pl_writeln(gg);
+                     popTermRef();
+                     lTop = ot;
+                     });
+            }
+        }
+
+    }
+
+#endif
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
@@ -4535,7 +4586,7 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	{ term_t g = pushWordAsTermRef(a);
 	  LocalFrame ot = lTop;
 	  lTop += 100;
-      DEBUG(MSG_DRA, Sdprintf("DRA I_USERCALL0: "));
+      Sdprintf("I_USERCALL0: ");
 	  pl_writeln(g);
 	  popTermRef();
 	  lTop = ot;
@@ -4545,20 +4596,21 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
   if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
   {   LD->dra.in_dra++;
 
-       Word a;
+       
+       functor_t dra_functor =  FUNCTOR_dra_call1;
 
-       functor_t dra_interp = DEF->dra_interp;
+       FunctorDef draFunctorDef = DEF->dra_interp;
        
-       if(dra_interp==NULL) dra_interp = FUNCTOR_dra_call1;
+       if(draFunctorDef!=NULL) dra_functor = draFunctorDef->functor;
        
-        ARGP = argFrameP(lTop, 0);
+        Word a = argFrameP(lTop, 0);
         *ARGP++ = linkVal(a);
         NFR = lTop;
-        DEF = resolveProcedure(dra_interp, module)->definition;
+        DEF = resolveProcedure(dra_functor, module)->definition;
         setNextFrameFlags(NFR, FR);
 
          DEBUG(MSG_DRA,
-          { Sdprintf("DRA CALL: ");
+          { Sdprintf("DRA I_USERCALL0: ");
             a = argFrameP(NFR, 0);		/* get the goal */
             deRef(a);
             if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
@@ -4574,8 +4626,6 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 #endif  
 
   DEBUG(CHK_SECURE, checkStacks(NULL));
-
-
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Determine the functor definition associated with the goal as well as the
@@ -4811,6 +4861,7 @@ mcall_cont:
   { DEF = getProcDefinition__LD(DEF PASS_LD);
 #endif
   }
+
 
 
   if ( true(DEF, P_TRANSPARENT) )

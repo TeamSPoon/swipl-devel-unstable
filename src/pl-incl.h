@@ -1349,8 +1349,10 @@ struct definition
   struct bit_vector *tried_index;	/* Arguments on which we tried to index */
   meta_mask	meta_info;		/* meta-predicate info */
   unsigned int  flags;			/* booleans (P_*) */
+#ifdef O_DRA_TABLING
+  FunctorDef dra_interp;         /* VMI calls this Name/1 instead */
   unsigned int  flags_ext;			/* more booleans (P_EXT_*) */
-  FunctorDef dra_interp;         /* VMI calls this instead */
+#endif
   unsigned int  shared;			/* #procedures sharing this def */
 #ifdef O_PROF_PENTIUM
   int		prof_index;		/* index in profiling */

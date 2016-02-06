@@ -5339,6 +5339,7 @@ execute_directive( (coinductive0 PredSpecs) ) :-
 
 
 
+
 add_patterns([],_):-!.
 add_patterns([P|Patterns],DBF):- add_pattern(P,DBF),!,add_patterns(Patterns,DBF).
 
