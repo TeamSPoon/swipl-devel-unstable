@@ -822,10 +822,13 @@ with one operation, it turns out to be faster as well.
 #define clear(s, a)		((s)->flags &= ~(a))
 #define clearFlags(s)		((s)->flags = 0)
 
+#define true_ext(s, a)		((s)->flags_ext & (a))
+#define false_ext(s, a)		(!true_ext((s), (a)))
+
 /* Flags on predicates (packed in unsigned int */
 
 
-#define P_DRA_CALL      (0x00000002) /* Predicates that need called inside of dra_call/1 (especially tabled preds)*//* O_TABLING */
+#define P_DRA_CALL_META  (0x00000002) /* Predicates that need called inside of dra_call/1 (especially tabled preds)*//* O_TABLING */
 #define P_QUASI_QUOTATION_SYNTAX (0x00000004) /* {|Type||Quasi Quote|} */
 #define P_NON_TERMINAL	(0x00000008) /* Grammar rule (Name//Arity) */
 #define P_SHRUNKPOW2	(0x00000010) /* See reconsider_index() */
@@ -1346,6 +1349,7 @@ struct definition
   struct bit_vector *tried_index;	/* Arguments on which we tried to index */
   meta_mask	meta_info;		/* meta-predicate info */
   unsigned int  flags;			/* booleans (P_*) */
+  unsigned int  flags_ext;			/* more booleans (P_EXT_*) */
   unsigned int  shared;			/* #procedures sharing this def */
 #ifdef O_PROF_PENTIUM
   int		prof_index;		/* index in profiling */
@@ -2208,6 +2212,7 @@ typedef struct
 #define PROCEDURE_setup_call_catcher_cleanup4 \
 				(GD->procedures.setup_call_catcher_cleanup4)
 #define PROCEDURE_dwakeup1		(GD->procedures.call1)
+#define PROCEDURE_dra_call1		(GD->procedures.dra_call1)
 #define PROCEDURE_dthread_init0		(GD->procedures.dthread_init0)
 #define PROCEDURE_exception_hook4	(GD->procedures.exception_hook4)
 #define PROCEDURE_dc_call_prolog	(GD->procedures.dc_call_prolog0)

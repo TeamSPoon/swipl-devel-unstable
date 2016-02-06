@@ -40,6 +40,9 @@
 #define true(s, a)		((s)->flags & (a))
 #define false(s, a)		(!true((s), (a)))
 
+#define true_ext(s, a)		((s)->flags_ext & (a))
+#define false_ext(s, a)		(!true_ext((s), (a)))
+
 #undef LD			/* Get at most once per function */
 #define LD LOCAL_LD
 

@@ -65,7 +65,8 @@ attempt to call the Prolog defined trace interceptor.
 	thread_local(:),
 	noprofile(:),
 	'$iso'(:),
-	'$hide'(:).
+	'$hide'(:),
+        dra_meta(:).
 
 %%	dynamic(+Spec)
 %%	multifile(+Spec)
@@ -84,7 +85,13 @@ thread_local(Spec)	 :- '$set_pattr'(Spec, pred, (thread_local)).
 noprofile(Spec)		 :- '$set_pattr'(Spec, pred, (noprofile)).
 public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 '$iso'(Spec)		 :- '$set_pattr'(Spec, pred, (iso)).
-% table(Spec)		 :- '$set_pattr'(Spec, pred, (dra_call)).
+
+
+%%	'dra_meta'(:PI)
+%
+%	Predicates declared this way are called through dra_call/1.
+dra_meta(Spec)	         :- '$set_pattr'(Spec, pred, (dra_meta)).
+
 
 '$set_pattr'(M:Pred, How, Attr) :-
 	'$set_pattr'(Pred, M, How, Attr).
@@ -131,8 +138,8 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 	'$set_pattr'(Spec, M, directive, (noprofile)).
 '$pattr_directive'(public(Spec), M) :-
 	'$set_pattr'(Spec, M, directive, (public)).
-'$pattr_directive'(dra_called(Spec), M) :-
-	'$set_pattr'(Spec, M, directive, (dra_call)).
+'$pattr_directive'(dra_meta(Spec), M) :-
+	'$set_pattr'(Spec, M, directive, (dra_meta)).
 
 
 %%	'$hide'(:PI)

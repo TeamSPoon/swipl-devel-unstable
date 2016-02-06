@@ -415,6 +415,7 @@ attrib_name(built_in,		    system,		    true).
 attrib_name(nodebug,		    hide_childs,	    true).
 attrib_name(quasi_quotation_syntax, quasi_quotation_syntax, true).
 attrib_name(iso,		    iso,		    true).
+attrib_name(dra_meta,		    dra_meta,		    true).
 
 
 save_attribute(P, Attribute) :-

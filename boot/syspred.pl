@@ -841,6 +841,8 @@ define_or_generate(Pred) :-
 	'$get_predicate_attribute'(Pred, quasi_quotation_syntax, 1).
 '$predicate_property'(defined, Pred) :-
 	'$get_predicate_attribute'(Pred, defined, 1).
+'$predicate_property'(dra_meta, Pred) :-
+	'$get_predicate_attribute'(Pred, dra_meta, 1).
 
 system_undefined(user:prolog_trace_interception/4).
 system_undefined(user:prolog_exception_hook/4).

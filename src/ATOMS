@@ -658,7 +658,8 @@ A system_init_file	"system_init_file"
 A system_thread_id	"system_thread_id"
 A system_time		"system_time"
 A tan			"tan"
-A dra_call			"dra_call"
+A dra_call		"dra_call"
+A dra_meta		"dra_meta"
 A tanh			"tanh"
 A temporary		"temporary"
 A temporary_files	"temporary_files"
@@ -853,6 +854,7 @@ F doublestar		2
 F dparse_quasi_quotations 2
 F dprof_node		1
 F dquasi_quotation	3
+F dra_call		1
 F drecover_and_rethrow	2
 F dstream		1
 F dthread_init		0

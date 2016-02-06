@@ -2612,7 +2612,7 @@ static const patt_mask patt_masks[] =
   { ATOM_public,	   P_PUBLIC },
   { ATOM_non_terminal,	   P_NON_TERMINAL },
   { ATOM_quasi_quotation_syntax, P_QUASI_QUOTATION_SYNTAX },
-  { ATOM_dra_call, P_DRA_CALL },
+  { ATOM_dra_meta, P_DRA_CALL_META },
   { (atom_t)0,		   0 }
 };
 
@@ -2702,7 +2702,9 @@ pl_get_predicate_attribute(term_t pred,
     }
 
     return rc;
-  } else if ( key == ATOM_foreign )
+  } else if ( key == ATOM_dra_meta )
+  { return PL_unify_integer(value, true(def, P_DRA_CALL_META) ? 1 : 0);
+  }  else if ( key == ATOM_foreign )
   { return PL_unify_integer(value, true(def, P_FOREIGN) ? 1 : 0);
   } else if ( key == ATOM_number_of_clauses )
   { if ( def->flags & P_FOREIGN )

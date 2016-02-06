@@ -1625,7 +1625,59 @@ true:
 
 normal_call:
 
-CHECK_METATERM(ARGP);
+  CHECK_METATERM(ARGP);
+    if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
+    {
+         LD->dra.in_dra++;
+    
+        { Word a;
+
+              if ( !hasGlobalSpace(2) )
+              { int rc;
+    
+                SAVE_REGISTERS(qid);
+                rc = ensureGlobalSpace(2, ALLOW_GC);
+                LOAD_REGISTERS(qid);
+                if ( rc != TRUE )
+                { raiseStackOverflow(rc);
+                    THROW_EXCEPTION;
+                }
+              }
+            NFR = lTop;
+            a = argFrameP(NFR, 0);		/* get the goal */
+            deRef(a);
+            Module module0 = NULL;
+            if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
+
+          *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
+          NFR = lTop;
+          DEF = PROCEDURE_dra_call1->definition;
+          setNextFrameFlags(NFR, FR);
+
+          {
+            NFR = lTop;
+            a = argFrameP(NFR, 0);		/* get the goal */
+            if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
+            
+              DEBUG(MSG_DRA,
+                { term_t gg = pushWordAsTermRef(a);
+                  LocalFrame ot = lTop;
+                  lTop += 100;
+                  pl_writeln(gg);
+                  popTermRef();
+                  lTop = ot;
+                });
+          }
+        }
+
+
+     /*
+      ARGP = argFrameP(NFR, 0);
+
+      for(; arity-- > 0; ARGP++, args++)
+        *ARGP = linkVal(args);
+        */
+    }
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
@@ -1655,6 +1707,7 @@ possible to be able to call-back to Prolog.
       THROW_EXCEPTION;
     }
   }
+
 
 depart_continue:
 retry_continue:
@@ -4701,6 +4754,21 @@ VMI(I_USERCALLN, VIF_BREAK, 1, (CA1_INTEGER))
   }
 
 i_usercall_common:
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+If a P_DRA_CALL
+frame.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+  if (true(DEF,P_DRA_CALL_META)) 
+  {
+   /*
+    ARGP = argFrameP(NFR, 0);
+
+    for(; arity-- > 0; ARGP++, args++)
+      *ARGP = linkVal(args);
+      */
+  }
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Now scan the argument vector of the goal and fill the arguments  of  the
 frame.
@@ -4758,8 +4826,11 @@ mcall_cont:
 #endif
   }
 
+
+
   if ( true(DEF, P_TRANSPARENT) )
     setContextModule(NFR, module);
+
 
   goto normal_call;
 }

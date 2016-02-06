@@ -228,6 +228,7 @@ decl(dynamic,	   dynamic).
 decl(volatile,	   volatile).
 decl(multifile,	   multifile).
 decl(public,	   public).
+decl(dra_meta,	   dra_meta).
 
 declaration(Pred, Source, Decl) :-
 	decl(Prop, Declname),
