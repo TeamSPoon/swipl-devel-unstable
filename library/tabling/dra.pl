@@ -142,7 +142,8 @@ dra_load( FileName ) :-
         dra_must((program_loaded)),!.                          % provided by a metainterpreter
 
 
-cputime(X):- statistics(cputime,X).
+cputime(TimeMS):- 
+	statistics(runtime,[TimeMS,_]).
 
 % process_file( +file name ):
 % Load a program from this file, processing directives and queries.
@@ -2528,7 +2529,7 @@ erase_module( _ ).
 %
 % NOTE: Since DRA uses global variables to store only integers, we use the
 %       flag/3 facility of SWI Prolog.  For more general values we would have
-%       to use nb_setval/nb_getval.  See also getval/2 and incval/1 below.
+%       to use nb_setval/hprolog_nb_getval.  See also getval/2 and incval/1 below.
 
 setval( Name, Value ) :-
         flag( Name, _Old, Value ).

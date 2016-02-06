@@ -67,6 +67,14 @@
 % In order to facilitate such changes, routines for handling the table is
 % factored out of the main program.
 
+print_tables :-
+       listing( answer( _, _, _ ) ),
+       listing( result( _, _ ) ),
+       listing( pioneer( _, _, _ ) ),
+       listing( loop( _, _ ) ),
+       listing( looping_alternative( _, _ ) ),
+       listing( completed( _, _ ) ).
+
 
 % >>>>>>>>>  This version for systems that use assert/1. <<<<<<<<<
 

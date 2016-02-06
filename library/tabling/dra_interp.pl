@@ -52,7 +52,7 @@
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- shell(cls).
+% :- shell(cls).
 
 :- dynamic   user:file_search_path/2.
 :- multifile user:file_search_path/2.
@@ -142,7 +142,8 @@ dra_load( FileName ) :-
         dra_must((program_loaded)),!.                          % provided by a metainterpreter
 
 
-cputime(X):- statistics(cputime,X).
+cputime(TimeMS):- 
+	statistics(runtime,[TimeMS,_]).
 
 % process_file( +file name ):
 % Load a program from this file, processing directives and queries.
