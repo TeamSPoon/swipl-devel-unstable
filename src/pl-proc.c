@@ -1699,7 +1699,7 @@ PL_meta_predicate(predicate_t proc, const char *spec_s)
   int arity = def->functor->arity;
   int i;
   int mask = 0;
-  int transparent = FALSE;
+  int transparent = LOGICMOO_TRANSPARENT;
   const unsigned char *s = (const unsigned char*)spec_s;
 
   for(i=0; i<arity; i++, s++)
@@ -1741,7 +1741,7 @@ PL_meta_predicate(predicate_t proc, const char *spec_s)
     }
 
     mask |= spec<<(i*4);
-    if ( spec < 10 || spec == MA_META || spec == MA_HAT || spec == MA_DCG )
+    if ( spec < 10 || (spec == MA_META && !LOGICMOO_TRANSPARENT) || spec == MA_HAT || spec == MA_DCG )
       transparent = TRUE;
   }
 

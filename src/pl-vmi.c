@@ -1606,6 +1606,8 @@ The task of I_CALL is to  save  necessary  information  in  the  current
 frame,  fill  the next frame and initialise the machine registers.  Then
 execution can continue at `next_instruction'
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+BEGIN_SHAREDVARS
+Module module;
 
 VMI(I_CALL, VIF_BREAK, 1, (CA1_PROC))
 { Procedure proc = (Procedure) *PC++;
@@ -1627,8 +1629,7 @@ normal_call:
 
   CHECK_METATERM(ARGP);
     if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
-    {
-         LD->dra.in_dra++;
+    {   LD->dra.in_dra++;
     
         { Word a;
 
@@ -1643,31 +1644,38 @@ normal_call:
                     THROW_EXCEPTION;
                 }
               }
-            NFR = lTop;
+            
             a = argFrameP(NFR, 0);		/* get the goal */
             deRef(a);
-            Module module0 = NULL;
-            if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
+            if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
+
+            DEBUG(MSG_DRA,
+              { term_t gg = pushWordAsTermRef(a);
+                LocalFrame ot = lTop;
+                lTop += 100;
+                Sdprintf("DRA GOAL: ");
+                pl_writeln(gg);
+                popTermRef();
+                lTop = ot;
+              });
 
           *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
           NFR = lTop;
           DEF = PROCEDURE_dra_call1->definition;
           setNextFrameFlags(NFR, FR);
 
-          {
-            NFR = lTop;
-            a = argFrameP(NFR, 0);		/* get the goal */
-            if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
-            
               DEBUG(MSG_DRA,
-                { term_t gg = pushWordAsTermRef(a);
+            { Sdprintf("DRA CALL: ");
+              a = argFrameP(NFR, 0);		/* get the goal */
+              deRef(a);
+              if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
+              term_t gg = pushWordAsTermRef(a);
                   LocalFrame ot = lTop;
                   lTop += 100;
                   pl_writeln(gg);
                   popTermRef();
                   lTop = ot;
                 });
-          }
         }
 
 
@@ -4472,7 +4480,7 @@ again:
 		 *******************************/
 
 BEGIN_SHAREDVARS
-  Module module;
+  /*Module module;*/
   functor_t functor;
   int arity;
   Word args;

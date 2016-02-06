@@ -2069,6 +2069,7 @@ typedef struct
 #define  B_PUTATTS 0x0
 #define NB_PUTATTS 0x1
 
+#define LOGICMOO_TRANSPARENT FALSE
 
 #ifdef O_METATERM
 

@@ -29,7 +29,10 @@
 
 */
 
-:-  module(dra,[]).
+:- module('$dra',[]).
+:- '$set_source_module'(_,'$dra').
+:- 'set_prolog_flag'(access_level,system).
+
    % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
@@ -52,21 +55,21 @@
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-:- shell(cls).
+% :- shell(cls).
 
 :- dynamic   user:file_search_path/2.
 :- multifile user:file_search_path/2.
 
-:- meta_predicate user:asserta_new(:).
-:- meta_predicate user:dra_must(:).
-:- meta_predicate user:dra_check(:).
+:- meta_predicate asserta_new(:).
+:- meta_predicate dra_must(:).
+:- meta_predicate dra_check(:).
 % asserta_new(G):-catch(G,_,fail),!.
 asserta_new(G):-retract_all0(G),asserta(G).
 
 dra_must(G):-G*->true;throw(failed_must(G)).
 
 property_pred((table),is_tabled).
-property_pred(builtin,is_builtin).
+property_pred(builtin,cuts_ok).
 property_pred(never_table,is_never_tabled).
 property_pred(old_first,is_old_first).
 property_pred(coinductive0,is_coinductive0).
@@ -78,8 +81,8 @@ property_pred((traces),is_tracing).
 property_pred(set_default_extension,default_extension).
 property_pred(hilog,is_hilog).
 
-:- forall(property_pred(D,F) ,((DG=..[D,_],asserta((DG:-execute_directive(DG)))), 
-   ( \+ current_op(_,fy,D) -> op(900,fy,D) ; true),  multifile(F/1),dynamic(F/1))).
+:- forall(property_pred(D,F) ,((DG=..[D,_],user:asserta(( user:DG :- trace,execute_directive(DG)))), 
+   ( \+ current_op(_,fy,user:D) -> op(900,fy,user:D) ; true), module_transparent(user:D/1), multifile(F/1),dynamic(F/1))).
 
 
 % :- multifile sandbox:safe_primitive/1.
@@ -106,6 +109,7 @@ pf(F):- dra_must(retract_all0(topl(_))),
 run_curent_test:- (if_is_defined(go,if_is_defined(test,if_is_defined(top)))),!.
 run_curent_test:- topl(_),!,forall(topl(I),time((ignore(call((nonvar(I),dra_call(I))))))),!.
 
+:- set_prolog_flag(debugger_show_context,true).
 :- dynamic(is_clause_module/2).
 
 clause_module(_:Goal,M):- clause_module0(Goal,M),!.
@@ -186,127 +190,26 @@ dra_to_filename( FileName, AFN ) :-
           extensions(['',Ext,'.pl','.tlp','.clp','.P'])]),
         exists_file(AFN))),!.
 
-:-dynamic(is_pred_metainterp/2).
-pred_metainterp(Pred,M):- is_pred_metainterp(Pred,M),!.
-pred_metainterp(Pred,M):-
+:-dynamic(is_pred_metainterp_0/2).
+is_pred_metainterp(Pred,M):- is_pred_metainterp_0(Pred,M),!.
+is_pred_metainterp(Pred,M):-
     is_tabled(Pred)-> M = is_tabled ;
     is_coinductive1(Pred)-> M = is_coinductive1 ;
     is_support(Pred)-> M = is_support ;
-    is_builtin(Pred)-> M = is_builtin ;
+    cuts_ok(Pred)-> M = cuts_ok ;
     is_never_tabled(Pred)-> M = is_never_tabled.
-pred_metainterp(Pred,M):- source_file(Pred,File),is_file_meta(File,M),!.
-pred_metainterp(Pred,M):- might_be_clause_meta(Pred)-> M = is_never_tabled. 
-pred_metainterp(_   ,unknown).
+is_pred_metainterp(Pred,M):- source_file(Pred,File),is_file_meta(File,M),!.
+is_pred_metainterp(Pred,M):- might_be_clause_meta(Pred)-> M = is_never_tabled. 
+is_pred_metainterp(_   ,unknown).
 
 
 :- dynamic(is_file_meta/2).
 add_file_meta(FileName,Type):-dra_to_filename(FileName,File),asserta_new(is_file_meta(File,Type)).
 
-%:-add_file_meta('compatibility_utilities_swi',is_builtin).
-%:-add_file_meta('swi_toplevel',is_builtin).
-%:-add_file_meta('dra_common',is_builtin).
+%:-add_file_meta('compatibility_utilities_swi',cuts_ok).
+%:-add_file_meta('swi_toplevel',cuts_ok).
+%:-add_file_meta('dra_common',cuts_ok).
 
-
-
-
-% top:
-% Interactive mode.  Each term that is not a directive or a dra_call is treated
-% as an abbreviated dra_call.  After displaying the results of each dra_call read
-% characters upto the nearest newline: if the first character is ";",
-% backtrack to find alternative solutions.
-% Exit upon encountering end of file.
-% NOTE: When running on Sicstus, each term must come on a separate line: after
-%       reading the term the rest of the line is ignored, to facilitate
-%       interaction with the user when asking whether more answers are needed.
-
-
-
-
-:- user:dynamic(expand_dra_call/4).
-:- user:multifile(expand_dra_call/4).
-
-user:expand_dra_call(_Goal, _Expanded, _Bindings, _ExpandedBindings):-fail.
-
-
-:- user:dynamic(expand_answer/2).
-:- user:multifile(expand_answer/2).
-user:expand_answer(_Goal, _Expanded):-fail.
-
-
-
-		/********************************
-		*           EXECUTION		*
-		********************************/
-:-meta_predicate user:dra_execute(0, ?).
-:-meta_predicate user:dra_residue_var(0, ?).
-:-meta_predicate user:dra_execute_goal22(0, ?).
-
-user:dra_execute(Var, _) :-
-	var(Var), !,
-	print_message(informational, var_dra_call(Var)),
-	fail.
-user:dra_execute(end_of_file, _) :- !,
-	print_message(query, query(eof)).
-user:dra_execute(Goal, Bindings) :-
-	'$module'(TypeIn, TypeIn),
-	'$dwim_correct_goal'(TypeIn:Goal, Bindings, Corrected), !,
-	setup_call_cleanup('$set_source_module'(M0, TypeIn),
-			   expand_goal(Corrected, Expanded),
-			   '$set_source_module'(_, M0)),
-	print_message(silent, toplevel_goal(Expanded, Bindings)),
-	user:dra_execute_goal22(Expanded, Bindings).
-user:dra_execute(_, _) :-
-	notrace,
-	print_message(query, query(no)),
-	fail.
-
-user:dra_execute_goal22(Goal, Bindings) :-
-   	'$toplevel':restore_debug,
-	user:dra_residue_var(Goal, Vars),
-	deterministic(Det),
-	(   '$toplevel':save_debug
-	;   '$toplevel':restore_debug, fail
-	),
-	flush_output(user_output),
-	'$toplevel':call_expand_answer(Bindings, NewBindings),
-	(    \+ \+ '$toplevel':write_bindings(NewBindings, Vars, Det)
-	->   !, fail
-	).
-user:dra_execute_goal22(_, _) :-
-	'$toplevel':save_debug,
-	print_message(query, query(no)),
-	fail.
-
-user:dra_residue_var(Goal, Vars) :-
-	current_prolog_flag(toplevel_residue_vars, true), !,
-	call_residue_vars(dra_call(Goal), Vars).
-user:dra_residue_var(Goal, []) :-
-	dra_call(Goal).
-
-
-user:prompt(Module, BrekLev, Prompt) :-
-	current_prolog_flag(toplevel_prompt, PAtom),
-	atom_codes(PAtom, P0),
-	(    Module \== user
-	->   '$toplevel':'$substitute'('~m', [Module, ': '], P0, P1)
-	;    '$toplevel':'$substitute'('~m', [], P0, P1)
-	),
-	(    BrekLev > 0
-	->   '$toplevel':'$substitute'('~l', ['[', BrekLev, '] '], P1, P2)
-	;    '$toplevel':'$substitute'('~l', [], P1, P2)
-	),
-	current_prolog_flag(debug_settings, debug(Debugging, Tracing)),
-	(    Tracing == true
-	->   '$toplevel':'$substitute'('~d', ['[traced] '], P2, P3)
-	;    Debugging == true
-	->   '$toplevel':'$substitute'('~d', ['[debug] '], P2, P3)
-	;    '$toplevel':'$substitute'('~d', [], P2, P3)
-	),
-	atom_chars(Prompt, P3).
-
-%:- call(user:rl_add_history(ls)).
-%:- call(user:rl_add_history('traced,go')).
-:- '$toplevel':setup_history.
 
 user:listing_mpred_hook(What):- dra_listing(What).
 
@@ -324,27 +227,28 @@ dra_listing_0(MatchesIn):-
   Decl=..[DECLF,F/A],
   format('~N:- ~q.~n',[Decl]))))).
 
-set_meta(Goal, Prop):- is_pred_metainterp(Goal,Prop),!.
+set_meta(Goal, Prop):- is_pred_metainterp_0(Goal,Prop),!.
 set_meta(Goal, Prop):- functor(Goal,F,A),functor(TGoal,F,A),
   dra_must(set_meta0(TGoal, Prop)),!,
-  retract_all0(is_pred_metainterp(TGoal,_)),
-  asserta_new(is_pred_metainterp(TGoal,Prop)).
+  retract_all0(is_pred_metainterp_0(TGoal,_)),
+  asserta_new(is_pred_metainterp_0(TGoal,Prop)).
 
-set_meta0(TGoal,is_builtin):-
-    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
+set_meta0(TGoal,cuts_ok):-
+    retract_all0(is_tabled(TGoal)),
+    dra_non_meta(TGoal),
     retract_all0(is_never_tabled(TGoal)),
-    asserta_new(is_builtin(TGoal)).
+    asserta_new(cuts_ok(TGoal)).
 
 set_meta0(TGoal,is_never_tabled):-
-    retract_all0(is_tabled(TGoal)),(predicate_property(TGoal,dynamic)->retract_all0((TGoal:-!,dra_call(TGoal)));true),
-    retract_all0(is_builtin(TGoal)),
+    retract_all0(is_tabled(TGoal)),
+    retract_all0(cuts_ok(TGoal)),
     asserta_new(is_never_tabled(TGoal)).
 
-set_meta0(TGoal,is_tabled):- asserta_new(is_tabled(TGoal)),
+set_meta0(TGoal,is_tabled):-    
     retract_all0(is_never_tabled(TGoal)),
-    retract_all0(is_builtin(TGoal)),
-   (predicate_property(TGoal,dynamic)->asserta_new((TGoal:-!,dra_call(TGoal)));true).
-   
+    retract_all0(cuts_ok(TGoal)),
+    asserta_new(is_tabled(TGoal)),
+    dra_meta(TGoal).
 
 
 :-dynamic(clause_meta/1).
@@ -376,7 +280,7 @@ might_be_clause_meta( Goal ):- compound(Goal), \+ \+ (arg(_,Goal,[_|_])),!.
 		call_expand_dra_call(Query, ExpandedQuery,
 				  Bindings, ExpandedBindings)
 	    ->  expand_goal(ExpandedQuery, Goal))),
-	        (user:dra_execute(Goal, ExpandedBindings),fail) )))), !.
+	        (dra_execute(Goal, ExpandedBindings),fail) )))), !.
 
 
 
@@ -385,7 +289,8 @@ print_table_statistics:-print_statistics.
 %load(P):-dra_must(prog0(P)),!.
 
 
-:- ensure_loaded((dra_table_record)).
+% :- ensure_loaded(library(dra_table_record)).
+:- ensure_loaded((dra_table_assert)).
 %:- user:ensure_loaded(library(dra/tabling3/compatibility_utilities_swi)).
 %
 
@@ -416,7 +321,7 @@ print_table_statistics:-print_statistics.
    % For example, if we have
    %     sum( A, B, C ) :-  C is A +B.
    % then
-   %     dra_map( sum(5 ), [ 1, 2, 3 ], Result )
+   %     dra_maplist2( sum(5 ), [ 1, 2, 3 ], Result )
    % will bind Result to [ 6, 7, 8 ].
   /*
    apply( PredNameArgs, Arguments ) :-
@@ -427,7 +332,7 @@ print_table_statistics:-print_statistics.
  */
 
    %------------------------------------------------------------------------------
-   % dra_map( +PredicateName, +List, -MappedList )
+   % dra_maplist2( +PredicateName, +List, -MappedList )
    % The predicate should implement a unary function, i.e.,
    %   - it should take two arguments, the first of which is an input argument,
    %     and the second of which is an output argument;
@@ -438,15 +343,15 @@ print_table_statistics:-print_statistics.
    % Example:
    %          square( M, N ) :-  N is M * M.
    %
-   %          ?- dra_map( square, [ 1, 2, 3 ], Ans ).
+   %          ?- dra_maplist2( square, [ 1, 2, 3 ], Ans ).
    %
    %          Ans = [ 1, 4, 9 ].
 
-   dra_map( _, [], [] ).
+   dra_maplist2( _, [], [] ).
 
-   dra_map( PredName, [ H | T ], [ NH | NT ] ) :-
+   dra_maplist2( PredName, [ H | T ], [ NH | NT ] ) :-
            apply( PredName, [ H, NH ] ),
-           dra_map( PredName, T, NT ).
+           dra_maplist2( PredName, T, NT ).
 
 
    %------------------------------------------------------------------------------
@@ -795,7 +700,7 @@ print_table_statistics:-print_statistics.
    % occur in this dictionary.
 
    extract_vars_from_dict( VarDict, Vars ) :-
-           dra_map( drop_name, VarDict, Vars ).
+           dra_maplist2( drop_name, VarDict, Vars ).
 
    %
    drop_name( [ _Name | Var ], Var ).
@@ -830,7 +735,7 @@ print_table_statistics:-print_statistics.
    %       2. See also bind_all_variables_to_names/2 above!
 
    bind_variables_to_names( VarDict ) :-
-           dra_map( bind_var_to_name, VarDict, _ ).
+           dra_maplist2( bind_var_to_name, VarDict, _ ).
 
    %
    bind_var_to_name( [ Name | Name ], _ ).
@@ -1608,12 +1513,12 @@ cs_join( ((A ; B) , C), Ctxt, MustFail, SeenFromFront, SeenFromBehind, Single
        ) :-
         cs( C, Ctxt, MustFailC, SeenFromFrontC, SeenFromBehindC, SingleC ),
         unfold_disjunction( (A ; B), Disjunctions ),
-        dra_map( cs2( Ctxt ), Disjunctions, Results ),
-        dra_map( cs_adjust( SeenFromFrontC ), Results, Adjusted ),
-        dra_map( result1, Adjusted, ListMustFail   ),
-        dra_map( result2, Adjusted, ListFromFront  ),
-        dra_map( result3, Adjusted, ListFromBehind ),
-        dra_map( result4, Adjusted, ListSingle     ),
+        dra_maplist2( cs2( Ctxt ), Disjunctions, Results ),
+        dra_maplist2( cs_adjust( SeenFromFrontC ), Results, Adjusted ),
+        dra_maplist2( result1, Adjusted, ListMustFail   ),
+        dra_maplist2( result2, Adjusted, ListFromFront  ),
+        dra_maplist2( result3, Adjusted, ListFromBehind ),
+        dra_maplist2( result4, Adjusted, ListSingle     ),
         dra_fold( bool_and, true, ListMustFail, AllMustFailExp ),
         bool_eval( AllMustFailExp, MustFailAlt ),
         empty_set( Empty ),
@@ -2101,6 +2006,8 @@ most_general_instance( Term, Pattern ) :-
 % error; otherwise return a list of the most general instances that correspond
 % to the predicate specifications.
 
+:- module_transparent(predspecs_to_patterns/2).
+
 predspecs_to_patterns( Var, _ ) :-
         var( Var ),
         !, trace, 
@@ -2303,6 +2210,7 @@ getchar( Stream, Atom ) :-
 name_chars( Atomic, NameCharCodes ) :-
         name( Atomic, NameCharCodes ).
 
+/*
 
 %------------------------------------------------------------------------------
 % clause_in_module( +module name, +- clause head, - clause body ):
@@ -2319,37 +2227,6 @@ name_chars( Atomic, NameCharCodes ) :-
 %       that clear.  Just search for "interpreted" and uncomment to get back to
 %       that version, but NOTE that it is unclear whether essence_hook/2 would
 %       then work properly.
-
-% clause_in_module( interpreted, Head, Body ) :-
-%        !,
-%        recorded( Head, interpreted_clause( Head, Body ) ).
-
-clause_in_module( ModuleName, Head, Body ) :-
-        clause( ModuleName : Head, Body ).
-
-
-%------------------------------------------------------------------------------
-% current_predicate_in_module( +module name, +- predicate specification ):
-% Like current_predicate/2, but from the named module.
-%
-% NOTE: See the note to clause_in_module/3 above.
-
-% current_predicate_in_module( interpreted, PredSpec ) :-
-%        !,
-%        recorded( interpreted_clause_key, PredSpec ).
-
-current_predicate_in_module( ModuleName, PredSpec ) :-
-        current_predicate( ModuleName : PredSpec ).
-
-
-%------------------------------------------------------------------------------
-% assert_in_module( +module name, +clause ):
-% Like assert/1, but into this module.
-%
-% NOTE: See the note to clause_in_module/3 above.
-
-assert_in_module( Module, Clause ) :-
-        assertz_in_module( Module, Clause ).
 
 
 %------------------------------------------------------------------------------
@@ -2437,6 +2314,7 @@ compile_to_module( Module, FileName ) :-
 
 % copy_term( Term, Copy ) :- copy_term( Term, Copy ).
 
+*/
 
 %------------------------------------------------------------------------------
 % are_variants( +term, +term ) :
@@ -2487,7 +2365,7 @@ ordered_term_variables( Term, Variables ) :-
 
 readvar( InputStream, Term, EclipseVarDict ) :-
         read_term( InputStream, Term, [ variable_names( SicstusVarDict ) ] ),
-        dra_map( translate_vardict_entry, SicstusVarDict, EclipseVarDict ),
+        dra_maplist2( translate_vardict_entry, SicstusVarDict, EclipseVarDict ),
         !.
 
 %
@@ -2529,7 +2407,7 @@ erase_module( _ ).
 %
 % NOTE: Since DRA uses global variables to store only integers, we use the
 %       flag/3 facility of SWI Prolog.  For more general values we would have
-%       to use nb_setval/hprolog_nb_getval.  See also getval/2 and incval/1 below.
+%       to use nb_setval/nb_getval.  See also getval/2 and incval/1 below.
 
 setval( Name, Value ) :-
         flag( Name, _Old, Value ).
@@ -2707,7 +2585,7 @@ dra_version( Version ) :-
 %       N is the current size of the answer table.
 %
 %    4. If the program invokes a built-in predicate, that predicate dra_must
-%       be declared in the table "is_builtin/1" (see file "dra_builtins.pl").
+%       be declared in the table "cuts_ok/1" (see file "dra_builtins.pl").
 %       Every addition should be considered carefully: some built-ins might
 %       require special treatment by the interpreter.
 %
@@ -2829,7 +2707,7 @@ dra_version( Version ) :-
 
    The interpreted program must not contain cuts.  It also must not contain
    calls to built-in-predicates, except for the handful of predicates listed in
-   is_builtin/1 below.  (This list can be easily extended as the need arises.  Some
+   cuts_ok/1 below.  (This list can be easily extended as the need arises.  Some
    built-in predicates, however, cannot be added without modifying the
    interpreter, sometimes extensively: "!/0" is a good example.)
 
@@ -3706,7 +3584,7 @@ get_called_predicates( OSetOfPredicates, OSetOfDefined, OSetOfCalled ) :-
 %
 sets_of_called( OsetOfPredicates, OSetOfDefined, ListOfSetsOfCalled ) :-
         openset_to_list( OsetOfPredicates, ListOfPredicates ),
-        dra_map( set_of_called( OSetOfDefined ),
+        dra_maplist2( set_of_called( OSetOfDefined ),
              ListOfPredicates, ListOfSetsOfCalled
            ).
 
@@ -4532,6 +4410,8 @@ ensure_dynamic( _ ).
 % process_directive( +directive ):
 % Process a directive.
 
+:- module_transparent(process_directive/1).
+
 % :- mode process_directive( +).
 
 process_directive( (topl all) ) :-
@@ -4653,7 +4533,7 @@ show_bindings( VarDict ) :-
         mk_variable_dictionary( p( HeadVar, EquationListSansParcel ), AuxVarDict
                               ),
         % Create equations for the top variables:
-        dra_map( mk_eq, NewVarDict, TopEqs ),
+        dra_maplist2( mk_eq, NewVarDict, TopEqs ),
         % Bind all uninstantiated variables to their names:
         bind_free_variables_to_names( NewVarDict ),         % names in dra_call
         bind_free_variables_to_names( AuxVarDict ),         % names for new vars
@@ -4709,7 +4589,7 @@ check_not_builtin( Clause, VarDict ) :-
         ->
             builtin( Head )     % recall that in Eclipse we hid other built-ins
         ;
-            is_builtin( Head )
+            cuts_ok( Head )
         ),
         !,
         bind_variables_to_names( VarDict ),
@@ -4844,7 +4724,7 @@ user_accepts :-
 %  Built-in predicates for the "dra" interpreter  %
 
 % If the interpreted program invokes a built-in predicate, that predicate dra_must
-% be declared in the table "is_builtin/1" below.
+% be declared in the table "cuts_ok/1" below.
 % Every addition should be considered carefully: some built-ins might require
 % special treatment by the interpreter.
 
@@ -4853,54 +4733,21 @@ user_accepts :-
 %  NOTE: Just adding "!" won't do the trick, the main interpreter would
 %        have to be modified substantially (but first: what are the semantics?)
 
-:-dynamic(is_builtin/1).
+:-dynamic(cuts_ok/1).
 :-dynamic(is_not_builtin/1).
 
-%is_builtin(_, ',',2          ).  % special treatment in dra_interp/4
-%is_builtin( (_ -> _)           ).  % special treatment in dra_interp/4
-%is_builtin( (_ -> _ ; _)       ).  % special treatment in dra_interp/4
-%is_builtin( (_ ; _)            ).  % special treatment in dra_interp/4
-%is_builtin( \+ ( _ )            ).  % special treatment in dra_interp/4
-%is_builtin( assert( _ )        ).  % special treatment in dra_interp/4
-%is_builtin( findall( _, _, _ ) ).  % special treatment in dra_interp/4
-%is_builtin( once( _ )          ).  % special treatment in dra_interp/4
-%is_builtin( retractall( _ )    ).  % special treatment in dra_interp/4
-is_builtin( _ < _              ).
-is_builtin( _ = _              ).
-is_builtin( _ =:= _            ).
-is_builtin( _ =< _             ).
-is_builtin( _ =\= _            ).
-is_builtin( _ > _              ).
-is_builtin( _ >= _             ).
-is_builtin( _ \= _             ).
-is_builtin( _ is _             ).
-is_builtin( append( _, _, _ )  ).
-is_builtin( atom( _ )          ).
-is_builtin( call( _ )          ).
-is_builtin( fail               ).
-is_builtin( false              ).
-is_builtin( length( _, _ )     ).
-is_builtin( member( _, _ )     ).
-is_builtin( nl                 ).
-is_builtin( read( _ )          ).
-is_builtin( set_flag( _, _ )   ).
-is_builtin( sort( _, _ )       ).
-is_builtin( true               ).
-is_builtin( var( _ )           ).
-is_builtin( write( _ )         ).
-is_builtin( write_term( _, _ ) ).
-is_builtin( writeln( _ )       ).
-is_builtin( 'C'( _, _, _ )     ).  % for DCG's on some Prolog systems
-is_builtin( set_print_depth( _ ) ).          % not a real built-in, see "top_level"
-%is_builtin(delete(_,_,_)   ).
 
-is_builtin(Pred):- is_not_builtin(Pred),!,fail.
-is_builtin(Pred):- is_builtin0(Pred),asserta(is_builtin(Pred)),!.
-is_builtin(Pred):- functor(Pred,F,A),functor(TPred,F,A),asserta(is_not_builtin(TPred)),!,fail.
+%cuts_ok( (_ -> _)           ).  % special treatment in dra_interp/4
+%cuts_ok( (_ -> _ ; _)       ).  % special treatment in dra_interp/4
+%cuts_ok( \+ ( _ )            ).  % special treatment in dra_interp/4
+
+cuts_ok(Pred):- is_not_builtin(Pred),!,fail.
+cuts_ok(Pred):- is_builtin0(Pred),asserta(cuts_ok(Pred)),!.
+cuts_ok(Pred):- functor(Pred,F,A),functor(TPred,F,A),asserta(is_not_builtin(TPred)),!,fail.
 
 is_builtin0(Pred) :- is_swi_builtin( Pred ).
 is_builtin0(Pred) :- functor(Pred,F,_),atom_concat('$',_,F).
-is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,is_builtin), \+ clause(is_tabled(Pred),true).
+is_builtin0(Pred) :- source_file(Pred,File),is_file_meta(File,cuts_ok), \+ clause(is_tabled(Pred),true).
 
 
 %
@@ -5397,7 +5244,7 @@ essence_hook( T, T ).    % default, may be overridden by the interpreted program
 
 :- op( 1010, fy, coinductive0  ).    % allow  ":- coinductive0 p/k ."
 :- op( 1010, fy, coinductive1 ).    % allow  ":- coinductive1 p/k ."
-:- op( 1010, fy, table       ).    % allow  ":- table p/k ."
+:- op( 1010, fy, user:table       ).    % allow  ":- table p/k ."
 :- op( 1010, fy, old_first    ).    % allow  ":- old_first p/k ."
 :- op( 1010, fy, traces        ).    % allow  ":- traces  p/k ."
 :- op( 1010, fy, multifile    ).    % allow  ":- multifile  p/k ." (for Eclipse)
@@ -5423,7 +5270,7 @@ legal_directive((call( _))  ).
 legal_directive((hilog( _))  ).
 
 % SWI=Prolog
-legal_directive((traces)   ).
+legal_directive( trace ).
 legal_directive( notrace ).
 
 legal_directive(M:P):-atom(M),M:legal_directive(P).
@@ -5437,21 +5284,37 @@ fresh_multifile(X):- current_module(M), dra_must(M \= user), asserta_new( ((user
 
 source_context(F):- prolog_load_context(source,F).
 
-execute_directive( (table all) ) :-
-        !, once((source_context(F),add_file_meta(F,is_tabled));asserta_new( is_tabled( _ ):-! )).
-execute_directive( (table none) ) :-
-        !, once((source_context(F),retract_all0(is_file_meta(F,is_tabled)));(retract_all0( is_tabled( _ ) ),retract_all0( is_tabled( _ ) :- ! ))).
+:- module_transparent(execute_directive/1).
+execute_directive( answers( Goal, Pattern ) ) :-
+        print_required_answers( Goal, Pattern ).
+
+execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,all],DB=..[DBF,_],
+        !, once((source_context(F),add_file_meta(F,DBF));asserta_new( DB:-! )).
+execute_directive( Dir ) :- property_pred(F,DBF), (Dir=..[F,none];Dir=..[F,-all]),DB=..[DBF,_],
+        !, once((source_context(F),retract_all0(is_file_meta(F,DBF)));(retract_all0( DB ),retract_all0( DB :- ! ))).
+execute_directive( (traces all) ) :-
+        !,
+        will_trace( [ _ ] ).
+execute_directive( (traces PredSpecs) ) :-
+        predspecs_to_patterns( PredSpecs, Patterns ),
+        will_trace( Patterns ).
+execute_directive( Dir ) :-
+        property_pred(F,DBF), 
+        Dir=..[F,PredSpecs],
+        trace,
+        predspecs_to_patterns( PredSpecs, Patterns ),!,
+        add_patterns(Patterns,DBF).
+
 
 execute_directive( (table PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
-        (
-            member( Pattern, Patterns ),
-            asserta_new( is_tabled( Pattern ) ),
-            asserta_new( (Pattern :- !, dra_call(Pattern) )),
-            functor(Pattern,F,A),
-            discontiguous(F/A),
-            dynamic(F/A),            
+        (   member( Pattern, Patterns ),
+            dra_meta(Pattern),
             set_meta(Pattern,is_tabled),
+            asserta_new( is_tabled( Pattern ) ),
+            functor(Pattern,F,A),
+            %discontiguous(F/A),
+            dynamic(F/A),            
             fail
         ;
             true
@@ -5474,36 +5337,16 @@ execute_directive( (coinductive0 PredSpecs) ) :-
         ).
 
 
-execute_directive( (dynamic PredSpecs) ) :- current_module(M),
-        dynamic_in_module( M, PredSpecs).
 
-execute_directive((multifile( X)) ):-!, multifile(X). 
-
-execute_directive( answers( Goal, Pattern ) ) :-
-        print_required_answers( Goal, Pattern ).
-
-execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,all],DB=..[DBF,_],
-        !, once((source_context(F),add_file_meta(F,DBF));asserta_new( DB:-! )).
-execute_directive( Dir ) :- property_pred(F,DBF), (Dir=..[F,none];Dir=..[F,-all]),DB=..[DBF,_],
-        !, once((source_context(F),retract_all0(is_file_meta(F,DBF)));(retract_all0( DB ),retract_all0( DB :- ! ))).
-execute_directive( Dir ) :- property_pred(F,DBF), Dir=..[F,PredSpecs],         
-        predspecs_to_patterns( PredSpecs, Patterns ),
-        add_patterns(Patterns,DBF).
-
-execute_directive( (traces all) ) :-
-        !,
-        will_trace( [ _ ] ).
-
-execute_directive( (traces PredSpecs) ) :-
-        predspecs_to_patterns( PredSpecs, Patterns ),
-        will_trace( Patterns ).
 
 add_patterns([],_):-!.
 add_patterns([P|Patterns],DBF):- add_pattern(P,DBF),!,add_patterns(Patterns,DBF).
 
 add_pattern(Pattern, - DBF):- DB=..[DBF,Pattern],retract_all0( DB ).
-add_pattern(Pattern, +DBF):- DB=..[DBF,Pattern],asserta_new( DB ).
-add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],asserta_new( DB ).
+add_pattern(Pattern, + DBF):- !, add_pattern(Pattern, DBF).
+add_pattern(Pattern,DBF):- DB=..[DBF,Pattern],
+        set_meta0(Pattern,DBF),
+        asserta_new( DB ),!.
 
 
 % will_trace( +list of patterns ):
@@ -5584,10 +5427,7 @@ remove_variants_( [ H | T ], Accumulator, RL ) :-
 
 % :- mode dra_call( +).
 
-dra_call( Goals ) :-                                         % invoked by top_level
-  dra_must(b_getval('$tabling_exec',dra_int_external(Stack, Hyp, ValOld, CuttedOut))),
-   ( (ValOld < 0) -> 
-     ((
+init_dra_call:-
         reinitialise_pioneer,
         reinitialise_result,
         reinitialise_loop,
@@ -5595,29 +5435,36 @@ dra_call( Goals ) :-                                         % invoked by top_le
         setval( unique_index,      0    ),
         getval( number_of_answers, NAns ),
         setval( old_table_size,    NAns ),
-        setval( step_counter,      0    ),
-        EXIT = dra_int_exit_dra_call ));
+        setval( step_counter,      0    ).
 
-        (EXIT = print_statistics)),!,
-       call_cleanup(
+% invoked by VMI/WAM
+:-meta_predicate(system:dra_call( : )).
+system:dra_call(M: Goals ) :-
+
+      '$dra':dra_must(M:b_getval('$tabling_exec',dra_int_external(Stack, Hyp, ValOld, CuttedOut))),
+      setup_call_cleanup(
+        ((ValOld < 0) -> (( '$dra':init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
         ((
            % empty_hypotheses( Hyp ),
            % empty_stack( Stack ),            
             Level is ValOld +1,
-            dra_interp(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((trace),non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
-             EXIT
-            )),        
-           (( 
-              EXIT
-           ))).
+            '$dra':dra_interp(Cutted, M:Goals, Stack, Hyp, Level ),
+            ((var(Cutted);((trace),'$dra':non_cutted(M:Goals,Cutted,(CuttedOut))))->true;(!,fail)),
+             '$dra':EXIT)),
+       (('$dra':EXIT))).
 
 
-dra_int_exit_dra_call:- 
+exit_dra_call:- 
             print_statistics,
             setval( step_counter, 0 ),
             getval( number_of_answers, NAns2 ),
-            setval( old_table_size, NAns2 ).
+            setval( old_table_size, NAns2 ),
+            '$exit_dra'.
+
+cont_dra_call :- 
+            print_statistics,
+            '$exit_dra'.
+
 
 % Print information about the number of steps and the answer table.
 
@@ -5764,28 +5611,6 @@ dra_interp(Cutted, _M:call( Goal ), Stack, Hyp, Level ) :-
         ).
 
 
-% assert/1
-
-dra_interp(_Cutted, _M:assert( Clause ), _, _, _ ) :-
-        !,
-        (
-            \+ is_a_good_clause( Clause )
-        ->
-            error( [ 'Bad clause argument: ', assert( Clause ) ] )
-        ;
-            true
-        ),
-        incval( step_counter ),
-        assert_in_module( interpreted, Clause ).
-
-
-% retractall/1
-
-dra_interp(_Cutted, retractall( C ), _, _, _ ) :-
-        !,
-        incval( step_counter ),
-        retractall_in_module( interpreted, C ).
-
 
 % findall/3: note that this is not opaque to coinductive and tabled ancestors!
 
@@ -5811,11 +5636,11 @@ dra_interp(Cutted, _:!(Where), _, _, _ ) :- !, (var(Cutted);Cutted=cut_to(Where)
 
 
 dra_interp(CuttedOut, M:Goal, Stack, Hyp,  Level ):-     
-    pred_metainterp(Goal,Meta), !, dra_int4meta(Meta, CuttedOut, M:Goal, Stack, Hyp,  Level ).
+    is_pred_metainterp(Goal,Meta), !, dra_int4meta(Meta, CuttedOut, M:Goal, Stack, Hyp,  Level ).
 
 
 dra_int4meta(Meta, CuttedOut, M:BuiltIn, Stack, Hyp,  Level ):-
-        arg(_,is_builtin;is_support,Meta),
+        arg(_,cuts_ok;is_support,Meta),
         !,
         b_setval('$tabling_exec',dra_int_external(Stack, Hyp, Level, Cutted)),
         incval( step_counter ),
@@ -6146,36 +5971,13 @@ get_remaining_tabled_answers( Goal, PGIndex, Label, Level ) :-
 % clause whose head matches the goal.
 
 use_clause(M, Goal, Body ) :- 
-   predicate_property(M:Goal,number_of_clauses(_)),!, clause(M:Goal, Body ), Body \= (!,dra_call(Goal)).
+   predicate_property(M:Goal,number_of_clauses(_)),!, clause(M:Goal, Body ).
 use_clause(M, Goal, M:Body ) :- 
-   predicate_property(Goal,number_of_clauses(_)),!, clause(Goal, Body ), Body\= (!,dra_call(Goal)).
-use_clause(M, Goal, Body ) :-  set_meta(Goal, is_builtin),Body = M:Goal.
-
-use_clause_old0(M, Goal, Body ) :- 
-        functor( Goal, P, K ),
-        (
-            (current_predicate_in_module(M, P/K ))
-        ->
-            clause(M: Goal, Body )
-        ;
-         ( clause(_:Goal, Body ) *-> true;
-               (warning( [ 'Calling an undefined predicate: \"', Goal, '\"' ] ),
-                fail))
-        ).
+   predicate_property(Goal,number_of_clauses(_)),!, clause(Goal, Body ).
+use_clause(M, Goal, Body ) :-  set_meta(Goal, cuts_ok),Body = M:Goal.
 
 
-use_clause_old(M, Goal, Body ) :- 
-        functor( Goal, P, K ),
-        (
-            current_predicate_in_module( user, P/K )
-        ->
-            clause_in_module( user, Goal, Body )
-        ;
-         ( current_predicate_in_module( M, P/K ) -> 
-                (clause_in_module( M, Goal, Body ));
-               (warning( [ 'Calling an undefined predicate: \"', Goal, '\"' ] ),
-                fail))
-        ).
+
 
 
 
@@ -6467,44 +6269,55 @@ show_stack( _ ).
 % c +r = 7.949 seconds
 
 /*
-% :- pf(library('dra/tabling3/examples/XSB/fib.tlp') ).
+% :- pf(('dra/tabling3/examples/XSB/fib.tlp') ).
 
-:- pf(library('dra/tabling3/examples/co_t.tlp') ).
-
-
-:- pf(library('dra/tabling3/examples/coind2.tlp') ).
-% :- pf(library('dra/tabling3/examples/LTL/v.pl') ).
-%:- pf(library('dra/tabling3/examples/mini_graph.tlp') ).
-%:- pf(library('dra/tabling3/examples/mini_language.tlp') ).
-:- pf(library('dra/tabling3/examples/paper_example.tlp') ).
+:- pf(('dra/tabling3/examples/co_t.tlp') ).
 
 
+:- pf(('dra/tabling3/examples/coind2.tlp') ).
+% :- pf(('dra/tabling3/examples/LTL/v.pl') ).
+%:- pf(('dra/tabling3/examples/mini_graph.tlp') ).
+%:- pf(('dra/tabling3/examples/mini_language.tlp') ).
+:- pf(('dra/tabling3/examples/paper_example.tlp') ).
 
-:- pf(library('dra/tabling3/Bench/tabling3/run')).
-:- pf(library('dra/tabling3/Bench/prolog/run')).
-:- pf(library('dra/tabling3/Bench/clpfd/run')).
-:- pf(library('dra/tabling3/Bench/aspclp/run')).
+
+
+:- pf(('dra/tabling3/Bench/tabling3/run')).
+:- pf(('dra/tabling3/Bench/prolog/run')).
+:- pf(('dra/tabling3/Bench/clpfd/run')).
+:- pf(('dra/tabling3/Bench/aspclp/run')).
 */
 
-t0:- time([library('dra/tabling3/examples/XSB/farmer.tlp')]).
-tn:- time([library('dra/tabling3/examples/tnot1.tlp')]).
-t1:- time(process_file(library('dra/tabling3/examples/XSB/farmer.tlp') )),!.
-t2:- time([library('dra/tabling3/examples/XSB/ham.tlp')]).
-t2a:- time([library('dra/tabling3/examples/XSB/ham_auto.tlp')]).
+t0:- time([('dra/tabling3/examples/XSB/farmer.tlp')]).
+tn:- time([('dra/tabling3/examples/tnot1.tlp')]).
+t1:- time(process_file(('dra/tabling3/examples/XSB/farmer.tlp') )),!.
+t2:- time([('dra/tabling3/examples/XSB/ham.tlp')]).
+t2a:- time([('dra/tabling3/examples/XSB/ham_auto.tlp')]).
 
-t2b:- time(pf(library('dra/tabling3/examples/XSB/ham.tlp') )).
-t3:- [(library('dra/tabling3/examples/graph.tlp') )].
-t4:- pf(library('dra/tabling3/examples/module.tlp') ).
-t4:- [(library('dra/tabling3/examples/paper_example.tlp') )].
-t4:- pf(library('dra/tabling3/examples/conditional.clp') ).
-t4:- pf(library('dra/tabling3/examples/simple1.tlp') ).
-t4:- pf(library('dra/tabling3/examples/simple1_old_first.tlp') ).
-t4:- pf(library('dra/tabling3/examples/conditional.clp') ).
-t4:- pf(library('dra/tabling3/examples/small_comment_example.tlp') ).
-t4:- pf(library('dra/tabling3/examples/coind_new.tlp') ).
+t2b:- time(pf(('dra/tabling3/examples/XSB/ham.tlp') )).
+t3:- [(('dra/tabling3/examples/graph.tlp') )].
+t4:- pf(('dra/tabling3/examples/module.tlp') ).
+t4:- [(('dra/tabling3/examples/paper_example.tlp') )].
+t4:- pf(('dra/tabling3/examples/conditional.clp') ).
+t4:- pf(('dra/tabling3/examples/simple1.tlp') ).
+t4:- pf(('dra/tabling3/examples/simple1_old_first.tlp') ).
+t4:- pf(('dra/tabling3/examples/conditional.clp') ).
+t4:- pf(('dra/tabling3/examples/small_comment_example.tlp') ).
+t4:- pf(('dra/tabling3/examples/coind_new.tlp') ).
 t5:- consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/dra/tabling3/Bench/tabling/tcl.pl').
 
 % :- repeat,logOnErrorIgnore(prolog),fail.
-user:term_expansion((?- G),_):- nonvar(G), format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
+% user:term_expansion((?- G),_):- nonvar(G), format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
 % user:goal_expansion(G,_):- G\=(_,_),G\=(_;_),\+ predicate_property(G,_),format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
+
+
+:- source_location(S,_),prolog_load_context(module,FM),
+ forall(source_file(M:H,S),
+  ignore((functor(H,F,A),
+   \+ atom_concat('$',_,F),
+      M:export(M:F/A),
+   \+ predicate_property(M:H,transparent),
+   writeln(M:H),
+   \+ atom_concat('__aux',_,F), FM:module_transparent(M:F/A)))).
+
 

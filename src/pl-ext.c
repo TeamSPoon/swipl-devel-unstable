@@ -470,6 +470,7 @@ initBuildIns(void)
 #ifdef O_ATTVAR
   LOOKUPPROC(call1);
   LOOKUPPROC(dra_call1);
+//  PROCEDURE_dra_call1 = PL_predicate("dra_call", 1, "system");
 #endif
 #if O_DEBUGGER
   PROCEDURE_event_hook1 =
@@ -480,6 +481,8 @@ initBuildIns(void)
 					/* allow debugging in call/1 */
   clear(PROCEDURE_dcall1->definition, HIDE_CHILDS|TRACE_ME);
   set(PROCEDURE_dcall1->definition, P_DYNAMIC|P_LOCKED);
+
+  PL_meta_predicate(PL_predicate("dra_call",         1, "system"), ":");
 
   PL_meta_predicate(PL_predicate("assert",           1, "system"), ":");
   PL_meta_predicate(PL_predicate("asserta",          1, "system"), ":");

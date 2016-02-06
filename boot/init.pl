@@ -90,7 +90,9 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 %%	'dra_meta'(:PI)
 %
 %	Predicates declared this way are called through dra_call/1.
-dra_meta(Spec)	         :- '$set_pattr'(Spec, pred, (dra_meta)).
+
+dra_meta(Spec)           :- '$set_pattr'(Spec, pred, (dra_meta)=true).
+dra_non_meta(Spec)       :- '$set_pattr'(Spec, pred, (dra_meta)=false).
 
 
 '$set_pattr'(M:Pred, How, Attr) :-
@@ -108,6 +110,10 @@ dra_meta(Spec)	         :- '$set_pattr'(Spec, pred, (dra_meta)).
 	'$set_pattr'(B, M, How, Attr).
 '$set_pattr'(M:T, _, How, Attr) :- !,
 	'$set_pattr'(T, M, How, Attr).
+
+
+'$set_pattr'(A, M, pred, Attr=TF) :- !,
+	'$set_predicate_attribute'(M:A, Attr, TF).
 '$set_pattr'(A, M, pred, Attr) :- !,
 	'$set_predicate_attribute'(M:A, Attr, true).
 '$set_pattr'(A, M, directive, Attr) :- !,
@@ -139,7 +145,9 @@ dra_meta(Spec)	         :- '$set_pattr'(Spec, pred, (dra_meta)).
 '$pattr_directive'(public(Spec), M) :-
 	'$set_pattr'(Spec, M, directive, (public)).
 '$pattr_directive'(dra_meta(Spec), M) :-
-	'$set_pattr'(Spec, M, directive, (dra_meta)).
+	'$set_pattr'(Spec, M, directive, (dra_meta=true)).
+'$pattr_directive'(dra_non_meta(Spec), M) :-
+	'$set_pattr'(Spec, M, directive, (dra_meta=false)).
 
 
 %%	'$hide'(:PI)
