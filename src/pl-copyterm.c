@@ -563,7 +563,7 @@ again:
 }
 
 
-static int
+int
 copy_term_refs(term_t from, term_t to, int flags ARG_LD)
 { for(;;)
   { fid_t fid;

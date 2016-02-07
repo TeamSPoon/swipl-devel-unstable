@@ -69,11 +69,12 @@ asserta_new(G):-retract_all0(G),asserta(G).
 dra_must(G):-G*->true;throw(failed_must(G)).
 
 property_pred((table),is_tabled).
-property_pred(builtin,cuts_ok).
+property_pred(is_cuts_ok,cuts_ok).
 property_pred(never_table,is_never_tabled).
 property_pred(old_first,is_old_first).
 property_pred(coinductive0,is_coinductive0).
 property_pred(coinductive1,is_coinductive1).
+
 property_pred(topl,is_topl).
 property_pred(support,is_support).
 property_pred(local,is_local).
@@ -3088,7 +3089,7 @@ dra_version( Version ) :-
 %
 %                Note also that the foregoing does not apply to invocations of
 %                builtins in the interpreted program.  It is up to the user to
-%                apply the builtin appropriate for the host logic programming
+%                apply the is_cuts_ok appropriate for the host logic programming
 %                system.  For example, in the case of Sicstus, use
 %                "write_term( T, [ max_depth( 10 ) ] )" rather than just
 %                "write( T )", especially if you expect T to be a cyclic term.
@@ -3174,11 +3175,11 @@ dra_version( Version ) :-
 %    8. The metainterpreter should provide the following predicates
 %       ("hooks") that will be called by the top level:
 %
-%          - builtin/1:
+%          - is_cuts_ok/1:
 %                 Defines patterns for built-in predicates from the host
 %                 system that can be invoked by the interpreted program.
 %                 For example, to allow writeln/2, declare:
-%                     builtin( writeln( _, _ ) ).
+%                     is_cuts_ok( writeln( _, _ ) ).
 %
 %          - default_extension/1:
 %                 This predicate is optional.  If present, its argument
@@ -3487,7 +3488,7 @@ check_general_consistency :-
 %        findall( PredSpec,
 %                 ( current_predicate_in_module( interpreted, PredSpec )
 %                 , predspec_to_pattern( PredSpec, Pattern )
-%                 , \+ builtin( Pattern )
+%                 , \+ is_cuts_ok( Pattern )
 %                 ),
 %                 ListOfDefined
 %               ),
@@ -3606,7 +3607,7 @@ set_of_called( OSetOfDefined, PredSpec, OSetOfCalled ) :-
 warnings_about_called( OSetOfPredSpecsBad, ParentPredSpec ) :-
         generate_member_of_openset( OSetOfPredSpecsBad, PredSpecBad ),
         predspec_to_pattern( PredSpecBad, Pattern ),
-        \+ builtin( Pattern ),
+        \+ is_cuts_ok( Pattern ),
         warning( [ 'Undefined predicate ', PredSpecBad,
                    ' called from ', ParentPredSpec
                  ]
@@ -3618,7 +3619,7 @@ warnings_about_called( _, _ ).
 
 % extract_called( +clause body, - open set of called predicates ):
 % Extract the list of predicates called by this body, except for predicates
-% declared as builtin.
+% declared as is_cuts_ok.
 
 extract_called( Var, _ ) :-
         var( Var ),
@@ -4165,13 +4166,13 @@ setup :-
 %       of Eclipse, the only thing "interpreted" imports is the module
 %       "interface".  The module "interface" is created by the top-level from
 %       a declaration of built-ins allowed by the metainterpreter (and provided
-%       by the latter in table "builtin").  The difficulty is that Eclipse does
+%       by the latter in table "is_cuts_ok").  The difficulty is that Eclipse does
 %       not allow direct exportation of built-ins: this is called by defining
 %       yet another module, called "interface_aux".
 %       The exact mechanics are best explained by means of an example:
 %
 %       1. Let the metainterpreter contain a declaration of only one built-in:
-%             builtin( writeln( _ ) ).
+%             is_cuts_ok( writeln( _ ) ).
 %
 %       2. The top level will add the following clause to module
 %          "interface_aux" (which imports all the built-ins by default):
@@ -4230,7 +4231,7 @@ create_modules :-
         fill_interface_modules.
 %
 fill_interface_modules :-
-        builtin( Pattern ),
+        is_cuts_ok( Pattern ),
         functor( Pattern, F, K ),
         concat_atoms( 'xxx_', F, ExtF ),
         mk_pattern( ExtF, K, ExtPattern ),
@@ -4334,12 +4335,12 @@ process_term( Clause, VarDict ) :-
         get_clause_head( Clause, Head ),
         hook_predicate( Head ),               % metainterpreter's hook predicate
         !,
-        check_not_builtin( Clause, VarDict ),      % fatal if redefining builtin
+        check_not_builtin( Clause, VarDict ),      % fatal if redefining is_cuts_ok
         contiguity_dra_check( Clause ),
         asserta( Clause ).
 
 process_term( Clause, VarDict ) :-
-        check_not_builtin( Clause, VarDict ),      % fatal if redefining builtin
+        check_not_builtin( Clause, VarDict ),      % fatal if redefining is_cuts_ok
         ensure_dynamic( Clause ),
         contiguity_dra_check( Clause ),
         assertz_in_module( interpreted, Clause ).
@@ -4587,7 +4588,7 @@ check_not_builtin( Clause, VarDict ) :-
         (
             lp_system( eclipse )
         ->
-            builtin( Head )     % recall that in Eclipse we hid other built-ins
+            is_cuts_ok( Head )     % recall that in Eclipse we hid other built-ins
         ;
             cuts_ok( Head )
         ),

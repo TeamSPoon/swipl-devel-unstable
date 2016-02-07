@@ -69,7 +69,7 @@
 
 #define PL_KERNEL		1
 #include <inttypes.h>
-#include "pl-builtin.h"
+#include "pl-builtin.h" 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		      PROLOG SYSTEM OPTIONS
@@ -822,9 +822,6 @@ with one operation, it turns out to be faster as well.
 #define clear(s, a)		((s)->flags &= ~(a))
 #define clearFlags(s)		((s)->flags = 0)
 
-#define true_ext(s, a)		((s)->flags_ext & (a))
-#define false_ext(s, a)		(!true_ext((s), (a)))
-
 /* Flags on predicates (packed in unsigned int */
 
 
@@ -1322,6 +1319,7 @@ typedef struct clause_index_list
   struct clause_index_list *next;
 } clause_index_list, *ClauseIndexList;
 
+
 #define MAX_BLOCKS 20			/* allows for 2M threads */
 
 typedef struct local_definitions
@@ -1334,6 +1332,21 @@ typedef __int64 meta_mask;		/* MSVC cannot do typedef of typedef!? */
 #else
 typedef uint64_t meta_mask;
 #endif
+
+
+#define HT_W_REFS_MAGIC 666777
+typedef struct hashtable_with_grefs
+{ Table	root; /* atom --> value */
+  int grefs;			/* references to global stack */
+  atom_t	symbol;			/* <hashtable_with_grefs>(...)  */
+  int		magic;			/* HT_W_REFS_MAGIC */
+ /* u_int32_t	flags;		*/	/* flags used to open the database */
+} hashtable_with_grefs;
+
+typedef struct htref { 
+  hashtable_with_grefs *value;
+} htref;
+
 
 struct definition
 { FunctorDef	functor;		/* Name/Arity of procedure */
@@ -1351,7 +1364,7 @@ struct definition
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
   FunctorDef dra_interp;         /* VMI calls this Name/1 instead */
-  unsigned int  flags_ext;			/* more booleans (P_EXT_*) */
+  struct hashtable_with_grefs pred_trie; /*  */
 #endif
   unsigned int  shared;			/* #procedures sharing this def */
 #ifdef O_PROF_PENTIUM
@@ -2000,6 +2013,7 @@ typedef struct
   av_action on_attvar;			/* How to handle attvars */
   int	    singletons;			/* Write singletons as $VAR('_') */
   int	    numbered_check;		/* Check for already numbered */
+  int	    restart_on_each_compund; /* Start at offset in each inner compound term (for memoization code) */
 } nv_options;
 
 #define BEGIN_NUMBERVARS(save) \

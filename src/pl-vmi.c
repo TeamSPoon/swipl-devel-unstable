@@ -1631,9 +1631,9 @@ normal_call:
 
 #ifdef O_DRA_TABLING
 
-    if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2)
+    if (true(DEF,P_DRA_CALL_META) && LD->dra_base.in_dra<2)
     {  DEBUG(MSG_DRA,Sdprintf("DRA I_CALL: "));
-        LD->dra.in_dra++;
+        LD->dra_base.in_dra++;
 
         { Word a;
 
@@ -4593,8 +4593,8 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	});
 
 #ifdef O_DRA_TABLING
-  if (true(DEF,P_DRA_CALL_META) && LD->dra.in_dra<2) 
-  {   LD->dra.in_dra++;
+  if (true(DEF,P_DRA_CALL_META) && LD->dra_base.in_dra<2) 
+  {   LD->dra_base.in_dra++;
 
        
        functor_t dra_functor =  FUNCTOR_dra_call1;

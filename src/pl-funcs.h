@@ -51,6 +51,9 @@ COMMON(bool)  isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD)
 COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
+COMMON(int)  get_ht_blob(term_t handle, hashtable_with_grefs **htP);
+
+COMMON(int)  unify_ht(term_t handle, hashtable_with_grefs *ht);
 #endif
 
 /* pl-gvar.c */
@@ -410,6 +413,9 @@ COMMON(intptr_t)	lengthList(term_t list, int errors);
 COMMON(int)		is_acyclic(Word p ARG_LD);
 COMMON(intptr_t)	numberVars(term_t t, nv_options *opts, intptr_t n ARG_LD);
 COMMON(int)		duplicate_term(term_t in, term_t copy ARG_LD);
+COMMON(int)		copy_term_refs(term_t from, term_t to, int flags ARG_LD);
+
+
 COMMON(word)		stringToList(char *s);
 COMMON(foreign_t)	pl_sub_atom(term_t atom,
 				    term_t before, term_t len, term_t after,

@@ -426,7 +426,9 @@ struct PL_local_data
 
   struct
   { int	in_dra;			/* recursion depth */
-  } dra;
+    Table	functor_to_ht_p;		/* functor --> hashTable<Module,ProcTries> */
+    int		grefs;			/* references to global stack */
+  } dra_base;
 
   struct
   { term_t	dummy;			/* see trimStacks() */

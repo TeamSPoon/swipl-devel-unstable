@@ -445,6 +445,7 @@ initBuildIns(void)
   REG_PLIST(debug);
   REG_PLIST(dict);
   REG_PLIST(cont);
+  REG_PLIST(dra);
 
 #define LOOKUPPROC(name) \
 	{ GD->procedures.name = lookupProcedure(FUNCTOR_ ## name, m); \

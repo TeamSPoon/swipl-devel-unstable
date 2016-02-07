@@ -2714,12 +2714,10 @@ pl_get_predicate_attribute(term_t pred,
   } else if ( key == ATOM_dra_call )
   { if (false(def, P_DRA_CALL_META)) fail;
     FunctorDef draFunctorDef = def->dra_interp;
-    if(draFunctorDef==NULL) return PL_unify_atom(value,ATOM_dra_call);
-    return PL_unify_atom(value,draFunctorDef->name);
+    return PL_unify_atom(value,draFunctorDef==NULL?ATOM_dra_call:draFunctorDef->name);
   } else if ( key == ATOM_dra_meta )
   { if (false(def, P_DRA_CALL_META)) fail;
-    return PL_get_integer_ex(value, &def->flags_ext);
-
+    return unify_ht(value, &def->pred_trie);
 #endif 
 
   }  else if ( key == ATOM_foreign )
