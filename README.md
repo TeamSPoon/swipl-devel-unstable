@@ -23,7 +23,10 @@ This is a highly unstable theoretical fork of SWI-Prolog
 Fib of 1000 is 70330367711422815821835254877183549770181269836358732742604905087154537118196933579742249494562611733487750449241765991088186363265450223647106012053374121273867339111198139373125598767690091902245245323403501
 % 6,729,826 inferences, 4.405 CPU in 4.410 seconds (100% CPU, 1527685 Lips)
 ````
+Tries based ssytme in C that is efficant as copy_term?
 
+if i want to store  `p(q(r,A,B,t),A) = foo`.   i create a few levels deep of HTs .. 
+`p/2 -> q/4 -> r -> V1 -> V2 -> t -> V1 = fo`o
 
 * delimited continuations tabling (60%)
 ````
