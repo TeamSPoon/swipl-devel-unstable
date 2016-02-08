@@ -228,7 +228,8 @@ decl(dynamic,	   dynamic).
 decl(volatile,	   volatile).
 decl(multifile,	   multifile).
 decl(public,	   public).
-decl(dra_meta,	   dra_meta).
+decl(tabled,       table).
+decl(discontiguous,       discontiguous).
 
 declaration(Pred, Source, Decl) :-
 	decl(Prop, Declname),

@@ -1114,7 +1114,7 @@ verify_program( _ ).
 
 %------------------------------------------------------------------------------
 % verify_program_item( +list of terms, +variable dictionary ):
-% Given a term that should  be a clause, a directive, or a dra_call,
+% Given a term that should  be a clause, a directive, or a query,
 % raise an error if it is obviously incorrect.
 
 verify_program_item( Var, VarDict ) :-
@@ -2573,7 +2573,7 @@ dra_version( Version ) :-
 %    2. The program should contain no other directives. It may, however,
 %       contain queries, which will be executed immediately upon reading.
 %
-%    3. Just before the result of a dra_call is reported, the interpreter
+%    3. Just before the result of a query is reported, the interpreter
 %       produces a printout with statistics accummulated since the previous
 %       printout (or since the beginning, if this is the first printout during
 %       this session with the interpreted program). The printout looks like
@@ -2691,7 +2691,7 @@ dra_version( Version ) :-
    in the program, and "goal" to refer to an instance of a call.  We will also
    avoid the conventional overloading of the term "goal" in yet another way: we
    will call a sequence (i.e., conjunction) of goals just that (unless we can
-   refer to it as a "dra_call" or a "redra_intnt").
+   refer to it as a "query" or a "resolvent").
 
    Similarly, the user can declare a predicate to be "coinductive", by using
    another kind of directive, e.g.,
@@ -2719,7 +2719,7 @@ dra_version( Version ) :-
 
    The interpreter uses a number of tables that store information accumulated
    during a computation.  A computation consists in reading a program and
-   executing a number of queries.  A dra_call is a sequence (i.e., conjunction) of
+   executing a number of queries.  A query is a sequence (i.e., conjunction) of
    goals.
 
    The tables (implemented as dynamic predicates of Prolog) are:
@@ -2737,7 +2737,7 @@ dra_version( Version ) :-
            it stores the fact
                is_coinductive0( p( _, _ ) ).
 
-           A "coinductive" declaration is deemed to supersede "coinductive1",
+           A "coinductive0" declaration is deemed to supersede "coinductive1",
            and information about a predicate that has been so declared is stored
            both in coinductive0/1 and coinductive1/1.
 
@@ -2770,18 +2770,18 @@ dra_version( Version ) :-
                   used to load the program.
            ))
 
-           This table is not cleared before the evaluation of a new dra_call.
+           This table is not cleared before the evaluation of a new query.
 
            Detailed comments:
            ..................
            In general, for each success of a tabled goal encountered during the
-           evaluation of a dra_call, the interpreter will make certain that the
+           evaluation of a query, the interpreter will make certain that the
            result, i.e., the successful instantiation of that goal (which need
            not be ground!) is stored in the table "answer", accompanied by a
            variant of the original version of the goal (i.e., as it appeared
            when it was first encountered).
 
-           Before a dra_call finally fails (after exhausting all the answers),
+           Before a query finally fails (after exhausting all the answers),
            tabled goals encountered during its evaluation will have computed
            their least fixed points, i.e., all the possible results for those
            goals will be stored in "answer".  (Of course, if this set of all
@@ -2840,7 +2840,7 @@ dra_version( Version ) :-
            is useful for determining whether new answers have been generated
            during a phase of the computation.
 
-           This variable is not cleared before the evaluation of a new dra_call.
+           This variable is not cleared before the evaluation of a new query.
 
 
    -- pioneer( goal, index )
@@ -2876,9 +2876,9 @@ dra_version( Version ) :-
            "loop" and "looping_alternative" (see below) are removed.  The
            associated entries in "result" are not removed. The unique index is
            not reused for other goals during the evaluation of the current
-           dra_call.
+           query.
 
-           This table is cleared before the evaluation of a new dra_call.
+           This table is cleared before the evaluation of a new query.
 
            (NOTE: In the actual implementation each fact in "pioneer" has the
                   form
@@ -2898,7 +2898,7 @@ dra_version( Version ) :-
            indices for coinductive goals, which might need them to hold their
            own results in "result".
 
-           The variable is cleared before the evaluation of a new dra_call.
+           The variable is cleared before the evaluation of a new query.
 
 
    -- result( index, fact )
@@ -2918,7 +2918,7 @@ dra_version( Version ) :-
 
            The table is also used by coinductive goals that are not pioneers.
 
-           This table is cleared before the evaluation of a new dra_call.
+           This table is cleared before the evaluation of a new query.
 
 
    -- loop( index, list of goals )
@@ -2938,7 +2938,7 @@ dra_version( Version ) :-
            a part of a larger loop, or because it has become completed), the
            associated entries in "loop" are removed.
 
-           This table is cleared before the evaluation of a new dra_call.
+           This table is cleared before the evaluation of a new query.
 
 
    -- looping_alternative( index, clause )
@@ -2957,7 +2957,7 @@ dra_version( Version ) :-
            a part of a larger loop, or because it has become completed), the
            associated entries in "looping_alternative" are removed.
 
-           This table is cleared before the evaluation of a new dra_call.
+           This table is cleared before the evaluation of a new query.
 
 
    -- completed( goal )
@@ -2967,7 +2967,7 @@ dra_version( Version ) :-
            can be found in table "answer".  Variants of a completed goal are
            completed as well.
 
-           This table is not cleared before the evaluation of a new dra_call.
+           This table is not cleared before the evaluation of a new query.
 
            (NOTE: In the actual implementation each fact in "completed" has the
                   form
@@ -2991,19 +2991,19 @@ dra_version( Version ) :-
    -- step_counter
 
            This is a non-logical variable that keeps track of the number of
-           goals redra_intd during the evaluation of each dra_call.  The final value
-           is printed after the dra_call terminates.
+           goals resolved during the evaluation of each query.  The final value
+           is printed after the query terminates.
 
-           The variable is cleared before the evaluation of a new dra_call.
+           The variable is cleared before the evaluation of a new query.
 
    -- old_table_size
 
            This is a non-logical variable that is used to store the value of
-           "number_of_answers" before the evaluation of a dra_call.  Used to
+           "number_of_answers" before the evaluation of a query.  Used to
            produce automatic information about the growth of the table after the
-           dra_call terminates.
+           query terminates.
 
-           The variable is reinitialized before the evaluation of a new dra_call.
+           The variable is reinitialized before the evaluation of a new query.
 
 
 *******************************************************************************/
@@ -3050,7 +3050,7 @@ dra_version( Version ) :-
 %
 %       As the file is loaded, directives and queries are executed on-the-fly
 %       by invoking the metainterpreter (except the ":- op ..." directive,
-%       which is interpreted directly). A dra_call is evaluated to give all
+%       which is interpreted directly). A query is evaluated to give all
 %       solutions (it is as if the user kept responding with a semicolon):
 %       to avoid that use the built-in predicate once/1 .
 %
@@ -3074,7 +3074,7 @@ dra_version( Version ) :-
 %       NOTE: 1. In the interactive mode one cannot input more than one term
 %                per line.
 %
-%             2. When a dra_call succeeds, the bindings of variables should be
+%             2. When a query succeeds, the bindings of variables should be
 %                printed upto a certain maximum depth.  The default value is
 %                given in print_depth/1 below.  The maximum depth can be
 %                changed from the interpreted program by invoking
@@ -3216,8 +3216,8 @@ dra_version( Version ) :-
 %
 %          - dra_call/1:
 %                 This would be the main entry point of the metainterpreter.
-%                 Whenever the top level encounters a dra_call (of the form
-%                 "?- Q."), it will display the dra_call and then call
+%                 Whenever the top level encounters a query (of the form
+%                 "?- Q."), it will display the query and then call
 %                 "dra_call( Q )".  Depending on the result, it will then
 %                 display "No", or "Yes" (preceded by a display of bindings
 %                 acquired by the variables occurring in "Q"); in the latter
@@ -4303,9 +4303,9 @@ preliminary_processing( Term, VarDict, NewTerm, NewVarDict ) :-
 
 
 % process_term( +term, +variable dictionary ):
-% Process a term, which should be a directive, a dra_call, a program clause or
+% Process a term, which should be a directive, a query, a program clause or
 % end_of_file.
-% The variable dictionary is used for printing out the results of a dra_call.
+% The variable dictionary is used for printing out the results of a query.
 %
 % NOTE: The superficial correctness of this term as a program item has already
 %       been verified by "verify_program_item/2".
@@ -4455,8 +4455,8 @@ process_directive( Directive ) :-                % unsupported directive
         error( lines( [ 'Unknown directive:', [ (:- Directive), '.' ] ] ) ).
 
 
-% process_dra_call( +dra_call, +variable dictionary ):
-% Process a dra_call, i.e., produce and display solutions until
+% process_dra_call( +query, +variable dictionary ):
+% Process a query, i.e., produce and display solutions until
 % no more can be found.
 
 % :- mode process_dra_call( +, +).
@@ -4498,7 +4498,7 @@ show_result( no, _ ) :-
 
 
 % show_bindings( +variable dictionary ):
-% Use the variable dictionary to show the results of a dra_call.
+% Use the variable dictionary to show the results of a query.
 % (Recall that the variable dictionary is in Eclipse format.)
 % This version uses Ronald de Haan's equation generator
 % (see output_equations.pl) to display cyclic terms.
@@ -4605,8 +4605,8 @@ check_not_builtin( _, _ ).
 
 
 % top:
-% Interactive mode.  Each term that is not a directive or a dra_call is treated
-% as an abbreviated dra_call.  After displaying the results of each dra_call read
+% Interactive mode.  Each term that is not a directive or a query is treated
+% as an abbreviated query.  After displaying the results of each query read
 % characters upto the nearest newline: if the first character is ";",
 % backtrack to find alternative solutions.
 % Exit upon encountering end of file.
@@ -4641,8 +4641,8 @@ old_top :-
 
 
 % bare_to_dra_call( +term, - term ):
-% A term that is not end_of_file, quit, a directive, or a dra_call is
-% translated to a dra_call.  (So, for example, there will be no check for
+% A term that is not end_of_file, quit, a directive, or a query is
+% translated to a query.  (So, for example, there will be no check for
 % singleton variables.)
 
 bare_to_dra_call( Term, Term ) :-
@@ -4662,7 +4662,7 @@ bare_to_dra_call( Bare, (?- Bare) ).
 
 % interactive_term( +term, +variable dictionary ):
 % Process a term in interactive mode.
-% The variable dictionary is used for printing out the results of a dra_call.
+% The variable dictionary is used for printing out the results of a query.
 
 % :- mode interactive_term( +, +).
 
@@ -5425,7 +5425,7 @@ remove_variants_( [ H | T ], Accumulator, RL ) :-
 %  The interpreter  %
 
 
-% Execute a dra_call.
+% Execute a query.
 
 % :- mode dra_call( +).
 
@@ -5443,9 +5443,9 @@ init_dra_call:-
 :-meta_predicate(system:dra_call( : )).
 system:dra_call(M: Goals ) :-
 
-      '$dra':dra_must(M:b_getval('$tabling_exec',dra_int_external(Stack, Hyp, ValOld, CuttedOut))),
+      '$dra':dra_must(M:b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
       setup_call_cleanup(
-        ((ValOld < 0) -> (( '$dra':init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
+        ((ValOld < 0) -> (( '$dra':init_query,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
         ((
            % empty_hypotheses( Hyp ),
            % empty_stack( Stack ),            
@@ -5532,7 +5532,7 @@ plural( Output, N ) :-  N \= 1,  write( Output, 's' ).
 :- 
   empty_hypotheses( Hyp ),
   empty_stack( Stack ),
-  nb_setval('$tabling_exec',dra_int_external(Stack, Hyp, -1, _CuttedOut)).
+  nb_setval('$tabling_exec',dra_state(Stack, Hyp, -1, _CuttedOut)).
 
 % tnot/1 must be ran in meta-interp
 tnot(G):-dra_call(tnot(G)).
@@ -5644,7 +5644,7 @@ dra_interp(CuttedOut, M:Goal, Stack, Hyp,  Level ):-
 dra_int4meta(Meta, CuttedOut, M:BuiltIn, Stack, Hyp,  Level ):-
         arg(_,cuts_ok;is_support,Meta),
         !,
-        b_setval('$tabling_exec',dra_int_external(Stack, Hyp, Level, Cutted)),
+        b_setval('$tabling_exec',dra_state(Stack, Hyp, Level, Cutted)),
         incval( step_counter ),
         clause_module(M:BuiltIn,CM),!,
         call(CM: BuiltIn ),        

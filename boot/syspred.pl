@@ -841,10 +841,13 @@ define_or_generate(Pred) :-
 	'$get_predicate_attribute'(Pred, quasi_quotation_syntax, 1).
 '$predicate_property'(defined, Pred) :-
 	'$get_predicate_attribute'(Pred, defined, 1).
-'$predicate_property'(dra_call(N), Pred) :-
+'$predicate_property'(interp(N), Pred) :-
 	'$get_predicate_attribute'(Pred, dra_call, N).
 '$predicate_property'(dra_meta(N), Pred) :-
 	'$get_predicate_attribute'(Pred, dra_meta, N).
+'$predicate_property'(tabled, Pred) :-
+        '$get_predicate_attribute'(Pred, dra_meta, N),
+        ht_get(N,table,V),V\=[].
 
 system_undefined(user:prolog_trace_interception/4).
 system_undefined(user:prolog_exception_hook/4).

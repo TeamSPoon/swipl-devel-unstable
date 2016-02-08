@@ -1364,7 +1364,7 @@ struct definition
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
   FunctorDef dra_interp;         /* VMI calls this Name/1 instead */
-  struct hashtable_with_grefs pred_trie; /*  */
+  hashtable_with_grefs* pred_trie; /*  */
 #endif
   unsigned int  shared;			/* #procedures sharing this def */
 #ifdef O_PROF_PENTIUM

@@ -2,8 +2,8 @@
 
     Author:   Douglas Miles
     E-mail:   logicmoo@gmail.com
-    WWW:      http://www.swi-prolog.org
-    Copyright (C): 2016, VU University Amsterdam
+    WWW:      htbtp://www.swi-prolog.org
+    Copyrightb (C): 2016, VU University Amsterdam
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -36,20 +36,32 @@ Implementation of Dynamic Reordering of Alternatives a version of Tabling.
 
 #ifdef O_DRA_TABLING
 /*******************************
-*	 HT SYMBOL WRAPPER	*
+*	 HT_BLOB SYMBOL WRAPPER	*
 *******************************/
-int get_ht_blob(term_t t, hashtable_with_grefs **ht);
-static hashtable_with_grefs find_ht(term_t pred ARG_LD);
-static int	destroy_ht(hashtable_with_grefs *ht);
-static void clean_ht(hashtable_with_grefs *ht);
-static int  release_ht(atom_t symbol);
-static void acquire_ht(atom_t symbol);
-static int compare_hts(atom_t a, atom_t b);
-static int write_ht(IOSTREAM *s, atom_t symbol, int flags);
+
+static int release_htb(atom_t symbol);
+static int compare_htbs(atom_t a, atom_t b);
+static int write_htb(IOSTREAM *s, atom_t symbol, int flags);
+static void acquire_htb(atom_t symbol);
+static int save_htb(atom_t aref, IOSTREAM *fd);
+static atom_t load_htb(IOSTREAM *fd);
+
+static PL_blob_t ht_blob =
+{ PL_BLOB_MAGIC,
+  PL_BLOB_NOCOPY|PL_BLOB_UNIQUE,
+  "hashtable_with_grefs",
+  release_htb,
+  compare_htbs,
+  write_htb,
+  acquire_htb,
+  save_htb,
+  load_htb,
+};
+
 
 
 static int
-save_ht(atom_t aref, IOSTREAM *fd)
+save_htb(atom_t aref, IOSTREAM *fd)
 { hashtable_with_grefs *ref = PL_blob_data(aref, NULL, NULL);
   (void)fd;
 
@@ -58,185 +70,73 @@ save_ht(atom_t aref, IOSTREAM *fd)
 
 
 static atom_t
-load_ht(IOSTREAM *fd)
+load_htb(IOSTREAM *fd)
 { (void)fd;
 
   return PL_new_atom("<saved-hashtable_with_grefs-ref>");
 }
 
-static PL_blob_t ht_blob =
-{ PL_BLOB_MAGIC,
-  PL_BLOB_NOCOPY|PL_BLOB_UNIQUE,
-  "hashtable_with_grefs",
-  release_ht,
-  compare_hts,
-  write_ht,
-  acquire_ht,
-  save_ht,
-  load_ht,
-};
-
-
 static void
-acquire_ht(atom_t symbol)
-{ hashtable_with_grefs *ht = PL_blob_data(symbol, NULL, NULL);
-  ht->symbol = symbol;
+acquire_htb(atom_t symbol)
+{ hashtable_with_grefs *htb = PL_blob_data(symbol, NULL, NULL);
+  htb->symbol = symbol;
 }
 
 
 
 static int 
-compare_hts(atom_t a, atom_t b)
-{ hashtable_with_grefs *htA = PL_blob_data(a, NULL, NULL);
-  hashtable_with_grefs *htB = PL_blob_data(b, NULL, NULL);
+compare_htbs(atom_t a, atom_t b)
+{ hashtable_with_grefs *htbA = PL_blob_data(a, NULL, NULL);
+  hashtable_with_grefs *htbB = PL_blob_data(b, NULL, NULL);
 
-  return( htA > htB ?  1 :
-     htA < htB ? -1 : 0
+  return( htbA > htbB ?  1 :
+     htbA < htbB ? -1 : 0
    );
 }
 
 
 
 static int
-write_ht(IOSTREAM *s, atom_t symbol, int flags)
-{ hashtable_with_grefs *ht = PL_blob_data(symbol, NULL, NULL);
+write_htb(IOSTREAM *s, atom_t symbol, int flags)
+{ hashtable_with_grefs *htb = PL_blob_data(symbol, NULL, NULL);
 
-  Sfprintf(s, "<hashtable_with_grefs>(%p)", ht);
+  Sfprintf(s, "<hashtable_with_grefs>(%p)", htb);
   return TRUE;
 }
 
 
 
 static void
-clean_ht(hashtable_with_grefs *ht)
-{ if ( ht->root )
-  { destroyHTable(ht->root);
-    ht->root = NULL;
+clean_htb(hashtable_with_grefs *htb)
+{ if ( htb->root )
+  { destroyHTable(htb->root);
+    htb->root = NULL;
   }
 }
 
 static int
-destroy_ht(hashtable_with_grefs *ht)
-{ clean_ht(ht);
-  ht->magic = HT_W_REFS_MAGIC;
-  PL_free(ht);
+destroy_htb(hashtable_with_grefs *htb)
+{ clean_htb(htb);
+  htb->magic = HT_W_REFS_MAGIC;
+  PL_free(htb);
   return TRUE;
 }
 
 static int 
-release_ht(atom_t symbol)
-{ hashtable_with_grefs *ht = PL_blob_data(symbol, NULL, NULL);
+release_htb(atom_t symbol)
+{ hashtable_with_grefs *htb = PL_blob_data(symbol, NULL, NULL);
 
-  if ((ht->root))
-  { destroyHTable(ht->root);
-    ht->root = NULL;   
+  if ((htb->root))
+  { destroyHTable(htb->root);
+    htb->root = NULL;   
   }
-  destroy_ht(ht);
+  destroy_htb(htb);
 
-  PL_free(ht);
+  PL_free(htb);
 
   return TRUE;
 }
 
-
-
-int
-get_ht_blob(term_t t, hashtable_with_grefs **ht)
-{ PL_blob_t *type;
-  void *data;
-
-  if ( PL_get_blob(t, &data, NULL, &type) && type == &ht_blob)
-  { hashtable_with_grefs *p = data;
-
-    if ( p->symbol )
-    { *ht = p;
-
-      return TRUE;
-    }
-
-    PL_permission_error("access", "closed_bht", t);
-    return FALSE;
-  }
-
-  return PL_type_error("ht", t);
-}
-
-
-int
-unify_ht(term_t handle, hashtable_with_grefs *ht)
-{ GET_LD
-  if ( PL_unify_blob(handle, ht, sizeof(*ht), &ht_blob) )
-    return TRUE;
-
-  if ( !PL_is_variable(handle) )
-    return PL_uninstantiation_error(handle);
-
-  return FALSE;					/* (resource) error */
-}
-
-
-
-static foreign_t
-new_ht(term_t handle)
-{ hashtable_with_grefs *ht = calloc(1, sizeof(*ht));
-
-  if ( !ht )
-    return PL_resource_error("memory");
-
-  ht->magic    = HT_W_REFS_MAGIC;
-  ht->root     = newHTable(10);
-  ht->grefs   = 0;
-
-  if ( unify_ht(handle, ht) )
-    return TRUE;
-
-  destroy_ht(ht);
-  return FALSE;
-}
-
-
-static
-PRED_IMPL("ht_create",   1, ht_create,   0)
-{ return new_ht(A1);
-}
-
-
-static
-PRED_IMPL("pred_clear",   1, pred_clear,   0)
-{ PRED_LD
-
-  hashtable_with_grefs trie = find_ht(A1  PASS_LD);
-
-  if (trie.root)
-  { destroyHTable(trie.root);
-    trie.root = NULL;
-  }
-
-  trie.grefs = 0;
-  LD->frozen_bar = NULL;
-  return TRUE;
-}
-
-static
-PRED_IMPL("ht_free",   1, ht_free,   0)
-{ hashtable_with_grefs* ht;
-
-  if ( get_ht_blob(A1, &ht) )
-  { release_ht(ht->symbol);
-    ht->symbol = 0;
-    clean_ht(ht);
-    
-    return TRUE;
-  }
-
-  return FALSE;
-}
-
-
-
-/*******************************/
-/* TRIE DATABASE EXPERMENT USING HT*/
-/*******************************/
 
 static Procedure
 findProcedure(term_t pred ARG_LD) 
@@ -276,8 +176,125 @@ foc_trie_pointer(term_t pred ARG_LD)
   return NULL;
 }
 
+
 int
-PL_is_ht_blob(term_t t)
+get_htb__LD(term_t t, hashtable_with_grefs **htb ARG_LD)
+{ PL_blob_t *type;
+  void *data;
+  hashtable_with_grefs *p;
+
+  if ( PL_get_blob(t, &data, NULL, &type) && type == &ht_blob)
+  {  p = data;
+
+    if ( p->symbol )
+    { *htb = p;
+
+      return TRUE;
+    }
+
+    PL_permission_error("access", "closed_bhtb", t);
+    return FALSE;
+  }
+  
+  Procedure proc = findProcedure(t PASS_LD);
+  if(proc) 
+  {
+    Definition def = proc->definition;
+    if(!def->pred_trie || !def->pred_trie->root)
+    {
+      def->pred_trie = foc_trie_pointer(t PASS_LD);
+    }
+    *htb = def->pred_trie;
+    return htb!=NULL;
+  }
+  *htb = foc_trie_pointer(t PASS_LD);
+  return htb!=NULL;
+}
+int
+get_htb(term_t t, hashtable_with_grefs **htb)
+{ GET_LD
+  return get_htb__LD(t,htb PASS_LD);
+}
+
+int
+unify_htb(term_t handle, hashtable_with_grefs *htb)
+{ GET_LD
+
+  if(!htb || !htb->root) return FALSE;
+
+  if ( PL_unify_blob(handle, htb, sizeof(*htb), &ht_blob) )
+    return TRUE;
+
+  if ( !PL_is_variable(handle) )
+    return PL_uninstantiation_error(handle);
+
+  return FALSE;					/* (resource) error */
+}
+
+
+
+static
+PRED_IMPL("new_htb",   1, new_htb,   0)
+{ hashtable_with_grefs *htb = calloc(1, sizeof(*htb));
+
+  if ( !htb )
+    return PL_resource_error("memory");
+
+  htb->magic    = HT_W_REFS_MAGIC;
+  htb->root     = newHTable(10);
+  htb->grefs   = 0;
+
+  if ( unify_htb(A1, htb) )
+    return TRUE;
+
+  destroy_htb(htb);
+  return FALSE;
+}
+
+
+static
+PRED_IMPL("htb_clear",   1, htb_clear,   0)
+{ PRED_LD
+
+  hashtable_with_grefs* trie; 
+  if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
+  
+
+
+  if (trie->root)
+  { clearHTable(trie->root);
+  }
+
+  trie->grefs = 0;
+  return TRUE;
+}
+
+static
+PRED_IMPL("htb_free",   1, htb_free,   0)
+{ PRED_LD
+
+  hashtable_with_grefs* htb;
+
+  if ( get_htb__LD(A1, &htb PASS_LD) )
+  { release_htb(htb->symbol);
+    htb->symbol = 0;
+    clean_htb(htb);
+    
+    return TRUE;
+  }
+
+  return FALSE;
+}
+
+
+
+/*******************************/
+/* TRIE DATABASE EXPERMENT USING HT_BLOB*/
+/*******************************/
+
+
+int
+PL_is_htb(term_t t)
 { PL_blob_t *type;
 
   if ( PL_is_blob(t, &type) &&
@@ -288,26 +305,10 @@ PL_is_ht_blob(term_t t)
 }
 
 static
-PRED_IMPL("is_ht_blob",   1, is_ht_blob,   0)
-{ return PL_is_ht_blob(A1);
+PRED_IMPL("is_htb",   1, is_htb,   0)
+{ return PL_is_htb(A1);
 }
 
-static hashtable_with_grefs
-find_ht(term_t pred ARG_LD)
-{ if(PL_is_ht_blob(pred))
-  { hashtable_with_grefs* blob;
-    if(get_ht_blob(pred,&blob)) return *blob;
-  }
-  Definition def;
-  Procedure proc = findProcedure(pred PASS_LD);
-  def = proc->definition;
-
-  if (!def) return *foc_trie_pointer(pred PASS_LD);
-  if (!(def->pred_trie.root))
-  { def->pred_trie = *foc_trie_pointer(pred PASS_LD);
-  }
-  return def->pred_trie;
-}
 
 static void
 freezeHTGlobal(ARG1_LD)
@@ -323,11 +324,11 @@ free_key(word fkey)
 
 static void
 free_value(word value)
-{ //hashtable_with_grefs trie = find_ht(loc  PASS_LD);
+{ //hashtable_with_grefs trie = find_htb(loc  PASS_LD);
   if (isAtom(value))
     PL_unregister_atom(value);
   else if (storage(value) == STG_GLOBAL)
-  { //trie.grefs--;
+  { //trie->grefs--;
   }
 }
 
@@ -359,7 +360,7 @@ SHIFT-SAFE: TrailAssignment() takes at most g+t=1+2.  One more Trail and
    2 more allocGlobal(1) makes g+t<3+3
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-static int ht_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_LD)
+static int htb_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_LD)
 { word fkey;
   Word p;
   word w, old;
@@ -367,11 +368,13 @@ static int ht_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_
   if (!getKeyEx(key, &fkey PASS_LD))
     fail;
 
-  hashtable_with_grefs trie = find_ht(loc  PASS_LD);
+  hashtable_with_grefs* trie; 
+  if(!get_htb__LD(loc, &trie  PASS_LD) || !trie) return FALSE;
+  
 
-  if (!trie.root)
-  { trie.root = newHTable(32);
-    trie.root->free_symbol = free_kv;
+  if (!trie->root)
+  { trie->root = newHTable(32);
+    trie->root->free_symbol = free_kv;
   }
 
   if (!hasGlobalSpace(3))     /* also ensures trail for */
@@ -408,8 +411,8 @@ static int ht_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_
     }
   }
 
-  if (!(old = (word)lookupHTable(trie.root, (void*)fkey)))
-  { addNewHTable(trie.root, (void*)fkey, (void*)ATOM_nil);
+  if (!(old = (word)lookupHTable(trie->root, (void*)fkey)))
+  { addNewHTable(trie->root, (void*)fkey, (void*)ATOM_nil);
     if(isAtom(fkey))PL_register_atom(fkey);
     PL_register_atom(ATOM_nil);
     old = ATOM_nil;
@@ -431,21 +434,21 @@ static int ht_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_
       *p = old;
       freezeHTGlobal(PASS_LD1);   /* The value location must be */
       if (storage(old) != STG_GLOBAL)   /* preserved */
-        trie.grefs++;
-      updateHTable(trie.root, (void*)fkey, (void*)makeRefG(p));
+        trie->grefs++;
+      updateHTable(trie->root, (void*)fkey, (void*)makeRefG(p));
     }
 
     TrailAssignment(p);
     *p = w;
   } else
   { if (storage(old) == STG_GLOBAL)
-      trie.grefs--;
+      trie->grefs--;
 
-    updateHTable(trie.root, (void*)fkey, (void*)w);
+    updateHTable(trie->root, (void*)fkey, (void*)w);
 
     if (storage(w) == STG_GLOBAL)
     { freezeHTGlobal(PASS_LD1);
-      trie.grefs++;
+      trie->grefs++;
     } else if (isAtom(w))
       PL_register_atom(w);
   }
@@ -454,12 +457,12 @@ static int ht_assign(term_t loc, term_t key, term_t value, int assign_flags ARG_
 }
 
 typedef enum
-{ ht_fail,
-  ht_retry,
-  ht_error
-} ht_key_action;
+{ htb_fail,
+  htb_retry,
+  htb_error
+} htb_key_action;
 
-static ht_key_action
+static htb_key_action
 auto_define_key_value(term_t trie, word fkey)
 { GET_LD
   
@@ -467,25 +470,25 @@ static predicate_t ex;
   fid_t fid;
   term_t av;
 
-  ht_key_action rc = ht_error;
+  htb_key_action rc = htb_error;
 
   if (!ex)
     ex = PL_predicate("exception", 3, "user");
 
   if (!(fid = PL_open_foreign_frame()))
-    return ht_error;
+    return htb_error;
   av = PL_new_term_refs(3);
   PL_put_atom(av+0, ATOM_undefined_global_variable);
   PL_put_atom(av+1, fkey);
   PL_put_term(av+2, trie);
 
-  rc = ht_fail;  /* retry, error, fail */
+  rc = htb_fail;  /* retry, error, fail */
 
   int ret = PL_call_predicate(NULL, PL_Q_PASS_EXCEPTION, ex, av);
   if (ret==TRUE)
-  { rc = ht_retry;
+  { rc = htb_retry;
   } else if (ret==FALSE)
-  { rc = ht_error;
+  { rc = htb_error;
   }
 
   PL_close_foreign_frame(fid);
@@ -494,7 +497,7 @@ static predicate_t ex;
 }
 
 /* 
-ht_value_LD() is a quick and dirty way to get a global variable.
+htb_value_LD() is a quick and dirty way to get a global variable.
    It is used to get '$variable_names' for compiler warnings.
 
    Note that this function does *not* call auto_define_key_value().  This
@@ -503,10 +506,10 @@ ht_value_LD() is a quick and dirty way to get a global variable.
    fix this if this function is to be used for other purposes.
 
 int
-ht_value_LD(word fkey, Word p ARG_LD)
-{ if ( trie.root )
+htb_value_LD(word fkey, Word p ARG_LD)
+{ if ( trie->root )
   { word w;
-    if ( (w = (word)lookupHTable(trie.root, (void*)fkey)) )
+    if ( (w = (word)lookupHTable(trie->root, (void*)fkey)) )
     { *p = w;
  return TRUE;
     }
@@ -518,7 +521,7 @@ ht_value_LD(word fkey, Word p ARG_LD)
 */
 
 int
-ht_lookup(term_t loc, term_t key, term_t compare, term_t value, int raise_error ARG_LD)
+htb_lookup(term_t loc, term_t key, term_t value, int raise_error ARG_LD)
 {
   word fkey;
   int i;
@@ -532,12 +535,15 @@ ht_lookup(term_t loc, term_t key, term_t compare, term_t value, int raise_error 
       return raiseStackOverflow(rcgs);
   }
 
-  hashtable_with_grefs trie = find_ht(loc  PASS_LD);
+  hashtable_with_grefs* trie; 
+  if(!get_htb__LD(loc, &trie  PASS_LD) || !trie) return FALSE;
+  
+
 
   for ( i=0; i<2; i++ )
-  { if ( trie.root )
+  { if ( trie->root )
     { word w;
-      if ( (w = (word)lookupHTable(trie.root, (void*)fkey)) )
+      if ( (w = (word)lookupHTable(trie->root, (void*)fkey)) )
       {
         term_t tmp = PL_new_term_ref();
         *valTermRef(tmp) = w;
@@ -546,11 +552,11 @@ ht_lookup(term_t loc, term_t key, term_t compare, term_t value, int raise_error 
     }
 
     switch ( auto_define_key_value(loc, fkey) )
-    { case ht_fail:
+    { case htb_fail:
         fail;
-      case ht_retry:
+      case htb_retry:
         continue;
-      case ht_error:
+      case htb_error:
         if ( exception_term )
           fail;    /* error from handler */
         goto error;
@@ -585,92 +591,73 @@ PRED_IMPL("$exit_dra", 0, dexit_dra, 0)
   return TRUE;
 }
 
-static
-PRED_IMPL("reset_pred",   1, reset_pred,   0)
-{ /*PRED_LD*/
-
-  return TRUE;
-}
-
 
 static
-PRED_IMPL("put_on_pred",  2,  put_on_pred,   0)
-{ /*PRED_LD*/
-
-  return TRUE;
-}
-
-static
-PRED_IMPL("ht_b_putval", 3, ht_b_putval, 0)
+PRED_IMPL("htb_set_copy", 3, htb_set_copy, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_COPY_TERM|HT_BACKTRACK PASS_LD);
+  return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("ht_b_setval", 3, ht_b_setval, 0)
+PRED_IMPL("htb_set_duplicate_value", 3, htb_set_duplicate_value, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_BACKTRACK PASS_LD);
+  return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("ht_b_linkval", 3, ht_b_linkval, 0)
+PRED_IMPL("htb_linkval", 3, htb_linkval, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_LINK_TERM|HT_BACKTRACK PASS_LD);
+  return htb_assign(A1, A2, A3, HT_LINK_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("ht_nb_putval", 3, ht_nb_putval, 0)
+PRED_IMPL("htb_nb_set_copy", 3, htb_nb_set_copy, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_COPY_TERM|HT_NB_ASSIGN PASS_LD);
+  return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
 static
-PRED_IMPL("ht_nb_setval", 3, ht_nb_setval, 0)
+PRED_IMPL("htb_nb_set_duplicate_value", 3, htb_nb_set_duplicate_value, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_NB_ASSIGN PASS_LD);
+  return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
 static
-PRED_IMPL("ht_nb_linkval", 3, ht_nb_linkval, 0)
+PRED_IMPL("htb_nb_linkval", 3, htb_nb_linkval, 0)
 { PRED_LD
 
-  return ht_assign(A1, A2, A3, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);
+  return htb_assign(A1, A2, A3, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
-
 static
-PRED_IMPL("ht_pred_get", 4, ht_pred_get, 0)
+PRED_IMPL("htb_lookup", 3, htb_lookup, 0)
 { PRED_LD
 
-  return ht_lookup(A1, A2, A3, A4, FALSE PASS_LD);
+  return htb_lookup(A1, A2, A3, FALSE PASS_LD);
 }
 
 static
-PRED_IMPL("ht_unify_get", 3, ht_unify_get, 0)
-{ PRED_LD
-
-  return ht_lookup(A1, A2, PL_new_term_ref(), A3, FALSE PASS_LD);
-}
-
-static
-PRED_IMPL("ht_nb_del", 2, ht_nb_del, 0)
+PRED_IMPL("htb_delete", 2, htb_delete, 0)
 { PRED_LD
   word fkey;
 
   if (!getKeyEx(A2, &fkey  PASS_LD))
     fail;
 
-  hashtable_with_grefs trie = find_ht(A1 PASS_LD);
+  hashtable_with_grefs* trie; 
+  if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
+  
 
-  if (trie.root)
+
+  if (trie->root)
   { word w;
-    if ((w = (word)lookupHTable(trie.root, (void*)fkey)))
-    { deleteHTable(trie.root, (void*)fkey);
+    if ((w = (word)lookupHTable(trie->root, (void*)fkey)))
+    { deleteHTable(trie->root, (void*)fkey);
        free_key(fkey);
        free_value(w);
     }
@@ -680,21 +667,24 @@ PRED_IMPL("ht_nb_del", 2, ht_nb_del, 0)
 }
 
 static
-PRED_IMPL("ht_current_kvs", 3, ht_current_kvs, PL_FA_NONDETERMINISTIC)
+PRED_IMPL("htb_current", 3, htb_current, PL_FA_NONDETERMINISTIC)
 { PRED_LD
   TableEnum e;
   word fkey;
   word val;
   fid_t fid;
 
-  hashtable_with_grefs trie = find_ht(A1 PASS_LD);
-
   switch (CTX_CNTRL)
   { case FRG_FIRST_CALL:
    if (!PL_is_variable(A2))
-     return ht_lookup(A1, A2, PL_new_term_ref(), A3, FALSE PASS_LD);
-   if (trie.root)
-   { e = newTableEnum(trie.root);
+     return htb_lookup(A1, A2, A3, FALSE PASS_LD);
+
+   hashtable_with_grefs* trie; 
+   if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
+   
+
+   if (trie->root)
+   { e = newTableEnum(trie->root);
      break;
    } else
    { fail;
@@ -736,7 +726,7 @@ isGlobalRef(word w)
 { return storage(w) == STG_GLOBAL;
 }
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Dealing  with  nb_setval/2  and   nb_getval/2  non-backtrackable  global
+Dealing  with  nb_set_duplicate_value/2  and   nb_lookup/2  non-backtrackable  global
 variables as defined  in  pl-gvar.c.  We   cannot  mark  and  sweep  the
 hash-table itself as the  reversed   pointers  cannot  address arbitrary
 addresses returned by allocHeapOrHalt(). Therefore we   turn all references to
@@ -758,8 +748,8 @@ trie_to_term_refs(hashtable_with_grefs trie, Word **saved_bar_at)
 { GET_LD
   fid_t fid = PL_open_foreign_frame();
 
-  if ( trie.root && trie.grefs > 0 )
-  { TableEnum e = newTableEnum(trie.root);
+  if ( trie->root && trie->grefs > 0 )
+  { TableEnum e = newTableEnum(trie->root);
     int found = 0;
     word w;
 
@@ -774,7 +764,7 @@ trie_to_term_refs(hashtable_with_grefs trie, Word **saved_bar_at)
     }
 
     freeTableEnum(e);
-    assert(trie.grefs == found);
+    assert(trie->grefs == found);
 
     DEBUG(MSG_GC_MARK_GVAR,
 	  Sdprintf("Found %d global vars on global stack. "
@@ -809,10 +799,10 @@ term_refs_to_trie(hashtable_with_grefs trie, fid_t fid, Word *saved_bar_at)
     lTop = (LocalFrame) saved_bar_at;
   }
 
-  if ( trie.grefs > 0 )
+  if ( trie->grefs > 0 )
   { FliFrame fr = (FliFrame) valTermRef(fid);
     Word fp = (Word)(fr+1);
-    TableEnum e = newTableEnum(trie.root);
+    TableEnum e = newTableEnum(trie->root);
     atom_t name;
     word p;
     int found = 0;
@@ -842,27 +832,25 @@ BeginPredDefs(dra)
   PRED_DEF("$enter_dra",   0, denter_dra,   0)
   PRED_DEF("$exit_dra",   0, dexit_dra,   0)
 
-  PRED_DEF("is_ht_blob",   1, is_ht_blob,   0)
+  PRED_DEF("is_htb",   1, is_htb,   0)
+  PRED_DEF("htb_free",    1, htb_free,   0)
 
-  PRED_DEF("pred_clear", 1, pred_clear,   0)
-  PRED_DEF("ht_free",    1, ht_free,   0)
-  PRED_DEF("reset_pred",   1, reset_pred,   0)
+  PRED_DEF("new_htb",   1, new_htb,   0)
+  PRED_DEF("htb_clear", 1, htb_clear,   0)
 
-  PRED_DEF("ht_create",   1, ht_create,   0)
-  PRED_DEF("put_on_pred",  2,  put_on_pred,   0)
   
-  PRED_DEF("ht_b_linkval", 3, ht_b_linkval, 0)
-  PRED_DEF("ht_b_putval", 3, ht_b_putval, 0)
-  PRED_DEF("ht_b_setval", 3, ht_b_setval, 0)
-  PRED_DEF("ht_nb_linkval", 3, ht_nb_linkval, 0)
-  PRED_DEF("ht_nb_putval", 3, ht_nb_putval, 0)
-  PRED_DEF("ht_nb_setval", 3, ht_nb_setval, 0)
+  PRED_DEF("htb_linkval", 3, htb_linkval, 0)
+  PRED_DEF("htb_set_copy", 3, htb_set_copy, 0)
+  PRED_DEF("htb_set_duplicate_value", 3, htb_set_duplicate_value, 0)
+  PRED_DEF("htb_nb_linkval", 3, htb_nb_linkval, 0)
+  PRED_DEF("htb_nb_set_copy", 3, htb_nb_set_copy, 0)
+  PRED_DEF("htb_nb_set_duplicate_value", 3, htb_nb_set_duplicate_value, 0)
 
-  PRED_DEF("ht_nb_del", 2, ht_nb_del, 0)
+  PRED_DEF("htb_delete", 2, htb_delete, 0)
 
-  PRED_DEF("ht_current_kvs", 3, ht_current_kvs, PL_FA_NONDETERMINISTIC)
-  PRED_DEF("ht_unify_get", 3, ht_unify_get, 0)
-  PRED_DEF("ht_pred_get", 4, ht_pred_get, 0)
+  PRED_DEF("htb_current", 3, htb_current, PL_FA_NONDETERMINISTIC)
+  PRED_DEF("htb_lookup", 3, htb_lookup, 0)
+  
 
 EndPredDefs
 #endif

@@ -2717,7 +2717,7 @@ pl_get_predicate_attribute(term_t pred,
     return PL_unify_atom(value,draFunctorDef==NULL?ATOM_dra_call:draFunctorDef->name);
   } else if ( key == ATOM_dra_meta )
   { if (false(def, P_DRA_CALL_META)) fail;
-    return unify_ht(value, &def->pred_trie);
+    return unify_htb(value, def->pred_trie);
 #endif 
 
   }  else if ( key == ATOM_foreign )
