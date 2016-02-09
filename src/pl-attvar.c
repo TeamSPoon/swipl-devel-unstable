@@ -1806,7 +1806,10 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 
 bool 
 isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
-{ Word fdattrs,fdattrs2,found;
+{
+  if(SAFETY_FIRST) return FALSE;
+
+  Word fdattrs,fdattrs2,found;
   if(!(override_flags & METATERM_ENABLED)) return FALSE;
   deRef(av);
   if(!isAttVar(*av)) return FALSE;

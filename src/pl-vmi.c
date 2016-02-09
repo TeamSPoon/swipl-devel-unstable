@@ -1631,52 +1631,58 @@ normal_call:
 
 #ifdef O_DRA_TABLING
 
-    if (true(DEF,P_DRA_CALL_META) && LD->dra_base.in_dra<2)
-    {  DEBUG(MSG_DRA,Sdprintf("DRA I_CALL: "));
-        LD->dra_base.in_dra++;
+  if ( true(DEF,P_DRA_CALL_META) )
+  {
+    DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL in_dra= ~d",LD->dra_base.in_dra);});
 
-        { Word a;
+    if ( LD->dra_base.in_dra<2 )
+    {
 
-            if (!hasGlobalSpace(2))
-            {
-                int rc;
+      LD->dra_base.in_dra++;
 
-                SAVE_REGISTERS(qid);
-                rc = ensureGlobalSpace(2, ALLOW_GC);
-                LOAD_REGISTERS(qid);
-                if (rc != TRUE)
-                {
-                    raiseStackOverflow(rc);
-                    THROW_EXCEPTION;
-                }
-            }
-            NFR = lTop;
-            a = argFrameP(NFR, 0);      /* get the goal */
-            deRef(a);
-            Module module0 = NULL;
-            if (!(a = stripModule(a, &module0 PASS_LD))) THROW_EXCEPTION;
+      { Word a;
 
-            *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
-            NFR = lTop;
-            // DEF = PROCEDURE_dra_call1->definition;
-            setNextFrameFlags(NFR, FR);
+        if ( !hasGlobalSpace(2) )
+        {
+          int rc;
 
-            {
-                NFR = lTop;
-                a = argFrameP(NFR, 0);  /* get the goal */
-                if (!(a = stripModule(a, &module0 PASS_LD))) THROW_EXCEPTION;
-
-                DEBUG(MSG_DRA,{ term_t gg = pushWordAsTermRef(a);
-                     LocalFrame ot = lTop;
-                     lTop += 100;
-                     pl_writeln(gg);
-                     popTermRef();
-                     lTop = ot;
-                     });
-            }
+          SAVE_REGISTERS(qid);
+          rc = ensureGlobalSpace(2, ALLOW_GC);
+          LOAD_REGISTERS(qid);
+          if ( rc != TRUE )
+          {
+            raiseStackOverflow(rc);
+            THROW_EXCEPTION;
+          }
         }
+        NFR = lTop;
+        a = argFrameP(NFR, 0);      /* get the goal */
+        deRef(a);
+        Module module0 = NULL;
+        if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
 
+        *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
+        NFR = lTop;
+        // DEF = PROCEDURE_dra_call1->definition;
+        setNextFrameFlags(NFR, FR);
+
+        {
+          NFR = lTop;
+          a = argFrameP(NFR, 0);  /* get the goal */
+          if ( !(a = stripModule(a, &module0 PASS_LD)) ) THROW_EXCEPTION;
+
+          DEBUG(MSG_DRA,{ term_t gg = pushWordAsTermRef(a);
+               LocalFrame ot = lTop;
+               lTop += 100;
+               DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL ");});
+               pl_writeln(gg);
+               popTermRef();
+               lTop = ot;
+               });
+        }
+      }
     }
+  }
 
 #endif
 
@@ -4593,35 +4599,39 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	});
 
 #ifdef O_DRA_TABLING
-  if (true(DEF,P_DRA_CALL_META) && LD->dra_base.in_dra<2) 
-  {   LD->dra_base.in_dra++;
+  if ( true(DEF,P_DRA_CALL_META) )
+  {
+    DEBUG(MSG_DRA,{Sdprintf("DRA I_USERCALL0: in_dra= ~d ",LD->dra_base.in_dra);});
 
-       
-       functor_t dra_functor =  FUNCTOR_dra_call1;
+    if ( LD->dra_base.in_dra<2 )
+    {
+      LD->dra_base.in_dra++;
 
-       FunctorDef draFunctorDef = DEF->dra_interp;
-       
-       if(draFunctorDef!=NULL) dra_functor = draFunctorDef->functor;
-       
-        Word a = argFrameP(lTop, 0);
-        *ARGP++ = linkVal(a);
-        NFR = lTop;
-        DEF = resolveProcedure(dra_functor, module)->definition;
-        setNextFrameFlags(NFR, FR);
+      functor_t dra_functor =  FUNCTOR_dra_call1;
 
-         DEBUG(MSG_DRA,
-          { Sdprintf("DRA I_USERCALL0: ");
-            a = argFrameP(NFR, 0);		/* get the goal */
-            deRef(a);
-            if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
-            term_t gg = pushWordAsTermRef(a);
-            LocalFrame ot = lTop;
-            lTop += 100;
-            pl_writeln(gg);
-            popTermRef();
-            lTop = ot;
-          });
-      
+      FunctorDef draFunctorDef = DEF->dra_interp;
+
+      if ( draFunctorDef!=NULL ) dra_functor = draFunctorDef->functor;
+
+      *ARGP++ = linkVal(a);
+      NFR = lTop;
+      DEF = resolveProcedure(dra_functor, module)->definition;
+      setNextFrameFlags(NFR, FR);
+
+      DEBUG(MSG_DRA,
+         { Sdprintf("DRA I_USERCALL0: ");
+           a = argFrameP(NFR, 0);    /* get the goal */
+           deRef(a);
+           if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
+           term_t gg = pushWordAsTermRef(a);
+           LocalFrame ot = lTop;
+           lTop += 100;
+           pl_writeln(gg);
+           popTermRef();
+           lTop = ot;
+           });
+
+    }
  }
 #endif  
 

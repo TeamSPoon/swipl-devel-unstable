@@ -147,8 +147,10 @@ dra_load( FileName ) :-
         dra_must((program_loaded)),!.                          % provided by a metainterpreter
 
 
+/*
 cputime(TimeMS):- 
 	statistics(runtime,[TimeMS,_]).
+*/
 
 % process_file( +file name ):
 % Load a program from this file, processing directives and queries.
@@ -2403,22 +2405,22 @@ erase_module( _ ).
 
 
 %------------------------------------------------------------------------------
-% setval( +name, +value ):
+% dra_setval_flag( +name, +value ):
 % Set this counter to this value.
 %
 % NOTE: Since DRA uses global variables to store only integers, we use the
 %       flag/3 facility of SWI Prolog.  For more general values we would have
-%       to use nb_setval/nb_getval.  See also getval/2 and incval/1 below.
+%       to use dra_nb_setval/dra_nb_getval.  See also dra_getval_flag/2 and incval/1 below.
 
-setval( Name, Value ) :-
+dra_setval_flag( Name, Value ) :-
         flag( Name, _Old, Value ).
 
 
 %------------------------------------------------------------------------------
-% getval( +name, - value ):
+% dra_getval_flag( +name, - value ):
 % Get the value associated with this counter.
 
-getval( Name, Value ) :-
+dra_getval_flag( Name, Value ) :-
         flag( Name, Value, Value ).
 
 
@@ -2427,9 +2429,9 @@ getval( Name, Value ) :-
 % Increment this counter by 1.
 incval( Name ) :- !, flag( Name, Value, Value+1 ).
 incval( Name ) :-
-        getval( Name, Value ),
+        dra_getval_flag( Name, Value ),
         NewValue is Value +1,
-        setval( Name, NewValue ).
+        dra_setval_flag( Name, NewValue ).
 
 
 %------------------------------------------------------------------------------
@@ -5156,8 +5158,8 @@ default_extension( '.tlp' ).                              % invoked by top_level
 :- dynamic completed/2 .
 :- dynamic is_tracing/1.
 
-:- setval( number_of_answers, 0 ).
-:- setval( unique_index,      0 ).
+:- dra_setval_flag( number_of_answers, 0 ).
+:- dra_setval_flag( unique_index,      0 ).
 
 initialise :-                                             % invoked by top_level
    dra_must((
@@ -5172,10 +5174,10 @@ initialise :-                                             % invoked by top_level
         retractall( is_tabled( _ )       ),
         retractall( is_old_first( _ )    ),
         retractall( is_tracing( _ )      ),
-        setval( number_of_answers, 0 ),
-        setval( unique_index,      0 ),
-        setval( step_counter,      0 ),
-        setval( old_table_size,    0 ))),
+        dra_setval_flag( number_of_answers, 0 ),
+        dra_setval_flag( unique_index,      0 ),
+        dra_setval_flag( step_counter,      0 ),
+        dra_setval_flag( old_table_size,    0 ))),
         dra_must((dra_version( Version ),
         writeln( Version ))),!.
 
@@ -5434,16 +5436,15 @@ init_dra_call:-
         reinitialise_result,
         reinitialise_loop,
         reinitialise_looping_alternative,
-        setval( unique_index,      0    ),
-        getval( number_of_answers, NAns ),
-        setval( old_table_size,    NAns ),
-        setval( step_counter,      0    ).
+        dra_setval_flag( unique_index,      0    ),
+        dra_getval_flag( number_of_answers, NAns ),
+        dra_setval_flag( old_table_size,    NAns ),
+        dra_setval_flag( step_counter,      0    ).
 
 % invoked by VMI/WAM
 :-meta_predicate(system:dra_call( : )).
 system:dra_call(M: Goals ) :-
-
-      '$dra':dra_must(M:b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
+      '$dra':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
       setup_call_cleanup(
         ((ValOld < 0) -> (( '$dra':init_query,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
         ((
@@ -5458,9 +5459,9 @@ system:dra_call(M: Goals ) :-
 
 exit_dra_call:- 
             print_statistics,
-            setval( step_counter, 0 ),
-            getval( number_of_answers, NAns2 ),
-            setval( old_table_size, NAns2 ),
+            dra_setval_flag( step_counter, 0 ),
+            dra_getval_flag( number_of_answers, NAns2 ),
+            dra_setval_flag( old_table_size, NAns2 ),
             '$exit_dra'.
 
 cont_dra_call :- 
@@ -5472,9 +5473,9 @@ cont_dra_call :-
 
 print_statistics :-
         std_trace_stream( Output ),
-        getval( step_counter, NSteps ),
-        getval( number_of_answers, NAns ),
-        getval( old_table_size, OldNAns ),
+        dra_getval_flag( step_counter, NSteps ),
+        dra_getval_flag( number_of_answers, NAns ),
+        dra_getval_flag( old_table_size, OldNAns ),
         TableGrowth is NAns - OldNAns,
         write(  Output, '[' ),
         write(  Output, NSteps ),
@@ -5644,7 +5645,7 @@ dra_interp(CuttedOut, M:Goal, Stack, Hyp,  Level ):-
 dra_int4meta(Meta, CuttedOut, M:BuiltIn, Stack, Hyp,  Level ):-
         arg(_,cuts_ok;is_support,Meta),
         !,
-        b_setval('$tabling_exec',dra_state(Stack, Hyp, Level, Cutted)),
+        nb_setval('$tabling_exec',dra_state(Stack, Hyp, Level, Cutted)),
         incval( step_counter ),
         clause_module(M:BuiltIn,CM),!,
         call(CM: BuiltIn ),        
@@ -5999,7 +6000,7 @@ compute_fixed_point( Goal, PGIndex, Stack, Hyp, Level ) :-
         ;
             NHyp = Hyp
         ),
-        getval( number_of_answers, NAns ),
+        dra_getval_flag( number_of_answers, NAns ),
         compute_fixed_point_( Goal, PGIndex, Stack, NHyp, NLevel, NAns ).
 
 %
@@ -6018,7 +6019,7 @@ compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, _ ) :-
         memo( OriginalGoal, Goal, Level ).
 
 compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, NAns ) :-
-        getval( number_of_answers, NAnsNow ),
+        dra_getval_flag( number_of_answers, NAnsNow ),
         NAnsNow \= NAns,                % i.e., fail if there are no new answers
         compute_fixed_point_( Goal, PGIndex, Stack, Hyp, Level, NAnsNow ).
 
@@ -6097,7 +6098,7 @@ extract_goals( [ triple( G, _, _ ) | Ts ], [ G | Gs ] ) :-
 % :- mode get_unique_index( - ).
 
 get_unique_index( PGIndex ) :-
-        getval( unique_index, PGIndex ),
+        dra_getval_flag( unique_index, PGIndex ),
         incval( unique_index ).
 
 
@@ -6319,7 +6320,7 @@ t5:- consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/
    \+ atom_concat('$',_,F),
       M:export(M:F/A),
    \+ predicate_property(M:H,transparent),
-   writeln(M:H),
+%    writeln(M:H),
    \+ atom_concat('__aux',_,F), FM:module_transparent(M:F/A)))).
 
 
