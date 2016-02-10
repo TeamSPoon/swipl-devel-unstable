@@ -49,6 +49,8 @@ static atom_t load_htb(IOSTREAM *fd);
 static PL_blob_t ht_blob =
 { PL_BLOB_MAGIC,
   PL_BLOB_NOCOPY|PL_BLOB_UNIQUE,
+  /*DM actually my goal is to have no grefs.. but I dont know about the implications of Strings or MPZs.
+    At least compounds are only stored in keys and only as functors (thus are same as atoms in this respect) */
   "hashtable_with_grefs",
   release_htb,
   compare_htbs,
