@@ -292,7 +292,7 @@ copyCodes(Code dest, Code src, size_t count)
 
 static Code
 chainMetaPredicateSupervisor(Definition def, Code post)
-{ if ( true(def, P_META) && true(def, P_TRANSPARENT) )
+{ if ( true(def, P_MODES) && true(def, P_META) )
   { tmp_buffer buf;
     unsigned int i;
     int count = 0;

@@ -483,9 +483,9 @@ COMMON(int)		checkModifySystemProc(functor_t f);
 COMMON(int)		overruleImportedProcedure(Procedure proc, Module target);
 COMMON(word)		pl_current_predicate(term_t name, term_t functor, control_t h);
 COMMON(foreign_t)	pl_current_predicate1(term_t spec, control_t ctx);
-COMMON(void)		clear_meta_declaration(Definition def);
-COMMON(void)		setMetapredicateMask(Definition def, meta_mask mask);
-COMMON(int)		isTransparentMetamask(Definition def, meta_mask mask);
+COMMON(void)		clear_mode_declaration(Definition def);
+COMMON(void)		setPredicateModes(Definition def, mode_mask mask);
+COMMON(int)		isMetamask(Definition def, mode_mask mask);
 COMMON(ClauseRef)	assertProcedure(Procedure proc, Clause clause,
 					ClauseRef where ARG_LD);
 COMMON(bool)		abolishProcedure(Procedure proc, Module module);
@@ -540,8 +540,8 @@ COMMON(ClauseRef)	assertProcedureSource(SourceFile sf, Procedure proc,
 					      Clause clause ARG_LD);
 COMMON(int)		setAttrProcedureSource(SourceFile sf, Procedure proc,
 					       unsigned attr, int val ARG_LD);
-COMMON(int)		setMetapredicateSource(SourceFile sf, Procedure proc,
-					       meta_mask mask ARG_LD);
+COMMON(int)		setModesAndSource(SourceFile sf, Procedure proc,
+					       mode_mask mask ARG_LD);
 COMMON(int)		exportProcedureSource(SourceFile sf, Module module,
 					      Procedure proc);
 COMMON(void)		registerReloadModule(SourceFile sf, Module module);

@@ -1631,7 +1631,7 @@ normal_call:
 
 #ifdef O_DRA_TABLING
 
-  if ( true(DEF,P_DRA_CALL_META) )
+  if ( DRA_CALL && DEF->dra_interp )
   {
     DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL in_dra= ~d",LD->dra_base.in_dra);});
 
@@ -1859,7 +1859,7 @@ VMI(I_DEPART, VIF_BREAK, 1, (CA1_PROC))
     FR->clause = NULL;			/* for save atom-gc */
     leaveDefinition(DEF);
     DEF = proc->definition;
-    if ( true(DEF, P_TRANSPARENT) )
+    if ( true(DEF, P_META) )
     { FR->context = contextModule(FR);
       FR->level++;
       clear(FR, FR_CLEAR_NEXT);
@@ -4599,7 +4599,7 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	});
 
 #ifdef O_DRA_TABLING
-  if ( true(DEF,P_DRA_CALL_META) )
+  if ( DRA_CALL && DEF->dra_interp )
   {
     DEBUG(MSG_DRA,{Sdprintf("DRA I_USERCALL0: in_dra= ~d ",LD->dra_base.in_dra);});
 
@@ -4607,15 +4607,12 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
     {
       LD->dra_base.in_dra++;
 
-      functor_t dra_functor =  FUNCTOR_dra_call1;
+      *ARGP++ = linkVal(a);
+      NFR = lTop;
 
       FunctorDef draFunctorDef = DEF->dra_interp;
 
-      if ( draFunctorDef!=NULL ) dra_functor = draFunctorDef->functor;
-
-      *ARGP++ = linkVal(a);
-      NFR = lTop;
-      DEF = resolveProcedure(dra_functor, module)->definition;
+      DEF = resolveProcedure(draFunctorDef->functor, module)->definition;
       setNextFrameFlags(NFR, FR);
 
       DEBUG(MSG_DRA,
@@ -4801,20 +4798,7 @@ VMI(I_USERCALLN, VIF_BREAK, 1, (CA1_INTEGER))
 
 i_usercall_common:
 
-/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-If a P_DRA_CALL
-frame.
-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-  if (true(DEF,P_DRA_CALL_META)) 
-  {
-   /*
-    ARGP = argFrameP(NFR, 0);
-
-    for(; arity-- > 0; ARGP++, args++)
-      *ARGP = linkVal(args);
-      */
-  }
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Now scan the argument vector of the goal and fill the arguments  of  the
 frame.
@@ -4874,7 +4858,7 @@ mcall_cont:
 
 
 
-  if ( true(DEF, P_TRANSPARENT) )
+  if ( true(DEF, P_META) )
     setContextModule(NFR, module);
 
 

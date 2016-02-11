@@ -1524,9 +1524,9 @@ reconsultFinalizePredicate(sf_reload *rl, Definition def, p_reload *r ARG_LD)
 
 /** meta_predicate :HeadList is det.
 
-Declaration for meta-predicates. The  declaration   fills  the meta_info
-field of a definition as well  as   the  P_META and P_TRANSPARENT flags.
-P_META indicates that meta_info is   valid. P_TRANSPARENT indicates that
+Declaration for meta-predicates. The  declaration   fills  the modes
+field of a definition as well  as   the  P_MODES and P_META flags.
+P_MODES indicates that modes is   valid. P_META indicates that
 the declaration contains at least one meta-argument (: or 0..9).
 
 @param HeadList	Comma separated list of predicates heads, where each
@@ -1534,7 +1534,7 @@ the declaration contains at least one meta-argument (: or 0..9).
 */
 
 int
-isTransparentMetamask(Definition def, meta_mask mask)
+isMetamask(Definition def, mode_mask mask)
 { size_t i, arity = def->functor->arity;
   int transparent = FALSE;
 
@@ -1549,25 +1549,25 @@ isTransparentMetamask(Definition def, meta_mask mask)
 
 
 void
-setMetapredicateMask(Definition def, meta_mask mask)
-{ def->meta_info = mask;
-  if ( isTransparentMetamask(def, mask) )
-    set(def, P_TRANSPARENT);
+setPredicateModes(Definition def, mode_mask mask)
+{ def->modes = mask;
+  if ( isMetamask(def, mask) )
+    set(def, P_META);
   else
-    clear(def, P_TRANSPARENT);
-  set(def, P_META);
+    clear(def, P_META);
+  set(def, P_MODES);
 }
 
 
 static int
-meta_declaration(term_t spec)
+declare_modes(term_t spec)
 { GET_LD
   term_t head = PL_new_term_ref();
   term_t arg = PL_new_term_ref();
   Procedure proc;
   atom_t name;
   size_t i, arity;
-  meta_mask mask = 0;
+  mode_mask mask = 0;
 
   if ( !get_procedure(spec, &proc, head, GP_DEFINE) ||
        !PL_get_name_arity(head, &name, &arity) )
@@ -1598,12 +1598,12 @@ meta_declaration(term_t spec)
       }
       mask |= e<<(i*4);
     } else if ( PL_get_atom(arg, &ma) )
-    { meta_mask m;
+    { mode_mask m;
 
       if      ( ma == ATOM_plus )          m = MA_NONVAR;
       else if ( ma == ATOM_minus )         m = MA_VAR;
       else if ( ma == ATOM_question_mark ) m = MA_ANY;
-      else if ( ma == ATOM_star )	   m = MA_ANY; /* * mapped to ? */
+      else if ( ma == ATOM_star )	       m = MA_ANY; /* * mapped to ? */
       else if ( ma == ATOM_colon )         m = MA_META;
       else if ( ma == ATOM_hat )           m = MA_HAT;
       else if ( ma == ATOM_gdiv )          m = MA_DCG;
@@ -1618,9 +1618,9 @@ meta_declaration(term_t spec)
 
   if ( ReadingSource )
   { SourceFile sf = lookupSourceFile(source_file_name, TRUE);
-    return setMetapredicateSource(sf, proc, mask PASS_LD);
+    return setModesAndSource(sf, proc, mask PASS_LD);
   } else
-  { setMetapredicateMask(proc->definition, mask);
+  { setPredicateModes(proc->definition, mask);
     return TRUE;
   }
 }
@@ -1634,12 +1634,12 @@ PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
 
   while ( PL_is_functor(tail, FUNCTOR_comma2) )
   { _PL_get_arg(1, tail, head);
-    if ( !meta_declaration(head) )
+    if ( !declare_modes(head) )
       return FALSE;
     _PL_get_arg(2, tail, tail);
   }
 
-  if ( !meta_declaration(tail) )
+  if ( !declare_modes(tail) )
     return FALSE;
 
   return TRUE;
@@ -1647,7 +1647,7 @@ PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
 
 
 static int
-unify_meta_argument(term_t head, Definition def, int i)
+unify_mode_argument(term_t head, Definition def, int i)
 { GET_LD
   term_t arg = PL_new_term_ref();
   int m = MA_INFO(def, i);
@@ -1674,7 +1674,7 @@ unify_meta_argument(term_t head, Definition def, int i)
 
 
 static int
-unify_meta_pattern(Procedure proc, term_t head)
+unify_mode_pattern(Procedure proc, term_t head)
 { Definition def = proc->definition;
 
   if ( PL_unify_functor(head, def->functor->functor) )
@@ -1682,7 +1682,7 @@ unify_meta_pattern(Procedure proc, term_t head)
     int i;
 
     for(i=0; i<arity; i++)
-    { if ( !unify_meta_argument(head, def, i) )
+    { if ( !unify_mode_argument(head, def, i) )
 	return FALSE;
     }
 
@@ -1745,21 +1745,21 @@ PL_meta_predicate(predicate_t proc, const char *spec_s)
       transparent = TRUE;
   }
 
-  def->meta_info = mask;
+  def->modes = mask;
   if ( transparent )
-    set(def, P_TRANSPARENT);
+    set(def, P_META);
   else
-    clear(def, P_TRANSPARENT);
-  set(def, P_META);
+    clear(def, P_META);
+  set(def, P_MODES);
 
   return TRUE;
 }
 
 
 void
-clear_meta_declaration(Definition def)
-{ def->meta_info = 0;
-  clear(def, P_META|P_TRANSPARENT);
+clear_mode_declaration(Definition def)
+{ def->modes = 0;
+  clear(def, P_MODES|P_META);
 }
 
 #ifdef O_CLAUSEGC
@@ -2603,7 +2603,7 @@ static const patt_mask patt_masks[] =
   { ATOM_trace_fail,	   TRACE_FAIL },
   { ATOM_trace_any,	   TRACE_ANY },
   { ATOM_hide_childs,	   HIDE_CHILDS },
-  { ATOM_transparent,	   P_TRANSPARENT },
+  { ATOM_transparent,	   P_META },
   { ATOM_discontiguous,	   P_DISCONTIGUOUS },
   { ATOM_volatile,	   P_VOLATILE },
   { ATOM_thread_local,	   P_THREAD_LOCAL },
@@ -2671,9 +2671,9 @@ pl_get_predicate_attribute(term_t pred,
   } else if ( key == ATOM_indexed )
   { return unify_index_pattern(proc, value);
   } else if ( key == ATOM_meta_predicate )
-  { if ( false(def, P_META) )
+  { if ( false(def, P_MODES) )
       fail;
-    return unify_meta_pattern(proc, value);
+    return unify_mode_pattern(proc, value);
   } else if ( key == ATOM_exported )
   { return PL_unify_integer(value, isPublicModule(module, proc));
   } else if ( key == ATOM_defined )

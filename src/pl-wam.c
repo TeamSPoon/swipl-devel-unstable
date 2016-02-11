@@ -1379,7 +1379,7 @@ contextModule(LocalFrame fr)
 { for(; fr; fr = fr->parent)
   { if ( true(fr, FR_CONTEXT) )
       return fr->context;
-    if ( false(fr->predicate, P_TRANSPARENT) )
+    if ( false(fr->predicate, P_META) )
       return fr->predicate->module;
   }
 
@@ -2421,7 +2421,7 @@ PL_open_query(Module ctx, int flags, Procedure proc, term_t args)
   Mark(qf->choice.mark);
   setGenerationFrame(fr, GD->generation);
 					/* context module */
-  if ( true(def, P_TRANSPARENT) )
+  if ( true(def, P_META) )
   { if ( ctx )
       setContextModule(fr, ctx);
     else if ( qf->saved_environment )

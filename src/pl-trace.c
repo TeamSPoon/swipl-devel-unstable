@@ -940,7 +940,7 @@ writeFrameGoal(LocalFrame frame, Code PC, unsigned int flags)
       PL_put_nil(options);
     PL_put_atom(tmp, ATOM_user_output);
 
-    msg[0] = true(def, P_TRANSPARENT) ? '^' : ' ';
+    msg[0] = true(def, P_META) ? '^' : ' ';
     msg[1] = (flags&WFG_TRACE) ? 'T' : true(def, SPY_ME) ? '*' : ' ';
     msg[2] = EOS;
 

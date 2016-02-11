@@ -626,7 +626,7 @@ unloadFile(SourceFile sf)
 
     if ( false(def, P_MULTIFILE) )
     { clear(def, FILE_ASSIGNED);
-      clear_meta_declaration(def);
+      clear_mode_declaration(def);
     }
   }
   DEBUG(MSG_UNLOAD, Sdprintf("Removed %ld clauses\n", (long)deleted));
@@ -996,7 +996,7 @@ setAttrProcedureSource(SourceFile sf, Procedure proc,
     else
       clear(reload, attr);
 
-    if ( (attr&(P_ATEND|P_TRANSPARENT)) )
+    if ( (attr&(P_ATEND|P_META)) )
       return TRUE;
   }
 
@@ -1025,8 +1025,8 @@ fix_discontiguous(p_reload *r)
 
 
 int
-setMetapredicateSource(SourceFile sf, Procedure proc,
-		       meta_mask mask ARG_LD)
+setModesAndSource(SourceFile sf, Procedure proc,
+		       mode_mask mask ARG_LD)
 { associateSource(sf, proc);
 
   if ( sf->reload )
@@ -1035,14 +1035,14 @@ setMetapredicateSource(SourceFile sf, Procedure proc,
     if ( !(reload = reloadContext(sf, proc PASS_LD)) )
       return FALSE;
 
-    reload->meta_info = mask;
-    if ( isTransparentMetamask(proc->definition, mask) )
-      set(reload, P_TRANSPARENT);
+    reload->modes = mask;
+    if ( isMetamask(proc->definition, mask) )
+      set(reload, P_META);
     else
-      clear(reload, P_TRANSPARENT);
-    set(reload, P_META);
+      clear(reload, P_META);
+    set(reload, P_MODES);
   } else
-  { setMetapredicateMask(proc->definition, mask);
+  { setPredicateModes(proc->definition, mask);
   }
 
   return TRUE;
@@ -1054,24 +1054,23 @@ fix_metapredicate(p_reload *r)
 { Definition def = r->predicate;
 
   if ( false(def, P_MULTIFILE) )
-  { int mfmask = (P_META|P_TRANSPARENT);
-
+  { int  mfmask = (P_MODES|P_META);
     if ( (def->flags&mfmask) != (r->flags&mfmask) ||
-	 def->meta_info != r->meta_info )
-    { if ( true(def, P_META) && false(r, P_META) )
-	clear_meta_declaration(def);
-      else if ( true(r, P_META) )
-	setMetapredicateMask(def, r->meta_info);
-      clear(def, P_TRANSPARENT);
-      set(def, r->flags&P_TRANSPARENT);
-
+         def->modes != r->modes )
+    { if ( true(def, P_MODES) && false(r, P_MODES) )
+      { clear_mode_declaration(def);
+      } else if ( true(r, P_MODES) )
+      { setPredicateModes(def, r->modes);
+      }
+      clear(def, P_META);
+      set(def, r->flags&P_META);
       freeCodesDefinition(def, FALSE);
     }
-  } else if ( true(r, P_META) )
-  { setMetapredicateMask(def, r->meta_info);
+  } else if ( true(r, P_MODES) )
+  { setPredicateModes(def, r->modes);
     freeCodesDefinition(def, FALSE);
-  } else if ( true(r, P_TRANSPARENT) )
-  { set(def, P_TRANSPARENT);
+  } else if ( true(r, P_META) )
+  { set(def, P_META);
   }
 }
 
@@ -1153,7 +1152,7 @@ delete_old_predicates(SourceFile sf)
 
       if ( false(def, P_MULTIFILE) )
       { clear(def, FILE_ASSIGNED);
-	clear_meta_declaration(def);
+	clear_mode_declaration(def);
 	freeCodesDefinition(def, TRUE);
       }
 

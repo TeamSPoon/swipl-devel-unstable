@@ -52,6 +52,7 @@ Link all foreign language predicates.  The arguments to FRG are:
 Flags almost always is TRACE_ME.  Additional common flags:
 
 	P_TRANSPARENT	Predicate is module transparent
+    P_META	       Predicate has context sensitive args
 	P_NONDET	Predicate can be resatisfied
 
 Deprecated: the modern interface uses PRED_IMPL()

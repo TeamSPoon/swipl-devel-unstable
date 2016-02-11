@@ -843,8 +843,9 @@ with one operation, it turns out to be faster as well.
 #define P_ISO			(0x00008000) /* Part of the ISO standard */
 #define P_LOCKED		(0x00010000) /* Locked as system predicate */
 #define P_NOPROFILE		(0x00020000) /* Profile children, not me */
-#define P_TRANSPARENT	(0x00040000) /* Inherit calling module */
-#define P_META			(0x00080000) /* Has meta_predicate declaration */
+#define P_META	        (0x00040000) /* Get/Inherit module from Arg - Frame *may* switch/restore module */
+#define P_TRANSPARENT   (0x00040000) /* Inherit calling module - Frame does not switch module */
+#define P_MODES			(0x00080000) /* Modes are valid */
 #define P_MFCONTEXT		(0x00100000) /* Used for Goal@Module */
 #define P_DIRTYREG		(0x00200000) /* Part of GD->procedures.dirty */
 #define P_ERASED		(0x00400000) /* Predicate has been destroyed */
@@ -1329,9 +1330,9 @@ typedef struct local_definitions
 } local_definitions;
 
 #ifdef _MSC_VER
-typedef __int64 meta_mask;		/* MSVC cannot do typedef of typedef!? */
+typedef __int64 mode_mask;		/* MSVC cannot do typedef of typedef!? */
 #else
-typedef uint64_t meta_mask;
+typedef uint64_t mode_mask;
 #endif
 
 
@@ -1361,7 +1362,7 @@ struct definition
   } impl;
   ClauseIndexList old_clause_indexes;	/* Outdated hash indexes */
   struct bit_vector *tried_index;	/* Arguments on which we tried to index */
-  meta_mask	meta_info;		/* meta-predicate info */
+  mode_mask	modes;		/* modes of the predicate */
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
   FunctorDef dra_interp;         /* VMI calls this Name/1 instead */
@@ -1592,7 +1593,7 @@ typedef struct p_reload
 { Definition	predicate;		/* definition we are working on */
   gen_t		generation;		/* generation we update */
   ClauseRef	current_clause;		/* currently reloading clause */
-  meta_mask	meta_info;		/* new meta declaration (if any) */
+  mode_mask	modes;		/* new meta declaration (if any) */
   unsigned	flags;			/* new flags (P_DYNAMIC, etc.) */
   unsigned	number_of_clauses;	/* Number of clauses we've seen */
 } p_reload;
@@ -1685,10 +1686,10 @@ struct gc_trail_entry
 #define MA_DCG		15		/* // */
 
 #define MA_INFO(def, n) \
-	(((def)->meta_info >> ((n)*4)) & 0xf)
+	(((def)->modes >> ((n)*4)) & 0xf)
 #define MA_SETINFO(def, n, i) \
-	((def)->meta_info &= ~((meta_mask)0xf << (n)*4), \
-	 (def)->meta_info |= ((meta_mask)(i) << (n)*4))
+	((def)->modes &= ~((mode_mask)0xf << (n)*4), \
+	 (def)->modes |= ((mode_mask)(i) << (n)*4))
 
 
 		 /*******************************
@@ -2088,6 +2089,11 @@ typedef struct
 #define NB_PUTATTS 0x1
 
 #define LOGICMOO_TRANSPARENT FALSE
+/* Soon ":" will no longer need transparent since its captures the 
+       module without  changing the call context'*/
+#define NEEDS_TRANSPARENT(ma)  (ma == MA_META && !LOGICMOO_TRANSPARENT)
+
+#define DRA_CALL FALSE
 
 #ifdef O_METATERM
 

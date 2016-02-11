@@ -1634,7 +1634,7 @@ that have an I_CONTEXT because we need to reset the context.
 					/* ok; all live in the same module */
       if ( false(def, P_MFCONTEXT) &&
 	   ci.module != def->module &&
-	   false(proc->definition, P_TRANSPARENT) )
+	   false(proc->definition, P_META) )
 	set(def, P_MFCONTEXT);
 
       if ( true(def, P_MFCONTEXT) )
