@@ -43,8 +43,12 @@ static int release_htb(atom_t symbol);
 static int compare_htbs(atom_t a, atom_t b);
 static int write_htb(IOSTREAM *s, atom_t symbol, int flags);
 static void acquire_htb(atom_t symbol);
+
+
+#ifdef COMPLETED_SAVE_LOAD
 static int save_htb(atom_t aref, IOSTREAM *fd);
 static atom_t load_htb(IOSTREAM *fd);
+#endif
 
 static PL_blob_t ht_blob =
 { PL_BLOB_MAGIC,
@@ -56,11 +60,14 @@ static PL_blob_t ht_blob =
   compare_htbs,
   write_htb,
   acquire_htb,
+#ifdef COMPLETED_SAVE_LOAD
   save_htb,
   load_htb,
+#endif
 };
 
 
+#ifdef COMPLETED_SAVE_LOAD
 
 static int
 save_htb(atom_t aref, IOSTREAM *fd)
@@ -78,9 +85,13 @@ load_htb(IOSTREAM *fd)
   return PL_new_atom("<saved-hashtable_with_grefs-ref>");
 }
 
+#endif
+
 static void
 acquire_htb(atom_t symbol)
 { hashtable_with_grefs *htb = PL_blob_data(symbol, NULL, NULL);
+  /*if(!htb->root) htb->root     = newHTable(10);*/
+  htb->magic  = HT_W_REFS_MAGIC;
   htb->symbol = symbol;
 }
 
@@ -108,46 +119,38 @@ write_htb(IOSTREAM *s, atom_t symbol, int flags)
 
 
 
-static void
-clean_htb(hashtable_with_grefs *htb)
-{ if ( htb->root )
-  { destroyHTable(htb->root);
-    htb->root = NULL;
-  }
-}
-
 static int
 destroy_htb(hashtable_with_grefs *htb)
-{ clean_htb(htb);
-  htb->magic = HT_W_REFS_MAGIC;
-  PL_free(htb);
+{ if(!htb) return FALSE;
+  assert(htb->magic == HT_W_REFS_MAGIC);
+  if(htb->root)
+  {
+    clearHTable(htb->root);
+    htb->grefs = 0;
+    destroyHTable(htb->root);
+    htb->root = NULL;    
+  }
   return TRUE;
 }
 
 static int 
 release_htb(atom_t symbol)
 { hashtable_with_grefs *htb = PL_blob_data(symbol, NULL, NULL);
-
-  if ((htb->root))
-  { destroyHTable(htb->root);
-    htb->root = NULL;   
-  }
+  if(!htb) return FALSE;
   destroy_htb(htb);
-
-  PL_free(htb);
-
+  /* PL_free(htb);*/
   return TRUE;
 }
 
 
 static Procedure
 findProcedure(term_t pred ARG_LD) 
-{ functor_t fd;
-  Module module = (Module) NULL;
+{ Module module = (Module) NULL;
+  atom_t name; size_t arity;
   term_t head = PL_new_term_ref();
-  if (PL_strip_module(pred, &module, head) ||
-      PL_get_functor(head, &fd))
-    return resolveProcedure(fd, module);
+  if (PL_strip_module(pred, &module, head) &&
+      PL_get_name_arity(head,&name,&arity))
+    return resolveProcedure(PL_new_functor(name,1), module);
   return NULL;
 }
 
@@ -180,10 +183,14 @@ foc_trie_pointer(term_t pred ARG_LD)
 
 
 int
-get_htb__LD(term_t t, hashtable_with_grefs **htb ARG_LD)
+get_htb(term_t t, hashtable_with_grefs **htb ARG_LD)
 { PL_blob_t *type;
   void *data;
+
+  if(PL_is_variable(t)) return FALSE;
+
   hashtable_with_grefs *p;
+  assert(*htb);
 
   if ( PL_get_blob(t, &data, NULL, &type) && type == &ht_blob)
   {  p = data;
@@ -212,11 +219,7 @@ get_htb__LD(term_t t, hashtable_with_grefs **htb ARG_LD)
   *htb = foc_trie_pointer(t PASS_LD);
   return htb!=NULL;
 }
-int
-get_htb(term_t t, hashtable_with_grefs **htb)
-{ GET_LD
-  return get_htb__LD(t,htb PASS_LD);
-}
+
 
 int
 unify_htb(term_t handle, hashtable_with_grefs *htb)
@@ -230,7 +233,7 @@ unify_htb(term_t handle, hashtable_with_grefs *htb)
   if ( !PL_is_variable(handle) )
     return PL_uninstantiation_error(handle);
 
-  return FALSE;					/* (resource) error */
+  return FALSE;					/* (resource) error? */
 }
 
 
@@ -259,8 +262,7 @@ PRED_IMPL("htb_clear",   1, htb_clear,   0)
 { PRED_LD
 
   hashtable_with_grefs* trie; 
-  if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
-  
+  if(!get_htb(A1, &trie  PASS_LD) || !trie) return FALSE;
 
 
   if (trie->root)
@@ -277,11 +279,9 @@ PRED_IMPL("htb_free",   1, htb_free,   0)
 
   hashtable_with_grefs* htb;
 
-  if ( get_htb__LD(A1, &htb PASS_LD) )
+  if ( get_htb(A1, &htb PASS_LD) )
   { release_htb(htb->symbol);
     htb->symbol = 0;
-    clean_htb(htb);
-    
     return TRUE;
   }
 
@@ -371,7 +371,7 @@ static int htb_assign(term_t loc, term_t key, term_t value, int assign_flags ARG
     fail;
 
   hashtable_with_grefs* trie; 
-  if(!get_htb__LD(loc, &trie  PASS_LD) || !trie) return FALSE;
+  if(!get_htb(loc, &trie  PASS_LD) || !trie) return FALSE;
   
 
   if (!trie->root)
@@ -538,7 +538,7 @@ htb_lookup(term_t loc, term_t key, term_t value, int raise_error ARG_LD)
   }
 
   hashtable_with_grefs* trie; 
-  if(!get_htb__LD(loc, &trie  PASS_LD) || !trie) return FALSE;
+  if(!get_htb(loc, &trie  PASS_LD) || !trie) return FALSE;
   
 
 
@@ -652,7 +652,7 @@ PRED_IMPL("htb_delete", 2, htb_delete, 0)
     fail;
 
   hashtable_with_grefs* trie; 
-  if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
+  if(!get_htb(A1, &trie  PASS_LD) || !trie) return FALSE;
   
 
 
@@ -682,7 +682,7 @@ PRED_IMPL("htb_current", 3, htb_current, PL_FA_NONDETERMINISTIC)
      return htb_lookup(A1, A2, A3, FALSE PASS_LD);
 
    hashtable_with_grefs* trie; 
-   if(!get_htb__LD(A1, &trie  PASS_LD) || !trie) return FALSE;
+   if(!get_htb(A1, &trie  PASS_LD) || !trie) return FALSE;
    
 
    if (trie->root)
