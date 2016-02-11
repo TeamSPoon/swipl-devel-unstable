@@ -649,6 +649,8 @@ calling_metaarg(//).
 %		number of arguments in the term read.
 
 walk_meta_call(I, Head, Meta, M, ArgPosList, EPos, OTerm) :-
+    compound_name_arity(Head,_,A),
+    A>0,
 	arg(I, Head, AS), !,
 	(   ArgPosList = [ArgPos|ArgPosTail]
 	->  true

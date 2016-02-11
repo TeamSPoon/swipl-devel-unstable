@@ -207,7 +207,7 @@ explain_functor(Head, Explanation) :-
 		*********************************/
 
 lproperty(built_in,	' built-in', []).
-lproperty(dra_meta,	' dra-meta', []).
+lproperty(dra_meta(Proxy), ' called externally by ~w', [Proxy]).
 lproperty(dynamic,	' dynamic', []).
 lproperty(multifile,	' multifile', []).
 lproperty(transparent,	' meta', []).
