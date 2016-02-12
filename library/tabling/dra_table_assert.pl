@@ -67,7 +67,7 @@
 % In order to facilitate such changes, routines for handling the table is
 % factored out of the main program.
 
-print_tables :-
+user:print_tables :-
        listing( answer( _, _, _ ) ),
        listing( result( _, _ ) ),
        listing( pioneer( _, _, _ ) ),

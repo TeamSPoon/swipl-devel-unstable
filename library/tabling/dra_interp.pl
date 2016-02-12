@@ -4845,7 +4845,7 @@ user_accepts :-
 %  Built-in predicates for the "dra" interpreter  %
 
 % If the interpreted program invokes a built-in predicate, that predicate dra_must
-% be declared in the table "is_builtin/1" below.
+% be declared in the table "cuts_ok/1" below.
 % Every addition should be considered carefully: some built-ins might require
 % special treatment by the interpreter.
 
