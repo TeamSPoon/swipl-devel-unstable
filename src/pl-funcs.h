@@ -51,8 +51,11 @@ COMMON(bool)  isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD)
 COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
+#endif
 
+#ifdef O_DRA_TABLING
 COMMON(int)  unify_htb(term_t handle, hashtable_with_grefs *ht);
+COMMON(int)  get_htb(term_t handle, hashtable_with_grefs **ht ARG_LD);
 #endif
 
 /* pl-gvar.c */

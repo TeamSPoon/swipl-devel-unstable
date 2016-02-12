@@ -817,6 +817,8 @@ define_or_generate(Pred) :-
 	'$get_predicate_attribute'(Pred, transparent, 1).
 '$predicate_property'(meta_predicate(Pattern), Pred) :-
 	'$get_predicate_attribute'(Pred, meta_predicate, Pattern).
+'$predicate_property'(mode(Pattern), Pred) :- 
+	'$get_predicate_attribute'(Pred, mode, Pattern).
 '$predicate_property'(file(File), Pred) :-
 	'$get_predicate_attribute'(Pred, file, File).
 '$predicate_property'(line_count(LineNumber), Pred) :-
@@ -842,9 +844,9 @@ define_or_generate(Pred) :-
 '$predicate_property'(defined, Pred) :-
 	'$get_predicate_attribute'(Pred, defined, 1).
 '$predicate_property'(interp(N), Pred) :-
-	'$get_predicate_attribute'(Pred, dra_call, N).
+	'$get_predicate_attribute'(Pred, dra_meta, N).
 '$predicate_property'(Prop, Pred) :-        
-	'$get_predicate_attribute'(Pred, dra_meta, N),
+	'$get_predicate_attribute'(Pred, dra_props, N),
         '$pred_prop_kv'(N, Prop).
 
 

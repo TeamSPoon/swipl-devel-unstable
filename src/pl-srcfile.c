@@ -996,7 +996,7 @@ setAttrProcedureSource(SourceFile sf, Procedure proc,
     else
       clear(reload, attr);
 
-    if ( (attr&(P_ATEND|P_META)) )
+    if ( (attr&(P_ATEND|P_TRANSPARENT|P_META)) )
       return TRUE;
   }
 

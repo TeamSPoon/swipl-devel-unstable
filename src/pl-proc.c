@@ -1519,32 +1519,41 @@ reconsultFinalizePredicate(sf_reload *rl, Definition def, p_reload *r ARG_LD)
 
 
 		 /*******************************
-		 *	  META PREDICATE	*
+		 * META PREDICATE / MODE DECLS  *
 		 *******************************/
 
-/** meta_predicate :HeadList is det.
+/** mode( :HeadList) is det.
 
-Declaration for meta-predicates. The  declaration   fills  the modes
-field of a definition as well  as   the  P_MODES and P_META flags.
-P_MODES indicates that modes is   valid. P_META indicates that
-the declaration contains at least one meta-argument (: or 0..9).
+ *  Mode decls can imply P_TRANSPARENT
+
+Declaration for mode/1  fills  the  declared mode
+field of a definition as well  as   the  P_TRANSPARENT and P_META flags.
+Non nuull mode_info indicates that mode_info is valid. P_META indicates that
+the declaration contains at least one meta-argument (//,  ^ or 0..9).
+
+  ":" should soon no longer to be considered needing P_TRANSPARENT 
+  but only P_META
+  since its point is to function was to capture the 
+    context module of the arg and not allways change the VM's context
+   Of course this is DM wishing to hold onto a distrtion between 
+   P_TRANSPARENT and P_META
 
 @param HeadList	Comma separated list of predicates heads, where each
-		predicate head has arguments 0..9, :,+,-,?
+		predicate head has arguments 0..9, ^,:,+,-,?, //
 */
 
 int
 isMetamask(Definition def, mode_mask mask)
 { size_t i, arity = def->functor->arity;
-  int transparent = FALSE;
+  int needs_meta = FALSE;
 
-  for(i=0; i<arity && !transparent; i++)
+  for(i=0; i<arity && !needs_meta; i++)
   { int ma = (mask>>(4*i))&0xf;
-    if ( ma <= 9 || ma == MA_META || ma == MA_HAT || ma == MA_DCG )
-      transparent = TRUE;
+    if ( ma <= 9 || NEEDS_TRANSPARENT(ma) || ma == MA_HAT || ma == MA_DCG )
+      needs_meta = TRUE;
   }
 
-  return transparent;
+  return needs_meta;
 }
 
 
@@ -1560,7 +1569,7 @@ setPredicateModes(Definition def, mode_mask mask)
 
 
 static int
-declare_modes(term_t spec)
+process_mode_declaration(term_t spec, int additional_flags)
 { GET_LD
   term_t head = PL_new_term_ref();
   term_t arg = PL_new_term_ref();
@@ -1580,6 +1589,9 @@ declare_modes(term_t spec)
     return PL_error(NULL, 0, msg,
 		    ERR_REPRESENTATION, ATOM_max_arity);
   }
+
+  if(additional_flags) 
+      set(proc, additional_flags);
 
   for(i=0; i<arity; i++)
   { atom_t ma;
@@ -1626,20 +1638,66 @@ declare_modes(term_t spec)
 }
 
 
+/* modes/1 is used to deduce when this is a meta_predicate */
 static
-PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
+PRED_IMPL("mode", 1, mode, PL_FA_TRANSPARENT)
 { PRED_LD
   term_t tail = PL_copy_term_ref(A1);
   term_t head = PL_new_term_ref();
 
   while ( PL_is_functor(tail, FUNCTOR_comma2) )
   { _PL_get_arg(1, tail, head);
-    if ( !declare_modes(head) )
+    if ( !process_mode_declaration(head, 0) )
       return FALSE;
     _PL_get_arg(2, tail, tail);
   }
 
-  if ( !declare_modes(tail) )
+  if ( !process_mode_declaration(tail, 0) )
+    return FALSE;
+
+  return TRUE;
+}
+
+/* 
+  Since the introduction of global variables into prolog:
+     We can store Goals in such variables.
+     Thus, is unreasonable to require that metapredicates use arguments.      
+      For instance, in tabling code, uses only:
+    
+
+    :-meta_predicate td(-).
+
+
+     Which is used by to declare determancy of child
+      calls back to parents to add communicative exit hooks
+       that the parent contexts may call.
+    Goals are fetched from a scheduler.
+
+
+
+   meta_predicate/1 marks the predicate transparent even 
+                       when the arguments did not imply it.
+
+
+   mode/1 marks the predicate a meta_predicate *only*
+                       when the arguments imply it.
+                   
+
+*/
+static
+PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
+{ PRED_LD
+  term_t tail = PL_copy_term_ref(A1);
+  term_t head = PL_new_term_ref();
+  int extra = 0 /*| P_TRANSPARENT*/;
+  while ( PL_is_functor(tail, FUNCTOR_comma2) )
+  { _PL_get_arg(1, tail, head);
+    if ( !process_mode_declaration(head, extra) )
+      return FALSE;
+    _PL_get_arg(2, tail, tail);
+  }
+
+  if ( !process_mode_declaration(tail, extra) )
     return FALSE;
 
   return TRUE;
@@ -1694,12 +1752,12 @@ unify_mode_pattern(Procedure proc, term_t head)
 
 
 int
-PL_meta_predicate(predicate_t proc, const char *spec_s)
+PL_put_predicate_modes(predicate_t proc, const char *spec_s)
 { Definition def = proc->definition;
   int arity = def->functor->arity;
   int i;
   int mask = 0;
-  int transparent = LOGICMOO_TRANSPARENT;
+  int needs_meta = FALSE;
   const unsigned char *s = (const unsigned char*)spec_s;
 
   for(i=0; i<arity; i++, s++)
@@ -1741,12 +1799,13 @@ PL_meta_predicate(predicate_t proc, const char *spec_s)
     }
 
     mask |= spec<<(i*4);
-    if ( spec < 10 || (spec == MA_META && !LOGICMOO_TRANSPARENT) || spec == MA_HAT || spec == MA_DCG )
-      transparent = TRUE;
+    if ( spec < 10 || NEEDS_TRANSPARENT(spec) || spec == MA_HAT || spec == MA_DCG )
+    { needs_meta = TRUE;
+    }
   }
 
   def->modes = mask;
-  if ( transparent )
+  if ( needs_meta )
     set(def, P_META);
   else
     clear(def, P_META);
@@ -1754,6 +1813,17 @@ PL_meta_predicate(predicate_t proc, const char *spec_s)
 
   return TRUE;
 }
+
+int
+PL_meta_predicate(predicate_t proc, const char *spec_s)
+{
+  Definition def = proc->definition;
+  int rc = PL_put_predicate_modes(proc, spec_s);  
+  /*set(def, P_TRANSPARENT);*/
+  return rc;
+  
+}
+
 
 
 void
@@ -2603,7 +2673,8 @@ static const patt_mask patt_masks[] =
   { ATOM_trace_fail,	   TRACE_FAIL },
   { ATOM_trace_any,	   TRACE_ANY },
   { ATOM_hide_childs,	   HIDE_CHILDS },
-  { ATOM_transparent,	   P_META },
+  { ATOM_transparent,	   P_TRANSPARENT },
+  /*{ ATOM_meta,	   		   P_META },*/
   { ATOM_discontiguous,	   P_DISCONTIGUOUS },
   { ATOM_volatile,	   P_VOLATILE },
   { ATOM_thread_local,	   P_THREAD_LOCAL },
@@ -2612,12 +2683,6 @@ static const patt_mask patt_masks[] =
   { ATOM_public,	   P_PUBLIC },
   { ATOM_non_terminal,	   P_NON_TERMINAL },
   { ATOM_quasi_quotation_syntax, P_QUASI_QUOTATION_SYNTAX },
-  { ATOM_dra_meta, P_DRA_CALL_META },
-  { (atom_t)0,		   0 }
-};
-
-static const patt_mask dra_masks[] =
-{ 
   { (atom_t)0,		   0 }
 };
 
@@ -2670,10 +2735,10 @@ pl_get_predicate_attribute(term_t pred,
     return PL_unify_atom(value, def->module->name);
   } else if ( key == ATOM_indexed )
   { return unify_index_pattern(proc, value);
+  } else if ( key == ATOM_mode )
+  { return true(def, P_MODES) && unify_mode_pattern(proc, value);
   } else if ( key == ATOM_meta_predicate )
-  { if ( false(def, P_MODES) )
-      fail;
-    return unify_mode_pattern(proc, value);
+  { return true(def, P_MODES) && true(def, P_META) && unify_mode_pattern(proc, value);
   } else if ( key == ATOM_exported )
   { return PL_unify_integer(value, isPublicModule(module, proc));
   } else if ( key == ATOM_defined )
@@ -2711,12 +2776,13 @@ pl_get_predicate_attribute(term_t pred,
 
 #ifdef O_DRA_TABLING
 
-  } else if ( key == ATOM_dra_call )
-  { if (false(def, P_DRA_CALL_META)) fail;
-    FunctorDef draFunctorDef = def->dra_interp;
-    return PL_unify_atom(value,draFunctorDef==NULL?ATOM_dra_call:draFunctorDef->name);
-  } else if ( key == ATOM_dra_meta ) /* Might unrelate this to DRA after tabling code is complete */
-  { return unify_htb(value, def->pred_trie);
+  } else if ( key == ATOM_dra_meta ||  key == ATOM_dra_call )
+  { FunctorDef proxy = def->dra_interp;
+    return proxy!=0 && proxy->name!=ATOM_call && PL_unify_atom(value,proxy->name);
+  } else if ( key == ATOM_dra_props ) /* Might unrelate this to DRA after tabling code is complete */
+  { hashtable_with_grefs* put = def->pred_trie;
+    return put && unify_htb(value, put);
+
 #endif 
 
   }  else if ( key == ATOM_foreign )
@@ -2868,8 +2934,46 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
   int val;
   uintptr_t att;
 
-  if ( !PL_get_atom_ex(what, &key) ||
-       !get_bool_or_int_ex(value, &val PASS_LD) ||
+  
+  if( !PL_get_atom_ex(what, &key) )
+     return FALSE;
+
+#ifdef O_DRA_TABLING
+
+  if ( key==ATOM_dra_meta )
+  { if ( !get_procedure(pred, &proc, 0, GP_DEFINE|GP_NAMEARITY) )
+      fail;
+    def = proc->definition;
+    if(!def) return FALSE;
+    atom_t want;
+    if(!PL_get_atom(value, &want))
+    { def->dra_interp = 0;
+    } else
+    { def->dra_interp = valueFunctor(PL_new_functor(want,1));
+    }
+    return TRUE;
+  }
+
+  if ( key==ATOM_dra_props )
+  { if ( !get_procedure(pred, &proc, 0, GP_DEFINE|GP_NAMEARITY) )
+      fail;
+
+    if(!proc) return FALSE;
+    def = proc->definition;
+
+    if (PL_is_variable(value))
+    {  def -> pred_trie = NULL;       
+    } else
+    { hashtable_with_grefs* get;
+      if( get_htb(value, &get  PASS_LD))
+        return FALSE;
+      def->pred_trie = get;
+    }
+    return TRUE;
+  }
+#endif
+
+  if ( !get_bool_or_int_ex(value, &val PASS_LD) ||
        !(att = attribute_mask(key)) )
     return FALSE;
 
@@ -3347,6 +3451,8 @@ pl_list_generations(term_t desc)
 		 *******************************/
 
 BeginPredDefs(proc)
+
+  PRED_DEF("mode", 1, mode, PL_FA_TRANSPARENT)
   PRED_DEF("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
   PRED_DEF("$get_clause_attribute", 3, get_clause_attribute, 0)
   PRED_DEF("retract", 1, retract,

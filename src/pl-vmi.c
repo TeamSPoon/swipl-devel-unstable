@@ -1859,8 +1859,14 @@ VMI(I_DEPART, VIF_BREAK, 1, (CA1_PROC))
     FR->clause = NULL;			/* for save atom-gc */
     leaveDefinition(DEF);
     DEF = proc->definition;
-    if ( true(DEF, P_META) )
+    if ( true(DEF, P_TRANSPARENT) )
     { FR->context = contextModule(FR);
+      FR->level++;
+      clear(FR, FR_CLEAR_NEXT);
+      set(FR, FR_CONTEXT);
+    } else if ( true(DEF, P_META) )
+    { /* Potentially switch to the Goals module instead */ 
+      FR->context = contextModule(FR);
       FR->level++;
       clear(FR, FR_CLEAR_NEXT);
       set(FR, FR_CONTEXT);
@@ -4858,7 +4864,7 @@ mcall_cont:
 
 
 
-  if ( true(DEF, P_META) )
+  if ( true(DEF, P_TRANSPARENT) || true(DEF, P_META) )
     setContextModule(NFR, module);
 
 
