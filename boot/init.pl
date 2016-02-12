@@ -66,8 +66,10 @@ attempt to call the Prolog defined trace interceptor.
 	noprofile(:),
 	'$iso'(:),
 	'$hide'(:),
-    dra_meta(:),
-    dra_no_meta(:).
+        interp(+,:),
+        nondet(:),
+        det(:).
+    
 
 %%	dynamic(+Spec)
 %%	multifile(+Spec)
@@ -88,12 +90,13 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 '$iso'(Spec)		 :- '$set_pattr'(Spec, pred, (iso)).
 
 
-%%	'dra_meta'(:PI)
+%%	'interp'(+Type,:PI)
 %
-%	Predicates declared this way are called through dra_call/1.
+%	Predicates declared this way are called through Type/1.
 
-'dra_meta'(Spec)           :- '$set_pattr'(Spec, pred, (dra_meta)=dra_call).
-'dra_non_meta'(Spec)       :- '$set_pattr'(Spec, pred, (dra_meta)=call).
+'interp'(Type,Spec)           :- '$set_pattr'(Spec, pred, (interp)=Type).
+'det'(Spec)              :- '$set_pattr'(Spec, pred, (nondet)=0),'$set_pattr'(Spec, pred, (det)=1).
+'nondet'(Spec)           :- '$set_pattr'(Spec, pred, (det)=0),'$set_pattr'(Spec, pred, (nondet)=1).
 
 
 '$set_pattr'(M:Pred, How, Attr) :-
@@ -145,10 +148,14 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 	'$set_pattr'(Spec, M, directive, (noprofile)).
 '$pattr_directive'(public(Spec), M) :-
 	'$set_pattr'(Spec, M, directive, (public)).
-'$pattr_directive'(dra_meta(Spec), M) :-
-	'$set_pattr'(Spec, M, directive, (dra_meta)=dra_call).
-'$pattr_directive'(dra_non_meta(Spec), M) :-
-	'$set_pattr'(Spec, M, directive, (dra_meta)=call).
+'$pattr_directive'(det(Spec), M) :-
+        '$set_pattr'(Spec, M, directive, (nondet)=0),
+	'$set_pattr'(Spec, M, directive, (det)).
+'$pattr_directive'(nondet(Spec), M) :-
+        '$set_pattr'(Spec, M, directive, (det)=0),
+	'$set_pattr'(Spec, M, directive, (nondet)).
+'$pattr_directive'(interp(T,Spec), M) :-
+	'$set_pattr'(Spec, M, directive, (interp)=T).
 
 
 %%	'$hide'(:PI)

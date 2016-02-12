@@ -170,6 +170,7 @@ op_type(fy,  prefix).
 op_type(xfx, infix).
 op_type(xfy, infix).
 op_type(yfx, infix).
+op_type(yfy, infix).
 op_type(xf,  postfix).
 op_type(yf,  postfix).
 

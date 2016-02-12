@@ -310,15 +310,15 @@ registerBuiltins(const PL_extension *f)
   { Procedure proc;
     atom_t name	= PL_new_atom(f->predicate_name);
     functor_t fdef = lookupFunctorDef(name, f->arity);
-
+    
     PL_unregister_atom(name);
     if ( (proc = lookupProcedure(fdef, m)) )
     { Definition def = proc->definition;
-      set(def, P_FOREIGN|HIDE_CHILDS|P_LOCKED);
+      set(def, P_FOREIGN|HIDE_CHILDS|P_LOCKED|P_DET);
 
       if ( f->flags & PL_FA_NOTRACE )	       clear(def, TRACE_ME);
-      if ( f->flags & PL_FA_TRANSPARENT )      set(def, P_TRANSPARENT);
-      if ( f->flags & PL_FA_NONDETERMINISTIC ) set(def, P_NONDET);
+      if ( f->flags & PL_FA_TRANSPARENT )      set(def, P_META | P_TRANSPARENT);
+      if ( f->flags & PL_FA_NONDETERMINISTIC ) {set(def, P_NONDET); clear(def, P_DET); }
       if ( f->flags & PL_FA_VARARGS )	       set(def, P_VARARG);
       if ( f->flags & PL_FA_CREF )	       set(def, P_FOREIGN_CREF);
       if ( f->flags & PL_FA_ISO )	       set(def, P_ISO);

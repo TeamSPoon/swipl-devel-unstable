@@ -402,6 +402,8 @@ verify_safe_declaration(Goal) :-
 ok_meta(system:assert(_)).
 ok_meta(system:use_module(_,_)).
 ok_meta(system:use_module(_)).
+ok_meta(system:strip_module(_,_,_)).
+
 
 verify_predefined_safe_declarations :-
 	forall(clause(safe_primitive(Goal), _Body, Ref),

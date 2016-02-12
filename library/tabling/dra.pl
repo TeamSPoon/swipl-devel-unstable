@@ -82,7 +82,7 @@ property_pred((traces),is_tracing).
 property_pred(set_default_extension,default_extension).
 property_pred(hilog,is_hilog).
 
-:- forall(property_pred(D,F) ,((DG=..[D,_],user:asserta(( user:DG :- trace,execute_directive(DG)))), 
+:- forall(property_pred(D,F) ,((DG=..[D,_],user:asserta(( user:DG :- execute_directive(DG)))), 
    ( \+ current_op(_,fy,user:D) -> op(900,fy,user:D) ; true), module_transparent(user:D/1), multifile(F/1),dynamic(F/1))).
 
 
@@ -251,7 +251,7 @@ set_meta0(TGoal,is_tabled):-
     retract_all0(is_never_tabled(TGoal)),
     retract_all0(cuts_ok(TGoal)),
     asserta_new(is_tabled(TGoal)),
-    dra_meta(TGoal).
+    interp(dra_meta,TGoal).
 
 
 :-dynamic(clause_meta/1).
@@ -5304,7 +5304,6 @@ execute_directive( (traces PredSpecs) ) :-
 execute_directive( Dir ) :-
         property_pred(F,DBF), 
         Dir=..[F,PredSpecs],
-        trace,
         predspecs_to_patterns( PredSpecs, Patterns ),!,
         add_patterns(Patterns,DBF).
 
@@ -5312,7 +5311,7 @@ execute_directive( Dir ) :-
 execute_directive( (table PredSpecs) ) :-
         predspecs_to_patterns( PredSpecs, Patterns ),
         (   member( Pattern, Patterns ),
-            dra_meta(Pattern),
+            interp(dra_meta,Pattern),
             set_meta(Pattern,is_tabled),
             asserta_new( is_tabled( Pattern ) ),
             functor(Pattern,F,A),

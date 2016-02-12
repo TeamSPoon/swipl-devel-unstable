@@ -230,12 +230,20 @@ decl(multifile,	   multifile).
 decl(public,	   public).
 decl(tabled,       table).
 decl(discontiguous,       discontiguous).
+decl(table,       table).
+decl(oldt,       oldt).
+decl(det,       det).
+decl(nondet,       nondet).
+decl(interp(P), interp(P)).
+
 
 declaration(Pred, Source, Decl) :-
 	decl(Prop, Declname),
 	predicate_property(Pred, Prop),
 	decl_term(Pred, Source, Funct),
-	Decl =.. [ Declname, Funct ].
+        Declname =..DARGS,
+        append(DARGS,[Funct],DARGSF),
+        Decl=..DARGSF.
 declaration(Pred, Source, Decl) :-
 	predicate_property(Pred, meta_predicate(Head)),
 	strip_module(Pred, Module, _),
@@ -251,6 +259,13 @@ declaration(Pred, Source, Decl) :-
 	predicate_property(Pred, transparent),
 	decl_term(Pred, Source, PI),
 	Decl = module_transparent(PI).
+declaration(Pred, Source, Decl) :-
+	predicate_property(Pred, mode(Head)),
+	strip_module(Pred, Module, _),
+	(   (Module == system; Source == Module)
+	->  Decl = mode(Head)
+	;   Decl = mode(Module:Head)
+	).
 
 %%	meta_implies_transparent(+Head) is semidet.
 %

@@ -826,6 +826,8 @@ with one operation, it turns out to be faster as well.
 /* Flags on predicates (packed in unsigned int */
 
 
+#define P_DET   (0x00000001) /* Frameless */
+#define P_TRANSPARENT   (0x00000002) /* Inherit calling module - Frame does not switch module */
 #define P_QUASI_QUOTATION_SYNTAX (0x00000004) /* {|Type||Quasi Quote|} */
 #define P_NON_TERMINAL	(0x00000008) /* Grammar rule (Name//Arity) */
 #define P_SHRUNKPOW2	(0x00000010) /* See reconsider_index() */
@@ -843,7 +845,6 @@ with one operation, it turns out to be faster as well.
 #define P_LOCKED		(0x00010000) /* Locked as system predicate */
 #define P_NOPROFILE		(0x00020000) /* Profile children, not me */
 #define P_META	        (0x00040000) /* Get/Inherit module from Arg - Frame *may* switch/restore module */
-#define P_TRANSPARENT   (0x00040000) /* Inherit calling module - Frame does not switch module */
 #define P_MODES			(0x00080000) /* Modes are valid */
 #define P_MFCONTEXT		(0x00100000) /* Used for Goal@Module */
 #define P_DIRTYREG		(0x00200000) /* Part of GD->procedures.dirty */

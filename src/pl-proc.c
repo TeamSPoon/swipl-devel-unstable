@@ -1590,9 +1590,6 @@ process_mode_declaration(term_t spec, int additional_flags)
 		    ERR_REPRESENTATION, ATOM_max_arity);
   }
 
-  if(additional_flags) 
-      set(proc, additional_flags);
-
   for(i=0; i<arity; i++)
   { atom_t ma;
 
@@ -1625,6 +1622,22 @@ process_mode_declaration(term_t spec, int additional_flags)
     } else
     { return PL_error(NULL, 0, "0..9",
 			ERR_TYPE, ATOM_meta_argument_specifier, arg);;
+    }
+  }
+
+
+  Definition def = proc->definition;
+
+  if(!isMetamask(def, mask))
+  {
+    if(additional_flags)  
+    {    
+      set(def, additional_flags);
+
+      DEBUG(1,
+       { Sdprintf("non-transparent-modes ");
+        PL_write_term(Serror, spec, 1200, PL_WRT_QUOTED);
+        Sdprintf(" \n ");});
     }
   }
 
@@ -1689,11 +1702,12 @@ PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
 { PRED_LD
   term_t tail = PL_copy_term_ref(A1);
   term_t head = PL_new_term_ref();
-  int extra = 0 /*| P_TRANSPARENT*/;
+  int extra = P_TRANSPARENT;
   while ( PL_is_functor(tail, FUNCTOR_comma2) )
   { _PL_get_arg(1, tail, head);
     if ( !process_mode_declaration(head, extra) )
       return FALSE;
+   
     _PL_get_arg(2, tail, tail);
   }
 
@@ -1708,9 +1722,21 @@ static int
 unify_mode_argument(term_t head, Definition def, int i)
 { GET_LD
   term_t arg = PL_new_term_ref();
+   
+  _PL_get_arg(i+1, head, arg);
+
+  if(!def->modes) 
+  { if(false(def,P_META))
+     return PL_unify_atom(arg, ATOM_question_mark);
+
+    /*int mi = MA_INFO(def, i);
+    return PL_unify_integer(arg, 0);*/
+    int mi = MA_INFO(def, i);
+    return PL_unify_integer(arg, mi);
+  }
+
   int m = MA_INFO(def, i);
 
-  _PL_get_arg(i+1, head, arg);
   if ( m < 10 )
   { return PL_unify_integer(arg, m);
   } else
@@ -1816,10 +1842,14 @@ PL_put_predicate_modes(predicate_t proc, const char *spec_s)
 
 int
 PL_meta_predicate(predicate_t proc, const char *spec_s)
-{
-  Definition def = proc->definition;
+{ Definition def = proc->definition;
   int rc = PL_put_predicate_modes(proc, spec_s);  
   /*set(def, P_TRANSPARENT);*/
+  if(false(def,P_META)) 
+  { Sdprintf("\n! PL_meta_predicate %s", spec_s);
+   // PL_write_term(Serror, spec, 1200, PL_WRT_QUOTED);
+    Sdprintf(" \n ");
+  }
   return rc;
   
 }
@@ -2674,7 +2704,9 @@ static const patt_mask patt_masks[] =
   { ATOM_trace_any,	   TRACE_ANY },
   { ATOM_hide_childs,	   HIDE_CHILDS },
   { ATOM_transparent,	   P_TRANSPARENT },
-  /*{ ATOM_meta,	   		   P_META },*/
+  { ATOM_det,	   P_DET },
+  { ATOM_nondet,	   P_NONDET },
+  { ATOM_meta_argument,	   P_META },
   { ATOM_discontiguous,	   P_DISCONTIGUOUS },
   { ATOM_volatile,	   P_VOLATILE },
   { ATOM_thread_local,	   P_THREAD_LOCAL },
@@ -2737,6 +2769,8 @@ pl_get_predicate_attribute(term_t pred,
   { return unify_index_pattern(proc, value);
   } else if ( key == ATOM_mode )
   { return true(def, P_MODES) && unify_mode_pattern(proc, value);
+  } else if ( key == ATOM_meta_argument )
+  { return PL_unify_integer(value, true(def, P_META) ? 1 : 0);
   } else if ( key == ATOM_meta_predicate )
   { return true(def, P_MODES) && true(def, P_META) && unify_mode_pattern(proc, value);
   } else if ( key == ATOM_exported )
@@ -2776,9 +2810,10 @@ pl_get_predicate_attribute(term_t pred,
 
 #ifdef O_DRA_TABLING
 
-  } else if ( key == ATOM_dra_meta ||  key == ATOM_dra_call )
+  } else if ( key == ATOM_interp )
   { FunctorDef proxy = def->dra_interp;
     return proxy!=0 && proxy->name!=ATOM_call && PL_unify_atom(value,proxy->name);
+
   } else if ( key == ATOM_dra_props ) /* Might unrelate this to DRA after tabling code is complete */
   { hashtable_with_grefs* put = def->pred_trie;
     return put && unify_htb(value, put);
@@ -2940,7 +2975,7 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
 
 #ifdef O_DRA_TABLING
 
-  if ( key==ATOM_dra_meta )
+  if ( key==ATOM_interp )
   { if ( !get_procedure(pred, &proc, 0, GP_DEFINE|GP_NAMEARITY) )
       fail;
     def = proc->definition;

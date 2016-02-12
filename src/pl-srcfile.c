@@ -1036,10 +1036,15 @@ setModesAndSource(SourceFile sf, Procedure proc,
       return FALSE;
 
     reload->modes = mask;
+
+    if(true(proc->definition,P_TRANSPARENT)) 
+      set(reload,P_TRANSPARENT);
+
     if ( isMetamask(proc->definition, mask) )
       set(reload, P_META);
     else
       clear(reload, P_META);
+
     set(reload, P_MODES);
   } else
   { setPredicateModes(proc->definition, mask);
@@ -1072,6 +1077,9 @@ fix_metapredicate(p_reload *r)
   } else if ( true(r, P_META) )
   { set(def, P_META);
   }
+
+  if(true(r, P_TRANSPARENT))
+    set(def, P_TRANSPARENT);
 }
 
 

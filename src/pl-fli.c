@@ -4016,15 +4016,15 @@ bindForeign(Module m, const char *name, int arity, Func f, int flags)
   if ( def->impl.any )
     PL_linger(def->impl.any);
   def->impl.function = f;
-  def->flags &= ~(P_DYNAMIC|P_THREAD_LOCAL|P_META|P_NONDET|P_VARARG);
-  def->flags |= (P_FOREIGN|TRACE_ME);
+  def->flags &= ~(P_DYNAMIC|P_THREAD_LOCAL|P_META|P_NONDET|P_VARARG|P_TRANSPARENT);
+  def->flags |= (P_FOREIGN|TRACE_ME|P_DET);
 
   if ( m == MODULE_system || SYSTEM_MODE )
     set(def, P_LOCKED|HIDE_CHILDS);
 
   if ( (flags & PL_FA_NOTRACE) )	  clear(def, TRACE_ME);
-  if ( (flags & PL_FA_TRANSPARENT) )	  set(def, P_META);
-  if ( (flags & PL_FA_NONDETERMINISTIC) ) set(def, P_NONDET);
+  if ( (flags & PL_FA_TRANSPARENT) )	  set(def, P_META|P_TRANSPARENT);
+  if ( (flags & PL_FA_NONDETERMINISTIC) ) {set(def, P_NONDET);clear(def, P_DET);}
   if ( (flags & PL_FA_VARARGS) )	  set(def, P_VARARG);
 
   createForeignSupervisor(def, f);

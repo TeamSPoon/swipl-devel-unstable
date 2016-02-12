@@ -843,18 +843,24 @@ define_or_generate(Pred) :-
 	'$get_predicate_attribute'(Pred, quasi_quotation_syntax, 1).
 '$predicate_property'(defined, Pred) :-
 	'$get_predicate_attribute'(Pred, defined, 1).
+'$predicate_property'(det, Pred) :-
+	'$get_predicate_attribute'(Pred, det, 1).
+'$predicate_property'(nondet, Pred) :-
+	'$get_predicate_attribute'(Pred, nondet, 1).
 '$predicate_property'(interp(N), Pred) :-
-	'$get_predicate_attribute'(Pred, dra_meta, N).
+	'$get_predicate_attribute'(Pred, (interp), N).
 '$predicate_property'(Prop, Pred) :-        
 	'$get_predicate_attribute'(Pred, dra_props, N),
         '$pred_prop_kv'(N, Prop).
 
 
-'$pred_prop_kv'(N,dra_meta(N)).
+'$pred_prop_kv'(N,dra_props(N)).
+
 '$pred_prop_kv'(N,table):-  
        htb_lookup(N,table,V),V\=[].
 '$pred_prop_kv'(N,oldt):-  
        htb_lookup(N,oldt,V),V\=[].
+
 % For non foriegn predicates marked deterministic
 % '$pred_prop_kv'(N,deterministic):-  
 %      htb_lookup(N,deterministic,V),V\=[].
