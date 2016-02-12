@@ -1633,7 +1633,7 @@ normal_call:
 
   if ( DRA_CALL && DEF->dra_interp )
   {
-    DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL in_dra= ~d",LD->dra_base.in_dra);});
+    DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL in_dra= %d",LD->dra_base.in_dra);});
 
     if ( LD->dra_base.in_dra<2 )
     {
@@ -1663,7 +1663,7 @@ normal_call:
 
         *ARGP++ = consPtr(a, TAG_COMPOUND|STG_GLOBAL);
         NFR = lTop;
-        // DEF = PROCEDURE_dra_call1->definition;
+        DEF = resolveProcedure(DEF->dra_interp->functor, module)->definition;
         setNextFrameFlags(NFR, FR);
 
         {
@@ -1674,7 +1674,7 @@ normal_call:
           DEBUG(MSG_DRA,{ term_t gg = pushWordAsTermRef(a);
                LocalFrame ot = lTop;
                lTop += 100;
-               DEBUG(MSG_DRA,{Sdprintf("DRA I_CALL ");});
+               DEBUG(MSG_DRA,{Sdprintf("DRA IN I_CALL ");});
                pl_writeln(gg);
                popTermRef();
                lTop = ot;
@@ -4607,18 +4607,16 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 #ifdef O_DRA_TABLING
   if ( DRA_CALL && DEF->dra_interp )
   {
-    DEBUG(MSG_DRA,{Sdprintf("DRA I_USERCALL0: in_dra= ~d ",LD->dra_base.in_dra);});
+    DEBUG(MSG_DRA,{Sdprintf("DRA I_USERCALL0: in_dra= %d ",LD->dra_base.in_dra);});
 
     if ( LD->dra_base.in_dra<2 )
-    {
+    { 
+      /* the proceedure must call $exit_dra/0 to decrement */
       LD->dra_base.in_dra++;
 
       *ARGP++ = linkVal(a);
       NFR = lTop;
-
-      FunctorDef draFunctorDef = DEF->dra_interp;
-
-      DEF = resolveProcedure(draFunctorDef->functor, module)->definition;
+      DEF = resolveProcedure(DEF->dra_interp->functor, module)->definition;
       setNextFrameFlags(NFR, FR);
 
       DEBUG(MSG_DRA,

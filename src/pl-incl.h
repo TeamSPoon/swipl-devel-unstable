@@ -2081,6 +2081,7 @@ typedef struct
 
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
 
+#define DRA_CALL 0x040000
 
 #define SLOW_UNIFY_DEFAULT TRUE
 #define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_NO_OPTIMIZE_TRAIL)
@@ -2093,7 +2094,7 @@ typedef struct
        module without  changing the call context'*/
 #define NEEDS_TRANSPARENT(ma)  (ma == MA_META && !LOGICMOO_TRANSPARENT)
 
-#define DRA_CALL FALSE
+
 
 #ifdef O_METATERM
 
