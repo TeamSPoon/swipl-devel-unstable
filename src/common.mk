@@ -20,8 +20,8 @@ OBJ=	pl-atom.o pl-wam.o pl-arith.o pl-bag.o pl-error.o \
 	pl-init.o pl-gmp.o pl-segstack.o pl-hash.o \
 	pl-version.o pl-codetable.o pl-supervisor.o \
 	pl-dbref.o pl-termhash.o pl-variant.o \
-	pl-copyterm.o pl-debug.o pl-ressymbol.o pl-dict.o pl-cont.o \
-	pl-dra.o
+	pl-copyterm.o pl-debug.o pl-ressymbol.o pl-dict.o \
+        pl-cont.o pl-dra.o
 
 # Prolog library
 
@@ -54,21 +54,14 @@ PLLIBS= MANUAL helpidx.pl help.pl explain.pl sort.pl \
 	prolog_colour.pl varnumbers.pl codesio.pl prolog_codewalk.pl \
 	prolog_pack.pl git.pl prolog_metainference.pl quasi_quotations.pl \
 	sandbox.pl prolog_format.pl prolog_install.pl check_installation.pl \
-	solution_sequences.pl iostream.pl dicts.pl yall.pl atts.pl
+	solution_sequences.pl iostream.pl dicts.pl yall.pl atts.pl dra.pl
 
 CLP=	bounds.pl clp_events.pl clp_distinct.pl simplex.pl clpfd.pl clpb.pl
-
-TABLING=assoc.pl double_linked_list.pl dra.pl dra_table_record.pl \
-        globalWorklist.pl table_datastructure.pl table_print.pl tabling.pl testlib.pl utils.pl \
-	batched-worklist.pl dra_interp.pl dra_table_assert.pl gensymlib.pl \
-	README.md table_link_manager.pl tabling_library testlib2.pl trie.pl variantlib.pl
-
-
 DCG=	basics.pl
 
 # Dialect library files
 
-DIALECT=yap.pl hprolog.pl commons.pl ciao.pl sicstus.pl bim.pl ifprolog.pl xsb.pl
+DIALECT=yap.pl hprolog.pl commons.pl ciao.pl sicstus.pl bim.pl ifprolog.pl
 YAP=	README.TXT
 SICSTUS=block.pl timeout.pl system.pl arrays.pl lists.pl terms.pl \
 	sockets.pl swipl-lfr.pl
