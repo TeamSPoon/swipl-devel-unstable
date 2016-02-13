@@ -766,6 +766,7 @@ typedef enum
 #define GP_EXISTENCE_ERROR 0x800	/* throw error if proc is not found */
 #define GP_QUALIFY	0x1000		/* Always module-qualify */
 #define GP_NOT_QUALIFIED 0x2000		/* Demand unqualified name/arity */
+#define GP_ATOM_ARITY_1 0x4000		/* Use name/1 if atom */
 
 					/* get_functor() */
 #define GF_EXISTING	0x1
@@ -1365,7 +1366,7 @@ struct definition
   mode_mask	modes;		/* modes of the predicate */
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
-  FunctorDef dra_interp;         /* VMI calls this Name/1 instead */
+  Procedure dra_interp;         /* VMI calls this Name/1 instead */
   hashtable_with_grefs* pred_trie; /*  */
 #endif
   unsigned int  shared;			/* #procedures sharing this def */
@@ -1402,6 +1403,7 @@ struct procedure
 { Definition	 definition;		/* definition of procedure */
   unsigned short flags;			/* PROC_WEAK */
   unsigned short source_no;		/* Source I'm assigned to */
+  int dra_depth;			/* depth */
 };
 
 struct localFrame

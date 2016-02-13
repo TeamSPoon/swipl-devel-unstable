@@ -1632,27 +1632,29 @@ normal_call:
 #ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
-  {
-    DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",LD->dra_base.in_dra);});
+  { Definition Wrapper = DEF->dra_interp->definition;
+    if ( proc && Wrapper )
+    { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
+      if ( proc->dra_depth <2 )
+      { proc->dra_depth++;
 
-    if ( LD->dra_base.in_dra<2 )
-    {
-      LD->dra_base.in_dra++;
-      /* Shift everything forward by 1 */
-      { Word a;
-        int src,dest,arity = DEF->functor->arity;
-        a = argFrameP(NFR,0);  /* pointer to first_arg */
-        deRef(a);
-        for ( src=arity, dest=arity+1; src>=0; dest-- , src-- ) a[dest] = a[src];
-        *a = DEF->functor->functor; /*insert the functor*/
-        term_t saved = PL_new_term_ref(); *valTermRef(saved) = linkVal(a); /*track it*/
-        DEF = resolveProcedure(DEF->dra_interp->functor, module)->definition;
+        Word a = argFrameP(NFR, 0);		/* get the goal */
+  
+        Word expr = gTop;
+        gTop += 2;
+        expr[0] = Wrapper->functor->functor;
+        expr[1] = linkVal(a);
+  
+        ARGP = argFrameP(lTop, 0);
+        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
+        NFR = lTop;
+        DEF = Wrapper;
+        setNextFrameFlags(NFR, FR);
+        goto normal_call;
       }
     }
   }
-
 #endif
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -4591,26 +4593,32 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	  lTop = ot;
 	});
 
-#ifdef O_DRA_TABLING_ASDFASDD
+#ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
-  {
-    DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL in_dra= %d\n",LD->dra_base.in_dra);});
+  { Definition Wrapper = DEF->dra_interp->definition;
+    Procedure proc = (Procedure)*PC;    
+    if ( proc && Wrapper )
+    { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
+      if ( proc->dra_depth <2 )
+      { proc->dra_depth++;
 
-    if ( LD->dra_base.in_dra<2 )
-    {
-      LD->dra_base.in_dra++;
-      /* Shift everything forward by 1 */
-      { Word a;
-        int src,dest,arity = DEF->functor->arity;
-        a = argFrameP(NFR,0);  /* pointer to first_arg */
-        for ( src=arity, dest=arity+1; src>=0; dest-- , src-- ) a[dest] = a[src];
-        *a = DEF->functor->functor;
-        DEF = resolveProcedure(DEF->dra_interp->functor, module)->definition;
+        Word a = argFrameP(NFR, 0);		/* get the goal */
+  
+        Word expr = gTop;
+        gTop += 2;
+        expr[0] = Wrapper->functor->functor;
+        expr[1] = linkVal(a);
+  
+        ARGP = argFrameP(lTop, 0);
+        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
+        NFR = lTop;
+        DEF = Wrapper;
+        setNextFrameFlags(NFR, FR);
+        goto normal_call;
       }
     }
   }
-
 #endif
 
 

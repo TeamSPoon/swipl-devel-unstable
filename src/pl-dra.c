@@ -143,17 +143,6 @@ release_htb(atom_t symbol)
 }
 
 
-static Procedure
-findProcedure(term_t pred ARG_LD) 
-{ Module module = (Module) NULL;
-  atom_t name; size_t arity;
-  term_t head = PL_new_term_ref();
-  if (PL_strip_module(pred, &module, head) &&
-      PL_get_name_arity(head,&name,&arity))
-    return resolveProcedure(PL_new_functor(name,1), module);
-  return NULL;
-}
-
 static hashtable_with_grefs*
 foc_trie_pointer(term_t pred ARG_LD) 
 { functor_t fd;
@@ -205,8 +194,9 @@ get_htb(term_t t, hashtable_with_grefs **htb ARG_LD)
     return FALSE;
   }
   
-  Procedure proc = findProcedure(t PASS_LD);
-  if(proc) 
+  Procedure proc;
+  
+  if(get_procedure(t, &proc, 0, GP_DEFINE|GP_NAMEARITY))
   {
     Definition def = proc->definition;
     if(!def->pred_trie || !def->pred_trie->root)
@@ -595,14 +585,14 @@ PRED_IMPL("$exit_dra", 0, dexit_dra, 0)
 
 
 static
-PRED_IMPL("htb_set_copy", 3, htb_set_copy, 0)
+PRED_IMPL("htb_copyval", 3, htb_copyval, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("htb_set_duplicate_value", 3, htb_set_duplicate_value, 0)
+PRED_IMPL("htb_dupval", 3, htb_dupval, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_BACKTRACK PASS_LD);
@@ -616,14 +606,14 @@ PRED_IMPL("htb_linkval", 3, htb_linkval, 0)
 }
 
 static
-PRED_IMPL("htb_nb_set_copy", 3, htb_nb_set_copy, 0)
+PRED_IMPL("htb_nb_copyval", 3, htb_nb_copyval, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
 static
-PRED_IMPL("htb_nb_set_duplicate_value", 3, htb_nb_set_duplicate_value, 0)
+PRED_IMPL("htb_nb_dupval", 3, htb_nb_dupval, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_NB_ASSIGN PASS_LD);
@@ -728,7 +718,7 @@ isGlobalRef(word w)
 { return storage(w) == STG_GLOBAL;
 }
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Dealing  with  nb_set_duplicate_value/2  and   nb_lookup/2  non-backtrackable  global
+Dealing  with  nb_dupval/2  and   nb_lookup/2  non-backtrackable  global
 variables as defined  in  pl-gvar.c.  We   cannot  mark  and  sweep  the
 hash-table itself as the  reversed   pointers  cannot  address arbitrary
 addresses returned by allocHeapOrHalt(). Therefore we   turn all references to
@@ -825,11 +815,44 @@ term_refs_to_trie(hashtable_with_grefs trie, fid_t fid, Word *saved_bar_at)
 }
 */
 
+PRED_IMPL("b_set_interp",   2, b_set_interp,   0)
+{ PRED_LD
+
+  Procedure proc, meta;
+  Definition def;
+
+  if(!get_procedure(A1, &proc, 0, GP_DEFINE|GP_NAMEARITY)) return FALSE;
+  if(!get_procedure(A2, &meta, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1)) return FALSE;
+
+  def = proc->definition;
+  Word predholder = &def->dra_interp;
+  TrailAssignment(predholder);
+  def->dra_interp = meta;
+
+  return TRUE;
+}
+
+PRED_IMPL("nb_set_interp",   2, nb_set_interp,   0)
+{ 
+  Procedure proc, meta;
+  Definition def;
+
+  if(!get_procedure(A1, &proc, 0, GP_DEFINE|GP_NAMEARITY)) return FALSE;
+  if(!get_procedure(A2, &meta, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1)) return FALSE;
+
+  def = proc->definition;
+  def->dra_interp = meta;
+  
+  return TRUE;
+}
+
 /*******************************
 *	    REGISTRATION	*
 *******************************/
 
 BeginPredDefs(dra)
+  PRED_DEF("b_set_interp",   2, b_set_interp,   0)
+  PRED_DEF("nb_set_interp",   2, nb_set_interp,   0)
 
   PRED_DEF("$enter_dra",   0, denter_dra,   0)
   PRED_DEF("$exit_dra",   0, dexit_dra,   0)
@@ -842,11 +865,11 @@ BeginPredDefs(dra)
 
   
   PRED_DEF("htb_linkval", 3, htb_linkval, 0)
-  PRED_DEF("htb_set_copy", 3, htb_set_copy, 0)
-  PRED_DEF("htb_set_duplicate_value", 3, htb_set_duplicate_value, 0)
+  PRED_DEF("htb_copyval", 3, htb_copyval, 0)
+  PRED_DEF("htb_dupval", 3, htb_dupval, 0)
   PRED_DEF("htb_nb_linkval", 3, htb_nb_linkval, 0)
-  PRED_DEF("htb_nb_set_copy", 3, htb_nb_set_copy, 0)
-  PRED_DEF("htb_nb_set_duplicate_value", 3, htb_nb_set_duplicate_value, 0)
+  PRED_DEF("htb_nb_copyval", 3, htb_nb_copyval, 0)
+  PRED_DEF("htb_nb_dupval", 3, htb_nb_dupval, 0)
 
   PRED_DEF("htb_delete", 2, htb_delete, 0)
 

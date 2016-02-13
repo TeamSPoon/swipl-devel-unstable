@@ -484,13 +484,24 @@ get_functor(term_t descr, functor_t *fdef, Module *m, term_t h, int how)
 		    (how&GF_PROCEDURE) ? MAXARITY : -1,
 		    &arity ) )
       fail;
+
+    if(how&GP_ATOM_ARITY_1 && arity==0 )
+    { arity = 1;
+    }
+
     *fdef = PL_new_functor(name, arity);
     if ( h )
       PL_put_term(h, head);
 
     succeed;
   } else if ( !(how&GF_NAMEARITY) && PL_get_functor(head, fdef) )
-  { if ( h )
+  { if(how&GP_ATOM_ARITY_1 && isAtom(*fdef) )
+    {
+       *fdef = PL_new_functor(*fdef,1);
+       if(!PL_put_functor(head,*fdef))
+         return FALSE;
+    }
+    if ( h )
       PL_put_term(h, head);
 
     succeed;
@@ -514,6 +525,10 @@ get_head_functor(term_t head, functor_t *fdef, int how ARG_LD)
     else
       return PL_error(NULL, 0, NULL, ERR_TYPE, ATOM_callable, head);
   }
+    if(how&GP_ATOM_ARITY_1 && isAtom(*fdef) )
+    {
+       *fdef = PL_new_functor(*fdef,1);
+    }
 
   fd = valueFunctor(*fdef);
 
@@ -559,8 +574,9 @@ get_procedure(term_t descr, Procedure *proc, term_t h, int how)
 
   if ( (how&GP_NAMEARITY) )
   { if ( !get_functor(descr, &fdef, &m, h,
-		      GF_PROCEDURE|(how&GP_TYPE_QUIET)) )
+		      GF_PROCEDURE|(how&GP_TYPE_QUIET)|(how&GP_ATOM_ARITY_1)) )
       fail;
+  
   } else
   { term_t head = PL_new_term_ref();
 
@@ -2811,8 +2827,8 @@ pl_get_predicate_attribute(term_t pred,
 #ifdef O_DRA_TABLING
 
   } else if ( key == ATOM_interp )
-  { FunctorDef proxy = def->dra_interp;
-    return proxy!=0 && proxy->name!=ATOM_call && PL_unify_atom(value,proxy->name);
+  { Procedure proxy = def->dra_interp;
+    return proxy && proxy->definition && proxy->definition->functor->name!=ATOM_call && PL_unify_atom(value,proxy->definition->functor->name);
 
   } else if ( key == ATOM_dra_props ) /* Might unrelate this to DRA after tabling code is complete */
   { hashtable_with_grefs* put = def->pred_trie;
@@ -2980,11 +2996,11 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
       fail;
     def = proc->definition;
     if(!def) return FALSE;
-    atom_t want;
-    if(!PL_get_atom(value, &want))
-    { def->dra_interp = 0;
+    Procedure want;
+    if(!get_procedure(value, &want, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1))
+    { def->dra_interp = NULL;
     } else
-    { def->dra_interp = valueFunctor(PL_new_functor(want,1));
+    { def->dra_interp = want;
     }
     return TRUE;
   }

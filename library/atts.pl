@@ -185,13 +185,14 @@ new_attribute(At,Mod) :- dynamic(Mod:protobute/3),
 :- meta_predicate tst_det(0).
 :- meta_predicate tst(0).
 
+:- if(fail).
 :- ensure_loaded(library(logicmoo_utils)). % General debug/analyze utils
 
 :- use_listing_vars. % hacks listing/N to show us the source variable names
 
 % :- [swi(boot/attvar)]. % pick up changes without re-install
 
-
+:- endif.
 
 /*
 
