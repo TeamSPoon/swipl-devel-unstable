@@ -774,6 +774,19 @@ typedef enum
 #define GF_NAMEARITY	0x4		/* only accept name/arity */
 
 
+
+
+#define HT_LINK_TERM 0x0
+
+#define HT_COPY_SHARE	0x01			/* Share ground terms */
+#define HT_COPY_ATTRS	0x02			/* do copy attributes */
+
+#define HT_NB_ASSIGN 0x0
+#define HT_BACKTRACK 0x8
+
+#define HT_COPY_TERM 0x10
+#define HT_DUPLICATE_TERM 0x20
+
 		 /*******************************
 		 *	       ALERT		*
 		 *******************************/
@@ -1366,7 +1379,11 @@ struct definition
   mode_mask	modes;		/* modes of the predicate */
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
-  Procedure dra_interp;         /* VMI calls this Name/1 instead */
+ #ifdef DRA_INTERP_TERM_T
+  term_t dra_interp;         /* VMI calls this Name/1 instead */
+ #else
+  word dra_interp;
+ #endif
   hashtable_with_grefs* pred_trie; /*  */
 #endif
   unsigned int  shared;			/* #procedures sharing this def */
@@ -2039,6 +2056,9 @@ typedef struct
 
 /* assignAttVar() flags  - All defaulted to false */
 
+#define  B_PUTATTS 0x0
+#define NB_PUTATTS 0x1
+
 /* This adds wakeups to attvars rather than binding them */
 #define ATTV_DEFAULT     META_DEFAULT   /* bindConst() */
 #define ATTV_ASSIGNONLY  0x02		 /* '$attvar_assign'/2 */
@@ -2058,7 +2078,7 @@ typedef struct
 #define META_NO_BIND        0x0010 /* C should not bind attvar even in ASSIGNONLY  */
 #define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
 #define META_NO_OPTIMIZE_TRAIL 0x0040 /* Dont Optimize Trail (Multiple wakeups) */
-// #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
+#define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
 
 
@@ -2079,17 +2099,14 @@ typedef struct
 #define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
 #define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
 #define META_ENABLE_PREUNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
-#define META_WAKEBINDS       0x020000 /* C should let only prolog do binding */
+#define META_ONLY_WAKEBINDS  0x020000 /* C should let only prolog do binding */
 
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
 
-#define DRA_CALL 0x040000
+#define DRA_CALL 0x080000
 
 #define SLOW_UNIFY_DEFAULT TRUE
 #define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_NO_OPTIMIZE_TRAIL)
-
-#define  B_PUTATTS 0x0
-#define NB_PUTATTS 0x1
 
 #define LOGICMOO_TRANSPARENT FALSE
 /* Soon ":" will no longer need transparent since its captures the 

@@ -330,17 +330,6 @@ free_kv(void *fkey, void* value)
   free_key((word)fkey);
 }
 
-#define HT_LINK_TERM 0x0
-
-#define HT_COPY_SHARE	0x01			/* Share ground terms */
-#define HT_COPY_ATTRS	0x02			/* do copy attributes */
-
-#define HT_NB_ASSIGN 0x0
-#define HT_BACKTRACK 0x8
-
-#define HT_COPY_TERM 0x10
-#define HT_DUPLICATE_TERM 0x20
-
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
   For    backtrackable   variables  we  need
@@ -585,42 +574,42 @@ PRED_IMPL("$exit_dra", 0, dexit_dra, 0)
 
 
 static
-PRED_IMPL("htb_copyval", 3, htb_copyval, 0)
+PRED_IMPL("htb_setcopy", 3, htb_setcopy, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("htb_dupval", 3, htb_dupval, 0)
+PRED_IMPL("htb_setdupl", 3, htb_setdupl, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("htb_linkval", 3, htb_linkval, 0)
+PRED_IMPL("htb_setlink", 3, htb_setlink, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_LINK_TERM|HT_BACKTRACK PASS_LD);
 }
 
 static
-PRED_IMPL("htb_nb_copyval", 3, htb_nb_copyval, 0)
+PRED_IMPL("htb_nb_setcopy", 3, htb_nb_setcopy, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_COPY_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
 static
-PRED_IMPL("htb_nb_dupval", 3, htb_nb_dupval, 0)
+PRED_IMPL("htb_nb_setdupl", 3, htb_nb_setdupl, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_DUPLICATE_TERM|HT_NB_ASSIGN PASS_LD);
 }
 
 static
-PRED_IMPL("htb_nb_linkval", 3, htb_nb_linkval, 0)
+PRED_IMPL("htb_nb_setlink", 3, htb_nb_setlink, 0)
 { PRED_LD
 
   return htb_assign(A1, A2, A3, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);
@@ -718,7 +707,7 @@ isGlobalRef(word w)
 { return storage(w) == STG_GLOBAL;
 }
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-Dealing  with  nb_dupval/2  and   nb_lookup/2  non-backtrackable  global
+Dealing  with  nb_setdupl/2  and   nb_lookup/2  non-backtrackable  global
 variables as defined  in  pl-gvar.c.  We   cannot  mark  and  sweep  the
 hash-table itself as the  reversed   pointers  cannot  address arbitrary
 addresses returned by allocHeapOrHalt(). Therefore we   turn all references to
@@ -815,36 +804,119 @@ term_refs_to_trie(hashtable_with_grefs trie, fid_t fid, Word *saved_bar_at)
 }
 */
 
+int
+save_word(word* loc, term_t value, int assign_flags ARG_LD)
+{ Word p;
+  word w, old;
+
+  if ( !hasGlobalSpace(3) )     /* also ensures trail for */
+  { int rc;  /* TrailAssignment() */
+    if ( (rc=ensureGlobalSpace(3, ALLOW_GC)) != TRUE )
+      return raiseStackOverflow(rc);
+  }
+
+  if ( assign_flags & HT_DUPLICATE_TERM )
+  { term_t copy = PL_new_term_ref();
+    if ( !duplicate_term(value, copy PASS_LD) )
+      return FALSE;
+    value = copy;
+  } else if ( assign_flags & HT_COPY_TERM )
+  { term_t copy = PL_new_term_ref();
+    if ( !copy_term_refs(value, copy, HT_COPY_ATTRS|HT_COPY_SHARE PASS_LD) )
+      return FALSE;
+    value = copy;    
+  }
+
+  p = valTermRef(value);
+  deRef(p);
+  w = *p;
+
+  if ( canBind(w) )
+  { if ( onStackArea(local, p) )
+    { Word p2 = allocGlobal(1);
+
+      setVar(*p2);
+      w = *p = makeRef(p2);
+      LTrail(p);
+    } else
+    { w = makeRef(p);
+    }
+  }
+  old = *loc;
+
+  if ( w == old )
+    succeed;
+
+  if ( isAtom(old) )
+    PL_unregister_atom(old);
+
+  if ( assign_flags & HT_BACKTRACK )
+  { Word p;
+
+    if ( isRef(old) )
+    { p = unRef(old);
+    } else
+    { p = allocGlobal(1);
+      *p = old;
+      freezeHTGlobal(PASS_LD1);   /* The value location must be */
+      if ( storage(old) != STG_GLOBAL )   /* preserved */
+        /*trie->grefs++*/;
+      *loc = makeRefG(p);
+    }
+    TrailAssignment(p);
+    *p = w;
+  } else
+  { if ( storage(old) == STG_GLOBAL )
+      /*trie->grefs--*/;
+
+    *loc = w;
+
+    if ( storage(w) == STG_GLOBAL )
+    { freezeHTGlobal(PASS_LD1);
+      /*trie->grefs++*/;
+    } else if ( isAtom(w) )
+      PL_register_atom(w);
+  }
+  return TRUE;
+}
+
 PRED_IMPL("b_set_interp",   2, b_set_interp,   0)
 { PRED_LD
 
-  Procedure proc, meta;
+  Procedure proc;
   Definition def;
 
   if(!get_procedure(A1, &proc, 0, GP_DEFINE|GP_NAMEARITY)) return FALSE;
-  if(!get_procedure(A2, &meta, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1)) return FALSE;
 
-  def = proc->definition;
-  Word predholder = &def->dra_interp;
-  TrailAssignment(predholder);
-  def->dra_interp = meta;
+  def = getProcDefinition(proc);
 
-  return TRUE;
+#ifdef DRA_INTERP_TERM_T
+   TrailAssignment(&def->dra_interp);
+   return PL_put_term(def->dra_interp,A2);
+#else
+   TrailAssignment(&def->dra_interp);
+   return save_word(&def->dra_interp, A2, HT_LINK_TERM|HT_BACKTRACK PASS_LD);
+#endif
 }
 
 PRED_IMPL("nb_set_interp",   2, nb_set_interp,   0)
-{ 
-  Procedure proc, meta;
+{ PRED_LD
+
+  Procedure proc;
   Definition def;
 
   if(!get_procedure(A1, &proc, 0, GP_DEFINE|GP_NAMEARITY)) return FALSE;
-  if(!get_procedure(A2, &meta, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1)) return FALSE;
 
-  def = proc->definition;
-  def->dra_interp = meta;
-  
-  return TRUE;
+  def = getProcDefinition(proc);
+
+#ifdef DRA_INTERP_TERM_T
+   return PL_put_term(def->dra_interp,A2);
+#else
+   return save_word(&def->dra_interp, A2, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);
+#endif
+
 }
+
 
 /*******************************
 *	    REGISTRATION	*
@@ -864,12 +936,12 @@ BeginPredDefs(dra)
   PRED_DEF("htb_clear", 1, htb_clear,   0)
 
   
-  PRED_DEF("htb_linkval", 3, htb_linkval, 0)
-  PRED_DEF("htb_copyval", 3, htb_copyval, 0)
-  PRED_DEF("htb_dupval", 3, htb_dupval, 0)
-  PRED_DEF("htb_nb_linkval", 3, htb_nb_linkval, 0)
-  PRED_DEF("htb_nb_copyval", 3, htb_nb_copyval, 0)
-  PRED_DEF("htb_nb_dupval", 3, htb_nb_dupval, 0)
+  PRED_DEF("htb_setlink", 3, htb_setlink, 0)
+  PRED_DEF("htb_setcopy", 3, htb_setcopy, 0)
+  PRED_DEF("htb_setdupl", 3, htb_setdupl, 0)
+  PRED_DEF("htb_nb_setlink", 3, htb_nb_setlink, 0)
+  PRED_DEF("htb_nb_setcopy", 3, htb_nb_setcopy, 0)
+  PRED_DEF("htb_nb_setdupl", 3, htb_nb_setdupl, 0)
 
   PRED_DEF("htb_delete", 2, htb_delete, 0)
 

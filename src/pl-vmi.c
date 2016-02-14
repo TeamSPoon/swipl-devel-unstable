@@ -1632,28 +1632,30 @@ normal_call:
 #ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
-  { Definition Wrapper = DEF->dra_interp->definition;
-    if ( proc && Wrapper )
-    { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
+  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",proc->dra_depth);});
       if ( proc->dra_depth <2 )
       { proc->dra_depth++;
 
         Word a = argFrameP(NFR, 0);		/* get the goal */
   
         Word expr = gTop;
-        gTop += 2;
-        expr[0] = Wrapper->functor->functor;
-        expr[1] = linkVal(a);
+        gTop += 3;
+        expr[0] = FUNCTOR_call2;
+#ifdef DRA_INTERP_TERM_T
+        expr[1] = linkVal(valPHandle(DEF->dra_interp));
+#else
+        expr[1] = DEF->dra_interp;
+#endif        
+        expr[2] = linkVal(a);
   
         ARGP = argFrameP(lTop, 0);
         *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
         NFR = lTop;
-        DEF = Wrapper;
+        DEF = PROCEDURE_dwakeup1->definition;
         setNextFrameFlags(NFR, FR);
         goto normal_call;
       }
-    }
-  }
+  } }
 #endif
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
@@ -4593,32 +4595,29 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	  lTop = ot;
 	});
 
-#ifdef O_DRA_TABLING
+#ifdef O_DRA_TABLING_UNUSED
 
   if ( DRA_CALL && DEF->dra_interp )
-  { Definition Wrapper = DEF->dra_interp->definition;
-    Procedure proc = (Procedure)*PC;    
-    if ( proc && Wrapper )
-    { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
+  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
       if ( proc->dra_depth <2 )
       { proc->dra_depth++;
 
         Word a = argFrameP(NFR, 0);		/* get the goal */
-  
+
         Word expr = gTop;
-        gTop += 2;
-        expr[0] = Wrapper->functor->functor;
-        expr[1] = linkVal(a);
-  
+        gTop += 3;
+        expr[0] = FUNCTOR_call2;
+        expr[1] = proc->dra_interp;
+        expr[2] = linkVal(a);
+
         ARGP = argFrameP(lTop, 0);
         *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
         NFR = lTop;
-        DEF = Wrapper;
+        DEF = PROCEDURE_dwakeup1->definition;
         setNextFrameFlags(NFR, FR);
         goto normal_call;
       }
-    }
-  }
+  } }
 #endif
 
 

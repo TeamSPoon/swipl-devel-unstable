@@ -80,6 +80,9 @@ lookupProcedure(functor_t f, Module m)
   def->functor = valueFunctor(f);
   def->module  = m;
   def->shared  = 1;
+#ifdef DRA_INTERP_TERM_T
+  def->dra_interp  = PL_new_term_ref();
+#endif
   resetProcedure(proc, TRUE);
 
   DEBUG(MSG_PROC_COUNT, Sdprintf("Created %s\n", procedureName(proc)));
@@ -2827,11 +2830,15 @@ pl_get_predicate_attribute(term_t pred,
 #ifdef O_DRA_TABLING
 
   } else if ( key == ATOM_interp )
-  { Procedure proxy = def->dra_interp;
-    return proxy && proxy->definition && proxy->definition->functor->name!=ATOM_call && PL_unify_atom(value,proxy->definition->functor->name);
-
+  { def = getProcDefinition(proc);
+#ifdef DRA_INTERP_TERM_T
+  return (def->dra_interp && PL_unify(value,def->dra_interp);
+#else
+  return (def->dra_interp && unify_ptrs(valPHandle(value PASS_LD),&def->dra_interp, 0 PASS_LD));
+#endif
   } else if ( key == ATOM_dra_props ) /* Might unrelate this to DRA after tabling code is complete */
-  { hashtable_with_grefs* put = def->pred_trie;
+  { def = getProcDefinition(proc);
+    hashtable_with_grefs* put = def->pred_trie;
     return put && unify_htb(value, put);
 
 #endif 
@@ -2975,6 +2982,7 @@ get_bool_or_int_ex(term_t t, int *val ARG_LD)
   return PL_get_bool_ex(t, val);	/* generate an error */
 }
 
+int save_word(Word loc, term_t value, int assign_flags ARG_LD);
 
 word
 pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
@@ -2994,23 +3002,19 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
   if ( key==ATOM_interp )
   { if ( !get_procedure(pred, &proc, 0, GP_DEFINE|GP_NAMEARITY) )
       fail;
-    def = proc->definition;
+    def = getProcDefinition(proc);
     if(!def) return FALSE;
-    Procedure want;
-    if(!get_procedure(value, &want, 0, GP_DEFINE|GP_NAMEARITY|GP_ATOM_ARITY_1))
-    { def->dra_interp = NULL;
-    } else
-    { def->dra_interp = want;
-    }
-    return TRUE;
+#ifdef DRA_INTERP_TERM_T
+   return PL_put_term(def->dra_interp,value);
+#else
+  return save_word(&def->dra_interp, value, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);
+#endif
   }
 
   if ( key==ATOM_dra_props )
   { if ( !get_procedure(pred, &proc, 0, GP_DEFINE|GP_NAMEARITY) )
-      fail;
-
-    if(!proc) return FALSE;
-    def = proc->definition;
+      return FALSE;
+    def = getProcDefinition(proc);
 
     if (PL_is_variable(value))
     {  def -> pred_trie = NULL;       

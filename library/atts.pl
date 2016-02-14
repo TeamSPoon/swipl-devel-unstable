@@ -59,11 +59,15 @@
     %add_attribute/3,
     get_attribute/2,
     %get_attribute/3,
+    get_metaflags/1,
+    set_metaflags/1,
       merge_fbs/3,
       new_meta/2,
       fbs_to_number/2,
       'meta_attribute'/2,
       set_dict_attvar_reader/1,
+      metaflag_unset/2,
+      metaflag_set/2,
       dict_attvar/1,
       dict_attvar/2]).
 
@@ -83,6 +87,11 @@
 :- meta_predicate w_debug(0).
 :- meta_predicate wno_debug(0).
 
+get_metaflags(Get):- metaterm_flags(global,Get,Get).
+set_metaflags(Set):- metaterm_flags(global,set,Set).
+metaflag_unset(V,F):-metaterm_flags(V,~,F).
+metaflag_set(V,F):-metaterm_flags(V,~,F).
+metaflag_get(Var,Get):- metaterm_flags(Var,Get,Get).
 
 :- meta_predicate('attribute'(:)).
 
@@ -425,17 +434,17 @@ system:'$undo_unify'(Var,Value):-dmsg(system:'$undo_unify'(Var,Value)).
 
 %  av(X),meta_override(X, = /2 : unify/2),'$attvar_overriding'(X,l(_,_),Y).
 
-system:meta_override(X,BA):-  is_list(BA),!,maplist(system:meta_override,X,BA).
-system:meta_override(X,Atom):- atomic(Atom),!,system:meta_override(X,Atom:true([])).
-system:meta_override(X,Atom):- compound_name_arity(Atom,_,0),!,system:meta_override(X,Atom:true([])).
-system:meta_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,system:meta_override(X,BPI,API).
-system:meta_override(X,B=A):-  system:meta_override(X,B:A),!.
-system:meta_override(X,What):- put_atts(X,'$meta': + What).
+meta_override(X,BA):-  is_list(BA),!,maplist(meta_override,X,BA).
+meta_override(X,Atom):- atomic(Atom),!,meta_override(X,Atom:true([])).
+meta_override(X,Atom):- compound_name_arity(Atom,_,0),!,meta_override(X,Atom:true([])).
+meta_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,meta_override(X,BPI,API).
+meta_override(X,B=A):-  meta_override(X,B:A),!.
+meta_override(X,What):- put_atts(X,'$meta': + What).
 
-system:meta_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
+meta_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
 
 
-system:meta_overriding(X,B=A):-system:meta_override(X,B:A).
+make_meta_override(X,B=A):-meta_override(X,B:A).
 
 
 atts_modulize([], _) --> [].
@@ -599,7 +608,7 @@ as_handler(Handler,Handler).
 :- meta_predicate while_goal(0,0,0).
 :- meta_predicate wd(0).
 :- meta_predicate(wnmt(:)).
-wnmt(G):-setup_call_cleanup(metaflag_options(W,0),G,metaflag_options(0,W)).
+wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(W)).
 :- module_transparent(do_meta_hook/4).
 
 
@@ -664,7 +673,7 @@ dshowf(S,X,Y,Z):-dmsg(dshowf(S,X,Y,Z)),fail.
 % ?- matts(_,+disable). % Disable entire system
 % ==
 
-matts(Get,Set):- metaflag_options(Get,Get),merge_fbs(Set,Get,XM),tst(metaflag_options(_,XM)).
+matts(Get,Set):- get_metaflags(Get),merge_fbs(Set,Get,XM),tst(set_metaflags(XM)).
 
 
 %% matts(+Set) is det.
@@ -675,47 +684,56 @@ matts(Get,Set):- metaflag_options(Get,Get),merge_fbs(Set,Get,XM),tst(metaflag_op
 % ?-listing(fbs_for_hooks_default/1) to see them.
 % ==
 
-matts(X):- integer(X),!,'metaflag_options'(_,X),matts.
-matts(X):- var(X),!,'metaflag_options'(X,X).
-matts(X):- 'metaflag_options'(M,M),merge_fbs(X,M,XM),tst('metaflag_options'(_,XM)),!,matts,!.
+matts(X):- integer(X),!,set_metaflags(X),matts.
+matts(X):- var(X),!,get_metaflags(X).
+matts(X):- get_metaflags(M),merge_fbs(X,M,XM),tst(set_metaflags(XM)),!,matts,!.
+
 
 
 fbs_for_hooks_default(v(
 
 /* Global bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
 
-att_wakebinds  = 0x01			," bindconst() " ,
-att_assignonly = 0x02			," '$attvar_assign'/2 " ,
-att_unify      = 0x04			," unify: assign and wakeup " ,
 
-
+ attv_assignonly 			," '$attvar_assign'/2 " ,
+ attv_default  		," bindconst() " ,
+ attv_must_trail       		," unify: assign and wakeup " ,
+ attv_will_unbind   , " peer no trail ", 
+ 
 		 /*******************************
 		 *	      METATERMS      	*
 		 *******************************/
+ meta_default,
+ keep_both      , " allow attvar survival ", 
+ meta_disabled  , " disable all options (allows the options to be saved) ", 
+ no_bind, " c should let only prolog do binding ",
+ no_inherit, " this metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) ", 
+ no_swap, " dont swap attvars", 
+ no_wakeup, " dont call wakeup ", 
+ no_trail, " do not bother to trail the previous value ", 
 
- peer_no_trail  = 0x0008 , " peer no trail ", 
- no_bind        = 0x0010 , " c should let only prolog do binding ", 
- no_wakeup  	= 0x0020 , " dont call wakeup ", 
- no_trail       = 0x0040 , " do not bother to trail the previous value ", 
- keep_both  	= 0x0080 , " allow attvar survival ", 
+ use_only_wakebinds,
+ use_trail_optimize,
+ use_no_trail_optimize,
+ use_skip_hidden , " dont factor $meta into attvar identity ", 
+ use_dra_interp,
+ use_pre_unify,
+ use_cpreds , " hook cpreds (wam can misses a few)", 
+ use_do_unify, " debugging for a moment trying to guage if damaging do_unify() ",
+ use_undo , " check attvars for undo hooks (perfomance checking) ",
+ use_vmi , " hook wam ", 
 
- do_unify  	= 0x0100 , " debugging for a moment trying to guage if damaging do_unify() ",
- no_inherit     = 0x0400 , " this metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) ", 
- disabled   	= 0x0800 , " disable all options (allows the options to be saved) ", 
-
- enable_vmi  	= 0x1000 , " hook wam ", 
- enable_cpreds	= 0x2000 , " hook cpreds (wam can misses a few)", 
- skip_hidden  	= 0x4000 , " dont factor $meta into attvar identity ", 
- enable_undo    = 0x8000 , " check attvars for undo hooks (perfomance checking) "
-
+ "done"
 
     )). 
+
+
 
 %% matts is det.
 %
 % Print the system global modes
 %
-matts:-'metaflag_options'(M,M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]).
+matts:-get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]).
 
 
 %% debug_hooks is det.
@@ -766,7 +784,7 @@ contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
 
 % any_to_fbs(Var,BitsOut):- attvar(Var), get_attr(Var,'$atts',BitsIn),!,any_to_fbs(BitsIn,BitsOut).
 any_to_fbs(BitsIn,BitsOut):- notrace((
- must((fbs_to_number(BitsIn,Mode),number(Mode))),
+ tst((fbs_to_number(BitsIn,Mode),number(Mode))),
    Bits=[Mode],fbs_for_hooks_default(MASKS),
    ignore((arg(_,MASKS,(N=V)),nonvar(V),nonvar(N),fbs_to_number(V,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
    BitsOut = Bits)).
@@ -792,7 +810,7 @@ merge_fbs(A,C,VVV):-fbs_to_number(override(A),VV),!,tst(merge_fbs(VV,C,VVV)),!.
 
 
 fbs_to_number(N,O):-number(N),!,N=O.
-fbs_to_number(V,VVV):-attvar(V),!,meta_overriding(V,VV),!,fbs_to_number(VV,VVV).
+fbs_to_number(V,VVV):-attvar(V),!,metaflags_get(V,VV),!,fbs_to_number(VV,VVV).
 fbs_to_number(V,O):-var(V),!,0=O.
 fbs_to_number([],0).
 fbs_to_number(B << A,VVV):-!, fbs_to_number(B,VV), VVV is (VV << A).
@@ -839,7 +857,7 @@ check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fa
 %
 % With inherited Hooks call Goal
 
-wi_atts(M,Goal):- notrace(('metaflag_options'(W,W),merge_fbs(M,W,N))),!,while_goal('metaflag_options'(W,N),Goal,'metaflag_options'(_,W)).
+wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,while_goal(set_metaflags(N),Goal,set_metaflags(W)).
 
 %%    wo_hooks(+Var,+Goal)
 %
@@ -852,10 +870,10 @@ wo_hooks(_Var,Goal):-Goal.
 
 wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).
 w_dmvars(Goal):- w_hooks(w_debug(Goal)).
-w_hooks(Goal):-  'metaflag_unset'(global,0x0800),Goal.
-wno_hooks(Goal):-  'metaflag_set'(global,0x0800),Goal.
-wno_debug(Goal):-  'metaflag_options'(W,W), T is W /\ \ 0x100000, while_goal('metaflag_options'(_,T),Goal,'metaflag_options'(_,W)).
-w_debug(Goal):-  'metaflag_options'(W,W),T is W  \/ 0x100000 , while_goal('metaflag_options'(_,T),Goal,'metaflag_options'(_,W)).
+w_hooks(Goal):-  metaflag_unset(current,0x0800),Goal.
+wno_hooks(Goal):-  metaflag_set(current,0x0800),Goal.
+wno_debug(Goal):-  get_metaflags(W), T is W /\ \ 0x100000, while_goal(set_metaflags(T),Goal,set_metaflags(W)).
+w_debug(Goal):-  get_metaflags(W),T is W  \/ 0x100000 , while_goal(set_metaflags(T),Goal,set_metaflags(W)).
 
 testfv:-forall(test(T),dmsg(passed(T))).
 
@@ -1043,3 +1061,4 @@ B = A,
 put_attr(A, tBB, 'BBB').
 
 ?- vc(C),freeze(F,writeln(C)),F=C.
+

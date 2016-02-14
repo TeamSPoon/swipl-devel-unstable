@@ -172,6 +172,140 @@ appendWakeup(Word wake ARG_LD)
   }
 }
 
+typedef struct matts_flag
+{ atom_t key;
+  int	 mask;
+  const char* name;
+} matts_flag;
+
+#define MW(name, argc) { 0, argc, name }
+
+static matts_flag matts_flags[] =
+{
+ MW("attv_assignonly",  ATTV_ASSIGNONLY ), 
+ MW("attv_default",     ATTV_DEFAULT ), 
+ MW("attv_must_trail",  ATTV_MUST_TRAIL ), 
+ MW("attv_will_unbind", ATTV_WILL_UNBIND ),
+
+ MW("keep_both",        META_KEEP_BOTH 	),
+ MW("meta_default",     META_DEFAULT ),
+ MW("meta_disabled",    META_DISABLED 	),
+ MW("no_bind",          META_NO_BIND ), 
+ MW("no_inherit",       META_NO_INHERIT ), 
+ MW("no_swap",          META_DISABLE_SWAP ), 
+ MW("no_wakeup",        META_NO_WAKEUP 	), 
+ MW("no_trail",         META_NO_TRAIL	), 
+
+ MW("use_only_wakebinds",    META_ONLY_WAKEBINDS ),
+ MW("use_trail_optimize", META_PLEASE_OPTIMIZE_TRAIL ), 
+ MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
+ MW("use_skip_hidden",  META_SKIP_HIDDEN ), 
+ MW("use_pre_unify",    META_ENABLE_PREUNIFY ), 
+ MW("use_cpreds",       META_ENABLE_CPREDS ), 
+ MW("use_do_unify",     META_DO_UNIFY ), 
+ MW("use_dra_interp",   DRA_CALL ), 
+ MW("use_undo",         META_ENABLE_UNDO ), 
+ MW("use_vmi",          META_ENABLE_VMI ), 
+
+ MW(NULL,                 0)
+};
+
+static unsigned int
+matts_flag_mask(atom_t key)
+{ matts_flag *index;
+
+  for(index=matts_flags; index->name; index++)
+  { if (!index->key) index->key = PL_new_atom(index->name);
+    if ( index->key == key )
+      return index->mask;
+  }
+
+  { GET_LD
+    term_t t;
+
+    return ( (t = PL_new_term_ref()) &&
+	     PL_put_atom(t, key) &&
+	     PL_domain_error("matts_flag_mask", t)
+	   );
+  }
+}
+
+
+int
+PL_get_integer_or_flag(term_t t, int *i)
+{ GET_LD
+  atom_t bitname;
+
+  if(PL_get_atom(t, &bitname))
+  { *i = matts_flag_mask(bitname);
+    return TRUE;
+  }
+  return PL_get_integer_ex(t, i);
+}
+
+int
+PL_unify_integer_or_flag(term_t t, int i)
+{ GET_LD
+  atom_t bitname;
+  if(PL_get_atom(t, &bitname))
+  { int value = matts_flag_mask(bitname);
+    return (value & i)==value;
+  }
+  return PL_unify_integer(t, i);
+}
+
+static
+PRED_IMPL("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINISTIC)
+{ PRED_LD
+  matts_flag *index, *next;
+
+  switch ( CTX_CNTRL )
+  { case FRG_FIRST_CALL:
+      { 
+        atom_t bt;
+        int value;
+      if ( PL_get_atom(A1, &bt) )
+      { return PL_unify_integer_or_flag(A2,matts_flag_mask(bt));
+      } else if ( PL_get_integer_or_flag(A2, &value) )
+      { 
+          for(index=matts_flags; index->name; index++)
+          { if (!index->key) index->key = PL_new_atom(index->name);
+            if ( index->mask == value )
+              return PL_unify_atom(A1,index->key);
+          }
+          return FALSE;
+      }
+      if(!PL_is_variable(A1)||!PL_is_variable(A2))
+         return FALSE;
+
+      index=matts_flags;
+      break;
+      }
+    case FRG_REDO:
+      { index = CTX_PTR;
+        if(!index) fail;
+        break;
+      }
+    case FRG_CUTTED:
+    default:
+      succeed;
+  }
+
+  next = index+1;
+
+  if ( next && next->name )
+    ForeignRedoPtr(next);
+
+  if ( !index->key )
+    index->key = PL_new_atom(index->name);
+
+  return PL_unify_atom(A1,index->key) && 
+    PL_unify_integer_or_flag(A2,index->mask);
+}
+
+
+
+
 static int put_attr(Word av, atom_t name, Word value, int backtrack_flags ARG_LD);
 void
 setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
@@ -237,7 +371,7 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  assert(!isRef(*value));
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
- if(!(flags& ATTV_ASSIGNONLY) && (flags& META_WAKEBINDS) )
+ if(!(flags& ATTV_ASSIGNONLY) && (flags& META_ONLY_WAKEBINDS) )
  { registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);
    return;
  }
@@ -1648,9 +1782,16 @@ setFlagOptions(int *flag, term_t opval, term_t new)
   { 
       int value;
 
-        if(!PL_get_integer_ex(new, &value)) return FALSE;
 
-        if(math==ATOM_bitor || math==ATOM_set)
+        if (PL_is_variable(new))
+        {
+           value = matts_flag_mask(math);
+           return PL_unify_integer_or_flag(new,was&value);
+        }
+
+        if(!PL_get_integer_or_flag(new, &value)) return FALSE;
+
+        if(math==ATOM_bitor || math==ATOM_set || math==ATOM_true)
         { *flag = was | value;
           return TRUE;
         }
@@ -1658,7 +1799,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
         { *flag = was & value;
           return TRUE;
         }
-        if(math==ATOM_tilde || math==ATOM_not_provable)
+        if(math==ATOM_tilde || math==ATOM_not_provable || math==ATOM_false)
         { *flag = was & ~value;
           return TRUE;
         }
@@ -1667,14 +1808,29 @@ setFlagOptions(int *flag, term_t opval, term_t new)
           return TRUE;
         }
 
+        int maskwas = matts_flag_mask(math);
+        if(maskwas)
+        {
+          return ((maskwas & was))==value;
+        }
+
         return PL_error(NULL, 0, "options_set_unset", ERR_DOMAIN, opval, "options_set_unset");
 
   } 
-  if ( !PL_unify_integer(opval, *flag) ) fail;
+  if ( !PL_unify_integer_or_flag(opval, *flag) ) fail;
   if ( PL_compare(opval,new) == CMP_EQUAL )
        return TRUE;
-  return PL_get_integer_ex(new, flag);
+  return PL_get_integer_or_flag(new, flag);
 }
+
+
+  /*
+    metaterm_flags(global,use_dra_interp, true),  non-backtracking
+
+    metaterm_flags(current,use_dra_interp, false),  backtracking
+
+    metaterm_flags(current,use_dra_interp, TF), gets the value -265
+  */
 
 static
 PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
@@ -2016,6 +2172,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
+  PRED_DEF("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
 #endif
 

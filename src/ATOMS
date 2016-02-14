@@ -805,6 +805,7 @@ F buffer		1
 F buffer_size		1
 F busy			2
 F call			1
+F call			2
 F call_continuation	1
 F catch			3
 F ceil			1
