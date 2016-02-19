@@ -35,8 +35,7 @@
 
 :- module(atts,[
       matts/0,
-      testfv/0, 
-      test/1,
+      testfv/0,
       w_debug/1,
       w_dmvars/1,
       w_hooks/1,
@@ -54,7 +53,7 @@
       matts/1,
       matts/2,
       meta_override/2,
-      meta_overriding/2,
+      datts_overriding/2,
     add_attribute/2,
     %add_attribute/3,
     get_attribute/2,
@@ -94,7 +93,10 @@ metaflag_set(V,F):-metaterm_flags(V,~,F).
 metaflag_get(Var,Get):- metaterm_flags(Var,Get,Get).
 
 :- meta_predicate('attribute'(:)).
-
+% :-'$set_source_module'(_,'atts').
+:-dynamic(was_access_level/1).
+:-current_prolog_flag(access_level,Was),asserta(was_access_level(Was)).
+:-set_prolog_flag(access_level,user).
 :- use_module(library(ordsets)).
 
 % auto-define attributes otherwise signal error is undeclared attributes are used
@@ -504,14 +506,12 @@ atts_put(PN,Var,_,(M:At)):- \+ meta_handler_name(M), !,atts_put(PN,Var,M,At).
 atts_put(PN,Var,M, Meta):- \+ \+ clause(M:meta_hook(Meta,_,_),_), !, forall(M:meta_hook(Meta,P,A),atts_put(PN,Var,M,P=A)).
 % =(+a,b) -->   +(A=B).
 atts_put(PN,Var,M, Pair):- compound(Pair),Pair=..[P,Arg1,Arg2],attsep(P),compound(Arg1),tst((Arg1=..List,append(Head,[Last],List),At=..[P,Last,Arg2],append(Head,[At],ListNew),Try=..ListNew,!,atts_put(PN,Var,M, Try))).
-atts_put(PN,Var,_, Hook):-  handler_fbs(+ Hook,Number), Number>0, !,PNHook=..[PN,Hook], put_datts(Var, PNHook).
 
-atts_put(PN,Var,M,Pair):- !,
+atts_put(PN,Var,M,Pair):- 
   atts_to_att(Pair,Tmpl),
-  update_hooks(PN,Var,M,Tmpl),
-   atts_exist(PN,Tmpl),
-   exec_atts_put(PN,Var,M,Tmpl).
-
+  update_hooks(PN,Var,M,Tmpl),!,
+  atts_exist(PN,Tmpl),
+  exec_atts_put(PN,Var,M,Tmpl).
 
 
 exec_atts_put(-,Var,M,Tmpl):-
@@ -538,9 +538,14 @@ atts_to_att(N=V,Tmpl):-!,assertion(atom(N)),!,Tmpl=..[N,V].
 atts_to_att(F/A,Tmpl):-!,assertion((atom(F),integer(A))),functor(Tmpl,F,A).
 atts_to_att(Tmpl,Tmpl).
 
-update_hooks(+,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
+
+update_hooks(PN,Var,_,Hook):-
+  ignore((handler_fbs(+ Hook,Number), Number>0, !,PNHook=..[PN,Hook], put_datts(Var, PNHook))),
+  update_hooks1(PN,Var,_,Hook).
+
+update_hooks1(+,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
    (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));put_attr(Var,'$atts',Number)))).
-update_hooks(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
+update_hooks1(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
    (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));put_attr(Var,'$atts',Number)))).
 
 handler_fbs(Hook,Number):- notrace(catch(fbs_to_number(Hook,Number),_,Number=0)).
@@ -743,7 +748,7 @@ matts:-get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]).
 debug_hooks(true):-!, matts(+debug_hooks+debug_extreme).
 debug_hooks(_):- matts(-debug_hooks-debug_extreme).
 
-%%    meta_overriding(AttVar,BitsOut)
+%%    datts_overriding(AttVar,BitsOut)
 %
 % Get matts properties
 %
@@ -774,7 +779,7 @@ has_hooks(AttVar):-wno_hooks(get_attr(AttVar,'$meta',_)).
 %
 % Create new matts with a given set of Overrides
 
-new_meta(Bits,AttVar):-notrace((put_atts(AttVar,'$meta',Bits))).
+new_meta(Bits,AttVar):-notrace((put_atts(AttVar,'$meta':Bits))).
 
 
 nb_extend_list(List,E):-arg(2,List,Was),nb_setarg(2,List,[E|Was]).
@@ -822,6 +827,7 @@ fbs_to_number(-(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(~(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number( \ (Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(bit(Bit),VVV):- number(Bit),!,VVV is 2 ^ (Bit).
+fbs_to_number((Name),VVV):-   matts_flag_mask(Name,VVV),!.
 fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,Name=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,override(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number(override(Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
@@ -875,27 +881,27 @@ wno_hooks(Goal):-  metaflag_set(current,0x0800),Goal.
 wno_debug(Goal):-  get_metaflags(W), T is W /\ \ 0x100000, while_goal(set_metaflags(T),Goal,set_metaflags(W)).
 w_debug(Goal):-  get_metaflags(W),T is W  \/ 0x100000 , while_goal(set_metaflags(T),Goal,set_metaflags(W)).
 
-testfv:-forall(test(T),dmsg(passed(T))).
+testfv:-forall(test1(T),dmsg(passed(T))).
 
 
 a1:verify_attributes(_,_,[]).
 a2:verify_attributes(_,_,[]).
 a3:verify_attributes(_,_,[]).
 
-test(cmp_fbs_variants0):- put_atts(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
-test(cmp_fbs_variants0a):- put_attr(X,a1,1),put_attr(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
+test1(cmp_fbs_variants0):- put_atts(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
+test1(cmp_fbs_variants0a):- put_attr(X,a1,1),put_attr(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
 
-test(cmp_fbs_variants1):-
+test1(cmp_fbs_variants1):-
   put_attr(X,a1,1),put_attr(X,a2,2),put_attr(X,'$atts',1),
   put_attr(Y,'$atts',1),put_attr(Y,a1,1),put_attr(Y,'$atts',1),
    wi_atts(+variant,X=@=Y).
 
-test(cmp_fbs_variants2):-
+test1(cmp_fbs_variants2):-
  put_attr(X,a1,1),put_attr(X,a2,2),
  meta_override(X,+variant),
  meta_override(Y,+variant),X=@=Y.
 
-test(cmp_fbs_variants3):-
+test1(cmp_fbs_variants3):-
  put_attr(X,'$atts',1),
  put_attr(Y,'$atts',1),
    wi_atts(+variant,X=@=Y).
@@ -944,6 +950,8 @@ system:pointers(X,Y):- dmsg(pointers(X,Y)).
 :- nb_setval('$meta',true).
 '$meta':verify_attributes(_,_,[]).
 '$atts':verify_attributes(_,_,[]).
+'$meta':attr_unify_hook(_,_).
+'$atts':attr_unify_hook(_,_).
 
 % ?-put_atts(X,'$undo_unify'(_)=true(_)),meta_overriding(X,'$undo_unify',_).
 
@@ -985,6 +993,7 @@ wd(X):-  prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_VMI'), call_cleanup(X,wd)
 
 % put_att_value(&gp[1],ATOM_true,makeRefL( valTermRef(id)));
 
+:-module_transparent(export_all/0).
 export_all:- source_location(S,_),prolog_load_context(module,M),
  forall(source_file(M:H,S),
  ignore((functor(H,F,A),M\=vn,
@@ -1011,6 +1020,10 @@ tCC:attr_undo_hook(Var, Attr, Value) :- dmsg(tCC:attr_undo_hook(Var, Attr, Value
 system:va(X):- put_attr(X,tAA,'AAA').
 system:vb(X):- put_attr(X,tBB,'BBB').
 system:vc(X):- put_attr(X,tCC,'CCC').
+
+:-retract(was_access_level(Was)),set_prolog_flag(access_level,Was).
+
+:- export_all.
 
 end_of_file.
 

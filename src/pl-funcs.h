@@ -51,6 +51,9 @@ COMMON(bool)  isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD)
 COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
+
+COMMON(int) 	metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD );
+
 #endif
 
 #ifdef O_DRA_TABLING

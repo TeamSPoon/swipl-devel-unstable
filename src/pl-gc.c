@@ -1279,6 +1279,10 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
   int assignments = 0;
   Word gKeep = (LD->frozen_bar > m->globaltop ? LD->frozen_bar : m->globaltop);
 
+#ifdef O_UNDO_HOOK
+       if(!metaterm_did_undo("GCTrailEntry", te, 0, 0  PASS_LD))   ;
+#endif
+
   for( ; te >= tm; te-- )		/* early reset of vars */
   {
 #if O_DESTRUCTIVE_ASSIGNMENT
@@ -1286,7 +1290,11 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
     { Word tard = val_ptr(te[-1].address);
 
       if ( tard >= top || (tard >= gKeep && tard < gMax) )
-      { te->address = 0;
+      {
+#ifdef O_UNDO_HOOK
+       if(!metaterm_did_undo("te-tard", te, 0, tard  PASS_LD))   ;
+#endif
+        te->address = 0;
 	te--;
 	te->address = 0;
 	trailcells_deleted += 2;
@@ -1305,13 +1313,15 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
 
 	  mark_variable(gp PASS_LD);
 	  assert(is_marked(gp));
-	}
+    }
 
 	assignments++;
 	te--;
       } else
       { Word gp = val_ptr(te->address);
-
+#ifdef O_UNDO_HOOK
+          if(!metaterm_did_undo("Early reset", te, 0, gp  PASS_LD))   ;
+#endif
 	DEBUG(MSG_GC_RESET,
 	      char b1[64]; char b2[64]; char b3[64];
 	      Sdprintf("Early reset of assignment at %s (%s --> %s)\n",
@@ -1320,6 +1330,8 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
 		       print_val(*gp, b3)));
 
 	assert(onGlobal(gp));
+
+
 	*tard = *gp;
 	unmark(tard);
 
@@ -2356,6 +2368,9 @@ untag_trail(ARG1_LD)
   for(te = tBase; te < tTop; te++)
   { if ( te->address )
     { word mask = ttag(te->address);
+#ifdef O_UNDO_HOOK
+      if(!metaterm_did_undo("untag", te, 0, te->address PASS_LD));
+#endif      
 
       te->address = (Word)((word)valPtr((word)te->address)|mask);
 #ifdef O_ATTVAR
