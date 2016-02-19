@@ -1726,7 +1726,8 @@ struct gc_trail_entry
 #define Undo(b)		do { TrailEntry tt = tTop; \
 			     TrailEntry mt = (b).trailtop; \
 			     while(tt > mt) \
-			     { tt--; \
+			     { Word p = tt->address; tt--; \
+                   if("MARK/UNDO",metaterm_did_undo(tt, 0, p PASS_LD)); \
 			       setVar(*tt->address); \
 			     } \
 			     tTop = tt; \

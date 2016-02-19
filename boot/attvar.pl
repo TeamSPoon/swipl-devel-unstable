@@ -87,26 +87,9 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         post_unify(Rest, Next, Var, Value).
-system:post_unify(_,Next,Var,Value):- Var==Value, call(Next).
+system:post_unify(_,Next,_Var,_Value):- % Var=@=Value,
+        call(Next).
 
-
-
-         /**************
-         *  UNDO HOOK  *
-         **************/
-/*    
-    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.  % prints: before,1,2
-    BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail. % crashes ssytem
-*/
-system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
-
-:- meta_predicate(system:undo(:)).
-system:undo(Goal):-        
-        metaterm_flags(current,_,0x8000),
-        put_attr(Var,'$undo_unify',Goal),
-        % trace, notrace,
-        '$trail_assignment'(Var),
-        attv_unify(Var,Goal).
 
 
                  /*******************************
@@ -401,9 +384,6 @@ system:peer_unify(att(Module, _AttVal, Rest), Next, Var, Value,(goals_with_modul
 	system:peer_unify(Rest, Next, Var, Value, G).
 
 system:peer_unify(_,Next,_, _, Next).
-
-
-
 
 %%	wakeup(+Var, +NextOnChain, +Value)
 %

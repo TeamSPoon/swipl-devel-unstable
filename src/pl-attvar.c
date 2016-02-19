@@ -219,15 +219,7 @@ matts_flag_mask(atom_t key)
     if ( index->key == key )
       return index->mask;
   }
-
-  { GET_LD
-    term_t t;
-
-    return ( (t = PL_new_term_ref()) &&
-	     PL_put_atom(t, key) &&
-	     PL_domain_error("matts_flag_mask", t)
-	   );
-  }
+  return 0;
 }
 
 
@@ -237,10 +229,12 @@ PL_get_integer_or_flag(term_t t, int *i)
   atom_t bitname;
 
   if(PL_get_atom(t, &bitname))
-  { *i = matts_flag_mask(bitname);
+  { int value = matts_flag_mask(bitname);
+    if(!value) return FALSE;
+    *i = value;
     return TRUE;
   }
-  return PL_get_integer_ex(t, i);
+  return PL_get_integer(t, i);
 }
 
 int
@@ -249,13 +243,13 @@ PL_unify_integer_or_flag(term_t t, int i)
   atom_t bitname;
   if(PL_get_atom(t, &bitname))
   { int value = matts_flag_mask(bitname);
-    return (value & i)==value;
+    if(value) return (value & i)==value;
   }
   return PL_unify_integer(t, i);
 }
 
 static
-PRED_IMPL("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINISTIC)
+PRED_IMPL("matts_flag_mask", 2, matts_flag_mask, PL_FA_NONDETERMINISTIC)
 { PRED_LD
   matts_flag *index, *next;
 
@@ -265,8 +259,11 @@ PRED_IMPL("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINIS
         atom_t bt;
         int value;
       if ( PL_get_atom(A1, &bt) )
-      { return PL_unify_integer_or_flag(A2,matts_flag_mask(bt));
-      } else if ( PL_get_integer_or_flag(A2, &value) )
+      { int value = matts_flag_mask(bt);
+        return value && PL_unify_integer(A2, value);
+      } if(!PL_is_variable(A1)) return FALSE;
+
+      if ( PL_get_integer(A2, &value) )
       { 
           for(index=matts_flags; index->name; index++)
           { if (!index->key) index->key = PL_new_atom(index->name);
@@ -274,16 +271,13 @@ PRED_IMPL("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINIS
               return PL_unify_atom(A1,index->key);
           }
           return FALSE;
-      }
-      if(!PL_is_variable(A1)||!PL_is_variable(A2))
-         return FALSE;
+      } if(!PL_is_variable(A2)) return FALSE;
 
       index=matts_flags;
       break;
       }
     case FRG_REDO:
       { index = CTX_PTR;
-        if(!index) fail;
         break;
       }
     case FRG_CUTTED:
@@ -291,16 +285,18 @@ PRED_IMPL("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINIS
       succeed;
   }
 
-  next = index+1;
-
-  if ( next && next->name )
-    ForeignRedoPtr(next);
+  if(!index) fail;
 
   if ( !index->key )
     index->key = PL_new_atom(index->name);
 
-  return PL_unify_atom(A1,index->key) && 
-    PL_unify_integer_or_flag(A2,index->mask);
+  int rc = PL_unify_atom(A1,index->key) && 
+    PL_unify_integer(A2,index->mask);
+
+  next = index+1;
+  if ( next && next->name )
+    ForeignRedoPtr(next);
+  return rc;
 }
 
 
@@ -1782,11 +1778,11 @@ setFlagOptions(int *flag, term_t opval, term_t new)
   { 
       int value;
 
-
         if (PL_is_variable(new))
         {
            value = matts_flag_mask(math);
-           return PL_unify_integer_or_flag(new,was&value);
+
+           if(value) return PL_unify_integer_or_flag(new,was&value);
         }
 
         if(!PL_get_integer_or_flag(new, &value)) return FALSE;
@@ -1813,9 +1809,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
         {
           return ((maskwas & was))==value;
         }
-
-        return PL_error(NULL, 0, "options_set_unset", ERR_DOMAIN, opval, "options_set_unset");
-
+        return  PL_domain_error("matts_flag_or_math", opval);
   } 
   if ( !PL_unify_integer_or_flag(opval, *flag) ) fail;
   if ( PL_compare(opval,new) == CMP_EQUAL )
@@ -2172,7 +2166,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
-  PRED_DEF("current_metaflag_mask", 2, current_metaflag_mask, PL_FA_NONDETERMINISTIC)
+  PRED_DEF("matts_flag_mask", 2, matts_flag_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
 #endif
 

@@ -1224,6 +1224,64 @@ reclaim_attvars(Word after ARG_LD)
       LD->attvar.attvars = unRef(w);
   }
 }
+
+int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD) 
+{ //if(!actuallyDoit)return FALSE;
+
+  DEBUG(MSG_METATERM, Sdprintf("\nUNDO: %s\n", where));
+  if(!actuallyDoit)return FALSE;
+  if(!isTrailVal(p))
+  {
+    return FALSE;
+  }
+  word older = trailVal(p);
+  if ( !isAttVar(older) ) return FALSE;
+
+  int rc = FALSE;
+
+  Word location = tt->address;
+  word newer = *location;
+
+  if(actuallyDoit)
+  {
+    rc = TRUE;
+    *location = older;
+  } 
+  else
+  {
+    DEBUG(MSG_METATERM, Sdprintf("Dont actually UNDO "));
+    return FALSE;
+  }
+
+  if(! LD->attvar.metaterm_opts) return FALSE;
+  //if(isVar(LD->attvar.metaterm_opts)) return FALSE;
+
+  Word unused;
+
+  if ( !find_attr(location, ATOM_dundo_unify, &unused PASS_LD) )
+    return rc;
+
+  if ( ! LD->attvar.metaterm_opts || !(META_ENABLE_UNDO & METATERM_ENABLED) )
+  {
+    DEBUG(MSG_METATERM, Sdprintf("ERROR: UNDO SKIPPED! "));
+    return rc;
+  }
+
+  DEBUG(MSG_METATERM, Sdprintf("UNDO-ing\n"));
+  if ( !metatermOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD) )
+  {
+    DEBUG(MSG_METATERM, Sdprintf("UNDO FAILED"));
+  } else
+  {
+    DEBUG(MSG_METATERM, Sdprintf("UNDO SUCCEED"));
+  }
+    
+  /* DM:  I would have prefered to...
+      scheduleWakeup(newer, TRUE PASS_LD); <- problem was the when wakeups ran 'newer's inner arguments are already gone (untrailed)
+    Slightly confused why this doesnt happen to the metatermOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */
+  return rc;
+}
+
 #endif
 
 
@@ -1239,22 +1297,7 @@ __do_undo(mark *m ARG_LD)
     { DEBUG(2, Sdprintf("Undoing a trailed assignment\n"));
       tt--;
 #ifdef O_UNDO_HOOK
-     if(META_ENABLE_UNDO & METATERM_ENABLED)
-     { Word unused;
-       word older = trailVal(p);
-       Word location = tt->address;
-       word newer = *location;
-       *location = older; 
-       if(isAttVar(older) && find_attr(location, ATOM_dundo_unify, &unused PASS_LD))
-       { DEBUG(MSG_METATERM, Sdprintf("UNDO-ing\n"));
-         if(!metatermOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD))
-         { DEBUG(MSG_METATERM, Sdprintf("UNDO FAILED"));
-         }
-        /* DM:  I would have prefered to...
-            scheduleWakeup(newer, TRUE PASS_LD); <- problem was the when wakeups ran 'newer's inner arguments are already gone (untrailed)
-          Slightly confused why this doesnt happen to the metatermOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */      
-      }
-     } else
+       if(!metaterm_did_undo("_do_undo",tt, 1, p PASS_LD))   
 #endif
       *tt->address = trailVal(p);
       DEBUG(CHK_SECURE,

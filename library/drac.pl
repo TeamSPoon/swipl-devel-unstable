@@ -1,3 +1,5 @@
+end_of_file.
+
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
@@ -28,20 +30,49 @@
     the GNU General Public License.
 
 */
+
+ 
+   % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %                                                                      %
+   %  COPYRIGHT (2009) University of Dallas at Texas.                     %
+   %                                                                      %
+   %  Developed at the Applied Logic, Programming Languages and Systems   %
+   %  (ALPS) Laboratory at UTD by Feliks Kluzniak.                        %
+   %                                                                      %
+   %  Permission is granted to modify this file, and to distribute its    %
+   %  original or modified contents for non-commercial purposes, on the   %
+   %  condition that this notice is included in all copies in its         %
+   %  original form.                                                      %
+   %                                                                      %
+   %  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     %
+   %  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES     %
+   %  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND     %
+   %  NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR        %
+   %  ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR       %
+   %  OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING    %
+   %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
+   %  OTHER DEALINGS IN THE SOFTWARE.                                     %
+   %                                                                      %
+   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 :-module('$drac',[
-        /*  dra_call_interp/1,
+          dra_call_interp/1,
           dra_call_tabled/1,
           dra_call_coind0/1,
           dra_call_coind1/1,
+					essence_hook/2,
           get_all_tabled_goals/1,
           cont_dra_call/0,
           exit_dra_call/0,
           init_dra_call/0,
           process_dra_ective/1,
+					(table)/1,
+				  (coinductive0)/1,
+				  (coinductive1)/1,
           (tnot)/1,
           initialise/0,
           print_tables/0,
-         */
+
 
           op( 1010, fy, 'table'  ),    % allow  " table p/k ,"
           op( 1010, fy, 'old_first'  ),    % allow  " old_first p/k ,"
@@ -51,7 +82,11 @@
           op( 1010, fy, 'hilog'   ),    % allow  " hilog  p/k ,"
           op( 910,  fy, 'tnot'  )    % allow  "?- tnot  p(_) ,"
 ]).
-/** Module 
+
+ 
+/** Module $drac - Tabling by Dynamic Ordering of Alternatives
+
+   BEGIN README.md
 
    General description
    -------------------
@@ -72,7 +107,7 @@
          Please note that "goal" means a goal instance.
 
        - By default, new answers for a tabled goal will be produced before
-         old answers.  The user can reverse the order by means of an "old_first"
+         old answers.  The user can reverse the order by means of an ":- old_first p/1"
          directive.
 
          Here, "new answer for a tabled goal" means an answer that has not yet
@@ -124,15 +159,175 @@
    "coinductive".
 
 
-   Limitations
+   Old Limitations
    -----------
 
-   The interpreted program must not contain cuts.  It also must not contain
-   calls to built-in-predicates, except for the handful of predicates listed in
-   is_never_tabled/1 below.  (This list can be easily extended as the need arises.  Some
-   built-in predicates, however, cannot be added without modifying the
-   interpreter, sometimes extensively: "!/0" is a good example.)
+   The OLD interpreted program could not contain cuts. This version might be able to.
 
+
+   NOTEs:
+   -----------
+ 
+    1.  `:- use_module(library(dra))`.
+
+ 
+    2. The interpreter supports a number of directives:
+ 
+       a) Tabled and coinductive predicates should be declared as such in
+          the program file, e.g.,
+              :-table       ancestor/2.
+              :-coinductive0  comember/2.
+              :-coinductive1 comember/2.
+ 
+          "coinductive1" means that if there are coinductive hypotheses
+          with which a goal unifies, then the usual clauses will not be tried
+          after the hypotheses are exhausted (this is "new style"
+          coinduction).
+ 
+       b) To include files use the usual Prolog syntax:
+              :-[ file1, file2, ... ].
+ 
+       c) To declare predicates used in an interpreted program as dynamic,
+          use
+              :-dynamic p/k.
+ 
+       d) By default, a goal produces new (i.e., heretofore unknown) answers
+          before producing old ones.  To reverse this behaviour, use
+ 
+              :-old_first p/k.
+          or
+              :-old_first all.
+ 
+       e) To produce a wallpaper traces use the traces directive. For example,
+ 
+              :-traces p/3, q/0, r/1.
+ 
+          will traces predicates "p/3", "q/0" and "r/1".  If you want to traces
+          everything, use
+ 
+              :-traces all.
+ 
+          These directives are cumulative.
+ 
+       f) To print out subsets of the current answer table, use
+ 
+              :-answers( Goal, Pattern ).
+ 
+          this will print all tabled answers that are associated with a
+          variant of Goal and unifiable with Pattern.
+          To get a dump of the entire table, use just
+ 
+              :-answers( _, _ ).
+ 
+    2. The program should contain no other directives. It may, however,
+       contain queries, which will be executed immediately upon reading.
+ 
+    3. Just before the result of a query is reported, the interpreter
+       produces a printout with statistics accummulated since the previous
+       printout (or since the beginning, if this is the first printout during
+       this session with the interpreted program). The printout looks like
+       this:
+ 
+           [K steps, M new answers tabled (N in all)]
+ 
+       where K, M and N are some natural numbers. K is the number of
+       evaluated goals, M is the number of new additions to the answer table,
+       N is the current size of the answer table.
+ 
+    4. If the program invokes a built-in predicate, that predicate must
+       be declared in the table "is_never_tabled/1" (see file "dra_builtins.pl").
+       Every addition should be considered carefully: some built-ins might
+       require special treatment by the interpreter.
+ 
+    5. The program may contain clauses that modify the definition of the
+       interpreter''s predicate "essence_hook/2" (the clauses will be asserted
+       at the front of the predicate, and will thus override the default
+       definition for some cases).  The default definition is
+ 
+          essence_hook( T, T ).
+ 
+       This predicate is invoked _in certain contexts_ when:
+          - two terms are about to be compared (either for equality or to
+            check whether they are variants of each other);
+          - an answer is tabled;
+          - an answer is retrieved from the table.
+ 
+       The primary intended use is to suppress arguments that carry only
+       administrative information and that may differ in two terms that are
+       "semantically" equal or variants of each other. (Such, for example, is
+       the argument that carries the set of coinductive hypotheses in a
+       co-logic program translated into Prolog: see "../coind/translate_clp".
+       Mind you, that translation need not be applied to programs executed by
+       this interpreter).
+ 
+       For example, the presence of
+ 
+          essence_hook( p( A, B, _ ),  p( A, B ) ).
+ 
+       will result in "p( a, b, c )" and "p( a, b, d )" being treated as
+       identical, as each of them will be translated to "p( a, b )" before
+       comparison.
+ 
+       NOTE: This facility should be used with the utmost caution, as it
+             may drastically affect the semantics of the interpreted program
+             in a fashion that would be hard to understand for someone who
+             does not understand the details of the interpreter.
+
+ 
+     The top level notes "never_tabled" declarations in the table "is_never_tabled".
+        For example,
+ 
+            :-never_tabled p/1, q/2.
+ 
+        will be stored as
+ 
+            is_never_tabled( p( _ ) ).
+            is_never_tabled( q( _, _ ) ).
+ 
+        The intended meaning is that "never_tabled" predicates do not make use
+        (directly or indirectly) of the special features provided by the
+        metainterpreter, so their invocations can be handled just by handing
+        them over to Prolog (which would presumably speed up the computation).
+ 
+ 
+     The metainterpreter should provide the following predicates
+        ("hooks") that will be called by the top level:
+ 
+           - is_cut_ok/1:
+                  Defines patterns for built-in predicates from the host
+                  system that can may contain cuts without damaging semantics.
+                  For example, to allow dra_w/2, declare:
+                      :- is_cut_ok( dra_w( _, _ ) ).
+ 
+           - initialise/0:
+                  This will be called before loading a new program,
+                  giving the metainterpreter an opportunity to
+                  (re)initialise its data structures.
+ 
+           - legal_directive/1:
+                  Whenever the top level encounters a directive
+                  (of the form ":-D."), it will call "legal_directive( D )".
+                  If the call succeeds, the interpreter will be given
+                  a chance to process the directive (see below), otherwise
+                  the directive will be ignored (with a suitable warning).
+ 
+           - process_dra_ective/1:
+                  Whenever the top level encounters a legal directive
+                  ":-D" (see above), it invokes "process_dra_ective( D )"
+                  to give the interpreter a chance to act upon the
+                  directive.
+ 
+           - dra_call_interp/1:
+                  This would be the main entry point of the metainterpreter.
+                  Whenever the top level encounters a query (of the form
+                  "?- Q."), it will display the query and then call
+                  "dra_call_interp( Q )".  Depending on the result, it will then
+                  display "No", or "Yes" (preceded by a display of bindings
+                  acquired by the variables occurring in "Q"); in the latter
+                  case it will also backtrack to obtain more solutions.
+
+
+   END README.md
 
 
    Data structures
@@ -146,10 +341,10 @@
    The tables (implemented as dynamic predicates of Prolog) are:
 
 
+   -- is_tabled( generic head )
    -- is_coinductive0( generic head )
    -- is_coinductive1( generic head )
-   -- is_tabled( generic head )
-   -- is_old_first( generic head )
+	 -- is_old_first( generic head )
 
            Each of these tables contains an entry for each predicate that has
            been declared as having the corresponding property (i.e., as
@@ -254,15 +449,6 @@
 
            Please note that two different entries in "answer" will not be
            variants of each other.
-
-   -- number_of_answers
-
-           This is a non-logical variable that records the size of "answer".  It
-           is useful for determining whether new answers have been generated
-           during a phase of the computation.
-
-           This variable is not cleared before the evaluation of a new query.
-
 
    -- pioneer( goal, index )
 
@@ -402,6 +588,12 @@
            )
 
 
+     
+   Profiling below is not part of the tabling system
+   -----------------------------------------------------
+
+
+
    -- is_traced( goal )
 
            A goal that matches something in this table will show up on the
@@ -409,9 +601,9 @@
            by invocations of "traces" (most often in "traces" directives
            encountered when the interpreted program is being read).
 
-   -- step_counter
+  -- step_counter
 
-           This is a non-logical variable that keeps track of the number of
+           This is a profiling non-logical variable that keeps track of the number of
            goals resolved during the evaluation of each query.  The final value
            is printed after the query terminates.
 
@@ -419,210 +611,23 @@
 
    -- old_table_size
 
-           This is a non-logical variable that is used to store the value of
+           This is a profiling non-logical variable that is used to store the value of
            "number_of_answers" before the evaluation of a query.  Used to
            produce automatic information about the growth of the table after the
            query terminates.
 
            The variable is reinitialized before the evaluation of a new query.
 
+   -- number_of_answers
 
-  NOTE:
- 
-    1. See ../general/top_level.ecl for a description of how to load
-       and run programs.
-       Please note that in Eclipse after loading this interpreter you
-       should issue
-            :-import dra.
-       if you don't want to keep writing
-            dra:prog( filename )
-       every time.
- 
-    2. The interpreter supports a number of directives:
- 
-       a) Tabled and coinductive predicates should be declared as such in
-          the program file, e.g.,
-              :-table       ancestor/2.
-              :-coinductive0  comember/2.
-              :-coinductive1 comember/2.
- 
-          "coinductive1" means that if there are coinductive hypotheses
-          with which a goal unifies, then the usual clauses will not be tried
-          after the hypotheses are exhausted (this is "new style"
-          coinduction).
- 
-       b) To include files use the usual Prolog syntax:
-              :-[ file1, file2, ... ].
- 
-       c) To declare predicates used in an interpreted program as dynamic,
-          use
-              :-dynamic p/k.
- 
-       d) By default, a goal produces new (i.e., heretofore unknown) answers
-          before producing old ones.  To reverse this behaviour, use
- 
-              :-old_first p/k.
-          or
-              :-old_first all.
- 
-       e) To produce a wallpaper traces use the traces directive. For example,
- 
-              :-traces p/3, q/0, r/1.
- 
-          will traces predicates "p/3", "q/0" and "r/1".  If you want to traces
-          everything, use
- 
-              :-traces all.
- 
-          These directives are cumulative.
- 
-       f) To print out subsets of the current answer table, use
- 
-              :-answers( Goal, Pattern ).
- 
-          this will print all tabled answers that are associated with a
-          variant of Goal and unifiable with Pattern.
-          To get a dump of the entire table, use just
- 
-              :-answers( _, _ ).
- 
-    2. The program should contain no other directives. It may, however,
-       contain queries, which will be executed immediately upon reading.
- 
-    3. Just before the result of a query is reported, the interpreter
-       produces a printout with statistics accummulated since the previous
-       printout (or since the beginning, if this is the first printout during
-       this session with the interpreted program). The printout looks like
-       this:
- 
-           [K steps, M new answers tabled (N in all)]
- 
-       where K, M and N are some natural numbers. K is the number of
-       evaluated goals, M is the number of new additions to the answer table,
-       N is the current size of the answer table.
- 
-    4. If the program invokes a built-in predicate, that predicate dra_must
-       be declared in the table "is_never_tabled/1" (see file "dra_builtins.pl").
-       Every addition should be considered carefully: some built-ins might
-       require special treatment by the interpreter.
- 
-    5. The program may contain clauses that modify the definition of the
-       interpreter's predicate "essence_hook/2" (the clauses will be asserted
-       at the front of the predicate, and will thus override the default
-       definition for some cases).  The default definition is
- 
-          essence_hook( T, T ).
- 
-       This predicate is invoked _in certain contexts_ when:
-          - two terms are about to be compared (either for equality or to
-            check whether they are variants of each other);
-          - an answer is tabled;
-          - an answer is retrieved from the table.
- 
-       The primary intended use is to suppress arguments that carry only
-       administrative information and that may differ in two terms that are
-       "semantically" equal or variants of each other. (Such, for example, is
-       the argument that carries the set of coinductive hypotheses in a
-       co-logic program translated into Prolog: see "../coind/translate_clp".
-       Mind you, that translation need not be applied to programs executed by
-       this interpreter).
- 
-       For example, the presence of
- 
-          essence_hook( p( A, B, _ ),  p( A, B ) ).
- 
-       will result in "p( a, b, c )" and "p( a, b, d )" being treated as
-       identical, as each of them will be translated to "p( a, b )" before
-       comparison.
- 
-       NOTE: This facility should be used with the utmost caution, as it
-             may drastically affect the semantics of the interpreted program
-             in a fashion that would be hard to understand for someone who
-             does not understand the details of the interpreter.
+           This is a profiling non-logical variable that records the size of "answer".  It
+           is useful for determining whether new answers have been generated
+           during a phase of the computation.
 
- 
-     The top level notes "never_tabled" declarations in the table "is_never_tabled".
-        For example,
- 
-            :-never_tabled p/1, q/2.
- 
-        will be stored as
- 
-            is_never_tabled( p( _ ) ).
-            is_never_tabled( q( _, _ ) ).
- 
-        The intended meaning is that "never_tabled" predicates do not make use
-        (directly or indirectly) of the special features provided by the
-        metainterpreter, so their invocations can be handled just by handing
-        them over to Prolog (which would presumably speed up the computation).
- 
-        Please note that the never_tabled predicates (which should be defined in
-        files mentioned in ":-load_is_support( filename )." directives) are
-        compiled into the module "never_tabled" (unless they are defined within
-        other modules).
- 
- 
-     The metainterpreter should provide the following predicates
-        ("hooks") that will be called by the top level:
- 
-           - is_cut_ok/1:
-                  Defines patterns for built-in predicates from the host
-                  system that can may contain cuts without damaging semantics.
-                  For example, to allow dra_w/2, declare:
-                      is_cut_ok( dra_w( _, _ ) ).
- 
-           - initialise/0:
-                  This will be called before loading a new program,
-                  giving the metainterpreter an opportunity to
-                  (re)initialise its data structures.
- 
-           - legal_directive/1:
-                  Whenever the top level encounters a directive
-                  (of the form ":-D."), it will call "legal_directive( D )".
-                  If the call succeeds, the interpreter will be given
-                  a chance to process the directive (see below), otherwise
-                  the directive will be ignored (with a suitable warning).
- 
-           - process_dra_ective/1:
-                  Whenever the top level encounters a legal directive
-                  ":-D" (see above), it invokes "process_dra_ective( D )"
-                  to give the interpreter a chance to act upon the
-                  directive.
- 
-           - dra_call_interp/1:
-                  This would be the main entry point of the metainterpreter.
-                  Whenever the top level encounters a query (of the form
-                  "?- Q."), it will display the query and then call
-                  "dra_call_interp( Q )".  Depending on the result, it will then
-                  display "No", or "Yes" (preceded by a display of bindings
-                  acquired by the variables occurring in "Q"); in the latter
-                  case it will also backtrack to obtain more solutions.
- 
-
+           This variable is not cleared before the evaluation of a new query.
 */
 
-   % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-   %                                                                      %
-   %  COPYRIGHT (2009) University of Dallas at Texas.                     %
-   %                                                                      %
-   %  Developed at the Applied Logic, Programming Languages and Systems   %
-   %  (ALPS) Laboratory at UTD by Feliks Kluzniak.                        %
-   %                                                                      %
-   %  Permission is granted to modify this file, and to distribute its    %
-   %  original or modified contents for non-commercial purposes, on the   %
-   %  condition that this notice is included in all copies in its         %
-   %  original form.                                                      %
-   %                                                                      %
-   %  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,     %
-   %  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES     %
-   %  OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND     %
-   %  NON-INFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR        %
-   %  ANYONE DISTRIBUTING THE SOFTWARE BE LIABLE FOR ANY DAMAGES OR       %
-   %  OTHER LIABILITY, WHETHER IN CONTRACT, TORT OR OTHERWISE, ARISING    %
-   %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
-   %  OTHER DEALINGS IN THE SOFTWARE.                                     %
-   %                                                                      %
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % :-shell(cls).
 :-'$set_source_module'(_,'$drac').
 :-dynamic(was_access_level/1).
@@ -631,6 +636,14 @@
 :-meta_predicate dra_asserta_new(:).
 :-meta_predicate dra_retract_all(:).
 :-meta_predicate dra_must(0).
+
+:- if(\+ current_predicate(system:'$exit_dra'/0)).
+
+system:'$exit_dra'.
+system:'$enter_dra'.
+
+:- endif.
+
 
 
 std_trace_stream(user_error).
@@ -643,32 +656,40 @@ dra_must((G1,G2)):- !, dra_must(G1),dra_must(G2).
 dra_must(G):-G *->true;dra_error(failed_dra_must(G)).
 dra_error(W):-throw(dra_error(W)).
 
-% BREAKS THINGS :- meta_predicate(add_clauses(0)).
-:- module_transparent(add_clauses/1).
-add_clauses(_G):- current_prolog_flag(xref, true),!.
-add_clauses(G):- predicate_property(G,dynamic),!,dra_asserta_new(G).
-add_clauses(G):- predicate_property(G,static),!,compile_aux_clauses(G).
-add_clauses(G):- compile_aux_clauses(G).
+% BREAKS THINGS :- meta_predicate(add_clauses(:,0)).
+:- module_transparent(add_clauses/2).
+add_clauses(_,_):- current_prolog_flag(xref, true),!.
+add_clauses(H,B):- predicate_property(H,dynamic),!,dra_asserta_new((H:-B)).
+add_clauses(H,B):- predicate_property(H,number_of_clauses(_)), ( \+ \+ clause(H,B)),!.
+add_clauses(H,B):- predicate_property(H,static),!,directive_source_file(File),'$compile_aux_clauses'([(H:-B)], File).
+add_clauses(H,B):- predicate_property(H,undefined), \+ source_location(_,_), !,dra_asserta_new((H:-B)).
+add_clauses(H,B):- directive_source_file(File),'$compile_aux_clauses'([(H:-B)], File).
 
+directive_source_file(File):-prolog_load_context(source,File),!.
+directive_source_file(File):-prolog_load_context(module,File),!.
 
 property_pred((table),is_tabled).
+property_pred(coinductive0,is_coinductive0).
+property_pred(coinductive1,is_coinductive1).
 property_pred((traces),is_traced).
 property_pred(cut_ok,is_cut_ok).
 property_pred(old_first,is_old_first).
-property_pred(coinductive0,is_coinductive0).
-property_pred(coinductive1,is_coinductive1).
 property_pred(never_tabled,is_never_tabled).
 property_pred(hilog,is_hilog).
+property_pred(topl,is_traced).
 
+table(Mask):- process_dra_ective(table(Mask)).
+coinductive0(Mask):-process_dra_ective(coinductive0(Mask)).
+coinductive1(Mask):-process_dra_ective(coinductive1(Mask)).
 
-:-forall(property_pred(D,F) ,
-   ((DG=..[D,_],
-    M = system,
-    module_transparent(M:D/1),
-    add_clauses(( M:DG :- process_dra_ective(DG))), 
+make_db_pred(D,F):-
+    DG=..[D,_],
+    (predicate_property(M:DG,_)->true;(predicate_property(DG,imported_from(M))->true;M=system)),
+    module_transparent(M:DG), add_clauses(M:DG , process_dra_ective(DG)), 
    ( \+ current_op(_,fy,user:D) -> op(1010,fy,user:D) ; true), 
-    multifile(F/1)))).
+    multifile(F/1).
 
+:-forall(property_pred(D,F) , make_db_pred(D,F)).
 
 % ON :-initialization( profiler(_,walltime) ).
 % ON :-initialization(user:use_module(library(swi/pce_profile))).
@@ -683,17 +704,15 @@ property_pred(hilog,is_hilog).
   	    op(1150, fx, (coinductive))
   	  ]).
 
-:-set_prolog_flag(debugger_show_context,true).
-
 % BREAKS THINGS meta_predicate(set_meta(0,+)).
 :- module_transparent(set_meta/2).
 set_meta(TGoal,is_coninductive0):- !,
     set_meta(TGoal,is_coninductive1),
-    add_clauses( (TGoal :- !, dra_call_coind0(TGoal) )),
+    add_clauses( TGoal ,  (!, dra_call_coind0(TGoal) )),
     dra_asserta_new(is_coninductive0(TGoal)).
 
 set_meta(TGoal,is_coninductive1):- !,
-    add_clauses( (TGoal :- !, dra_call_coind1(TGoal) )),
+    add_clauses( TGoal , (!, dra_call_coind1(TGoal) )),
     dra_asserta_new(is_coninductive1(TGoal)).
 
 set_meta(TGoal,is_never_tabled):- !,
@@ -705,8 +724,7 @@ set_meta(TGoal,is_never_tabled):- !,
 set_meta(TGoal,is_tabled):-
     dra_retract_all(is_never_tabled(TGoal)),
     dra_asserta_new(is_tabled(TGoal)),
-    add_clauses( (TGoal :- !, dra_call_tabled(TGoal))),
-    functor(TGoal,F,A),discontiguous(F/A).
+    add_clauses( TGoal ,  (!, dra_call_tabled(TGoal))).    
     %interp(dra_call_tabled,TGoal).
 
 set_meta(TGoal,is_old_first):-
@@ -953,47 +971,8 @@ dra_incval_flag( Name ) :-flag( Name, Value, Value+1 ).
 %         exhausted.
 
 
-% %--------------  The minimal implementation:  --------------%
-% %
-% % The set of coinductive hypotheses is just a list.
-%
-% :-mode empty_hypotheses(-).
-%
-% empty_hypotheses( [] ).
-%
-%
-% :-mode push_is_coinductive( +, +, -).
-%
-% push_is_coinductive( Goal, Hyp, [ Goal | Hyp ] ).
-%
-%
-% :-mode unify_with_coinductive_ancestor( +, +).
-%
-% unify_with_coinductive_ancestor( Goal, Hyp ) :-
-%         once( essence_hook( Goal, Essence ) ),
-%         member( G, Hyp ),
-%         once( essence_hook( G, Essence ) ).
 
 
-%--------------  An implementation that uses goal_table:  --------------%
-
-%:-ensure_loaded( 'goal_table_in_tree' ).
-%
-
-%  A goal table implemented by a binary tree with lists.                   %
-%                                                                          %
-%  Written by Feliks Kluzniak at UTD (February 2009).                      %
-%                                                                          %
-%  Last update: 16 May 2009.                                               %
-%                                                                          %
-
-
-% :-ensure_loaded( goal_table_in_open_tree ).
-
-%:-ensure_loaded( utilities ).
-%:-ensure_loaded( higher_order ).
-%:-ensure_loaded( tree ).
-%
 
 %  Operations on binary trees.                                             %
 %                                                                          %
@@ -1139,6 +1118,15 @@ is_a_variant_in_goal_table( Goal, Table ) :-
 
 
 %------------------------------------------------------------------------------
+% member_reversed( +- item, +list of items ):
+% Like member/2, but the order of searching/generation is reversed.
+
+member_reversed( M, [ _ | L ] ) :-
+        member_reversed( M, L ).
+member_reversed( M, [ M | _ ] ).
+
+
+%------------------------------------------------------------------------------
 % goal_table_add( +goal table, +goal, -new goal table ):
 % Add this goal to the table.
 
@@ -1164,6 +1152,28 @@ empty_hypotheses( Hyp ) :-
 push_is_coinductive( Goal, Hyp, NewHyp ) :-
         goal_table_add( Hyp, Goal, NewHyp ).
 
+
+
+% %--------------  The minimal implementation:  --------------%
+% %
+% % The set of coinductive hypotheses is just a list.
+%
+% :-mode empty_hypotheses(-).
+%
+% empty_hypotheses( [] ).
+%
+%
+% :-mode push_is_coinductive( +, +, -).
+%
+% push_is_coinductive( Goal, Hyp, [ Goal | Hyp ] ).
+%
+%
+% :-mode unify_with_coinductive_ancestor( +, +).
+%
+% unify_with_coinductive_ancestor( Goal, Hyp ) :-
+%         once( essence_hook( Goal, Essence ) ),
+%         member( G, Hyp ),
+%         once( essence_hook( G, Essence ) ).
 
 % :-mode unify_with_coinductive_ancestor( +, +).
 
@@ -1407,6 +1417,31 @@ add_pattern(Pattern,DBF):-DB=..[DBF,Pattern],
 %
 %  The interpreter  %
 
+% invoked by VMI/WAM to Execute a query.
+:-module_transparent(dra_call_tabled/1).
+dra_call_tabled(G) :- dra_use_interp(dra_call_tabled,G) .
+:-module_transparent(dra_call_coind0/1).
+dra_call_coind0(G):-dra_use_interp(dra_interp,G).
+:-module_transparent(dra_call_coind1/1).
+dra_call_coind1(G):-dra_use_interp(dra_interp,G).
+:-module_transparent(dra_call_interp/1).
+dra_call_interp(G):-dra_use_interp(dra_interp,G).
+
+
+
+
+:-module_transparent(dra_use_interp/2).
+dra_use_interp(Type,Goals ) :-
+      '$drac':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
+      setup_call_cleanup(
+        ((ValOld < 0) -> (( '$drac':init_dra_call,EXIT = '$drac':exit_dra_call )); (EXIT = '$drac':cont_dra_call)),
+        (( Level is ValOld +1,
+            call(Type,Cutted, Goals, Stack, Hyp, Level ),
+            ((var(Cutted);((trace),'$drac':non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
+             EXIT)),
+       ((EXIT))).
+
+
 init_dra_call:-
         reinitialise_pioneer,
         reinitialise_result,
@@ -1417,85 +1452,20 @@ init_dra_call:-
         dra_setval_flag( old_table_size,    NAns ),
         dra_setval_flag( step_counter,      0    ).
 
-
-:-meta_predicate dra_call_tabled( 0).
-:-module_transparent(dra_call_tabled/1).
-% invoked by VMI/WAM  meta_predicate(dra_call_tabled( : )).
-% Execute a query.
-dra_call_tabled(Goals ) :-
-      '$drac':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
-      setup_call_cleanup(
-        ((ValOld < 0) -> (( init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
-        ((      
-            Level is ValOld +1,
-            dra_call_tabled(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((trace),'$drac':non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
-             EXIT)),
-       ((EXIT))).
-
-:-module_transparent(dra_call_coind0/1).
-
-dra_call_coind0(Goals ) :-
-      '$drac':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
-      setup_call_cleanup(
-        ((ValOld < 0) -> (( '$drac':init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
-        ((
-           % empty_hypotheses( Hyp ),
-           % empty_stack( Stack ),            
-            Level is ValOld +1,
-            dra_interp(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((trace),'$drac':non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
-             '$drac':EXIT)),
-       (('$drac':EXIT))).
-
-:-module_transparent(dra_call_coind1/1).
-
-dra_call_coind1(Goals ) :-
-      '$drac':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
-      setup_call_cleanup(
-        ((ValOld < 0) -> (( '$drac':init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
-        ((
-           % empty_hypotheses( Hyp ),
-           % empty_stack( Stack ),            
-            Level is ValOld +1,
-            dra_interp(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((trace),'$drac':non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
-             '$drac':EXIT)),
-       (('$drac':EXIT))).
-
-
-:-module_transparent(dra_call_interp/1).
-
-dra_call_interp(Goals ) :-
-      '$drac':dra_must(b_getval('$tabling_exec',dra_state(Stack, Hyp, ValOld, CuttedOut))),
-      setup_call_cleanup(
-        ((ValOld < 0) -> (( '$drac':init_dra_call,EXIT = exit_dra_call )); (EXIT = cont_dra_call)),
-        ((
-           % empty_hypotheses( Hyp ),
-           % empty_stack( Stack ),            
-            Level is ValOld +1,
-            dra_interp(Cutted, Goals, Stack, Hyp, Level ),
-            ((var(Cutted);((trace),'$drac':non_cutted(Goals,Cutted,(CuttedOut))))->true;(!,fail)),
-             '$drac':EXIT)),
-       (('$drac':EXIT))).
-
+cont_dra_call :-
+				print_statistics,
+				'$exit_dra'.
 
 exit_dra_call:-
-            print_statistics,
-            dra_setval_flag( step_counter, 0 ),
-            dra_getval_flag( number_of_answers, NAns2 ),
-            dra_setval_flag( old_table_size, NAns2 ),
-            '$exit_dra'.
-
-cont_dra_call :-
-            print_statistics,
-            '$exit_dra'.
+				print_statistics,
+				dra_setval_flag( step_counter, 0 ),
+				dra_getval_flag( number_of_answers, NAns2 ),
+				dra_setval_flag( old_table_size, NAns2 ),
+				'$exit_dra'.
 
 
 % Print information about the number of steps and the answer table.
-
-print_statistics :-
-        
+print_statistics :-        
         dra_getval_flag( step_counter, NSteps ),
         dra_getval_flag( number_of_answers, NAns ),
         dra_getval_flag( old_table_size, OldNAns ),
@@ -1532,9 +1502,6 @@ print_statistics :-
 %       faster access, so the comments in this file ("chain of ancestors" etc.)
 %       might no longer be quite accurate. )
 
-:-module_transparent(dra_interp/5).
-:-module_transparent(dra_call_tabled/5).
-:-module_transparent(dra_call_tabled/1).
 
 
 :-
@@ -1545,6 +1512,7 @@ print_statistics :-
 % tnot/1 must be ran in meta-interp
 'tnot'(G):-dra_call_interp('tnot'(G)).
 
+:-module_transparent(dra_interp/5).
 
 % A negation.
 dra_interp(Cutted, ((\+ Goal)), Stack, Hyp, Level ) :-assertion(nonvar(Goal)),
@@ -1702,6 +1670,7 @@ non_cutted(Goal,cut_to(ToGoal),_):-dra_must(nonvar(ToGoal)), Goal=ToGoal, !,fail
 non_cutted(_,Cutted,Cutted).
 
 % A tabled goal that has been completed: all the results are in "answer".
+:-module_transparent(dra_call_tabled/5).
 
 dra_call_tabled(_Cutted, Goal, _, _, Level ) :-
         is_completed( Goal ),
@@ -1944,7 +1913,8 @@ get_remaining_tabled_answers( Goal, PGIndex, Label, Level ) :-
 % nondeterministically return the appropriately instantiated body of each
 % clause whose head matches the goal.
 
-:-meta_predicate(use_clause(:, -)).
+% :-meta_predicate(use_clause(:, -)).
+:- module_transparent(use_clause/2).
 use_clause(Goal, Body ) :-
    predicate_property(Goal,number_of_clauses(_)),!, clause(Goal, Body ),Body \= (!,_).
 
@@ -2217,77 +2187,6 @@ optional_trace( _, _, _, _ ).
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-%------------------------------------------------------------------------------
-% member_reversed( +- item, +list of items ):
-% Like member/2, but the order of searching/generation is reversed.
-
-member_reversed( M, [ _ | L ] ) :-
-        member_reversed( M, L ).
-member_reversed( M, [ M | _ ] ).
-
-
-
 % c +r = 7.949 seconds
 
 
@@ -2296,12 +2195,47 @@ member_reversed( M, [ M | _ ] ).
 % user:goal_expansion(G,_):-G\=(_,_),G\=(_;_),\+ predicate_property(G,_),format(atom(H),'~q .',[G]),user:rl_add_history(H),fail.
 
 
-:-dynamic pioneer/3 .
-:-dynamic result/2 .
-:-dynamic loop/2 .
-:-dynamic looping_alternative/2 .
-:-dynamic completed/2 .
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+:- if(\+ current_predicate(tabling_store/1)).
+
+tabling_store(assert).
+
+:- endif.
+
+
+
+
+
+
+
+
+:- if(tabling_store(assert)).
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
@@ -2370,6 +2304,11 @@ member_reversed( M, [ M | _ ] ).
 % appropriate.
 % In order to facilitate such changes, routines for handling the table is
 % factored out of the main program.
+:-dynamic pioneer/3 .
+:-dynamic result/2 .
+:-dynamic loop/2 .
+:-dynamic looping_alternative/2 .
+:-dynamic completed/2 .
 
 print_tables :-
        listing( answer( _, _, _ ) ),
@@ -2649,70 +2588,15 @@ complete_goal( Goal, Level ) :-
 
 
 %------------------------------------------------------------------------------
-
-
-:-source_location(S,_),prolog_load_context(module,FM),
- forall(source_file(M:H,S),
-  ignore((functor(H,F,A),
-   \+ atom_concat('$',_,F),
-      M:export(M:F/A),
-   \+ predicate_property(M:H,transparent),
-%    dra_w(M:H),
-   \+ atom_concat('__aux',_,F), FM:module_transparent(M:F/A)))).
-
-:-retract(was_access_level(Was)),set_prolog_flag(access_level,Was).
-
-
-
-% Comment this for source maintainance
-end_of_file.
+:- endif.
 
 
 
 
-/*
 
 
 
-% :-pf(('dra/tabling3/examples/XSB/fib.tlp') ).
-
-:-pf(('dra/tabling3/examples/co_t.tlp') ).
-
-
-:-pf(('dra/tabling3/examples/coind2.tlp') ).
-% :-pf(('dra/tabling3/examples/LTL/v.pl') ).
-%:-pf(('dra/tabling3/examples/mini_graph.tlp') ).
-%:-pf(('dra/tabling3/examples/mini_language.tlp') ).
-:-pf(('dra/tabling3/examples/paper_example.tlp') ).
-
-
-
-:-pf(('dra/tabling3/Bench/tabling3/run')).
-:-pf(('dra/tabling3/Bench/prolog/run')).
-:-pf(('dra/tabling3/Bench/clpfd/run')).
-:-pf(('dra/tabling3/Bench/aspclp/run')).
-
-t0:-time([('dra/tabling3/examples/XSB/farmer.tlp')]).
-tn:-time([('dra/tabling3/examples/tnot1.tlp')]).
-t1:-time(process_file(('dra/tabling3/examples/XSB/farmer.tlp') )),!.
-t2:-time([('dra/tabling3/examples/XSB/ham.tlp')]).
-t2a:-time([('dra/tabling3/examples/XSB/ham_auto.tlp')]).
-
-t2b:-time(pf(('dra/tabling3/examples/XSB/ham.tlp') )).
-t3:-[(('dra/tabling3/examples/graph.tlp') )].
-t4:-pf(('dra/tabling3/examples/module.tlp') ).
-t4:-[(('dra/tabling3/examples/paper_example.tlp') )].
-t4:-pf(('dra/tabling3/examples/conditional.clp') ).
-t4:-pf(('dra/tabling3/examples/simple1.tlp') ).
-t4:-pf(('dra/tabling3/examples/simple1_old_first.tlp') ).
-t4:-pf(('dra/tabling3/examples/conditional.clp') ).
-t4:-pf(('dra/tabling3/examples/small_comment_example.tlp') ).
-t4:-pf(('dra/tabling3/examples/coind_new.tlp') ).
-t5:-consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/dra/tabling3/Bench/tabling/tcl.pl').
-
-*/
-
-
+:- if(tabling_store(recored)).
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
@@ -2743,7 +2627,7 @@ t5:-consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/d
     the GNU General Public License.
 
 */
-   % NOTICE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   % NOTICE: %%%%%%%%%%%%%%%%
    %                                                                      %
    %  COPYRIGHT (2009) University of Dallas at Texas.                     %
    %                                                                      %
@@ -2764,14 +2648,14 @@ t5:-consult('/devel/LogicmooDeveloperFramework/PrologMUD/packs/MUD_PDDL/prolog/d
    %  FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR       %
    %  OTHER DEALINGS IN THE SOFTWARE.                                     %
    %                                                                      %
-   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+   %%%%%%%%%%%%%%%%%%
 
-%%  Table-handling procedures for the "dra" interpreter.                    %%%
-%%                                                                          %%%
-%%  Written by Feliks Kluzniak at UTD (March 2009)           .              %%%
-%%                                                                          %%%
-%%  Last update: 27 August 2009.                                            %%%
-%%                                                                          %%%
+%  Table-handling procedures for the "dra" interpreter.                    %
+%                                                                          %
+%  Written by Feliks Kluzniak at UTD (March 2009)           .              %
+%                                                                          %
+%  Last update: 27 August 2009.                                            %
+%                                                                          %
 
 % The tables are normally kept in asserted clauses, but for some systems this
 % is not convenient, because asserted clauses are compiled.
@@ -3186,50 +3070,32 @@ complete_goal( Goal, Level ) :-
 
 %-------------------------------------------------------------------------------
 
+:- endif.
 
 
-:- '$set_source_module'(_,user).
-:- 'module'(user).
-
-:- use_module(dra).
-
-
-/*
-% Simpler example than example12.pl, but the number of predicates involved in mutual recursion will also increase at runtime.
-
-expected_variants([p(3,_),p(2,_),q(2,_),q(3,_),p(_,_)]).
-% Note: p(3,_) and q(3,_) are empty tables, but they are there.
-expected_answers_for_variant(p(_,_),[p(1,2),p(2,3),p(1,3)]).
-expected_answers_for_variant(p(3,_),[]).
-expected_answers_for_variant(p(2,_),[p(2,3)]).
-expected_answers_for_variant(q(2,_),[q(2,3)]).
-expected_answers_for_variant(q(3,_),[]).
-*/
-
-:-table((p/2, q/2)).
-:-export((p/2, q/2)).
+:-source_location(S,_),prolog_load_context(module,FM),
+ forall(source_file(M:H,S),
+  ignore((functor(H,F,A),
+   \+ atom_concat('$',_,F),
+      M:export(M:F/A),
+   \+ predicate_property(M:H,transparent),
+%    dra_w(M:H),
+   \+ atom_concat('__aux',_,F), FM:module_transparent(M:F/A)))).
 
 
-p(X,Y) :-p(X,Z), q(Z,Y).
-p(X,Y) :-e(X,Y).
-q(X,Y) :-p(X,Y).
+:- retract(was_access_level(Was)),set_prolog_flag(access_level,Was).
 
-e(1,2).
-e(2,3).
+% Comment this for source maintainance
+end_of_file.
 
-:- listing(p/2).
+:- make.
+:- check.
 
-:- once(\+ tnot(p(_X,_Y))).
-
-:-print_tables.
-
-:-make.
-:-check.
-
-:-gxref.
+:- gxref.
 
 :- listing(tnot).
 :- listing(table).
+
 
 
 
