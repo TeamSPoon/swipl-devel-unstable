@@ -211,7 +211,7 @@ static matts_flag matts_flags[] =
 };
 
 static unsigned int
-matts_flag_mask(atom_t key)
+current_attv_mask(atom_t key)
 { matts_flag *index;
 
   for(index=matts_flags; index->name; index++)
@@ -229,7 +229,7 @@ PL_get_integer_or_flag(term_t t, int *i)
   atom_t bitname;
 
   if(PL_get_atom(t, &bitname))
-  { int value = matts_flag_mask(bitname);
+  { int value = current_attv_mask(bitname);
     if(!value) return FALSE;
     *i = value;
     return TRUE;
@@ -242,14 +242,14 @@ PL_unify_integer_or_flag(term_t t, int i)
 { GET_LD
   atom_t bitname;
   if(PL_get_atom(t, &bitname))
-  { int value = matts_flag_mask(bitname);
+  { int value = current_attv_mask(bitname);
     if(value) return (value & i)==value;
   }
   return PL_unify_integer(t, i);
 }
 
 static
-PRED_IMPL("matts_flag_mask", 2, matts_flag_mask, PL_FA_NONDETERMINISTIC)
+PRED_IMPL("current_attv_mask", 2, current_attv_mask, PL_FA_NONDETERMINISTIC)
 { PRED_LD
   matts_flag *index, *next;
 
@@ -259,7 +259,7 @@ PRED_IMPL("matts_flag_mask", 2, matts_flag_mask, PL_FA_NONDETERMINISTIC)
         atom_t bt;
         int value;
       if ( PL_get_atom(A1, &bt) )
-      { int value = matts_flag_mask(bt);
+      { int value = current_attv_mask(bt);
         return value && PL_unify_integer(A2, value);
       } if(!PL_is_variable(A1)) return FALSE;
 
@@ -1761,8 +1761,6 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   } else
   { return PL_unify(A1,A2);
   }
-
-  
 }
 
 
@@ -1780,7 +1778,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
 
         if (PL_is_variable(new))
         {
-           value = matts_flag_mask(math);
+           value = current_attv_mask(math);
 
            if(value) return PL_unify_integer_or_flag(new,was&value);
         }
@@ -1804,7 +1802,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
           return TRUE;
         }
 
-        int maskwas = matts_flag_mask(math);
+        int maskwas = current_attv_mask(math);
         if(maskwas)
         {
           return ((maskwas & was))==value;
@@ -2166,7 +2164,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
-  PRED_DEF("matts_flag_mask", 2, matts_flag_mask, PL_FA_NONDETERMINISTIC)
+  PRED_DEF("current_attv_mask", 2, current_attv_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
 #endif
 

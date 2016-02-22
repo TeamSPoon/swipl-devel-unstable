@@ -790,8 +790,8 @@ contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
 % any_to_fbs(Var,BitsOut):- attvar(Var), get_attr(Var,'$atts',BitsIn),!,any_to_fbs(BitsIn,BitsOut).
 any_to_fbs(BitsIn,BitsOut):- notrace((
  tst((fbs_to_number(BitsIn,Mode),number(Mode))),
-   Bits=[Mode],fbs_for_hooks_default(MASKS),
-   ignore((arg(_,MASKS,(N=V)),nonvar(V),nonvar(N),fbs_to_number(V,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
+   Bits=[Mode],
+   ignore((current_attv_mask(N,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
    BitsOut = Bits)).
 
 
@@ -827,7 +827,7 @@ fbs_to_number(-(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(~(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number( \ (Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(bit(Bit),VVV):- number(Bit),!,VVV is 2 ^ (Bit).
-fbs_to_number((Name),VVV):-   matts_flag_mask(Name,VVV),!.
+fbs_to_number((Name),VVV):-   current_attv_mask(Name,VVV),!.
 fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,Name=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,override(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number(override(Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.

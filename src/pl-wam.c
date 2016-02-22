@@ -1228,7 +1228,7 @@ reclaim_attvars(Word after ARG_LD)
 int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD) 
 { //if(!actuallyDoit)return FALSE;
 
-  DEBUG(MSG_METATERM, Sdprintf("\nUNDO: %s\n", where));
+ /* DEBUG(MSG_METATERM, Sdprintf("\nUNDO: %s\n", where));*/
   if(!actuallyDoit)return FALSE;
   if(!isTrailVal(p))
   {
