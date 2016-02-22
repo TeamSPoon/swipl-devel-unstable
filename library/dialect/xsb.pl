@@ -26,7 +26,7 @@ covered, feel free to add.
 Example XSB Support
 */
 
-attv_unify(Var,Value):- '$attvar_assign'(Var,Value).
+attv_unify(Var,Value):- system:attv_unify(Var,Value).
 
 
 % Switches us from verify_attributes/3 to verify_attributes/2 support
