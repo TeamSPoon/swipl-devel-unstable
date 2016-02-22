@@ -395,16 +395,16 @@ pause
 set "PLBUILD_JPL="
 goto end_detect_java
 :detect_java_pf_detected
-for /F %%_ in ('dir "%EP!TARGET_PROGRAM_FILES%\Java\jdk*" /A:D /B') do (set "EP!MONO_JDK_VERSION=%%_")
-set "EP!MONO_HOME=%EP!TARGET_PROGRAM_FILES%\Java\%EP!MONO_JDK_VERSION%"
+for /F %%_ in ('dir "%EP!TARGET_PROGRAM_FILES%\Java\jdk*" /A:D /B') do (set "EP!JAVA_JDK_VERSION=%%_")
+set "EP!JAVA_HOME=%EP!TARGET_PROGRAM_FILES%\Java\%EP!JAVA_JDK_VERSION%"
 goto detect_java_detected
 :detect_java_sd_detected
-for /F %%_ in ('dir "%SystemDrive%\Java\jdk*" /A:D /B') do (set "EP!MONO_JDK_VERSION=%%_")
-set "EP!MONO_HOME=%SystemDrive%\Java\%EP!MONO_JDK_VERSION%"
+for /F %%_ in ('dir "%SystemDrive%\Java\jdk*" /A:D /B') do (set "EP!JAVA_JDK_VERSION=%%_")
+set "EP!JAVA_HOME=%SystemDrive%\Java\%EP!JAVA_JDK_VERSION%"
 goto detect_java_detected
 :detect_java_sdnjd_detected
-for /F %%_ in ('dir "%SystemDrive%\jdk*" /A:D /B') do (set "EP!MONO_JDK_VERSION=%%_")
-set "EP!MONO_HOME=%SystemDrive%\%EP!MONO_JDK_VERSION%"
+for /F %%_ in ('dir "%SystemDrive%\jdk*" /A:D /B') do (set "EP!JAVA_JDK_VERSION=%%_")
+set "EP!JAVA_HOME=%SystemDrive%\%EP!JAVA_JDK_VERSION%"
 goto detect_java_detected
 :detect_java_detected
 if not exist "%EP!HOME%\%EP!HOST_OS_ARCH%\lib\junit.jar" (goto detect_junit_jar_not_detected)
@@ -414,7 +414,7 @@ goto end_detect_java
 :detect_junit_jar_not_detected
 cls
 type welcome.txt
-echo Java %EP!MONO_JDK_VERSION% found, but %EP!HOME%\%EP!HOST_OS_ARCH%\lib\junit.jar not found...
+echo Java %EP!JAVA_JDK_VERSION% found, but %EP!HOME%\%EP!HOST_OS_ARCH%\lib\junit.jar not found...
 echo.
 echo Warning: the build will continue without the SWI-Prolog Java Package, its
 echo functionality will not be available. If Java is required, install
