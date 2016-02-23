@@ -57,7 +57,7 @@ Binding the attvar places the new  value   in  <attvar>  using a trailed
 assignment. The attribute list remains   accessible  through the trailed
 assignment until this is GC'ed.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
-
+#define Sdprintf_ln Sdprintf("\n"); Sdprintf
 #define NEVER_WRITELN(ex)
 /*#define NEVER_WRITELN(ex) pl_writeln(ex);*/
 
@@ -116,7 +116,7 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
 { Word wake;
 
   if(LD_no_wakeup > 0)
-  { DEBUG(MSG_WAKEUPS, Sdprintf("registering wakeups durring recursion\n"));
+  { DEBUG(MSG_WAKEUPS, Sdprintf_ln("registering wakeups durring recursion"));
   }
 
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
@@ -157,7 +157,7 @@ appendWakeup(Word wake ARG_LD)
     *t = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
     TrailAssignment(tail);		/* on local stack! */
     *tail = makeRef(wake+2);
-    DEBUG(MSG_WAKEUPS, Sdprintf("appended to wakeup\n"));
+    DEBUG(MSG_WAKEUPS, Sdprintf_ln("appended to wakeup"));
   } else				/* empty list */
   { Word head = valTermRef(LD->attvar.head);
 
@@ -167,7 +167,7 @@ appendWakeup(Word wake ARG_LD)
     TrailAssignment(tail);
     *tail = makeRef(wake+2);    
     LD->alerted |= ALERT_WAKEUP;
-    DEBUG(MSG_WAKEUPS, Sdprintf("new wakeup alerted=%d\n", LD->alerted & ALERT_WAKEUP));
+    DEBUG(MSG_WAKEUPS, Sdprintf_ln("new wakeup alerted=%d ", LD->alerted & ALERT_WAKEUP));
 
   }
 }
@@ -200,12 +200,12 @@ static matts_flag matts_flags[] =
  MW("use_trail_optimize", META_PLEASE_OPTIMIZE_TRAIL ), 
  MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
  MW("use_skip_hidden",  META_SKIP_HIDDEN ), 
- MW("use_pre_unify",    META_ENABLE_PREUNIFY ), 
- MW("use_cpreds",       META_ENABLE_CPREDS ), 
- MW("use_do_unify",     META_DO_UNIFY ), 
+ MW("use_pre_unify",    META_USE_PRE_UNIFY ), 
+ MW("use_cpreds",       META_USE_CPREDS ), 
+ MW("use_do_unify",     META_USE_DO_UNIFY ), 
  MW("use_dra_interp",   DRA_CALL ), 
- MW("use_undo",         META_ENABLE_UNDO ), 
- MW("use_vmi",          META_ENABLE_VMI ), 
+ MW("use_undo",         META_USE_UNDO ), 
+ MW("use_vmi",          META_USE_VMI ), 
 
  MW(NULL,                 0)
 };
@@ -377,26 +377,26 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
     if ( av == value) return;
 
     if(IS_META(META_KEEP_BOTH))
-    { DEBUG(MSG_METATERM, Sdprintf("META_KEEP_BOTH\n"));
+    { DEBUG(MSG_METATERM, Sdprintf_ln("META_KEEP_BOTH"));
       return;
     }
 
     if (av > value)
     { 
         if (IS_META(META_NO_BIND))
-        {  DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND Unifying av <- value\n"));
+        {  DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value"));
         } else
-        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying av <- value\n"));
+        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying av <- value"));
            *av = makeRef(value);		            
         }
 
     } else
     {  if (!IS_META(META_DISABLE_SWAP))
-       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("SWAPPING value <- av\n"));
+       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av"));
          TrailAssignment(value);
          *value = makeRef(av);
        } else
-       { DEBUG(MSG_METATERM, Sdprintf("META_DISABLE_SWAP value -> av\n"));
+       { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av"));
          *av = makeRef(value);
        }
     }
@@ -404,26 +404,26 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
  {   if( (flags& ATTV_ASSIGNONLY) )
 	 {  if(IS_META(META_KEEP_BOTH))
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref\n"));
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref"));
            TrailAssignment(value);
            make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
            deRef(value);
            *valPAttVar(*value) = *valPAttVar(*av);
          } else
          { if (IS_META(META_NO_BIND))
-           { DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
+           { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a plain putting into VAR maybe ref"));
              return;
            }
-           DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Assigning attvar with a plain VAR ref\n"));
+           DEBUG(MSG_METATERM, Sdprintf_ln("ERROR: Assigning attvar with a plain VAR ref"));
            *av = makeRef(value);			            
          }
 	 } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref\n"));
+     { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref"));
        registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);       
      }
   } else 
   { if (IS_META(META_NO_BIND))
-    { DEBUG(MSG_METATERM, Sdprintf("META_NO_BIND attvar with a value\n"));
+    { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a value"));
       return;
     } else
     { *av = *value;
@@ -443,10 +443,10 @@ assignAttVarPreUnify(Word av, Word value, int flags ARG_LD)
           av = value;
           value = tmp;
         } else
-        { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVarPreUnify DISABLE_SWAP(%s)\n", vName(av)));
+        { DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVarPreUnify DISABLE_SWAP(%s)", vName(av)));
         }
     } else if ( av == value )
-    { DEBUG(MSG_WAKEUPS, Sdprintf("no_self_unify(%s)\n", vName(av)));
+    { DEBUG(MSG_WAKEUPS, Sdprintf_ln("no_self_unify(%s)", vName(av)));
       return;
     }
   }
@@ -479,12 +479,18 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("assignAttVar(%s)\n", vName(av)));
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("assignAttVar(%s)", vName(av)));
   flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
 
-  if(flags&META_ENABLE_PREUNIFY) 
-  { assignAttVarPreUnify(av,value,flags PASS_LD);
+
+  if(isVar(*value) & !(flags&META_USE_DO_UNIFY))
+  { Trail(value, makeRef(av));
     return;
+  }
+
+  if(flags&META_USE_PRE_UNIFY) 
+  { /*assignAttVarPreUnify(av,value,flags PASS_LD);
+    return;*/
   }
 
   if ( isAttVar(*value) )
@@ -495,10 +501,10 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
           av = value;
           value = tmp;
         } else
-        { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar DISABLE_SWAP(%s)\n", vName(av)));
+        { DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVar DISABLE_SWAP(%s)", vName(av)));
         }
     } else if ( av == value )
-    { DEBUG(MSG_WAKEUPS, Sdprintf("assignAttVar no_self_unify(%s)\n", vName(av)));
+    { DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVar no_self_unify(%s)", vName(av)));
       return;
     }
   }
@@ -512,19 +518,9 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
    TrailAssignment(av);
    DiscardMark(m);
  } else
- { TrailAssignment(av);
+ { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
  }
-
- if( (flags& META_NO_BIND) ) return;
- 
-
-  if ( isAttVar(*value) )
-  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf("Unifying two attvars\n"));
-    *av = makeRef(value);
-  } else
-    *av = *value;
-
-  return;
+  if(!(flags& META_NO_BIND)) assignAttVarBinding(av,value,flags PASS_LD);
 }
 
 
@@ -571,7 +567,7 @@ on_attvar_chain(Word avp)
   }
 
   DEBUG(0, char buf[256];
-	Sdprintf("%s: not on attvar chain\n", print_addr(avp, buf)));
+	Sdprintf_ln("%s: not on attvar chain ", print_addr(avp, buf)));
 
   return FALSE;
 }
@@ -922,7 +918,7 @@ saveWakeup(wakeup_state *state, int forceframe ARG_LD)
       h = valTermRef(LD->attvar.tail);
       *valTermRef(s+1) = *h;
       setVar(*h);
-      DEBUG(MSG_WAKEUPS, Sdprintf("Saved wakeup to %p\n", valTermRef(s)));
+      DEBUG(MSG_WAKEUPS, Sdprintf_ln("Saved wakeup to %p ", valTermRef(s)));
     }
 
     return TRUE;
@@ -935,7 +931,7 @@ saveWakeup(wakeup_state *state, int forceframe ARG_LD)
 
 static void
 restore_exception(Word p ARG_LD)
-{ DEBUG(1, Sdprintf("Restore exception from %p\n", p));
+{ DEBUG(1, Sdprintf_ln("Restore exception from %p ", p));
 
   *valTermRef(exception_bin) = p[0];
   exception_term = exception_bin;
@@ -1545,7 +1541,7 @@ has_attributes_after(Word av, Choice ch ARG_LD)
 
   DEBUG(MSG_CALL_RESIDUE_VARS,
 	{ char buf[64];
-	  Sdprintf("has_attributes_after(%s, %s)\n",
+	  Sdprintf_ln("has_attributes_after(%s, %s)",
 		   vName(av), print_addr(ch->mark.globaltop, buf));
 	});
 
@@ -1563,7 +1559,7 @@ has_attributes_after(Word av, Choice ch ARG_LD)
 
       DEBUG(MSG_CALL_RESIDUE_VARS,
 	    { char buf[64];
-	      Sdprintf("  att/3 at %s\n", print_addr((Word)f, buf));
+	      Sdprintf_ln("  att/3 at %s ", print_addr((Word)f, buf));
 	    });
 
       if ( (Word)f >= ch->mark.globaltop )
@@ -1574,7 +1570,7 @@ has_attributes_after(Word av, Choice ch ARG_LD)
 
 	DEBUG(MSG_CALL_RESIDUE_VARS,
 	{ char buf1[64]; char buf2[64];
-	  Sdprintf("    value at %s: %s\n",
+	  Sdprintf_ln("    value at %s: %s ",
 		   print_addr(pv, buf1), print_val(*pv, buf2));
 	});
 
@@ -1587,11 +1583,11 @@ has_attributes_after(Word av, Choice ch ARG_LD)
 
 	l = pv+1;
       } else
-      { DEBUG(0, Sdprintf("Illegal attvar\n"));
+      { DEBUG(0, Sdprintf_ln("Illegal attvar"));
 	return FALSE;
       }
     } else
-    { DEBUG(0, Sdprintf("Illegal attvar\n"));
+    { DEBUG(0, Sdprintf_ln("Illegal attvar"));
       return FALSE;
     }
   }
@@ -1611,7 +1607,7 @@ scan_trail(Choice ch, int set ARG_LD)
       { DEBUG(MSG_CALL_RESIDUE_VARS,
 	      { char buf1[64]; char buf2[64];
 		word old = trailVal(te[1].address);
-		Sdprintf("Mark %s (%s)\n",
+		Sdprintf_ln("Mark %s (%s)",
 			 print_addr(te->address, buf1), print_val(old, buf2));
 	      });
 	*te->address |= MARK_MASK;
@@ -1836,7 +1832,7 @@ PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
     int flags = getMetaFlags(av, inherit_flags PASS_LD);
     int was = flags;
     if(!setFlagOptions(&flags,A2,A3)) return FALSE;    
-    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags %s %sflags %d -> %d",vName(av),(backtrack_flags & NB_PUTATTS)?"NB-":"backtracking ",was,flags));
+    DEBUG(MSG_METATERM,Sdprintf_ln(" metaterm_flags %s %sflags %d -> %d",vName(av),(backtrack_flags & NB_PUTATTS)?"NB-":"backtracking ",was,flags));
     if(was == flags) return TRUE;
     setMetaFlags(av, flags, backtrack_flags PASS_LD);
     return TRUE;
@@ -1846,7 +1842,7 @@ PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
   { int flags = METATERM_GLOBAL_FLAGS;
     int was = flags;
     if(!setFlagOptions(&flags,A2,A3)) return FALSE;    
-    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags global defaults NB-flags %d -> %d",was,flags));
+    DEBUG(MSG_METATERM,Sdprintf_ln(" metaterm_flags global defaults NB-flags %d -> %d",was,flags));
     if(was == flags) return TRUE;
     *METATERM_GLOBAL = consUInt(flags);
     return TRUE;
@@ -1854,7 +1850,7 @@ PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
   { int flags = METATERM_GLOBAL_FLAGS;
     int was = flags;
     if(!setFlagOptions(&flags,A2,A3)) return FALSE;
-    DEBUG(MSG_METATERM,Sdprintf("metaterm_flags global current backtracking %d -> %d",was,flags));
+    DEBUG(MSG_METATERM,Sdprintf_ln(" metaterm_flags global current backtracking %d -> %d",was,flags));
     TrailAssignment(METATERM_GLOBAL);
     if(was == flags) return TRUE;
     *METATERM_GLOBAL = consUInt(flags);
@@ -1934,19 +1930,19 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
   {  FunctorDef fd = valueFunctor(functorTerm(*found));
      functor_t ft = fd->functor;
      if(f!=ft)
-     { DEBUG(MSG_METATERM,Sdprintf("DIFF %s getMetaOverrideFunctor(%s,%s)\n",print_val(*found,0),vName(av),print_val(f,0)));
+     { DEBUG(MSG_METATERM,Sdprintf_ln("DIFF %s getMetaOverrideFunctor(%s,%s)",print_val(*found,0),vName(av),print_val(f,0)));
        return ft;
      }
-     DEBUG(MSG_METATERM,Sdprintf("SAME getMetaOverrideFunctor(%s,%s)\n",vName(av),print_val(f,0)));
+     DEBUG(MSG_METATERM,Sdprintf_ln("SAME getMetaOverrideFunctor(%s,%s)",vName(av),print_val(f,0)));
      return f;
   }
   if ( isAtom(*found) )
   {  functor_t ft = *found;
      if(f!=ft)
-     { DEBUG(MSG_METATERM,Sdprintf("DIFF %s getMetaOverrideAtom(%s,%s)\n",print_val(*found,0),vName(av),print_val(f,0)));
+     { DEBUG(MSG_METATERM,Sdprintf_ln("DIFF %s getMetaOverrideAtom(%s,%s)",print_val(*found,0),vName(av),print_val(f,0)));
        return ft;
      }
-     DEBUG(MSG_METATERM,Sdprintf("SAME getMetaOverrideAtom(%s,%s)\n",vName(av),print_val(*found,0)));
+     DEBUG(MSG_METATERM,Sdprintf_ln("SAME getMetaOverrideAtom(%s,%s)",vName(av),print_val(*found,0)));
      return f;
   }
   return f;
@@ -1972,7 +1968,7 @@ isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
   if(fdattrs==0) return FALSE;
   deRef(fdattrs);
   if(!find_sub_attr(fdattrs, f, &found PASS_LD)) return FALSE;
-  DEBUG(MSG_METATERM,Sdprintf("isMetaOverriden(%s,%s,%s)\n",vName(av),print_val(f,0),print_val(*found,0)));
+  DEBUG(MSG_METATERM,Sdprintf_ln("isMetaOverriden(%s,%s,%s)",vName(av),print_val(f,0),print_val(*found,0)));
   return !isVar(*found);
 }
 
@@ -2083,7 +2079,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
-  functor_t becomes = getMetaOverride(av,f, META_ENABLE_VMI|META_ENABLE_CPREDS PASS_LD);
+  functor_t becomes = getMetaOverride(av,f, META_USE_VMI|META_USE_CPREDS PASS_LD);
   if(isAtom(becomes)) return PL_unify_atom(A3,becomes);
   return PL_unify_functor(A3,becomes);
 }
@@ -2116,18 +2112,18 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
         (v) = unRef(*(v)); }}
 
     if (onStackArea(local, v))
-     { DEBUG(1, Sdprintf("Ok, on local stack\n"));
+     { DEBUG(1, Sdprintf_ln("Ok, on local stack"));
         while (fr && fr > (LocalFrame)v)
             fr = parentFrame(fr);
         if (fr)
         {   l0 -= levelFrame(fr);
             return(PL_unify_integer(A2, l0));
         } else
-        {   DEBUG(1,Sdprintf("Not on local stack\n"));
+        {   DEBUG(1,Sdprintf_ln("Not on local stack"));
             return(PL_unify_integer(A2, -1));
         }
     }
-    DEBUG(1,Sdprintf("!onStackArea\n"));
+    DEBUG(1,Sdprintf_ln("!onStackArea"));
     return(PL_unify_integer(A2, negInfo));
    return TRUE;
 }

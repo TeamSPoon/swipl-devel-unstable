@@ -1132,7 +1132,7 @@ VMI(B_UNIFY_EXIT, 0, 0, ())
     goto normal_call;
   }
 
-  CHECK_WAKEUP;				/* only for non-first-var */
+  CHECK_WAKEUP;				/* only for non-first-var */ 
   NEXT_INSTRUCTION;
 }
 
@@ -1629,34 +1629,7 @@ normal_call:
 
   CHECK_METATERM(ARGP);
 
-#ifdef O_DRA_TABLING
 
-  if ( DRA_CALL && DEF->dra_interp )
-  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",proc->dra_depth);});
-      if ( proc->dra_depth <2 )
-      { proc->dra_depth++;
-
-        Word a = argFrameP(NFR, 0);		/* get the goal */
-  
-        Word expr = gTop;
-        gTop += 3;
-        expr[0] = FUNCTOR_call2;
-#ifdef DRA_INTERP_TERM_T
-        expr[1] = linkVal(valPHandle(DEF->dra_interp));
-#else
-        expr[1] = DEF->dra_interp;
-#endif        
-        expr[2] = linkVal(a);
-  
-        ARGP = argFrameP(lTop, 0);
-        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
-        NFR = lTop;
-        DEF = PROCEDURE_dwakeup1->definition;
-        setNextFrameFlags(NFR, FR);
-        goto normal_call;
-      }
-  } }
-#endif
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -1766,6 +1739,8 @@ retry_continue:
       LOAD_REGISTERS(qid);
       if ( FR->predicate != DEF )		/* auto imported/loaded */
       { FR->predicate = DEF;
+
+
 #ifdef O_PROFILE
         if ( FR->prof_node )
 	  profSetHandle(FR->prof_node, DEF);
@@ -1775,6 +1750,38 @@ retry_continue:
       set(FR, FR_INBOX);
 
       SAVE_REGISTERS(qid);
+
+
+#ifdef O_DRA_TABLING
+
+  if ( DRA_CALL && DEF->dra_interp )
+  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",proc->dra_depth);});
+      if ( proc->dra_depth <2 )
+      { proc->dra_depth++;
+
+        Word a = argFrameP(NFR, 0);		/* get the goal */
+  
+        Word expr = gTop;
+        gTop += 3;
+        expr[0] = FUNCTOR_call2;
+#ifdef DRA_INTERP_TERM_T
+        expr[1] = linkVal(valPHandle(DEF->dra_interp));
+#else
+        expr[1] = DEF->dra_interp;
+#endif        
+        expr[2] = linkVal(a);
+  
+        ARGP = argFrameP(lTop, 0);
+        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
+        NFR = lTop;
+        DEF = PROCEDURE_dwakeup1->definition;
+        setNextFrameFlags(NFR, FR);
+        goto normal_call;
+      }
+  } }
+#endif
+
+
       rc = tracePort(FR, BFR, CALL_PORT, NULL PASS_LD);
       LOAD_REGISTERS(qid);
       switch( rc )

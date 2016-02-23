@@ -1261,7 +1261,7 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   if ( !find_attr(location, ATOM_dundo_unify, &unused PASS_LD) )
     return rc;
 
-  if ( ! LD->attvar.metaterm_opts || !(META_ENABLE_UNDO & METATERM_ENABLED) )
+  if ( ! LD->attvar.metaterm_opts || !(META_USE_UNDO & METATERM_ENABLED) )
   {
     DEBUG(MSG_METATERM, Sdprintf("ERROR: UNDO SKIPPED! "));
     return rc;
@@ -2661,9 +2661,9 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_METATERM(a0) /*if(META_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}*/
+#define CHECK_METATERM(a0) /*if(META_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}*/
 /* DM: possiblely anything that started in usercallN ends up inf foreign call.. so  swap_out_functor() might be able to be removed*/
-#define CHECK_FMETATERM(a0) if(META_ENABLE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_FMETATERM(a0) if(META_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
 /* check attvar meta hooks */
 static inline
@@ -2676,7 +2676,7 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
       deRef(argAV);              
       if(argAV && isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        functor_t alt_functor = getMetaOverride(argAV,current_functor, META_ENABLE_VMI PASS_LD);
+        functor_t alt_functor = getMetaOverride(argAV,current_functor, META_USE_VMI PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
@@ -2702,7 +2702,7 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
       deRef(argAV);  
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        functor_t alt_functor = getMetaOverride(argAV,current_functor, META_ENABLE_VMI PASS_LD);
+        functor_t alt_functor = getMetaOverride(argAV,current_functor, META_USE_VMI PASS_LD);
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)

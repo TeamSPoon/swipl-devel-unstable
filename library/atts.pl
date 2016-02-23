@@ -42,6 +42,7 @@
       wi_atts/2,
       wo_hooks/2,
       wno_debug/1,
+      mkmeta/1,
       wno_dmvars/1,
       wno_hooks/1,
       % TODO remove  above before master
@@ -86,10 +87,15 @@
 :- meta_predicate w_debug(0).
 :- meta_predicate wno_debug(0).
 
+:- multifile(atts:metaterm_type/1).
+:- discontiguous(atts:metaterm_type/1).
+:- dynamic(atts:metaterm_type/1).
+
+
 get_metaflags(Get):- metaterm_flags(global,Get,Get).
 set_metaflags(Set):- metaterm_flags(global,set,Set).
 metaflag_unset(V,F):-metaterm_flags(V,~,F).
-metaflag_set(V,F):-metaterm_flags(V,~,F).
+metaflag_set(V,F) :- metaterm_flags(V,(/\),F).
 metaflag_get(Var,Get):- metaterm_flags(Var,Get,Get).
 
 :- meta_predicate('attribute'(:)).
@@ -380,10 +386,10 @@ new_meta_attribute(Base,At,Mod) :- dynamic(Mod:protobute/3),
 % put_attr(V, m1, [b(x1, y1)]),
 % put_attr(V, m2, [b(x2, y2)]) .
 
-put_atts(Var,M:Atts):- wno_hooks((atts_put(+,Var,M,Atts))),!.
-put_atts(Var,M,Atts):- wno_hooks((atts_put(+,Var,M,Atts))),!.
-del_atts(Var,M:Atts):- wno_hooks((atts_put(-,Var,M,Atts))),!.
-get_atts(Var,M:Atts):- atts_get(Var,M,Atts),!.
+put_atts(Var,M:Atts):- notrace((wno_hooks((atts_put(+,Var,M,Atts))),!)).
+put_atts(Var,M,Atts):- notrace((wno_hooks((atts_put(+,Var,M,Atts))),!)).
+del_atts(Var,M:Atts):- notrace((wno_hooks((atts_put(-,Var,M,Atts))),!)).
+get_atts(Var,M:Atts):- notrace((atts_get(Var,M,Atts))),!.
 
 
 %%    get_atts(+Var, ?AccessSpec) 
@@ -647,7 +653,7 @@ swap_args(_,_,4).
 set_as(N,N,N,4).
 attrs_val(Var,AttsO):-'$visible_attrs'(Var,AttsO).
 
-
+mkmeta(Fluent):-put_attr(Fluent,'$atts',0).
 
 set_val(Var,Value):-get_attr(Var,gvar,AA),!,nb_setval(AA,Value).
 set_val(Var,Value):-put_attr(Var,value,Value).
@@ -876,10 +882,11 @@ wo_hooks(_Var,Goal):-Goal.
 
 wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).
 w_dmvars(Goal):- w_hooks(w_debug(Goal)).
-w_hooks(Goal):-  metaflag_unset(current,0x0800),Goal.
-wno_hooks(Goal):-  metaflag_set(current,0x0800),Goal.
-wno_debug(Goal):-  get_metaflags(W), T is W /\ \ 0x100000, while_goal(set_metaflags(T),Goal,set_metaflags(W)).
-w_debug(Goal):-  get_metaflags(W),T is W  \/ 0x100000 , while_goal(set_metaflags(T),Goal,set_metaflags(W)).
+w_hooks(Goal):-  metaflag_unset(current,meta_disabled),Goal.
+wno_hooks(Goal):-  metaflag_set(current,meta_disabled),Goal.
+wno_debug(Goal):- '$debuglevel'(W,0),W==0,!,Goal.
+wno_debug(Goal):- setup_call_cleanup(exit_debug,Goal,enter_debug(4)).
+w_debug(Goal):- setup_call_cleanup(enter_debug(4), Goal,exit_debug).
 
 testfv:-forall(test1(T),dmsg(passed(T))).
 
@@ -986,7 +993,7 @@ system:attr_undo_hook(_Var, _AttVal, _Value).
 
 % av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$meta_flags'(Y,1),X==X.
 % :- set_prolog_flag(save_history, false).
-:-prolog_debug('MSG_METATERM'),prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_ATTVAR_GENERAL').
+:-prolog_debug('MSG_METATERM'),prolog_debug('MSG_WAKEUPS'). % ,prolog_debug('MSG_ATTVAR_GENERAL').
 wd:- ((prolog_nodebug('MSG_VMI'),prolog_nodebug('MSG_WAKEUPS'))).
 :-wd.
 wd(X):-  prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_VMI'), call_cleanup(X,wd).

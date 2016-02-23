@@ -2083,7 +2083,7 @@ typedef struct
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
 
 
-#define META_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
+#define META_USE_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
@@ -2095,11 +2095,11 @@ typedef struct
 #define META_NO_INHERIT     0x0400 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
 #define META_DISABLED   	0x0800 /* disable all options (allows the options to be saved) */
 
-#define META_ENABLE_VMI  	0x1000 /* Hook WAM */
-#define META_ENABLE_CPREDS	0x2000 /* Hook CPREDS (WAM can misses a few)*/
+#define META_USE_VMI  	0x1000 /* Hook WAM */
+#define META_USE_CPREDS	0x2000 /* Hook CPREDS (WAM can misses a few)*/
 #define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
-#define META_ENABLE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
-#define META_ENABLE_PREUNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
+#define META_USE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
+#define META_USE_PRE_UNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
 #define META_ONLY_WAKEBINDS  0x020000 /* C should let only prolog do binding */
 
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
@@ -2107,7 +2107,7 @@ typedef struct
 #define DRA_CALL 0x080000
 
 #define SLOW_UNIFY_DEFAULT TRUE
-#define META_DEFAULT  	    (META_ENABLE_VMI|META_SKIP_HIDDEN|META_ENABLE_CPREDS|META_NO_OPTIMIZE_TRAIL)
+#define META_DEFAULT  	    (META_USE_VMI|META_SKIP_HIDDEN|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL)
 
 #define LOGICMOO_TRANSPARENT FALSE
 /* Soon ":" will no longer need transparent since its captures the 
@@ -2134,8 +2134,8 @@ typedef struct
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
-#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_ENABLE_CPREDS PASS_LD)
-#define METATERM_HOOK(atom,t1,t2,rc)  (META_ENABLE_CPREDS & METATERM_ENABLED && \
+#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_USE_CPREDS PASS_LD)
+#define METATERM_HOOK(atom,t1,t2,rc)  (META_USE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))

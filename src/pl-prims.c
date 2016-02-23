@@ -215,24 +215,29 @@ Returns one of:
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+
+
 static int
 do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
 { term_agendaLR agenda;
   int compound = FALSE;
   int rc = FALSE;
-  
+
+  static bool always_early = FALSE;
+
   do
   { word w1, w2;
 
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(META_DO_UNIFY & METATERM_ENABLED)   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  if(always_early || (META_USE_DO_UNIFY & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
+    always_early = TRUE;
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) )
       { rc = overflowCode(0);
-	goto out_fail;
+        goto out_fail;
       }
       assignAttVar(t1, t2, assignment_flags PASS_LD);
       continue;
