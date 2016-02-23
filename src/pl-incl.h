@@ -2078,7 +2078,6 @@ typedef struct
 
 #define META_NO_BIND        0x0010 /* C should not bind attvar even in ASSIGNONLY  */
 #define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
-#define META_NO_OPTIMIZE_TRAIL 0x0040 /* Dont Optimize Trail (Multiple wakeups) */
 #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
 #define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
 
@@ -2104,7 +2103,9 @@ typedef struct
 
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
 
-#define DRA_CALL 0x080000
+#define META_NO_OPTIMIZE_TRAIL 0x080000 /* Dont Optimize Trail (Multiple wakeups) */
+
+#define DRA_CALL 0x100000
 
 #define SLOW_UNIFY_DEFAULT TRUE
 #define META_DEFAULT  	    (META_USE_VMI|META_SKIP_HIDDEN|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL)

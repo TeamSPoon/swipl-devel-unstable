@@ -82,35 +82,16 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
-                
+
 :- module_transparent(system:must_or_die/1).
 system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
+disable_atts_in_file:-fail.
+
 :- meta_predicate(system:post_unify(+,0,+,+)).
-system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):-
-  put_attr(Var,'$atts_saved',MV),
-  setup_call_cleanup(
-    metaterm_flags(Var, ( /\ ) ,no_wakeup),
-    system:post_unify(Rest,Next,Var,Value),
-      put_attr(Var,'$atts', MV)).
-  
 
-system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
-  system:post_unify(Rest,Next,Var,Value),
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
+:- if(disable_atts_in_file).
 
-system:post_unify(att('term_copier', Original, Rest), Next, Var, Value):-!,
-   unify_copy(Original, Rest, Next, Var, Value),!.
-
-
-system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !, 
-        ifdef(Module:attr_unify_hook(AttVal, Value),true),
-        post_unify( Rest, Next, Var, Value).
-
-system:post_unify(_,Next,Var,Value):- attv_unify(Var,Value),Var=@=Value,
-        call(Next).
-   
 
 unify_copy(_Original, _Rest, _Next, Var, ValueIn):- get_attrs(Var,Atts),put_attrs(Value,Atts),del_attr(Value,'term_copier'),Value=ValueIn,!.
 unify_copy(Original, Rest, Next, Var, ValueIn):-
@@ -137,6 +118,32 @@ system:unify(_, Module:Next, Var, Value ):- !,
         Module:call(Next).
    
 system:verify_attributes(Var, Value):- throw(attv_unify(Var,Value)).
+
+
+system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):-
+  put_attr(Var,'$atts_saved',MV),
+  setup_call_cleanup(
+    metaterm_flags(Var, ( /\ ) ,no_wakeup),
+    system:post_unify(Rest,Next,Var,Value),
+      put_attr(Var,'$atts', MV)).
+  
+
+system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
+  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
+  system:post_unify(Rest,Next,Var,Value),
+  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
+
+system:post_unify(att('term_copier', Original, Rest), Next, Var, Value):-!,
+   unify_copy(Original, Rest, Next, Var, Value),!.
+
+:- endif.
+
+system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+        ifdef(Module:attr_unify_hook(AttVal, Value),true),
+        post_unify(Rest, Next, Var, Value).
+system:post_unify(_,Next,Var,Value):- % attv_unify(Var,Value),Var=@=Value,
+        call(Next).
+
 
 
                  /*******************************

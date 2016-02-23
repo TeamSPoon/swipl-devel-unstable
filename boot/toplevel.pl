@@ -824,7 +824,7 @@ subst_chars([H|T]) -->
 	flush_output(user_output),
 	call_expand_answer(Bindings, NewBindings),
 	(    \+ \+ write_bindings(NewBindings, Vars, Det)
-	->  ( !, fail)
+	->   !, fail
 	).
 '$execute_goal2'(_, _) :-
 	save_debug,

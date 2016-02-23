@@ -482,11 +482,17 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("assignAttVar(%s)", vName(av)));
   flags |= getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
 
-
+#ifdef O_PREUNIFY
+  if(flags&META_USE_DO_UNIFY) 
+  { assignAttVarPreUnify(av,value,flags PASS_LD);
+    return;
+  }
+#else
   if(isVar(*value) & !(flags&META_USE_DO_UNIFY))
   { Trail(value, makeRef(av));
     return;
   }
+#endif 
 
   if(flags&META_USE_PRE_UNIFY) 
   { /*assignAttVarPreUnify(av,value,flags PASS_LD);
@@ -520,7 +526,19 @@ assignAttVar(Word av, Word value, int flags ARG_LD)
  } else
  { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
  }
-  if(!(flags& META_NO_BIND)) assignAttVarBinding(av,value,flags PASS_LD);
+
+ if( (flags& META_NO_BIND) ) return;
+
+ if(!(flags& META_ONLY_WAKEBINDS)) 
+ {
+    assignAttVarBinding(av,value,flags PASS_LD);
+    return;
+ }
+  if ( isAttVar(*value) )
+  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying two attvars "));
+    *av = makeRef(value);
+  } else
+    *av = *value;
 }
 
 
