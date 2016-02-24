@@ -130,8 +130,8 @@ metaflag_get(Var,Get):- metaterm_flags(Var,Get,Get).
 
 :- meta_predicate('attribute'(:)).
 % :-'$set_source_module'(_,'atts').
-:-dynamic(was_access_level/1).
-:-current_prolog_flag(access_level,Was),asserta(was_access_level(Was)).
+:-dynamic(was_access_level_atts/1).
+:-current_prolog_flag(access_level,Was),asserta(was_access_level_atts(Was)).
 :-set_prolog_flag(access_level,user).
 :- use_module(library(ordsets)).
 
@@ -1060,7 +1060,7 @@ system:va(X):- put_attr(X,tAA,'AAA').
 system:vb(X):- put_attr(X,tBB,'BBB').
 system:vc(X):- put_attr(X,tCC,'CCC').
 
-:-retract(was_access_level(Was)),set_prolog_flag(access_level,Was).
+:-retract(was_access_level_atts(Was)),set_prolog_flag(access_level,Was).
 
 :- export_all.
 

@@ -44,6 +44,19 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
+%%	'$wakeup'(+List)
+%
+%	Called from the kernel if assignments have been made to
+%	attributed variables.
+
+'$wakeup'(G) :- \+ current_prolog_flag(dmiles,true),!, G.
+% '$wakeup'(G) :- current_predicate(logicmoo_util_rtrace:rtrace/1), !, logicmoo_util_rtrace:rtrace(G).
+'$wakeup'(G) :- amsg(call(G)),call(G).
+
+       /*******************************
+       *         UTILS    *
+       *******************************/
+
 
 'amsg'(G):-notrace('amsg0'(G)).
 
@@ -51,42 +64,6 @@ in pl-attvar.c
 'amsg0'(G) :- current_predicate(logicmoo_util_dmsg:dmsg/1), !, logicmoo_util_dmsg:dmsg(G).
 'amsg0'(G) :- format(user_error,'~N,~q~n',[G]).
 
-
-%%	'$wakeup'(+List)
-%
-%	Called from the kernel if assignments have been made to
-%	attributed variables.
-
-'$wakeup'(G) :- \+ current_prolog_flag(dmiles,true),!, G.
-'$wakeup'(G) :- current_predicate(logicmoo_util_rtrace:rtrace/1), !, logicmoo_util_rtrace:rtrace(G).
-'$wakeup'(G) :- amsg(call(G)),calld(G).
-
-
-
-       /*******************************
-       *         VERIFY_ATTRIBUTES    *
-       *******************************/
-
-:- meta_predicate(system:pre_unify(+,:,+,+)).
-
-system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
-system:pre_unify(Atts,Next,Var,Value):-
-     format(string(VarID),'~q',[Var]),
-     put_attrs(Var,att('$in_unify',VarID,Atts)),!,
-     pre_unify(Atts,Next,Var,Value,VarID).
-
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
-
-system:pre_unify(_, Next, Var, _Value,VarID):- \+ ((get_attr(Var,'$in_unify',CookieM),VarID==CookieM)),!, call(Next).
-system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
-        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
-
-system:pre_unify(_, Next, Var, Value, _):-
-   del_attr(Var,'$in_unify'),
-   '$trail_assignment'(Var),
-   attv_unify(Var,Value),
-   call(Next).
 
 system:goals_with_module([G|Gs], M):- !,
 	M:call(G),
@@ -100,19 +77,35 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
-
-
-
-:- meta_predicate(system:post_unify(+,+,0,+,+)).
-
-
 push_attvar_waking(_).
 pop_attvar_waking(_).
 
 
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+system:pre_unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:pre_unify(Atts, Next, Var, Value )),
+  ( 
+  (push_attvar_waking(Var),
+    pre_unify(Atts, Next, Var, Value))
+    *->
+    pop_attvar_waking(Var)
+    ;
+    (pop_attvar_waking(Var),!,fail)).
+
+
+:- meta_predicate(system:unify(+,0,+,+,+)).
+system:unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:unify(Atts, Next, Var, Value )),
+  ( 
+  (push_attvar_waking(Var),
+    unify(Atts, Next, Var, Value))
+    *->
+    pop_attvar_waking(Var)
+    ;
+    (pop_attvar_waking(Var),!,fail)).
+
+
+:- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-
   amsg(Atom:post_unify(Atts, Next, Var, Value )),
   ( 
@@ -124,54 +117,102 @@ system:post_unify(Atts, Next, Var, Value, Atom ):-
     (pop_attvar_waking(Var),!,fail)).
 
 
+       /*******************************
+       *         VERIFY_ATTRIBUTES    *
+       *******************************/
+
+:- meta_predicate(system:pre_unify(+,:,+,+)).
+
+system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
+system:pre_unify(Atts,Next,Var,Value):-
+     format(string(VarID),'~q',[Var]),
+     put_attrs(Var,att('$unify',VarID,Atts)),!,
+     pre_unify(Atts,Next,Var,Value,VarID).
+
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+
+system:pre_unify(_, Next, Var, _Value,VarID):- \+ ((get_attr(Var,'$unify',CookieM),VarID==CookieM)),!, call(Next).
+system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
+        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
+        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
+
+system:pre_unify(_, Next, Var, Value, _):-
+   del_attr(Var,'$unify'),
+   '$trail_assignment'(Var),
+   attv_unify(Var,Value),
+   call(Next).
+
+
+
+           /*******************************
+           *	  PLAIN UNIFY HOOK	*
+           *******************************/
+
+
+:- meta_predicate(system:unify(+,0,+,+)).
+
+system:unify(att('var_replace', var_replace(Copy,Call), Rest), Next, _Var, Value):- !,
+         call(Call),
+         system:unify(Rest,Next,Copy,Value).
+
+system:unify(att('$atts', MV, Rest), Next, Var, Value ):- !,
+   put_attr(Var,'$atts_saved',MV),
+   setup_call_cleanup(
+   metaterm_flags(Var, ( /\ ) ,no_wakeup),
+   system:unify(Rest,Next,Var,Value),
+   put_attr(Var,'$atts', MV)).
+
+system:unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
+      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
+      system:unify(Rest,Next,Var,Value),
+      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
+
+system:unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+     ifdef(Module:unify_hook(AttVal, Value),true),
+     unify(Rest, Next, Var, Value).
+
+system:unify(_,Next,Var,Value):- 
+    verify_attributes(Var, Value),
+    call(Next).
+
    
-system:verify_attributes(Var, Value):- attv_unify(Var,Value).
+system:verify_attributes(Var, Value):- attvar(Var),!,
+   del_attr(Var,'$unify'), '$trail_assignment'(Var),
+   ignore(attv_unify(Var,Value)).
+system:verify_attributes(Value, Value).
+
+		 /*******************************
+		 *	  ATTR UNIFY HOOK	*
+		 *******************************/
+
+
+
 
 
 :- meta_predicate(system:post_unify(+,0,+,+)).
 
-system:post_unify(att('var_replace', var_replace(Copy,Call), Rest), Next, Var, Value):- !,
-   call(Call),
-   system:post_unify(Rest,Next,Copy,Value).
 
-:- if(false).
-
-system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):-
-  put_attr(Var,'$atts_saved',MV),
-  setup_call_cleanup(
-    metaterm_flags(Var, ( /\ ) ,no_wakeup),
-    system:post_unify(Rest,Next,Var,Value),
-      put_attr(Var,'$atts', MV)).
-  
+system:post_unify(att('$atts', _, Rest), Next, Var, Value ):- attvar(Var),!,
+    unify(Rest,Next,Var,Value).
 
 system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
   ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
   system:post_unify(Rest,Next,Var,Value),
   ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
 
-:- endif.
-
 
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         post_unify(Rest, Next, Var, Value).
 
-system:post_unify(_,Next,Var,Value):- % attv_unify(Var,Value),Var=@=Value,
+system:post_unify(_,Next,Var,Value):- 
+        verify_attributes(Var, Value),
         call(Next).
 
 
-		 /*******************************
-		 *	  PLAIN UNIFY HOOK	*
-		 *******************************/
-
-:- meta_predicate(system:unify(+,:,+,+)).
-system:unify(_Why, _, Module:Next, Var, Value ):- !, 
-        ifdef(Module:verify_attributes(Var, Value),true),
-        Module:call(Next).
-
         /*******************************
-		 *	      FREEZE		*
-		 *******************************/
+	 *	      FREEZE		*
+         *******************************/
 
 %%	freeze(@Var, :Goal)
 %
@@ -410,8 +451,6 @@ frozen_residuals(X, V) -->
 
 
 
-
-
 end_of_file.
 
 
@@ -456,7 +495,7 @@ check_var_cookie(Var,FirstID:Expect):-
 %	has an attribute. During this process,   modules  may remove and
 %	change each others attributes.
 %
-%       If a callee removes the '$in_unify' property we succeed unconditionally
+%       If a callee removes the '$unify' property we succeed unconditionally
 
 no_pre_unify:- true.
 
