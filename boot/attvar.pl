@@ -29,7 +29,7 @@
 */
 
 :- module('$attvar',
-	  [ '$wakeup'/1, 
+	  [ '$wakeup'/1,		% +Wakeup list
             % undo/1,                     % :Goal
             freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
@@ -45,9 +45,11 @@ in pl-attvar.c
 */
 
 
-'amsg'(_) :- \+ current_prolog_flag(dmiles,true),!.
-'amsg'(G) :- current_predicate(logicmoo_util_dmsg:dmsg/1), !, logicmoo_util_dmsg:dmsg(G).
-'amsg'(G) :- format(user_error,'~N,~q~n',[G]).
+'amsg'(G):-notrace('amsg0'(G)).
+
+'amsg0'(_) :- \+ current_prolog_flag(dmiles,true),!.
+'amsg0'(G) :- current_predicate(logicmoo_util_dmsg:dmsg/1), !, logicmoo_util_dmsg:dmsg(G).
+'amsg0'(G) :- format(user_error,'~N,~q~n',[G]).
 
 
 %%	'$wakeup'(+List)
@@ -58,6 +60,7 @@ in pl-attvar.c
 '$wakeup'(G) :- \+ current_prolog_flag(dmiles,true),!, G.
 '$wakeup'(G) :- current_predicate(logicmoo_util_rtrace:rtrace/1), !, logicmoo_util_rtrace:rtrace(G).
 '$wakeup'(G) :- amsg(call(G)),calld(G).
+
 
 
        /*******************************
@@ -90,56 +93,48 @@ system:goals_with_module([G|Gs], M):- !,
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
-
-
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
+
+:- module_transparent(system:must_or_die/1).
+system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
 
-:- module_transparent(system:must_or_die/1).
-system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
-disable_atts_in_file:-fail.
 
 :- meta_predicate(system:post_unify(+,+,0,+,+)).
+
+
+push_attvar_waking(_).
+pop_attvar_waking(_).
+
+
+system:post_unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:post_unify(Atts, Next, Var, Value )),
+  ( 
+  (push_attvar_waking(Var),
+    post_unify(Atts, Next, Var, Value))
+    *->
+    pop_attvar_waking(Var)
+    ;
+    (pop_attvar_waking(Var),!,fail)).
+
+
+   
+system:verify_attributes(Var, Value):- attv_unify(Var,Value).
+
+
 :- meta_predicate(system:post_unify(+,0,+,+)).
 
-system:post_unify(Atts, Next, Var, Value, Atom ):- 
-  amsg(Atom = post_unify(Atts, Next, Var, Value )),!,
-  system:post_unify(Atts, Next, Var, Value).
+system:post_unify(att('var_replace', var_replace(Copy,Call), Rest), Next, Var, Value):- !,
+   call(Call),
+   system:post_unify(Rest,Next,Copy,Value).
 
-:- if(disable_atts_in_file).
-
-
-unify_copy(_Original, _Rest, _Next, Var, ValueIn):- get_attrs(Var,Atts),put_attrs(Value,Atts),del_attr(Value,'term_copier'),Value=ValueIn,!.
-unify_copy(Original, Rest, Next, Var, ValueIn):-
-   notrace((must_or_die((
-     get_attrs(Original,Attrs),
-     put_attrs(Value,Attrs),
-     del_attr(Value,'term_copier'),
-     %metaterm_flags(Value, ~, no_bind),
-     metaterm_flags(Value, ~, use_do_unify),
-     %metaterm_flags(Value, set, no_wakeup),
-     !)))), 
-     ValueIn=Value,
-     (get_attr(Original,'$atts_saved',MV)->put_attr(Value,'$atts',MV);true).
-
-
-		 /*******************************
-		 *	  DO UNIFY HOOK	*
-		 *******************************/
-
-:- meta_predicate(system:unify(+,:,+,+)).
-system:unify(_, Module:Next, Var, Value ):- !, 
-        ifdef(Module:verify_attributes(Var, Value),true),
-        Module:call(Next).
-   
-system:verify_attributes(Var, Value):- throw(attv_unify(Var,Value)).
-
+:- if(false).
 
 system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):-
   put_attr(Var,'$atts_saved',MV),
@@ -154,20 +149,27 @@ system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
   system:post_unify(Rest,Next,Var,Value),
   ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
 
-system:post_unify(att('term_copier', Original, Rest), Next, Var, Value):-!,
-   unify_copy(Original, Rest, Next, Var, Value),!.
-
 :- endif.
+
 
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         post_unify(Rest, Next, Var, Value).
+
 system:post_unify(_,Next,Var,Value):- % attv_unify(Var,Value),Var=@=Value,
         call(Next).
 
 
+		 /*******************************
+		 *	  PLAIN UNIFY HOOK	*
+		 *******************************/
 
-                 /*******************************
+:- meta_predicate(system:unify(+,:,+,+)).
+system:unify(_Why, _, Module:Next, Var, Value ):- !, 
+        ifdef(Module:verify_attributes(Var, Value),true),
+        Module:call(Next).
+
+        /*******************************
 		 *	      FREEZE		*
 		 *******************************/
 
@@ -269,7 +271,7 @@ portray_attrs(att(Name, Value, Rest), Var) :-
 	).
 
 portray_attr(freeze, Goal, Var) :- !,
-	format('freeze(~w, ~W)', [ Var, Goal,
+	format('freeze:freeze(~w, ~W)', [ Var, Goal,
 				   [ portray(true),
 				     quoted(true),
 				     attributes(ignore)
@@ -280,8 +282,21 @@ portray_attr(Name, Value, Var) :-
 	(   '$c_current_predicate'(_, G),
 	    G
 	->  true
-	;   format('~w = ...', [Name])
+	;  fa(Name,Value)
 	).
+ 
+system:attr_portray_hook(Name,Value):- fa(Name,Value).
+
+fa(Name,Value):-
+  current_prolog_flag(write_attributes,W),
+  set_prolog_flag(write_attributes, ignore),
+        format('~q:~W', [Name, Value,
+				   [ portray(true),
+				     quoted(true),
+				     attributes(ignore)
+				   ]
+        ]),
+   set_prolog_flag(write_attributes, W).
 
 
 		 /*******************************
