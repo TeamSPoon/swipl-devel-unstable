@@ -312,8 +312,12 @@ bindConst__LD(Word p, word c ARG_LD)
 { DEBUG(CHK_SECURE, assert(hasGlobalSpace(0)));
 
 #ifdef O_ATTVAR
+
+  if(UNIFY_COMPLETE(META_USE_BINDCONST, &c, p, ATTV_DEFAULT)) return;
+
   if ( isVar(*p) )
   { *p = (c);
+
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else

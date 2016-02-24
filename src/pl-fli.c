@@ -157,6 +157,8 @@ void
 bArgVar(Word ap, Word vp ARG_LD)
 { deRef(vp);
 
+  if(UNIFY_COMPLETE(META_USE_BARG_VAR, vp, ap, META_NO_TRAIL)) return;
+
   if ( isVar(*vp) )
   { if ( ap < vp )
     { setVar(*ap);
@@ -938,6 +940,8 @@ PL_same_compound(term_t t1, term_t t2)
 static inline void
 bindConsVal(Word to, Word p ARG_LD)
 { deRef(p);
+
+  if(UNIFY_COMPLETE(META_USE_CONS_VAL, p, to, META_NO_TRAIL)) return;
 
   if ( canBind(*p) )
   { if ( to < p && !isAttVar(*p) )

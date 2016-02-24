@@ -653,7 +653,8 @@ swap_args(_,_,4).
 set_as(N,N,N,4).
 attrs_val(Var,AttsO):-'$visible_attrs'(Var,AttsO).
 
-mkmeta(Fluent):-put_attr(Fluent,'$atts',0).
+mkmeta(Fluent):-get_attrs(Fluent,att('$atts',_,_)),!.
+mkmeta(Fluent):-get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
 
 set_val(Var,Value):-get_attr(Var,gvar,AA),!,nb_setval(AA,Value).
 set_val(Var,Value):-put_attr(Var,value,Value).
@@ -723,7 +724,7 @@ fbs_for_hooks_default(v(
  no_wakeup, " dont call wakeup ", 
  no_trail, " do not bother to trail the previous value ", 
 
- use_only_wakebinds,
+ use_wakebinds,
  use_trail_optimize,
  use_no_trail_optimize,
  use_skip_hidden , " dont factor $meta into attvar identity ", 
@@ -1013,6 +1014,7 @@ export_all:- source_location(S,_),prolog_load_context(module,M),
 
 
 
+system:dmsg(M):- current_predicate(MOD:dmsg/1),MOD=logicmoo_util_dmsg, !, logicmoo_util_dmsg:dmsg(M),!.
 system:dmsg(M):- format(user_error,'~N~q.~n',[M]),flush_output(user_error).
 
 

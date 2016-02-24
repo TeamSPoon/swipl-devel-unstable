@@ -223,30 +223,22 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
   int compound = FALSE;
   int rc = FALSE;
 
-  static bool always_early = FALSE;
-
   do
   { word w1, w2;
 
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(always_early || (META_USE_DO_UNIFY & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  if(LD->attvar.wakeup_ready || (META_USE_DO_UNIFY & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
-    always_early = TRUE;
+    LD->attvar.wakeup_ready = TRUE;
     if ( isAttVar(w1) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-        goto out_fail;
-      }
+    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
       assignAttVar(t1, t2, assignment_flags PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-	goto out_fail;
-      }
+    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
       assignAttVar(t2, t1, assignment_flags PASS_LD);
       continue;
     }
@@ -490,7 +482,7 @@ unify_ptrs(Word t1, Word t2, int flags ARG_LD)
 { for(;;)
   { int rc;
 
-    rc = raw_unify_ptrs(t1, t2, ATTV_DEFAULT PASS_LD);
+    rc = raw_unify_ptrs(t1, t2, ATTV_UNIFY_PTRS PASS_LD);
     if ( rc >= 0 )
       return rc;
 
@@ -2272,6 +2264,8 @@ void
 unify_vp(Word vp, Word val ARG_LD)
 { deRef(val);
 
+  if(UNIFY_COMPLETE(META_USE_UNIFY_VP, val, vp, META_NO_TRAIL)) return;
+
   if ( isVar(*val) )
   { if ( val < vp )
     { *vp = makeRef(val);
@@ -2282,7 +2276,6 @@ unify_vp(Word vp, Word val ARG_LD)
       setVar(*vp);
   } else if ( isAttVar(*val) )
   { *vp = makeRef(val);
-     /* assignAttVar(val, vp, META_PEER_NO_TRAIL|ATT_ASSIGNONLY PASS_LD); */
   } else
     *vp = *val;
 }

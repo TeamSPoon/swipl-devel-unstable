@@ -416,6 +416,7 @@ struct PL_local_data
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
     int		no_wakeups;  /* >0 Dont register wakeups (also to trap recursion) */
+    int     wakeup_ready;
 
 #ifdef O_METATERM
     term_t  metaterm_regs;   /*  registers for calling metatermOverrides */

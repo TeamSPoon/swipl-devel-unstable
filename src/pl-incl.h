@@ -2066,6 +2066,7 @@ typedef struct
 #define ATTV_MUST_TRAIL  0x04        /* unifiable/3 and Occurs checking needs attvars trailed  */
 #define ATTV_WILL_UNBIND 0x08        /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
 
+
 #define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
 #define LD_no_wakeup LD->attvar.no_wakeups
@@ -2099,13 +2100,19 @@ typedef struct
 #define META_SKIP_HIDDEN  	0x4000 /* dont factor $meta into attvar identity */
 #define META_USE_UNDO    0x8000 /* check attvars for undo hooks (perfomance checking) */
 #define META_USE_PRE_UNIFY 0x010000 /* verify_attributes/3 (sanity and/or perfomance checking) */
-#define META_ONLY_WAKEBINDS  0x020000 /* C should let only prolog do binding */
+#define META_USE_WAKEBINDS  0x020000 /* C should let only prolog do binding */
 
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
-
 #define META_NO_OPTIMIZE_TRAIL 0x080000 /* Dont Optimize Trail (Multiple wakeups) */
 
-#define DRA_CALL 0x100000
+#define META_USE_BARG_VAR  0x100000  /* implies ATTV_DEFAULT|META_1_INTO_2 */
+#define META_USE_CONS_VAL 0x200000  /* implies META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_H_VAR    0x400000 /* META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_UNIFY_VP 0x800000 /* META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_BINDCONST 0x1000000 /* META_NO_TRAIL|META_1_INTO_2 */
+
+#define DRA_CALL          0x2000000
+#define ATTV_UNIFY_PTRS   0x4000000
 
 #define SLOW_UNIFY_DEFAULT TRUE
 #define META_DEFAULT  	    (META_USE_VMI|META_SKIP_HIDDEN|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL)
@@ -2132,6 +2139,12 @@ typedef struct
       att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
   ( "$meta" attribute is also hidden. )
   */
+
+#define UNIFY_COMPLETE(why,from,to,type) \
+  ((LD->attvar.wakeup_ready!=0) && /*(!(why & METATERM_ENABLED)) && */ \
+   ((isAttVar(*to)   && assignAttVar(to, from, (why|type) PASS_LD)) || \
+   (isAttVar(*from) && assignAttVar(from, to, (why|type) PASS_LD))))
+
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
@@ -2258,7 +2271,7 @@ typedef struct
 #define PROCEDURE_dcall1		(GD->procedures.dcall1)
 #define PROCEDURE_setup_call_catcher_cleanup4 \
 				(GD->procedures.setup_call_catcher_cleanup4)
-#define PROCEDURE_dwakeup1		(GD->procedures.call1)
+#define PROCEDURE_dwakeup1		(GD->procedures.dwakeup1)
 #define PROCEDURE_dthread_init0		(GD->procedures.dthread_init0)
 #define PROCEDURE_exception_hook4	(GD->procedures.exception_hook4)
 #define PROCEDURE_dc_call_prolog	(GD->procedures.dc_call_prolog0)

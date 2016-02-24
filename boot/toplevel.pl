@@ -731,7 +731,7 @@ save_debug :-
 	current_prolog_flag(debug, Debugging),
 	set_prolog_flag(debug, false),
 	create_prolog_flag(query_debug_settings,
-			   debug(Debugging, Tracing), []).
+			   debug(Debugging, Tracing), []),!.
 
 restore_debug :-
 	current_prolog_flag(query_debug_settings, debug(Debugging, Tracing)),
@@ -739,7 +739,7 @@ restore_debug :-
 	(   Tracing == true
 	->  trace
 	;   true
-	).
+	),!.
 
 :- initialization
 	create_prolog_flag(query_debug_settings, debug(false, false), []).
@@ -849,8 +849,8 @@ residue_vars(Goal, []) :-
 %	     `project`.
 
 write_bindings(Bindings, ResidueVars, Det) :-
-	'$current_typein_module'(TypeIn),
-	translate_bindings(Bindings, Bindings1, ResidueVars, TypeIn:Residuals),
+       once(( '$current_typein_module'(TypeIn),
+	translate_bindings(Bindings, Bindings1, ResidueVars, TypeIn:Residuals))),
 	write_bindings2(Bindings1, Residuals, Det).
 
 write_bindings2([], Residuals, _) :-

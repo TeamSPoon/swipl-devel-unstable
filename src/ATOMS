@@ -224,6 +224,7 @@ A dundo_unify		"$undo_unify"
 A duplicate_key		"duplicate_key"
 A dvard			"$VAR$"
 A dvariable_names	"$variable_names"
+A dwakeup		"$wakeup"
 A dynamic		"dynamic"
 A e			"e"
 A encoding		"encoding"
@@ -864,9 +865,10 @@ F dstream		1
 F dthread_init		0
 F dthrow		1
 F dtime			2
-F dundo_unify		4
+F dundo_unify		5
 F duplicate_key		1
 F dvard			1
+F dwakeup		1
 F e			0
 F encoding		1
 F end_of_stream		1
@@ -956,10 +958,10 @@ F plus			1
 F plus			2
 F popcount		1
 F portray		1
-F post_unify		4
+F post_unify		5
 F position		1
 F powm			3
-F pre_unify		4
+F pre_unify		5
 F print			1
 F print_message		2
 F priority		1
@@ -1032,7 +1034,7 @@ F tty			1
 F type			1
 F type_error		2
 F undefinterc		4
-F unify			4
+F unify			5
 F unify_determined	2
 F uninstantiation_error	1
 F var			1

@@ -582,10 +582,14 @@ VMI(H_VAR, 0, 1, (CA1_VAR))
 	  setVar(*ARGP);
 	  Trail(k, makeRefG(ARGP));
 	} else
-	{ *ARGP = makeRefG(k);		/* ARGP on global, so k also */
+        {
+          if ( UNIFY_COMPLETE(META_USE_H_VAR, k, ARGP, META_NO_TRAIL) ) NEXT_INSTRUCTION;
+          *ARGP = makeRefG(k);    /* ARGP on global, so k also */
 	}
       } else if ( isAttVar(*k) )
-      { *ARGP = makeRefG(k);
+      {
+        if ( UNIFY_COMPLETE(META_USE_H_VAR, k, ARGP, META_NO_TRAIL) ) NEXT_INSTRUCTION;
+        *ARGP = makeRefG(k);
       } else
       { *ARGP = *k;
       }
@@ -1031,10 +1035,21 @@ VMI(B_ARGVAR, 0, 1, (CA1_VAR))
       Trail(k, makeRefG(ARGP++));
       NEXT_INSTRUCTION;
     }
+    if ( UNIFY_COMPLETE(META_USE_BARG_VAR, k, ARGP, META_NO_TRAIL) ) 
+    {
+      ARGP++;
+      NEXT_INSTRUCTION;
+    }
     *ARGP++ = makeRefG(k);	/* both on global stack! */
 #ifdef O_ATTVAR
   } else if ( isAttVar(*k) )
-  { *ARGP++ = makeRefG(k);
+  {
+    if (FALSE && UNIFY_COMPLETE(META_USE_BARG_VAR, k, ARGP, META_NO_TRAIL) ) 
+    {
+      ARGP++;
+      NEXT_INSTRUCTION;
+    }
+    *ARGP++ = makeRefG(k);
 #endif
   } else
   { *ARGP++ = *k;
