@@ -29,8 +29,8 @@
 */
 
 :- module('$attvar',
-	  [ '$wakeup'/1,		% +Wakeup list
-         % undo/1,                     % :Goal
+	  [ '$wakeup'/1, 
+            % undo/1,                     % :Goal
             freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
@@ -44,7 +44,8 @@ variables. This module is complemented with C-defined predicates defined
 in pl-attvar.c
 */
 
-'amsg'(G) :- \+ current_prolog_flag(dmiles,true),!.
+
+'amsg'(_) :- \+ current_prolog_flag(dmiles,true),!.
 'amsg'(G) :- current_predicate(logicmoo_util_dmsg:dmsg/1), !, logicmoo_util_dmsg:dmsg(G).
 'amsg'(G) :- format(user_error,'~N,~q~n',[G]).
 
@@ -57,9 +58,6 @@ in pl-attvar.c
 '$wakeup'(G) :- \+ current_prolog_flag(dmiles,true),!, G.
 '$wakeup'(G) :- current_predicate(logicmoo_util_rtrace:rtrace/1), !, logicmoo_util_rtrace:rtrace(G).
 '$wakeup'(G) :- amsg(call(G)),calld(G).
-
-
-
 
 
        /*******************************
@@ -105,10 +103,30 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 :- module_transparent(system:must_or_die/1).
 system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
-disable_atts_in_file:-false.
+disable_atts_in_file:-fail.
 
+:- meta_predicate(system:post_unify(+,+,0,+,+)).
 :- meta_predicate(system:post_unify(+,0,+,+)).
 
+system:post_unify(Atts, Next, Var, Value, Atom ):- 
+  amsg(Atom = post_unify(Atts, Next, Var, Value )),!,
+  system:post_unify(Atts, Next, Var, Value).
+
+:- if(disable_atts_in_file).
+
+
+unify_copy(_Original, _Rest, _Next, Var, ValueIn):- get_attrs(Var,Atts),put_attrs(Value,Atts),del_attr(Value,'term_copier'),Value=ValueIn,!.
+unify_copy(Original, Rest, Next, Var, ValueIn):-
+   notrace((must_or_die((
+     get_attrs(Original,Attrs),
+     put_attrs(Value,Attrs),
+     del_attr(Value,'term_copier'),
+     %metaterm_flags(Value, ~, no_bind),
+     metaterm_flags(Value, ~, use_do_unify),
+     %metaterm_flags(Value, set, no_wakeup),
+     !)))), 
+     ValueIn=Value,
+     (get_attr(Original,'$atts_saved',MV)->put_attr(Value,'$atts',MV);true).
 
 
 		 /*******************************
@@ -116,56 +134,34 @@ disable_atts_in_file:-false.
 		 *******************************/
 
 :- meta_predicate(system:unify(+,:,+,+)).
-
-system:unify(Atts, Module:Next, Var, Value, Atom ):- !, 
-       amsg(system:unify(Atts, Module:Next, Var, Value, Atom )),
+system:unify(_, Module:Next, Var, Value ):- !, 
         ifdef(Module:verify_attributes(Var, Value),true),
         Module:call(Next).
-
-
-system:verify_attributes(Var, Value):- attv_unify(Var,Value).
-% system:verify_attributes(Var, Value):- throw(attv_unify(Var,Value)).
-
-
-
-
-
-unify_copy(_Original, _Rest, _Next, Var, ValueIn):- get_attrs(Var,Atts),put_attrs(Value,Atts),del_attr(Value,'term_copier'),Value=ValueIn,!.
-unify_copy(Original, Rest, Next, Var, ValueIn):-
-     get_attrs(Original,Attrs),
-     put_attrs(Value,Attrs),
-     del_attr(Value,'term_copier'),
-     %metaterm_flags(Value, ~, no_bind),
-     metaterm_flags(Value, ~, use_do_unify),
-     %metaterm_flags(Value, set, no_wakeup),
-     !, ValueIn=Value,
-     (get_attr(Original,'$atts_saved',MV)->put_attr(Value,'$atts',MV);true).
-
-
-system:post_unify(Atts, Next, Var, Value, Atom ):- 
-  amsg(Atom = post_unify(Atts, Next, Var, Value )),!,
-  system:post_unify(Atts, Next, Var, Value).
    
+system:verify_attributes(Var, Value):- throw(attv_unify(Var,Value)).
 
-system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):- !,
-  ((var(Var),MV>0)->put_attr(Var,'$atts_saved',MV);true),
-  metaterm_flags(Var, ( /\ ) ,no_wakeup),
-  (system:post_unify(Rest,Next,Var,Value) *-> ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true) ; (((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),!,fail)).
-    
+
+system:post_unify(att('$atts', MV, Rest), Next, Var, Value ):-
+  put_attr(Var,'$atts_saved',MV),
+  setup_call_cleanup(
+    metaterm_flags(Var, ( /\ ) ,no_wakeup),
+    system:post_unify(Rest,Next,Var,Value),
+      put_attr(Var,'$atts', MV)).
   
+
 system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
   ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
   system:post_unify(Rest,Next,Var,Value),
   ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
 
-system:post_unify(att('term_copier', Original, Rest), Next, Var, Value):- !,
+system:post_unify(att('term_copier', Original, Rest), Next, Var, Value):-!,
    unify_copy(Original, Rest, Next, Var, Value),!.
 
+:- endif.
 
 system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         post_unify(Rest, Next, Var, Value).
-
 system:post_unify(_,Next,Var,Value):- % attv_unify(Var,Value),Var=@=Value,
         call(Next).
 
@@ -260,8 +256,7 @@ unfreeze(Goal) :-
 portray_attvar(Var) :-
 	write('{'),
 	get_attrs(Var, Attr),
-	%portray_attrs(Attr, Var),
-    writeq(Attr),
+	portray_attrs(Attr, Var),
 	write('}').
 
 portray_attrs([], _).
