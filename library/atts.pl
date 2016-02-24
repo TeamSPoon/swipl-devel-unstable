@@ -53,6 +53,7 @@
       has_hooks/1,
       matts/1,
       matts/2,
+      source_fluent/1,sink_fluent/1,empty_fluent/1,
       meta_override/2,
       datts_overriding/2,
     add_attribute/2,
@@ -90,6 +91,35 @@
 :- multifile(atts:metaterm_type/1).
 :- discontiguous(atts:metaterm_type/1).
 :- dynamic(atts:metaterm_type/1).
+
+
+
+:- nodebug(fluents).
+
+
+%%	sink_fluent(-Fluent) is det.
+%
+% Base class of "SinkFluent" that recieves bindings
+
+sink_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind).
+
+
+%%	source_fluent(-Fluent) is det.
+%
+% Base class of "SourceFluent" that creates bindings
+
+source_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind).
+
+
+%%	empty_fluent(-Fluent) is det.
+%
+% Create a truely don't care '_' Fluent
+% Will unify multiple times and remain a var
+% even after binding. At bind with anything and call no wakeups
+% peer or otherwise
+% Tarau's "EmptySink" matts
+
+empty_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_wakeup+no_bind+no_trail).
 
 
 get_metaflags(Get):- metaterm_flags(global,Get,Get).
