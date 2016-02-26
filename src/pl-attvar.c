@@ -188,17 +188,17 @@ static matts_flag matts_flags[] =
  MW("use_h_var" ,       META_USE_H_VAR ),
  MW("use_unify_vp",     META_USE_UNIFY_VP ),    
  MW("use_bind_const",   META_USE_BINDCONST ), 
- MW("use_do_unify",     META_USE_DO_UNIFY ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
+ MW("use_unify_var",     META_USE_UNIFY_VAR ), 
  MW("attv_must_trail",  ATTV_MUST_TRAIL ), 
  MW("attv_assignonly",  ATTV_ASSIGNONLY ), 
  MW("no_trail",         META_NO_TRAIL	), 
  MW("use_wakebinds",    META_USE_WAKEBINDS ),
- MW("attv_default",     ATTV_DEFAULT ), 
+ MW("attv_bindconst",     ATTV_BINDCONST ), 
  MW("attv_unify_pointers",     ATTV_UNIFY_PTRS ), 
   
  
- MW("keep_both",        META_KEEP_BOTH 	),
+ MW("keep_both",        META_SOURCE 	),
  MW("meta_default",     META_DEFAULT ),
  MW("meta_disabled",    META_DISABLED 	),
  MW("no_bind",          META_NO_BIND ), 
@@ -387,17 +387,12 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 
  atom_t atomcaller = current_caller_mask(flags);
 
- if(!(flags& ATTV_ASSIGNONLY) && (flags& META_USE_WAKEBINDS) )
- { registerWakeup(FUNCTOR_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
-   return;
- }
-
  if ( isAttVar(*value) )
  { 
     if ( av == value) return;
 
-    if(IS_META(META_KEEP_BOTH))
-    { DEBUG(MSG_METATERM, Sdprintf_ln("META_KEEP_BOTH"));
+    if(IS_META(META_SOURCE))
+    { DEBUG(MSG_METATERM, Sdprintf_ln("META_SOURCE"));
       return;
     }
 
@@ -423,8 +418,8 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
     
  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
  {   if( (flags& ATTV_ASSIGNONLY) )
-	 {  if(IS_META(META_KEEP_BOTH))
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref"));
+	 {  if(IS_META(META_SOURCE))
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_SOURCE Upgraging VAR to an ATTVAR ref"));
            TrailAssignment(value);
            make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
            deRef(value);
@@ -450,8 +445,8 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 //           *av = makeRef(value);			            
          }
 	 } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_unify5 with a plain VAR ref"));
-       registerWakeup(FUNCTOR_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);       
+     { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_meta_unify5 with a plain VAR ref"));
+       registerWakeup(FUNCTOR_meta_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);       
      }
   } else 
   { if (IS_META(META_NO_BIND))
@@ -463,47 +458,7 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
   }
 }
 
-void
-assignAttVarPreUnify(atom_t atomcaller, Word av, Word value, int flags ARG_LD)
-{ 
 
-  if ( isAttVar(*value) )
-  { if ( value > av )
-    {   if (!IS_META(META_DISABLE_SWAP))
-        {
-          Word tmp = av;
-          av = value;
-          value = tmp;
-        } else
-        { DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVarPreUnify DISABLE_SWAP(%s)", vName(av)));
-        }
-    } else if ( av == value )
-    { DEBUG(MSG_WAKEUPS, Sdprintf_ln("no_self_unify(%s)", vName(av)));
-      return;
-    }
-  }
-
-
-  if(!(flags& META_NO_WAKEUP))
-  { registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
-  } 
-
- if((flags& ATTV_MUST_TRAIL))
- { mark m;
-   Mark(m);		/* must be trailed, even if above last choice */
-   LD->mark_bar = NO_MARK_BAR;
-   TrailAssignment(av);
-   DiscardMark(m);
-  } else
-  { TrailAssignment(av);
-  }
-
-  if((flags& ATTV_WILL_UNBIND) )
-  {  assignAttVarBinding(av,value,flags PASS_LD);
-  }
-}
-
-int
 assignAttVar(Word av, Word value, int callflags ARG_LD)
 { 
   assert(isAttVar(*av));
@@ -525,13 +480,7 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
 
   atom_t atomcaller = current_caller_mask(callflags);
 
-#ifdef O_PREUNIFY
-  if(flags&META_USE_DO_UNIFY) 
-  { assignAttVarPreUnify(atomcaller, av,value, flags PASS_LD);
-    return TRUE;
-  }
-#else
-  if(isVar(*value) & !(varflags&META_USE_DO_UNIFY) && !(callflags & rmask))
+  if(isVar(*value) & !(varflags&META_USE_UNIFY_VAR) && !(callflags & rmask))
   { 
     if(flags& META_NO_TRAIL) 
     {
@@ -540,12 +489,6 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     }
     Trail(value, makeRef(av));
     return TRUE;
-  }
-#endif 
-
-  if(flags&META_USE_PRE_UNIFY) 
-  { /*assignAttVarPreUnify(atomcaller,av,value,flags PASS_LD);
-    return;*/
   }
 
   if ( isAttVar(*value) )
@@ -564,7 +507,9 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     }
   }
 
- if(!(flags& META_NO_WAKEUP)) registerWakeup(FUNCTOR_post_unify5,atomcaller, av, valPAttVar(*av), value PASS_LD);
+ if(!(flags& META_NO_WAKEUP)) 
+ {  registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
+ }
 
  if((flags& ATTV_MUST_TRAIL))
  { mark m;
@@ -576,20 +521,10 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
  { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
  }
 
- if( (flags& META_NO_BIND) ) return TRUE;
-
- if(!(flags& META_USE_WAKEBINDS)) 
- {
-    assignAttVarBinding(av,value,flags PASS_LD);
-    return TRUE;
+ if((flags& ATTV_WILL_UNBIND) )
+ {  assignAttVarBinding(av,value,flags PASS_LD);
  }
-  if ( isAttVar(*value) )
-  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying two attvars "));
-    *av = makeRef(value);
-  } else
-    *av = *value;
 
-  return TRUE;
 }
 
 
@@ -1828,6 +1763,21 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   }
 }
 
+static
+PRED_IMPL("attv_bind", 2, attv_bind, 0)
+{ PRED_LD
+
+  Word value, av;
+  deRef2(valTermRef(A1), av);
+  deRef2(valTermRef(A2), value);
+  if(needsRef(*value))
+  { *av = makeRef(value);
+  } else 
+  { *av = *value;
+  }
+  return TRUE;
+}
+
 
 static
 int
@@ -2221,6 +2171,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("attv_unify", 2, attv_unify, 0)
+  PRED_DEF("attv_bind", 2, attv_bind, 0)
 #ifdef O_METATERM
   PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)

@@ -738,7 +738,7 @@ fbs_for_hooks_default(v(
 
 
  attv_assignonly 			," '$attvar_assign'/2 " ,
- attv_default  		," bindconst() " ,
+ attv_bindconst  		," bindconst() " ,
  attv_must_trail       		," unify: assign and wakeup " ,
  attv_will_unbind   , " peer no trail ", 
  
@@ -746,7 +746,7 @@ fbs_for_hooks_default(v(
 		 *	      METATERMS      	*
 		 *******************************/
  meta_default,
- keep_both      , " allow attvar survival ", 
+ meta_source      , " allow attvar survival ", 
  meta_disabled  , " disable all options (allows the options to be saved) ", 
  no_bind, " c should let only prolog do binding ",
  no_inherit, " this metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) ", 
@@ -761,7 +761,7 @@ fbs_for_hooks_default(v(
  use_dra_interp,
  use_pre_unify,
  use_cpreds , " hook cpreds (wam can misses a few)", 
- use_do_unify, " debugging for a moment trying to guage if damaging do_unify() ",
+ use_unify_var, " debugging for a moment trying to guage if damaging do_unify() ",
  use_undo , " check attvars for undo hooks (perfomance checking) ",
  use_vmi , " hook wam ", 
 
