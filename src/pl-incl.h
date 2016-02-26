@@ -2061,7 +2061,7 @@ typedef struct
 #define NB_PUTATTS 0x1
 
 /* This adds wakeups to attvars rather than binding them */
-#define ATTV_BINDCONST     META_DEFAULT   /* bindConst() */
+#define ATTV_BINDCONST   0x01   /* bindConst() */
 #define ATTV_ASSIGNONLY  0x02		 /* '$attvar_assign'/2 */
 #define ATTV_MUST_TRAIL  0x04        /* unifiable/3 and Occurs checking needs attvars trailed  */
 #define ATTV_WILL_UNBIND 0x08        /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */

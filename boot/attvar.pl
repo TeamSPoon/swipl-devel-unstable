@@ -74,137 +74,117 @@ amsg(G):- notrace(
                   format(user_error,'~N,~q~n',[G]))))).
 
 
+% So whenver I do a setup_* I wrap it in must_atomic/1
+must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
+
+redo_call_cleanup_av(Setup,Goal,Undo):-
+   must_atomic(Setup),
+   catch( 
+     (Goal, 
+         (deterministic(true) 
+	  -> must_atomic(Undo)
+	  ; (must_atomic(Undo);(must_atomic(Setup),fail)))),
+      E,
+      (must_atomic(Undo),!,throw(E))).
+
+
 push_attvar_waking(_).
 pop_attvar_waking(_).
 
 
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
-system:pre_unify(Atts, Next, Var, Value, Atom ):-
-  amsg(Atom:pre_unify(Atts, Next, Var, Value )),
-  ( 
-  (push_attvar_waking(Var),
-    post_unify(Atts, Next, Var, Value))
-    *->
-    pop_attvar_waking(Var)
-    ;
-    (pop_attvar_waking(Var),!,fail)).
-
-
-:- meta_predicate(system:meta_unify(+,0,+,+,+)).
-system:meta_unify(Atts, Next, Var, Value, Atom ):-
-  amsg(Atom:meta_unify(Atts, Next, Var, Value )),
-  ( 
-  (push_attvar_waking(Var),
-    unify(Atts, Next, Var, Value))
-    *->
-    pop_attvar_waking(Var)
-    ;
-    (pop_attvar_waking(Var),!,fail)).
-
-
-:- meta_predicate(system:post_unify(+,0,+,+,+)).
-system:post_unify(Atts, Next, Var, Value, Atom ):-
-  amsg(Atom:post_unify(Atts, Next, Var, Value )),
-  ( 
-  (push_attvar_waking(Var),
-    post_unify(Atts, Next, Var, Value))
-    *->
-    pop_attvar_waking(Var)
-    ;
-    (pop_attvar_waking(Var),!,fail)).
-
 
        /*******************************
-       *         VERIFY_ATTRIBUTES    *
+       *         PRE_UNIFY        *
        *******************************/
 
-:- meta_predicate(system:pre_unify(+,:,+,+)).
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
-system:pre_unify(att('$atts', _, Rest), Next, Var, Value ):- attvar(Var),!,
-    meta_unify(Rest,Next,Var,Value).
+% METATERMs
+system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
+  writeln(meta_unify(Atom, Var, Value )),
+  meta_unify(Rest, Atom, Var, Value),
+  call(Next).
 
-system:pre_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
-  system:pre_unify(Rest,Next,Var,Value),
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
+% BOUND
+system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
+   system:post_unify(Atts, Next, Var, Value, Atom ).
 
-system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+% ATTVARs
+system:pre_unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:collect_va(Atts, Next, Var, Value )),
+  redo_call_cleanup_av(push_attvar_waking(Var),
+    collect_va(Atts, Next, Var, Value),pop_attvar_waking(Var)).
+
+
+      /*******************************
+      *         VERIFY_ATTRIBUTES/3    *
+      *******************************/
+
+:- meta_predicate(system:collect_va(+,:,+,+)).
+system:collect_va(att(Module, _AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:verify_attributes(Var, Value, VAGoals),VAGoals=[]),
-        pre_unify(Rest, Next, Var, Value),
+        collect_va(Rest, Next, Var, Value),
         goals_with_module(VAGoals,Module).
 
-system:pre_unify(_,Next,Var,Value):- 
-        verify_attributes(Var, Value),
-   call(Next).
+system:collect_va(_,Next,Var,Value):- 
+      verify_attributes(Var, Value),
+      call(Next).
 
 
+      /*******************************
+      *         VERIFY_ATTRIBUTES/2  *
+      *******************************/
 
-           /*******************************
-           *	  META UNIFY HOOK	*
-           *******************************/
-
-:- meta_predicate(system:meta_unify(+,0,+,+)).
-
-:- meta_predicate(system:unify(+,0,+,+)).
-
-system:unify(att('var_replace', var_replace(Copy,Call), Rest), Next, _Var, Value):- !,
-         call(Call),
-         system:unify(Rest,Next,Copy,Value).
-
-system:unify(att('$atts', MV, Rest), Next, Var, Value ):- !,
-   put_attr(Var,'$atts_saved',MV),
-   setup_call_cleanup(
-   metaterm_flags(Var, ( /\ ) ,no_wakeup),
-   system:unify(Rest,Next,Var,Value),
-   put_attr(Var,'$atts', MV)).
-
-system:unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
-      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
-      system:unify(Rest,Next,Var,Value),
-      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
-
-system:unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
-     ifdef(Module:unify_hook(AttVal, Value),true),
-     unify(Rest, Next, Var, Value).
-
-system:unify(_,Next,Var,Value):- 
-    verify_attributes(Var, Value),
-    call(Next).
-
-   
 system:verify_attributes(Var, Value):- attvar(Var),!,
-   del_attr(Var,'$unify'), '$trail_assignment'(Var),
+   '$trail_assignment'(Var),
    ignore(attv_unify(Var,Value)).
    
 system:verify_attributes(Value, Value).
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
+
+     /*******************************
+     *	  METATERM UNIFY HOOK	*
+     *******************************/
+
+:- meta_predicate(system:meta_unify(+,0,+,+)).
+system:meta_unify(att('var_replace', var_replace(Copy,Call), Rest), Atom, _Var, Value):- !,
+         call(Call),
+         system:pre_unify(Rest,true,Copy,Value,Atom).
+
+system:meta_unify(att('$atts_saved', MV, Rest), Atom, Var, Value ):- !,
+      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
+      system:meta_unify(Rest,Atom,Var,Value).
+
+system:meta_unify(att(Module, AttVal, Rest), Atom, Var, Value ):- !,
+     ifdef(Module:meta_unify_hook(Atom, AttVal, Var, Value),true),
+     meta_unify(Rest, Atom, Var, Value).
+
+system:meta_unify(_,_Atom,_Var,_Value).
 
 
+     /*******************************
+     *   C POST UNIFY HOOK	*
+     *******************************/
+
+:- meta_predicate(system:post_unify(+,0,+,+,+)).
+system:post_unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:post_unify(Atts, Next, Var, Value )),
+  redo_call_cleanup_av(push_attvar_waking(Var),
+    post_unify(Atts, Next, Var, Value),pop_attvar_waking(Var)).
 
 
+     /*******************************
+     *   ATTR UNIFY HOOK	*
+     *******************************/
 
-:- meta_predicate(system:post_unify(+,0,+,+)).
-
-
-system:post_unify(att('$atts', _, Rest), Next, Var, Value ):- attvar(Var),!,
-    unify(Rest,Next,Var,Value).
-
-system:post_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
-  system:post_unify(Rest,Next,Var,Value),
-  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
-
-
-system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+:- meta_predicate(call_uhooks(+,0,+,+)).
+call_uhooks(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
-        post_unify(Rest, Next, Var, Value).
+        call_uhooks(Rest, Next, Var, Value).
 
-system:post_unify(_,Next,Var,Value):- 
-        verify_attributes(Var, Value),
+call_uhooks(_,Next,Var,Value):- nop(verify_attributes(Var, Value)),
         call(Next).
+
 
 
         /*******************************

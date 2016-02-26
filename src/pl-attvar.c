@@ -188,8 +188,8 @@ static matts_flag matts_flags[] =
  MW("use_h_var" ,       META_USE_H_VAR ),
  MW("use_unify_vp",     META_USE_UNIFY_VP ),    
  MW("use_bind_const",   META_USE_BINDCONST ), 
- MW("use_unify_var",     META_USE_UNIFY_VAR ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
+ MW("use_unify_var",     META_USE_UNIFY_VAR ), 
  MW("attv_must_trail",  ATTV_MUST_TRAIL ), 
  MW("attv_assignonly",  ATTV_ASSIGNONLY ), 
  MW("no_trail",         META_NO_TRAIL	), 
@@ -1763,6 +1763,21 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   }
 }
 
+static
+PRED_IMPL("attv_bind", 2, attv_bind, 0)
+{ PRED_LD
+
+  Word value, av;
+  deRef2(valTermRef(A1), av);
+  deRef2(valTermRef(A2), value);
+  if(needsRef(*value))
+  { *av = makeRef(value);
+  } else 
+  { *av = *value;
+  }
+  return TRUE;
+}
+
 
 static
 int
@@ -2156,6 +2171,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$call_residue_vars_end", 0, call_residue_vars_end, 0)
 #endif
   PRED_DEF("attv_unify", 2, attv_unify, 0)
+  PRED_DEF("attv_bind", 2, attv_bind, 0)
 #ifdef O_METATERM
   PRED_DEF("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
   PRED_DEF("$set_delayed", 2, dset_delayed, 0)
