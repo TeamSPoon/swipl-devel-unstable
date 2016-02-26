@@ -2061,7 +2061,7 @@ typedef struct
 #define NB_PUTATTS 0x1
 
 /* This adds wakeups to attvars rather than binding them */
-#define ATTV_DEFAULT     META_DEFAULT   /* bindConst() */
+#define ATTV_BINDCONST     META_DEFAULT   /* bindConst() */
 #define ATTV_ASSIGNONLY  0x02		 /* '$attvar_assign'/2 */
 #define ATTV_MUST_TRAIL  0x04        /* unifiable/3 and Occurs checking needs attvars trailed  */
 #define ATTV_WILL_UNBIND 0x08        /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
@@ -2080,10 +2080,10 @@ typedef struct
 #define META_NO_BIND        0x0010 /* C should not bind attvar even in ASSIGNONLY  */
 #define META_NO_WAKEUP  	0x0020 /* Dont call wakeup */
 #define META_NO_TRAIL       0x0040 /* Do not bother to trail the previous value */
-#define META_KEEP_BOTH  	0x0080 /* allow attvar survival */
+#define META_SOURCE  	0x0080 /* allow attvar survival */
 
 
-#define META_USE_DO_UNIFY  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
+#define META_USE_UNIFY_VAR  	    0x0100 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
@@ -2105,7 +2105,7 @@ typedef struct
 #define META_PLEASE_OPTIMIZE_TRAIL    0x040000 /* Make the default to optimize trail */
 #define META_NO_OPTIMIZE_TRAIL 0x080000 /* Dont Optimize Trail (Multiple wakeups) */
 
-#define META_USE_BARG_VAR  0x100000  /* implies ATTV_DEFAULT|META_1_INTO_2 */
+#define META_USE_BARG_VAR  0x100000  /* implies ATTV_BINDCONST|META_1_INTO_2 */
 #define META_USE_CONS_VAL 0x200000  /* implies META_NO_TRAIL|META_1_INTO_2 */
 #define META_USE_H_VAR    0x400000 /* META_NO_TRAIL|META_1_INTO_2 */
 #define META_USE_UNIFY_VP 0x800000 /* META_NO_TRAIL|META_1_INTO_2 */

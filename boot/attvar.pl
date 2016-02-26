@@ -57,14 +57,6 @@ in pl-attvar.c
        *         UTILS    *
        *******************************/
 
-
-'amsg'(G):-notrace('amsg0'(G)).
-
-'amsg0'(_) :- \+ current_prolog_flag(dmiles,true),!.
-'amsg0'(G) :- current_predicate(logicmoo_util_dmsg:dmsg/1), !, logicmoo_util_dmsg:dmsg(G).
-'amsg0'(G) :- format(user_error,'~N,~q~n',[G]).
-
-
 system:goals_with_module([G|Gs], M):- !,
 	M:call(G),
 	system:goals_with_module(Gs, M).
@@ -76,6 +68,11 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 :- module_transparent(system:must_or_die/1).
 system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
+amsg(G):- notrace(
+   ignore((current_prolog_flag(dmiles,true),
+           ifdef(logicmoo_util_dmsg:dmsg(G),
+                  format(user_error,'~N,~q~n',[G]))))).
+
 
 push_attvar_waking(_).
 pop_attvar_waking(_).
@@ -86,16 +83,16 @@ system:pre_unify(Atts, Next, Var, Value, Atom ):-
   amsg(Atom:pre_unify(Atts, Next, Var, Value )),
   ( 
   (push_attvar_waking(Var),
-    pre_unify(Atts, Next, Var, Value))
+    post_unify(Atts, Next, Var, Value))
     *->
     pop_attvar_waking(Var)
     ;
     (pop_attvar_waking(Var),!,fail)).
 
 
-:- meta_predicate(system:unify(+,0,+,+,+)).
-system:unify(Atts, Next, Var, Value, Atom ):-
-  amsg(Atom:unify(Atts, Next, Var, Value )),
+:- meta_predicate(system:meta_unify(+,0,+,+,+)).
+system:meta_unify(Atts, Next, Var, Value, Atom ):-
+  amsg(Atom:meta_unify(Atts, Next, Var, Value )),
   ( 
   (push_attvar_waking(Var),
     unify(Atts, Next, Var, Value))
@@ -123,31 +120,30 @@ system:post_unify(Atts, Next, Var, Value, Atom ):-
 
 :- meta_predicate(system:pre_unify(+,:,+,+)).
 
-system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
-system:pre_unify(Atts,Next,Var,Value):-
-     format(string(VarID),'~q',[Var]),
-     put_attrs(Var,att('$unify',VarID,Atts)),!,
-     pre_unify(Atts,Next,Var,Value,VarID).
+system:pre_unify(att('$atts', _, Rest), Next, Var, Value ):- attvar(Var),!,
+    meta_unify(Rest,Next,Var,Value).
 
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+system:pre_unify(att('$atts_saved', MV, Rest), Next, Var, Value ):- !,
+  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
+  system:pre_unify(Rest,Next,Var,Value),
+  ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true).
 
-system:pre_unify(_, Next, Var, _Value,VarID):- \+ ((get_attr(Var,'$unify',CookieM),VarID==CookieM)),!, call(Next).
-system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
-        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
+system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+        ifdef(Module:verify_attributes(Var, Value, VAGoals),VAGoals=[]),
+        pre_unify(Rest, Next, Var, Value),
+        goals_with_module(VAGoals,Module).
 
-system:pre_unify(_, Next, Var, Value, _):-
-   del_attr(Var,'$unify'),
-   '$trail_assignment'(Var),
-   attv_unify(Var,Value),
+system:pre_unify(_,Next,Var,Value):- 
+        verify_attributes(Var, Value),
    call(Next).
 
 
 
            /*******************************
-           *	  PLAIN UNIFY HOOK	*
+           *	  META UNIFY HOOK	*
            *******************************/
 
+:- meta_predicate(system:meta_unify(+,0,+,+)).
 
 :- meta_predicate(system:unify(+,0,+,+)).
 
@@ -179,6 +175,7 @@ system:unify(_,Next,Var,Value):-
 system:verify_attributes(Var, Value):- attvar(Var),!,
    del_attr(Var,'$unify'), '$trail_assignment'(Var),
    ignore(attv_unify(Var,Value)).
+   
 system:verify_attributes(Value, Value).
 
 		 /*******************************
@@ -533,14 +530,4 @@ wakeup(Var,M:Next, Value):- M:verify_attributes(Var, Value), M:call(Next).
 system:verify_attributes(Var, Value):-
     get_attrs(Var,Att3s),!,
     pre_unify(Att3s,Var,Value).
-   
-system:verify_attributes(Var, Value):- Var=Value.
-
-
-system:pre_unify(att(Module, _, Rest), Var, Value ):- !,
-        Module:verify_attributes(Var, Value, VAGoals),
-	pre_unify(Rest,Var, Value),
-	goals_with_module(VAGoals,Module).
-system:pre_unify(_,Var,Value):- attv_unify(Var,Value).
-
 
