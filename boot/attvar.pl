@@ -82,21 +82,25 @@ amsg(G):- notrace(
 
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
+% BOUND
+system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
+   post_unify(Atts, Next, Var, Value, Atom  ).
+
 % METATERMs
 system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
   writeln(meta_unify(Atom, Var, Value )),
-  meta_unify(Rest, Atom, Var, Value),
+  % next line disabled from being a  variable is now disabled
+  with_meta_disabled(Var,with_meta_enabled(global,meta_unify(Rest, Atom, Var, Value))),
+  % global was re-disabled
   call(Next).
 
-% BOUND
-system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
-   system:post_unify(Atts, Next, Var, Value, Atom ).
-
-% ATTVARs
+% Normal ATTVARs
 system:pre_unify(Atts, Next, Var, Value, Atom ):-
-  amsg(Atom:collect_va(Atts, Next, Var, Value )),
-  redo_call_cleanup_av(push_attvar_waking(Var),
-    collect_va(Atts, Next, Var, Value),pop_attvar_waking(Var)).
+  nop(amsg(Atom:collect_va(Atts, Next, Var, Value ))),
+   with_meta_enabled(global,
+       collect_va(Atts, Next, Var, Value)),
+   with_meta_disabled(global,
+       post_unify(Atts, true, Var, Value, Atom)).
 
 
       /*******************************
@@ -152,20 +156,19 @@ system:meta_unify(_,_Atom,_Var,_Value).
 :- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-
   amsg(Atom:post_unify(Atts, Next, Var, Value )),
-  redo_call_cleanup_av(push_attvar_waking(Var),
-    post_unify(Atts, Next, Var, Value),pop_attvar_waking(Var)).
-
+  with_meta_disabled(Var,with_meta_enabled(global,call_uhooks(Atts, Next, Var, Value))).
 
      /*******************************
      *   ATTR UNIFY HOOK	*
      *******************************/
 
 :- meta_predicate(call_uhooks(+,0,+,+)).
-call_uhooks(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+system:call_uhooks(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         call_uhooks(Rest, Next, Var, Value).
 
-call_uhooks(_,Next,Var,Value):- nop(verify_attributes(Var, Value)),
+system:call_uhooks(_,Next,Var,Value):- 
+        ignore(verify_attributes(Var, Value)),
         call(Next).
 
 
@@ -410,13 +413,13 @@ frozen_residuals(X, V) -->
 	[ freeze(V, X) ].
 
 
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
+
 
 end_of_file.
 
 
-
-% nop/1 is for disabling code while staying in syntax
-system:nop(_).
 
 
 system:make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
