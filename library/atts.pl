@@ -40,7 +40,7 @@
       w_dmvars/1,
       w_hooks/1,
       wi_atts/2,
-      wo_hooks/2,
+      wno_hooks/2,
       wno_debug/1,
       mkmeta/1,
       wno_dmvars/1,
@@ -260,7 +260,7 @@ the usual unification. The handler procedure is
 unify_handler(+Term, ?Attribute [,SuspAttr])
 The first argument is the term that was unified with the attributed variable, it is either a non-variable or another attributed variable. The second argument is the contents of the attribute slot corresponding to the extension. Note that, at this point in execution, the orginal attributed variable no longer exists, because it has already been bound to Term. The optional third argument is the suspend-attribute of the former variable; it may be needed to wake the variable's 'constrained' suspension list.
 The handler's job is to determine whether the binding is allowed with respect to the attribute. This could for example involve checking whether the bound term is in a domain described by the attribute. For variable-variable bindings, typically the remaining attribute must be updated to reflect the intersection of the two individual attributes. In case of success, suspension lists inside the attributes may need to be scheduled for waking.
-If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing once all unify-handlers are done.
+If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing notrace all unify-handlers are done.
 */
 meta_handler_name(unify).
 
@@ -549,8 +549,10 @@ atts_put(PN,Var,M,Pair):-
   atts_exist(PN,Tmpl),
   exec_atts_put(PN,Var,M,Tmpl).
 
+is_meta_att(Tmpl):-fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
 
-exec_atts_put(-,Var,M,Tmpl):-
+exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_meta_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
+exec_atts_put(-,Var,M,Tmpl):-!,
    (get_attr(Var,M,Cur)->
      (delete(Cur,Tmpl,Upd),put_attr(Var,M,Upd)) ;
     true).
@@ -580,9 +582,9 @@ update_hooks(PN,Var,_,Hook):-
   update_hooks1(PN,Var,_,Hook).
 
 update_hooks1(+,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
-   (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));put_attr(Var,'$atts',Number)))).
+   (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));(mkmeta(Var),put_attr(Var,'$atts',Number))))).
 update_hooks1(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
-   (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));put_attr(Var,'$atts',Number)))).
+   (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));(mkmeta(Var),put_attr(Var,'$atts',Number))))).
 
 handler_fbs(Hook,Number):- notrace(catch(fbs_to_number(Hook,Number),_,Number=0)).
 
@@ -644,9 +646,9 @@ as_handler(Handler/_,Handler):-!.
 as_handler(M:Handler/_,M:Handler):-!.
 as_handler(Handler,Handler).
 
-:- meta_predicate wo_hooks(*,0).
+:- meta_predicate wno_hooks(*,0).
 :- meta_predicate do_meta_hook(2,*,?,*).
-:- meta_predicate while_goal(0,0,0).
+:- meta_predicate instrument(0,0,0).
 :- meta_predicate wd(0).
 :- meta_predicate(wnmt(:)).
 wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(W)).
@@ -759,7 +761,7 @@ fbs_for_hooks_default(v(
  use_no_trail_optimize,
  use_skip_hidden , " dont factor $meta into attvar identity ", 
  use_dra_interp,
- use_pre_unify,
+ meta_source,
  use_cpreds , " hook cpreds (wam can misses a few)", 
  use_unify_var, " debugging for a moment trying to guage if damaging do_unify() ",
  use_undo , " check attvars for undo hooks (perfomance checking) ",
@@ -775,7 +777,7 @@ fbs_for_hooks_default(v(
 %
 % Print the system global modes
 %
-matts:-get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]).
+matts:-notrace((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
 
 
 %% debug_hooks is det.
@@ -803,7 +805,7 @@ put_datts(AttVar,Modes):-
   ((
    get_attr(AttVar,'$atts',Was)->
        (merge_fbs(Modes,Was,Change),put_attr(AttVar,'$atts',Change)); 
-   (fbs_to_number(Modes,Number),put_attr(AttVar,'$atts',Number)))))))),!.
+   (fbs_to_number(Modes,Number),mkmeta(AttVar),put_attr(AttVar,'$atts',Number)))))))),!.
 
 
 %%    matts(+AttVar)
@@ -873,24 +875,11 @@ fbs_to_number([A|B],VVV):-!,merge_fbs(B,A,VVV).
 fbs_to_number(V,VVV) :- VVV is V.
 
 
-%%    while_goal(Before,Goal,After)
+%%    instrument(Before,Goal,After)
 %
-% while executing Goal (and each time) run:  once(Before),Goal,After
+% while executing Goal (and each time) run:  notrace(Before),Goal,After
 % But even when goal fails still run After
 
-while_goal(Before,Goal,After):-!,
-   setup_call_cleanup(Before,Goal,After).
-
-while_goal(Before,Goal,After):-
-  Before,!,
-  ( call((Goal,deterministic(T)))
-  *-> 
-   ( once(After), (T==true -> (nop(dmsg(done)),!) ; (true;((Before,fail);fail))))
-  ;
-  (After,!,fail)
-  ).
-
-  
 
 check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fail. % , (nonvar(G)->(G,b_setval(Key));true).
 
@@ -900,21 +889,19 @@ check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fa
 %
 % With inherited Hooks call Goal
 
-wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,while_goal(set_metaflags(N),Goal,set_metaflags(W)).
+wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,instrument(set_metaflags(N),Goal,set_metaflags(W)).
 
-%%    wo_hooks(+Var,+Goal)
+%%    wno_hooks(+Var,+Goal)
 %
 % Without hooks on Var call Goal
-wo_hooks(Var,Goal):-
-  get_attr(Var,'$atts',W),T is W \/ 0x0800,!,
-   while_goal(put_attr(Var,'$atts',T),Goal,put_attr(Var,'$atts',W)).
-wo_hooks(_Var,Goal):-Goal.
+wno_hooks(Var,Goal):- metaflag_set(Var,meta_disabled),Goal.
+wno_hooks(Goal):-  metaflag_set(current,meta_disabled),Goal.
+w_hooks(Goal):-  metaflag_unset(current,meta_disabled),Goal.
 
 
 wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).
 w_dmvars(Goal):- w_hooks(w_debug(Goal)).
-w_hooks(Goal):-  metaflag_unset(current,meta_disabled),Goal.
-wno_hooks(Goal):-  metaflag_set(current,meta_disabled),Goal.
+
 wno_debug(Goal):- '$debuglevel'(W,0),W==0,!,Goal.
 wno_debug(Goal):- setup_call_cleanup(exit_debug,Goal,enter_debug(4)).
 w_debug(Goal):- setup_call_cleanup(enter_debug(4), Goal,exit_debug).

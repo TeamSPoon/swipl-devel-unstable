@@ -37,6 +37,8 @@
 	    copy_term/3                 % +Term, -Copy, -Residue
 	  ]).
 
+:- meta_predicate '$wakeup'(0).
+
 /** <module> Attributed variable handling
 
 Attributed  variable  and  coroutining  support    based  on  attributed
@@ -49,9 +51,9 @@ in pl-attvar.c
 %	Called from the kernel if assignments have been made to
 %	attributed variables.
 
-'$wakeup'(G) :- \+ current_prolog_flag(dmiles,true),!, G.
-% '$wakeup'(G) :- current_predicate(logicmoo_util_rtrace:rtrace/1), !, logicmoo_util_rtrace:rtrace(G).
-'$wakeup'(G) :- amsg(call(G)),call(G).
+% each variable will be shut off one at a time and global will be re-enabled once a var is shut off
+'$wakeup'(G) :- with_meta_disabled(global,G).
+
 
        /*******************************
        *         UTILS    *
@@ -65,31 +67,12 @@ system:goals_with_module(_,_).
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-:- module_transparent(system:must_or_die/1).
-system:must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
 
 amsg(G):- notrace(
    ignore((current_prolog_flag(dmiles,true),
            ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))).
 
-
-% So whenver I do a setup_* I wrap it in must_atomic/1
-must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
-
-redo_call_cleanup_av(Setup,Goal,Undo):-
-   must_atomic(Setup),
-   catch( 
-     (Goal, 
-         (deterministic(true) 
-	  -> must_atomic(Undo)
-	  ; (must_atomic(Undo);(must_atomic(Setup),fail)))),
-      E,
-      (must_atomic(Undo),!,throw(E))).
-
-
-push_attvar_waking(_).
-pop_attvar_waking(_).
 
 
 
@@ -350,7 +333,7 @@ call_residue_vars(_, _) :-
 	fail.
 
 run_crv(Goal, Chp, Vars, Det) :-
-	call(Goal),
+	with_meta_enabled(global,call(Goal)),
 	deterministic(Det),
         '$attvars_after_choicepoint'(Chp, Vars).
 

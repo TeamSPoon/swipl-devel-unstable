@@ -736,6 +736,7 @@ save_debug :-
 restore_debug :-
 	current_prolog_flag(query_debug_settings, debug(Debugging, Tracing)),
 	set_prolog_flag(debug, Debugging),
+        metaterm_flags(global,set,meta_disabled),
 	(   Tracing == true
 	->  trace
 	;   true
@@ -835,7 +836,7 @@ residue_vars(Goal, Vars) :-
 	current_prolog_flag(toplevel_residue_vars, true), !,
 	call_residue_vars(Goal, Vars).
 residue_vars(Goal, []) :-
-	call(Goal).
+	with_meta_enabled(global,call(Goal)).
 
 %%	write_bindings(+Bindings, +ResidueVars, +Deterministic)
 %

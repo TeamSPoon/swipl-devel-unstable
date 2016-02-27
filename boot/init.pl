@@ -204,6 +204,39 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 	call_cleanup(0,0),
 	call_cleanup(0,?,0).
 
+
+
+:- meta_predicate with_meta_disabled(?,0),
+                  with_meta_enabled(?,0),
+                  must_or_die(0),
+                  redo_call_cleanup_av(0,0,0).
+
+:- module_transparent(must_or_die/1).
+must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
+
+
+% So whenver I do a setup_* I wrap it in must_atomic/1
+:- module_transparent(must_atomic/1).
+must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
+
+redo_call_cleanup_av(Setup,Goal,Undo):-
+   must_atomic(Setup), 
+   catch( 
+     ((Goal, deterministic(Det), true) 
+        *-> 
+        (Det == true 
+         -> must_atomic(Undo) 
+          ; (must_atomic(Undo);(must_atomic(Setup),fail)))
+     ; (must_atomic(Undo),fail)), 
+     E, (must_atomic(Undo),throw(E))).
+
+
+
+with_meta_disabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> redo_call_cleanup_av(metaterm_flags(Var,true,meta_disabled), G, metaterm_flags(Var,false,meta_disabled)); G.
+with_meta_enabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> G ; redo_call_cleanup_av(metaterm_flags(Var,false,meta_disabled), G, metaterm_flags(Var,true,meta_disabled)).
+
+
+
 :- '$iso'((call/1, (\+)/1, once/1, (;)/2, (',')/2, (->)/2, catch/3)).
 
 % The control structures are always compiled, both   if they appear in a
