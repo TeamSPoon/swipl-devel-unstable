@@ -874,12 +874,6 @@ fbs_to_number([A|B],VVV):-!,merge_fbs(B,A,VVV).
 fbs_to_number(V,VVV) :- VVV is V.
 
 
-%%    setup_call_cleanup_each(Before,Goal,After)
-%
-% while executing Goal (and each time) run:  notrace(Before),Goal,After
-% But even when goal fails still run After
-
-
 check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fail. % , (nonvar(G)->(G,b_setval(Key));true).
 
 

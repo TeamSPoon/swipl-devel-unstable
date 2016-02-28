@@ -206,7 +206,7 @@ portray_attrs(att(Name, Value, Rest), Var) :-
 	).
 
 portray_attr(freeze, Goal, Var) :- !,
-	format('freeze(~w, ~W)', [ Var, Goal,
+	format('freeze:freeze(~w, ~W)', [ Var, Goal,
 				   [ portray(true),
 				     quoted(true),
 				     attributes(ignore)
@@ -217,8 +217,21 @@ portray_attr(Name, Value, Var) :-
 	(   '$c_current_predicate'(_, G),
 	    G
 	->  true
-	;   format('~w = ...', [Name])
+	;  fa(Name,Value)
 	).
+
+system:attr_portray_hook(Name,Value):- fa(Name,Value).
+
+fa(Name,Value):-
+  current_prolog_flag(write_attributes,W),
+  set_prolog_flag(write_attributes, ignore),
+        format('~q:~W', [Name, Value,
+				   [ portray(true),
+				     quoted(true),
+				     attributes(ignore)
+				   ]
+        ]),
+   set_prolog_flag(write_attributes, W).
 
 
 		 /*******************************
