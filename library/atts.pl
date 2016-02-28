@@ -648,7 +648,6 @@ as_handler(Handler,Handler).
 
 :- meta_predicate wno_hooks(*,0).
 :- meta_predicate do_meta_hook(2,*,?,*).
-:- meta_predicate instrument(0,0,0).
 :- meta_predicate wd(0).
 :- meta_predicate(wnmt(:)).
 wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(W)).
@@ -875,7 +874,7 @@ fbs_to_number([A|B],VVV):-!,merge_fbs(B,A,VVV).
 fbs_to_number(V,VVV) :- VVV is V.
 
 
-%%    instrument(Before,Goal,After)
+%%    setup_call_cleanup_each(Before,Goal,After)
 %
 % while executing Goal (and each time) run:  notrace(Before),Goal,After
 % But even when goal fails still run After
@@ -889,7 +888,7 @@ check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fa
 %
 % With inherited Hooks call Goal
 
-wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,instrument(set_metaflags(N),Goal,set_metaflags(W)).
+wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup_each(set_metaflags(N),Goal,set_metaflags(W)).
 
 %%    wno_hooks(+Var,+Goal)
 %

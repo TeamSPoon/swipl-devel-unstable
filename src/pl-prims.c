@@ -215,14 +215,12 @@ Returns one of:
 			of trail-space.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-
-
 static int
 do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
 { term_agendaLR agenda;
   int compound = FALSE;
   int rc = FALSE;
-
+  
   do
   { word w1, w2;
 

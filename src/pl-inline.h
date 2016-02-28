@@ -317,7 +317,6 @@ bindConst__LD(Word p, word c ARG_LD)
 
   if ( isVar(*p) )
   { *p = (c);
-
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else

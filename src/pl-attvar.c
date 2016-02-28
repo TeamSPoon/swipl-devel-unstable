@@ -112,7 +112,7 @@ static void
 appendWakeup(Word wake ARG_LD);
 
 void
-registerWakeup(functor_t wakeup_type, atom_t atomcaller, Word attvar, Word attrs, Word value ARG_LD)
+registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
   if(LD_no_wakeup > 0)
@@ -122,13 +122,12 @@ registerWakeup(functor_t wakeup_type, atom_t atomcaller, Word attvar, Word attrs
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-  gTop += 6;
+  gTop += 5;
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
   wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; 
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
-  wake[5] = atomcaller;
   appendWakeup(wake PASS_LD);
 }
 
@@ -195,19 +194,19 @@ static matts_flag matts_flags[] =
  MW("meta_copy_var",    META_COPY_VAR 	),
  MW("meta_source",     META_SOURCE_VALUE ), 
  MW("use_unify_var",    META_USE_UNIFY_VAR ),
-  
+
  MW("meta_disabled",    META_DISABLED 	),
  MW("no_bind",          META_NO_BIND ), 
  MW("no_inherit",       META_NO_INHERIT ), 
  MW("no_swap",          META_DISABLE_SWAP ), 
  MW("no_wakeup",        META_NO_WAKEUP 	), 
- MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ),
+ MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
  MW("use_trail_optimize",    META_PLEASE_OPTIMIZE_TRAIL ), 
  MW("attv_unify_pointers",  ATTV_UNIFY_PTRS ),  
  MW("use_skip_hidden",  META_SKIP_HIDDEN ), 
  MW("use_cpreds",       META_USE_CPREDS ), 
  MW("use_undo",         META_USE_UNDO ), 
- MW("use_vmi",          META_USE_VMI ),                                       
+ MW("use_vmi",          META_USE_VMI ), 
  MW("meta_default",     META_DEFAULT ),
  MW("use_dra_interp",   DRA_CALL ), 
  MW(NULL,                 0)
@@ -382,48 +381,79 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  assert(!isRef(*value));
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
- if ( isAttVar(*value) )
-  { if ( av == value ) return;
-    { if ( value > av ) {
+ if ( isAttVar(*value) )  
+  {
+    if ( av == value ) return;
+    { if ( value > av )
+      {
         if ( !IS_META(META_DISABLE_SWAP) )
- { 
+        {
           Word tmp = av;
           av = value;
           value = tmp;
         } else
-        { DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVar DISABLE_SWAP(%s)", vName(av)));
-    }
+        {
+          DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVar DISABLE_SWAP(%s)", vName(av)));
         }
+      }
     }
 
-    DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying av <- value"));
+    if(IS_META(META_KEEP_BOTH))
+    { DEBUG(MSG_METATERM, Sdprintf_ln("META_KEEP_BOTH\n"));
+      return;
+    }
+
+    if (av > value)
+    { 
+        if (IS_META(META_NO_BIND))
+        {  DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value\n"));
+        } else
+        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying av <- value\n"));
+           *av = makeRef(value);		            
+        }
+
+    } else
+    {  if (!IS_META(META_DISABLE_SWAP))
+       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av\n"));
+         TrailAssignment(value);
+         *value = makeRef(av);
+       } else
+       { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av\n"));
          *av = makeRef(value);
-    return;
+       }
+    }
     
  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
-  {
-    if ( IS_META(META_COPY_VAR) )
-    { DEBUG(MSG_METATERM, Sdprintf_ln("META_COPY_VAR Upgraging VAR to an ATTVAR ref"));
+ {   if( (flags& ATTV_ASSIGNONLY) )
+	 {  if(IS_META(META_KEEP_BOTH))
+         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref\n"));
            TrailAssignment(value);
            make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
            deRef(value);
            *valPAttVar(*value) = *valPAttVar(*av);
+         } else
+         { if (IS_META(META_NO_BIND))
+           { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
              return;
            }
-    if ( IS_META(META_SOURCE_VALUE) )
-    { DEBUG(MSG_METATERM, Sdprintf_ln("META_SOURCE_VALUE Upgraging VAR to an ATTVAR's Value"));
-      registerWakeup(FUNCTOR_pre_unify5, current_caller_mask(META_SOURCE_VALUE), av, valPAttVar(*av), value PASS_LD);
+           DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Assigning attvar with a plain VAR ref\n"));
+           *av = makeRef(value);			            
+         }
+	 } else
+     { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref\n"));
+       registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);       
+     }
+  } else 
+  { if (IS_META(META_NO_BIND))
+    { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a value\n"));
       return;
-    }
-             Trail(value, makeRef(av));
-             DEBUG(MSG_METATERM, Sdprintf_ln("Putting attvar in plain VAR ref"));
-             return;
     } else
     { *av = *value;
     }
   }
+}
 
-
+int
 assignAttVar(Word av, Word value, int callflags ARG_LD)
 { 
   assert(isAttVar(*av));
@@ -433,6 +463,7 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
 
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("assignAttVar(%s)", vName(av)));
   int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+  int flags = callflags | varflags;
 
   int rmask = ( META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR |META_USE_UNIFY_VP | META_USE_BINDCONST);
   
@@ -441,23 +472,8 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     return FALSE;
   }
 
-  int flags = varflags|callflags;
-
   atom_t atomcaller = current_caller_mask(callflags);
 
-  if(isVar(*value))
-  { 
-    if(!(varflags&META_USE_UNIFY_VAR) && !(callflags & rmask))
-    { 
-    if(flags& META_NO_TRAIL) 
-    {
-      *value = makeRef(av);
-      return TRUE;
-    }
-    Trail(value, makeRef(av));
-    return TRUE;
-  }
-  }
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -475,9 +491,7 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     }
   }
 
- if(!(flags& META_NO_WAKEUP)) 
- {  registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
- }
+ if(!(flags& META_NO_WAKEUP)) registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
 
  if((flags& ATTV_MUST_TRAIL))
  { mark m;
@@ -489,12 +503,16 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
  { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
  }
 
- if((flags& ATTV_WILL_UNBIND) )
- {  assignAttVarBinding(av,value,flags PASS_LD);
- }
+ //if( (flags& META_NO_BIND) ) return TRUE;
+ 
+
+  if ( canBind(*value) )
+  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying two attvars "));
+    *av = makeRef(value);
+  } else
+    *av = *value;
 
  return TRUE;
-
 }
 
 
@@ -1723,7 +1741,7 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
     int flags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
-    assignAttVarBinding(av, value, flags PASS_LD);
+    assignAttVarBinding(av, value, ATTV_ASSIGNONLY|flags PASS_LD);
     return TRUE;
   } else if ( isVar(*av) )
   { unify_vp(av,valTermRef(A2) PASS_LD);
@@ -1823,7 +1841,7 @@ metaterm_flags(term_t aA1, term_t aA2, term_t aA3, int inherit_flags, int backtr
     return TRUE;
   } else if (!isAtom(*av) )
   { return TRUE;
-  } else if(*av == ATOM_global )
+  } else if(*av == ATOM_global)
   { int flags = METATERM_GLOBAL_FLAGS;
     int was = flags;
     if(!setFlagOptions(&flags,aA2,aA3)) return FALSE;    

@@ -1147,7 +1147,7 @@ VMI(B_UNIFY_EXIT, 0, 0, ())
     goto normal_call;
   }
 
-  CHECK_WAKEUP;				/* only for non-first-var */ 
+  CHECK_WAKEUP;				/* only for non-first-var */
   NEXT_INSTRUCTION;
 }
 
@@ -1652,7 +1652,7 @@ normal_call:
       { proc->dra_depth++;
 
         Word a = argFrameP(NFR, 0);		/* get the goal */
-
+  
         Word expr = gTop;
         gTop += 3;
         expr[0] = FUNCTOR_call2;
@@ -1781,8 +1781,6 @@ retry_continue:
       LOAD_REGISTERS(qid);
       if ( FR->predicate != DEF )		/* auto imported/loaded */
       { FR->predicate = DEF;
-
-
 #ifdef O_PROFILE
         if ( FR->prof_node )
 	  profSetHandle(FR->prof_node, DEF);
