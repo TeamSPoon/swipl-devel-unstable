@@ -212,17 +212,15 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
                   setup_call_cleanup_each(0,0,0).
 
 :- module_transparent(must_or_die/1).
-must_or_die(G):- (G *-> true ; throw(must_or_die(G))).
+must_or_die(G):- (G *-> true ; throw(failed_must_or_die(G))).
 
-
-% So whenver I do a setup_* I wrap it in must_atomic/1
 :- module_transparent(must_atomic/1).
 must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
 
 setup_call_cleanup_each(Setup,Goal,Undo):-
    must_atomic(Setup), 
-   catch( 
-     ((Goal, deterministic(Det), true) 
+   catch(( 
+     call((Goal, deterministic(Det),true)) 
         *-> 
         (Det == true 
          -> must_atomic(Undo) 

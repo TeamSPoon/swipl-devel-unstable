@@ -86,14 +86,6 @@ amsg(G):- notrace(
 
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
-
-:- meta_predicate(system:pre_unify(+,0,+,+)).
-system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
-        ifdef(Module:attr_unify_hook(AttVal, Value),true),
-        pre_unify(Rest, Next, Var, Value,Atom).
-system:pre_unify(_,Next,_Var,_Value,Atom):- !, % Var=@=Value,
-        call(Next).
-
 % BOUND
 system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
    post_unify(Atts, Next, Var, Value, Atom  ).
@@ -181,7 +173,7 @@ system:meta_unify(_,_Atom,_Var,_Value).
 
 :- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-  
-  amsg(Atom:post_unify(Atts, Next, Var, Value )),
+  amsg(Atom:post_unify(Atts, Next, Var, Value )),!,
   with_meta_disabled(Var,with_meta_enabled(global,call_uhooks(Atts, Next, Var, Value))).
 
 		 /*******************************
@@ -362,7 +354,7 @@ call_residue_vars(_, _) :-
 	fail.
 
 run_crv(Goal, Chp, Vars, Det) :-
-	call(Goal),
+	with_meta_enabled(global,call(Goal)),
 	deterministic(Det),
         '$attvars_after_choicepoint'(Chp, Vars).
 
