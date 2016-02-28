@@ -112,7 +112,7 @@ static void
 appendWakeup(Word wake ARG_LD);
 
 void
-registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_LD)
+registerWakeup(functor_t wakeup_type, atom_t atomcaller, Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
   if(LD_no_wakeup > 0)
@@ -122,12 +122,13 @@ registerWakeup(functor_t wakeup_type,  Word attvar, Word attrs, Word value ARG_L
   assert(gTop+7 <= gMax && tTop+4 <= tMax);
 
   wake = gTop;
-  gTop += 5;
+  gTop += 6;
   wake[0] = wakeup_type;
   wake[1] = needsRef(*attrs) ? makeRef(attrs) : *attrs;
   wake[2] = ATOM_true;
   wake[3] = needsRef(*attvar) ? makeRef(attvar) : *attvar; 
   wake[4] = needsRef(*value) ? makeRef(value) : *value;
+  wake[5] = atomcaller;
   appendWakeup(wake PASS_LD);
 }
 
@@ -408,7 +409,7 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
         if (IS_META(META_NO_BIND))
         {  DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value\n"));
         } else
-        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying av <- value\n"));
+        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value\n"));
            *av = makeRef(value);		            
         }
 
@@ -441,7 +442,8 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
          }
 	 } else
      { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref\n"));
-       registerWakeup(FUNCTOR_unify4, av, valPAttVar(*av), value PASS_LD);       
+       atom_t atomcaller = current_caller_mask(flags);
+       registerWakeup(FUNCTOR_meta_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);       
      }
   } else 
   { if (IS_META(META_NO_BIND))
@@ -472,8 +474,6 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     return FALSE;
   }
 
-  atom_t atomcaller = current_caller_mask(callflags);
-
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -491,7 +491,11 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
     }
   }
 
- if(!(flags& META_NO_WAKEUP)) registerWakeup(FUNCTOR_post_unify4, av, valPAttVar(*av), value PASS_LD);
+ if(!(flags& META_NO_WAKEUP)) 
+ {
+    atom_t atomcaller = current_caller_mask(callflags);
+    registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
+ }
 
  if((flags& ATTV_MUST_TRAIL))
  { mark m;

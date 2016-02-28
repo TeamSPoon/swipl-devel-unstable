@@ -56,55 +56,150 @@ in pl-attvar.c
 
 
        /*******************************
-       *         VERIFY_ATTRIBUTES    *
+       *         UTILS    *
        *******************************/
-
-:- meta_predicate(system:pre_unify(+,:,+,+)).
-
-system:pre_unify(_,Next,Var,Value):- \+ attvar(Var), !, Var=Value, call(Next).
-system:pre_unify(Atts,Next,Var,Value):-
-     format(string(VarID),'~q',[Var]),
-     put_attrs(Var,att('$in_unify',VarID,Atts)),!,
-     pre_unify(Atts,Next,Var,Value,VarID).
-
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
-
-system:pre_unify(_, Next, Var, _Value,VarID):- \+ ((get_attr(Var,'$in_unify',CookieM),VarID==CookieM)),!, call(Next).
-system:pre_unify(att(Module, _, Rest), Next, Var, Value,VarID):- !,
-        ifdef(Module:verify_attributes(Var, Value, Goals),Goals=[]),
-        system:pre_unify(Rest,(goals_with_module(Goals,Module),Next),Var, Value,VarID).
-
-system:pre_unify(_, Next, Var, Value, _):-
-   del_attr(Var,'$in_unify'),
-   '$trail_assignment'(Var),
-   attv_unify(Var,Value),
-   call(Next).
 
 system:goals_with_module([G|Gs], M):- !,
 	M:call(G),
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
-
-
 :- meta_predicate(system:ifdef(0,0)).
 system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
+
+% nop/1 is for disabling code while staying in syntax
+system:nop(_).
+
+
+amsg(G):- notrace(
+   ignore((current_prolog_flag(dmiles,true),
+           ifdef(logicmoo_util_dmsg:dmsg(G),
+                  format(user_error,'~N,~q~n',[G]))))).
+
+
+
+
+       /*******************************
+       *         PRE_UNIFY        *
+       *******************************/
+
+:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+
+
+:- meta_predicate(system:pre_unify(+,0,+,+)).
+system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
+        ifdef(Module:attr_unify_hook(AttVal, Value),true),
+        pre_unify(Rest, Next, Var, Value,Atom).
+system:pre_unify(_,Next,_Var,_Value,Atom):- !, % Var=@=Value,
+        call(Next).
+
+% BOUND
+system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
+   post_unify(Atts, Next, Var, Value, Atom  ).
+
+% METATERMs
+system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
+  writeln(meta_unify(Atom, Var, Value )),
+  % next line disabled from being a  variable is now disabled
+  with_meta_disabled(Var,with_meta_enabled(global,meta_unify(Rest, Atom, Var, Value))),
+  % global was re-disabled
+  call(Next).
+
+% Normal ATTVARs
+system:pre_unify(Atts, Next, Var, Value, Atom ):-
+  nop(amsg(Atom:collect_va(Atts, Next, Var, Value ))),
+   with_meta_enabled(global,
+       collect_va(Atts, Next, Var, Value)),
+   with_meta_disabled(global,
+       post_unify(Atts, true, Var, Value, Atom)).
+
+
+       /*******************************
+      *         VERIFY_ATTRIBUTES/3    *
+       *******************************/
+
+:- meta_predicate(system:collect_va(+,:,+,+)).
+
+
+% BOUND
+system:collect_va(_,  Next, Var, Value ):- \+ attvar(Var),!,Var = Value, call(Next).
+
+
+system:collect_va(att('$atts',_Was,Rest),  Next, Var, Value ):- !,
+     collect_va(Rest, Next, Var, Value),
+     call(Next).
+
+system:collect_va(att(Module, _AttVal, Rest), Next, Var, Value ):- !,
+     ifdef(Module:verify_attributes(Var, Value, VAGoals),VAGoals=[]),
+     collect_va(Rest, Next, Var, Value),
+     goals_with_module(VAGoals,Module).
+
+
+system:collect_va(_,M:Next,Var,Value):- 
+      M:verify_attributes(Var, Value),
+      call(Next).
+
+
+      /*******************************
+      *         VERIFY_ATTRIBUTES/2  *
+      *******************************/
+
+/* Note if a user doesnt know how they wished to handle all the properties of a variable
+  they may call system:verify_attributes/2 since it will call attv_unify/2  */
+
+system:verify_attributes(Var, Value):- attvar(Var),!,
+   '$trail_assignment'(Var),
+   ignore(attv_unify(Var,Value)).
+   
+system:verify_attributes(Value, Value).
+
+
+     /*******************************
+     *	  METATERM UNIFY HOOK	*
+     *******************************/
+
+:- meta_predicate(system:meta_unify(+,0,+,+)).
+system:meta_unify(att('var_replace', var_replace(Copy,Call), Rest), Atom, _Var, Value):- !,
+         call(Call),
+         system:pre_unify(Rest,true,Copy,Value,Atom).
+
+system:meta_unify(att('$atts_saved', MV, Rest), Atom, Var, Value ):- !,
+      ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
+      system:meta_unify(Rest,Atom,Var,Value).
+
+system:meta_unify(att(Module, AttVal, Rest), Atom, Var, Value ):- !,
+     ifdef(Module:meta_unify_hook(Atom, AttVal, Var, Value),true),    
+     meta_unify(Rest, Atom, Var, Value).
+
+system:meta_unify(_,_Atom,_Var,_Value).
+
+
+     /*******************************
+     *   C POST UNIFY HOOK	*
+     *******************************/
+
+:- meta_predicate(system:post_unify(+,0,+,+,+)).
+system:post_unify(Atts, Next, Var, Value, Atom ):-  
+  amsg(Atom:post_unify(Atts, Next, Var, Value )),
+  with_meta_disabled(Var,with_meta_enabled(global,call_uhooks(Atts, Next, Var, Value))).
 
 		 /*******************************
 		 *	  ATTR UNIFY HOOK	*
 		 *******************************/
 
-:- meta_predicate(system:post_unify(+,0,+,+)).
-system:post_unify(att(Module, AttVal, Rest), Next, Var, Value ):- !,
+:- meta_predicate(call_uhooks(+,0,+,+)).
+system:call_uhooks(att(Module, AttVal, Rest), Next, Var, Value ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
-        post_unify(Rest, Next, Var, Value).
-system:post_unify(_,Next,_Var,_Value):- % Var=@=Value,
+        call_uhooks(Rest, Next, Var, Value).
+
+system:call_uhooks(_,Next,Var,Value):- 
+        ignore(verify_attributes(Var, Value)),
         call(Next).
 
 
 
-                 /*******************************
+        /*******************************
 		 *	      FREEZE		*
 		 *******************************/
 
@@ -347,12 +442,8 @@ frozen_residuals(X, V) -->
 
 
 
+
 end_of_file.
-
-
-
-% nop/1 is for disabling code while staying in syntax
-system:nop(_).
 
 
 system:make_var_cookie(Var,VarID:SAtts):- assertion(attvar(Var)),
@@ -382,7 +473,7 @@ check_var_cookie(Var,FirstID:Expect):-
            *	  VERIFY ATTRIBUTES	* 
        *******************************/
 
-%%	pre_unify(+Att3s, +Next, +Var, +Value)
+%%	old_unify(+Att3s, +Next, +Var, +Value)
 %
 %	Called from the kernel if assignments will be made to attributed
 %	variables.
@@ -423,20 +514,17 @@ wakeup(Var,M:Next, Value):- M:verify_attributes(Var, Value), M:call(Next).
        *       FOR SISCTUS   *
        *******************************/
 
-/* Note if a user doesnt know how they wished to handle all the properties of a variable
-  they may call system:verify_attributes/2 since it will call attv_unify/2  */
-
 system:verify_attributes(Var, Value):-
     get_attrs(Var,Att3s),!,
-    pre_unify(Att3s,Var,Value).
+    old_unify(Att3s,Var,Value).
    
 system:verify_attributes(Var, Value):- Var=Value.
 
 
-system:pre_unify(att(Module, _, Rest), Var, Value ):- !,
+system:old_unify(att(Module, _, Rest), Var, Value ):- !,
         Module:verify_attributes(Var, Value, VAGoals),
-	pre_unify(Rest,Var, Value),
+	old_unify(Rest,Var, Value),
 	goals_with_module(VAGoals,Module).
-system:pre_unify(_,Var,Value):- attv_unify(Var,Value).
+system:old_unify(_,Var,Value):- attv_unify(Var,Value).
 
 
