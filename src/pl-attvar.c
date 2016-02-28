@@ -507,7 +507,8 @@ assignAttVar(Word av, Word value, int callflags ARG_LD)
  { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
  }
 
- //if( (flags& META_NO_BIND) ) return TRUE;
+
+  if( flags& META_NO_BIND && !(flags &ATTV_WILL_UNBIND) ) return TRUE;
  
 
   if ( canBind(*value) )

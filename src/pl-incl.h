@@ -2070,10 +2070,9 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_NO_OPTIMIZE_TRAIL 0x0001 /* Dont Optimize Trail (Multiple wakeups) */
 #define META_NO_BIND           0x0001 /* C should not bind attvar even in ASSIGNONLY  */
 #define META_NO_WAKEUP  	   0x0002 /* Dont call wakeup */
-#define META_NO_TRAIL       0x0004 /* Do not bother to trail the previous value */
+#define META_NO_TRAIL          0x0004 /* Do not bother to trail the previous value */
 #define META_COPY_VAR   	   0x0008 /* allow attvar survival */
 #define META_SOURCE_VALUE      0x0010 /* the attvar provides has an effective value */
 #define META_NO_INHERIT        0x0020 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
@@ -2093,7 +2092,7 @@ typedef struct
 #define META_USE_VMI  	 0x4000 /* Hook WAM */
 #define META_USE_CPREDS	 0x8000 /* Hook CPREDS (WAM can misses a few)*/
 
-#define META_KEEP_BOTH  	0x0008 /* allow attvar survival */
+#define META_KEEP_BOTH  	META_COPY_VAR /* allow attvar survival */
 #define META_ONLY_WAKEBINDS  META_SOURCE_VALUE /* C should let only prolog do binding */
 #define ATTV_DEFAULT     META_DEFAULT   /* bindConst() */
 #define ATTV_ASSIGNONLY  ATTV_WILL_UNBIND		 /* '$attvar_assign'/2 */
@@ -2106,7 +2105,7 @@ typedef struct
 #define META_SKIP_HIDDEN            0x100000 /* dont factor $meta into attvar identity */
 #define META_USE_UNDO               0x200000 /* check attvars for undo hooks (perfomance checking) */
 #define META_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
-
+#define META_NO_OPTIMIZE_TRAIL    0 /* Dont Optimize Trail (Multiple wakeups) */
 #define DRA_CALL                    0x800000
 
 #define SLOW_UNIFY_DEFAULT TRUE
