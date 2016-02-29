@@ -348,11 +348,11 @@ getMetaFlags(Word av, int flags ARG_LD)
   if (value==0) return 0;
   if (!IS_META(META_NO_INHERIT) && !(value&META_NO_INHERIT))
   { value |= flags;
-  }
+  }  
   if(value&META_DISABLED)
-  { return META_DISABLED;
+  { return value & (~(META_OVERRIDE_MASKS));
   }
-        return value;
+  return value;
 }
 
 
@@ -386,39 +386,44 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  assert(!isRef(*value));
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  if ( isAttVar(*value) )
-  { if ( av == value ) return;
-    if ( av > value )
-      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value\n"));
-        *av = makeRef(value);
-        return;
-    } else
-    { if ( !IS_META(META_DISABLE_SWAP) )
-      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av\n"));
-        *value = makeRef(av);
-        return;
-      } else
-      { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av\n"));
-        *av = makeRef(value);
-        return;
-      }
-    }
-
-  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
+  if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
   { if ( IS_META(META_COPY_VAR) )
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_COPY_VAR Upgraging VAR to an ATTVAR ref\n"));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_COPY_VAR Upgraging VAR to an ATTVAR ref "));
       TrailAssignment(value);
       make_new_attvar(value PASS_LD);      /* SHIFT: 3+0 */
       deRef(value);
       *valPAttVar(*value) = *valPAttVar(*av);
       return;
+    } else if ( !IS_META(META_USE_UNIFY_VAR) )
+    { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR normal into VAR value -> av "));	 
+      *value = makeRef(av);
+      return;
     } else
-    { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR being assigned as a VAR value -> av\n"));
-      *av = makeRef(value);
+    { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR being assigned as a VAR value -> av "));	 
+      if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
       return;
     }
   }
-  *av = *value;
+
+  if ( isAttVar(*value) )
+  { if ( av == value ) return;
+    if ( av > value )
+      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value "));
+        if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
+        return;
+    } else
+    { if ( !IS_META(META_DISABLE_SWAP) )
+      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av "));
+        *value = makeRef(av);
+        return;
+      } else
+      { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av "));
+        if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
+        return;
+      }
+    }
+  } 
+  if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Const META_NO_BIND ");} else *av = *value;
 }
 
 int
@@ -436,7 +441,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   
   int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
 
-  int rmask = ( META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR |META_USE_UNIFY_VP | META_USE_BINDCONST);
+  int rmask = (META_OVERRIDE_MASKS);
   
   atom_t atomcaller = 0;
   
@@ -1748,7 +1753,7 @@ PRED_IMPL("attv_unify", 2, attv_unify, 0)
   if ( isAttVar(*av) )
   { deRef2(valTermRef(A2), value);
     int flags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
-    assignAttVarBinding(av, value, ATTV_WILL_UNBIND|flags PASS_LD);
+    assignAttVarBinding(av, value, flags PASS_LD);
     return TRUE;
   } else if ( isVar(*av) )
   { unify_vp(av,valTermRef(A2) PASS_LD);

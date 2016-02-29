@@ -2090,6 +2090,10 @@ typedef struct
                                     as the result of unification.                                    
                                     Or in the case of a META_SOURCE_VALUE have the variable beca                           
                                  */
+
+
+#define META_OVERRIDE_MASKS  META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR |META_USE_UNIFY_VP | META_USE_BINDCONST | META_SOURCE_VALUE | META_COPY_VAR
+
 #define META_USE_VMI  	 0x4000 /* Hook WAM */
 #define META_USE_CPREDS	 0x8000 /* Hook CPREDS (WAM can misses a few)*/
 

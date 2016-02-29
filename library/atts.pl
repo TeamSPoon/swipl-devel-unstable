@@ -60,12 +60,12 @@
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       meta_override/2,
       datts_overriding/2,
-    add_attribute/2,
-    %add_attribute/3,
-    get_attribute/2,
-    %get_attribute/3,
-    get_metaflags/1,
-    set_metaflags/1,
+      add_attribute/2,
+      %add_attribute/3,
+      get_attribute/2,
+      %get_attribute/3,
+      get_metaflags/1,
+      set_metaflags/1,
       merge_fbs/3,
       new_meta/2,
       fbs_to_number/2,
@@ -96,7 +96,48 @@
 :- discontiguous(atts:metaterm_type/1).
 :- dynamic(atts:metaterm_type/1).
 
-
+:- module_transparent
+      matts/0,
+      testfv/0,
+      w_debug/1,
+      w_dmvars/1,
+      w_hooks/1,
+      wi_atts/2,
+      wno_hooks/2,
+      wno_debug/1,
+      mkmeta/1,
+      wno_dmvars/1,
+      wno_hooks/1,
+      % TODO remove  above before master
+      
+      'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
+      add_attr/3,
+      any_to_fbs/2,
+      has_hooks/1,
+      matts/1,
+      matts/2,
+      meta_copy_var/1,
+      get_val/2,
+      set_val/2,
+      meta/1,
+      source_fluent/1,sink_fluent/1,empty_fluent/1,
+      meta_override/2,
+      datts_overriding/2,
+      add_attribute/2,
+      %add_attribute/3,
+      get_attribute/2,
+      %get_attribute/3,
+      get_metaflags/1,
+      set_metaflags/1,
+      merge_fbs/3,
+      new_meta/2,
+      fbs_to_number/2,
+      'meta_attribute'/2,
+      set_dict_attvar_reader/1,
+      metaflag_unset/2,
+      metaflag_set/2,
+      dict_attvar/1,
+      dict_attvar/2.
 
 :- nodebug(fluents).
 
@@ -105,17 +146,17 @@
 %
 % Base class of "SinkFluent" that recieves bindings
 
-sink_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind),put_atts(Fluent,sink_fluent:[true]).
+sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
 
 sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->set_val(Var,Value);true.
-sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):-!.
+sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 
 %%	source_fluent(-Fluent) is det.
 %
 % Base class of "SourceFluent" that creates bindings
 
-source_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind+meta_source+use_unify_var).
+source_fluent(Fluent):- put_atts(Fluent,+meta_source+use_unify_var+no_bind).
 
 meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,get_val(Var,Value).
 meta_source:meta_unify_hook(_Atom,Was,Var,Value):-  Was==[true] -> 
@@ -127,7 +168,7 @@ meta_source:attr_unify_hook(_AttVal,_Value).
 
 
 
-meta_copy_var(Fluent):-mkmeta(Fluent),put_atts(Fluent,+meta_copy_var+use_unify_var).
+meta_copy_var(Fluent):- put_atts(Fluent,+meta_copy_var+use_unify_var).
 
 
 
@@ -140,20 +181,20 @@ meta_copy_var(Fluent):-mkmeta(Fluent),put_atts(Fluent,+meta_copy_var+use_unify_v
 % peer or otherwise
 % Tarau's "EmptySink" matts
 
-empty_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_wakeup+no_bind+no_trail).
+empty_fluent(Fluent):- mkmeta(Fluent),put_atts(Fluent,+no_wakeup+no_bind+no_trail).
 
 
 get_metaflags(Get):- metaterm_flags(global,Get,Get).
 set_metaflags(Set):- metaterm_flags(global,set,Set).
-metaflag_unset(V,F):-metaterm_flags(V,~,F).
+metaflag_unset(V,F):- metaterm_flags(V,~,F).
 metaflag_set(V,F) :- metaterm_flags(V,(/\),F).
 metaflag_get(Var,Get):- metaterm_flags(Var,Get,Get).
 
 :- meta_predicate('attribute'(:)).
-% :-'$set_source_module'(_,'atts').
-:-dynamic(was_access_level_atts/1).
-:-current_prolog_flag(access_level,Was),asserta(was_access_level_atts(Was)).
-:-set_prolog_flag(access_level,user).
+% :- '$set_source_module'(_,'atts').
+:- dynamic(was_access_level_atts/1).
+:- current_prolog_flag(access_level,Was),asserta(was_access_level_atts(Was)).
+:- set_prolog_flag(access_level,user).
 :- use_module(library(ordsets)).
 
 % auto-define attributes otherwise signal error is undeclared attributes are used
@@ -476,12 +517,12 @@ get_atts(Var,M:Atts):- notrace((atts_get(Var,M,Atts))),!.
 
 
 atts_exist(_A,_At):- current_prolog_flag(atts_declared,auto),!.
-atts_exist(_A,_At):-current_prolog_flag(set_dict_attvar_reader,true),!.
+atts_exist(_A,_At):- current_prolog_flag(set_dict_attvar_reader,true),!.
 atts_exist(M,At):- \+ \+ (M:dynamic(protobute/3),assertion(M:protobute(M,At,_))).
 
 atts_module(Var,M):- get_attr(Var,M,Was)->assertion(is_list(Was));put_attr(Var,M,[]).
 
-atts_tmpl(At,Tmpl):-functor(At,F,A),functor(Tmpl,F,A).
+atts_tmpl(At,Tmpl):- functor(At,F,A),functor(Tmpl,F,A).
 
 to_pind(unify,=(_,_)).
 to_pind(FA,PI):- compound(FA),compound_name_arity(FA,F,0),to_pind(F,PI),!.
@@ -489,7 +530,7 @@ to_pind(F/A,PI):- atom(F),integer(A),A>0,compound_name_arity(PI,F,A).
 to_pind(F,PI):- atom(F),current_predicate( F /A),!,functor(PI,F,A).
 to_pind(PI,PI).
 
-system:'$undo_unify'(Var,Value):-dmsg(system:'$undo_unify'(Var,Value)).
+system:'$undo_unify'(Var,Value):- dmsg(system:'$undo_unify'(Var,Value)).
 
 %  av(X),meta_override(X, = /2 : unify/2),'$attvar_overriding'(X,l(_,_),Y).
 
@@ -503,7 +544,7 @@ meta_override(X,What):- put_atts(X,'$meta': + What).
 meta_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
 
 
-make_meta_override(X,B=A):-meta_override(X,B:A).
+make_meta_override(X,B=A):- meta_override(X,B:A).
 
 
 atts_modulize([], _) --> [].
@@ -523,23 +564,23 @@ attrs_to_atts(att(M,Att,Rest))-->
 
 % ?- put_atts(X,+(unify=write)),!.
 
-add_attr(Var,N,Value):-get_attrs(Var,Was)->put_attrs(Var,att(N,Value,Was));put_attrs(Var,att(N,Value,[])).
+add_attr(Var,N,Value):- get_attrs(Var,Was)->put_attrs(Var,att(N,Value,Was));put_attrs(Var,att(N,Value,[])).
 
 
 % Should 'user' use the import_module/2 Dag? (curretly will just return all)
-atts_get(Var,user,Atts):-var(Atts),!,get_attrs(Var,Attr),attrs_to_atts(Attr,Atts,[]).
-% atts_get(Var,M,At):-var(At),!,get_attr(Var,M,At).
-atts_get(Var,M,List):-is_list(List),!,maplist(atts_get(Var,M),List).
+atts_get(Var,user,Atts):- var(Atts),!,get_attrs(Var,Attr),attrs_to_atts(Attr,Atts,[]).
+% atts_get(Var,M,At):- var(At),!,get_attr(Var,M,At).
+atts_get(Var,M,List):- is_list(List),!,maplist(atts_get(Var,M),List).
 atts_get(Var,M,+At):- !,atts_get(M,Var,At).
 atts_get(Var,_,-(M:At)):- \+ meta_handler_name(M), !,atts_get(Var,M,-At).
 atts_get(Var,_, (M:At)):- \+ meta_handler_name(M), !,atts_get(Var,M,At).
-atts_get(Var,M, - Pair):-!,
+atts_get(Var,M, - Pair):- !,
   atts_to_att(Pair,At),
    atts_exist(M,At),
    (get_attr(Var,M,Cur)->
       \+ memberchk(At,Cur) ;
     true).
-atts_get(Var,M,Pair):-
+atts_get(Var,M,Pair):- 
    atts_to_att(Pair,At),
    atts_exist(M,At),
    (get_attr(Var,M,Cur)->
@@ -550,14 +591,14 @@ atts_get(Var,M,Pair):-
 invert_pn(+,-).
 invert_pn(-,+).
 
-atts_put(PN,Var,M,At):-var(At),!,throw(error(instantiation_error, M:put_atts(Var,PN:At))).
-atts_put(PN,Var,user,Atts):-!, atts_put(PN,Var,tst,Atts).
-atts_put(PN,Var,M, X+Y):-!, atts_put(PN,Var,M, X),atts_put(PN,Var,M,+Y).
-atts_put(PN,Var,M, X-Y):-!, atts_put(PN,Var,M, X),atts_put(PN,Var,M,-Y).
-atts_put(PN,Var,M, +X+Y):-!, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,+Y).
-atts_put(PN,Var,M, +X-Y):-!, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,-Y).
+atts_put(PN,Var,M,At):- var(At),!,throw(error(instantiation_error, M:put_atts(Var,PN:At))).
+atts_put(PN,Var,user,Atts):- !, atts_put(PN,Var,tst,Atts).
+atts_put(PN,Var,M, X+Y):- !, atts_put(PN,Var,M, X),atts_put(PN,Var,M,+Y).
+atts_put(PN,Var,M, X-Y):- !, atts_put(PN,Var,M, X),atts_put(PN,Var,M,-Y).
+atts_put(PN,Var,M, +X+Y):- !, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,+Y).
+atts_put(PN,Var,M, +X-Y):- !, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,-Y).
 atts_put(PN,Var,M, List):- is_list(List),!,atts_module(Var,M),maplist(atts_put(PN,Var,M),List).
-atts_put(_, Var,M,  +At):-!, atts_put(+,Var,M,At).
+atts_put(_, Var,M,  +At):- !, atts_put(+,Var,M,At).
 atts_put(PN,Var,M,  -At):- invert_pn(PN,NP),!,atts_put(NP,Var,M,At).
 atts_put(PN,Var,_,(M:At)):- \+ meta_handler_name(M), !,atts_put(PN,Var,M,At).
 atts_put(PN,Var,M, Meta):- \+ \+ clause(M:meta_hook(Meta,_,_),_), !, forall(M:meta_hook(Meta,P,A),atts_put(PN,Var,M,P=A)).
@@ -570,15 +611,15 @@ atts_put(PN,Var,M,Pair):-
   atts_exist(PN,Tmpl),
   exec_atts_put(PN,Var,M,Tmpl).
 
-is_meta_att(Tmpl):-fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
+is_meta_att(Tmpl):- fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
 
 exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_meta_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
-exec_atts_put(-,Var,M,Tmpl):-!,
+exec_atts_put(-,Var,M,Tmpl):- !,
    (get_attr(Var,M,Cur)->
      (delete(Cur,Tmpl,Upd),put_attr(Var,M,Upd)) ;
     true).
 
-exec_atts_put(+,Var,M,At):-
+exec_atts_put(+,Var,M,At):- 
    (get_attr(Var,M,Cur) ->
     (atts_tmpl(At,Tmpl),
      delete(Cur,Tmpl,Mid), % ord_del_element wont work here because -a(_) stops short of finding a(1).
@@ -590,15 +631,15 @@ attsep('=').
 attsep(':').
 attsep('-').
 
-atts_to_att(Var,Var):-var(Var),!.
-atts_to_att(N-V,Tmpl):-!,atts_to_att(N=V,Tmpl).
-atts_to_att(N:V,Tmpl):-!,atts_to_att(N=V,Tmpl).
-atts_to_att(N=V,Tmpl):-!,assertion(atom(N)),!,Tmpl=..[N,V].
-atts_to_att(F/A,Tmpl):-!,assertion((atom(F),integer(A))),functor(Tmpl,F,A).
+atts_to_att(Var,Var):- var(Var),!.
+atts_to_att(N-V,Tmpl):- !,atts_to_att(N=V,Tmpl).
+atts_to_att(N:V,Tmpl):- !,atts_to_att(N=V,Tmpl).
+atts_to_att(N=V,Tmpl):- !,assertion(atom(N)),!,Tmpl=..[N,V].
+atts_to_att(F/A,Tmpl):- !,assertion((atom(F),integer(A))),functor(Tmpl,F,A).
 atts_to_att(Tmpl,Tmpl).
 
 
-update_hooks(PN,Var,_,Hook):-
+update_hooks(PN,Var,_,Hook):- 
   ignore((handler_fbs(+ Hook,Number), Number>0, !,PNHook=..[PN,Hook], put_datts(Var, PNHook))),
   update_hooks1(PN,Var,_,Hook).
 
@@ -620,13 +661,13 @@ X{a:A, b:B, c:C}.
 pl_notrace(_)
 
 */
-set_dict_attvar_reader(X):-set_prolog_flag(set_dict_attvar_reader,X).
+set_dict_attvar_reader(X):- set_prolog_flag(set_dict_attvar_reader,X).
 
 
 
 dict_attvar(Dict):- dict_attvar(Dict,_),!.
 dict_attvar(_:Dict,Out):- \+ compound(Dict),!,Out=Dict.
-dict_attvar(Mod:Dict,Out):-
+dict_attvar(Mod:Dict,Out):- 
    is_dict(Dict),dict_pairs(Dict,M,Pairs),
    (atom(M)->atts_put(+,Out,M,Pairs);
    (var(M)-> (M=Out,put_atts(Out,Mod:Pairs)))),!.
@@ -636,7 +677,7 @@ dict_attvar(Mod:Dict,Out):-
    compound_name_arguments(Out,F,ArgsO).
 
 % This type-checking predicate succeeds iff its argument is an ordinary free variable, it fails if it is an attributed variable.
-eclipse:free(X):-var(X),\+attvar(X).
+eclipse:free(X):- var(X),\+attvar(X).
 
 % This type-checking predicate succeeds iff its argument is an attributed variable. For other type testing predicates an attributed variable behaves like a variable.
 % eclipse:
@@ -664,8 +705,8 @@ get_handler(M,Var,Hook,M:Handler):- get_attr(Var,M,Handlers),memberchk(Hook:Hndl
 get_handler(M,Var,Hook,M:Handler):- get_attr(Var,Hook,Hndler),as_handler(Hndler,Handler).
 get_handler(M,Var,Hook,M:Handler):- get_attr(Var,tst,Handlers),memberchk(Hook:Hndler,Handlers),as_handler(Hndler,Handler).
 
-as_handler(Handler/_,Handler):-!.
-as_handler(M:Handler/_,M:Handler):-!.
+as_handler(Handler/_,Handler):- !.
+as_handler(M:Handler/_,M:Handler):- !.
 as_handler(Handler,Handler).
 
 :- meta_predicate wno_hooks(*,0).
@@ -677,22 +718,22 @@ wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(
 
 
 % unbind return code
-do_meta_hook(Pred,Var,Value,RetCode):-nonvar(RetCode),!,do_meta_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
+do_meta_hook(Pred,Var,Value,RetCode):- nonvar(RetCode),!,do_meta_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
 % print debug
-do_meta_hook(Pred,Var,Value,RetCode):-notrace((dmsg(user:meta_hook(Pred,Var,Value,RetCode)),fail)).
+do_meta_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:meta_hook(Pred,Var,Value,RetCode)),fail)).
 % Search for handler PER Var
-do_meta_hook(Hook,Var,Value,1):-get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
+do_meta_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
 
-do_meta_hook('==',Var,Value, 1):-!, wnmt(Var==Value). % this one ends up calling compare/3 
-do_meta_hook('==',Var,Value,1):-attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
-do_meta_hook('==',Var,Value,1):-attrs_val(Value,BA),attrs_val(Var,AA),BA==AA,!.
-do_meta_hook('=@=', Var, Value, 1):-!, wnmt(Var=@=Value).
-do_meta_hook('=@=',Var,Value,1):-attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
-do_meta_hook(compare, Var, Value, RetCode):-!, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
-do_meta_hook(copy_term, Var, Value, 1):-!, wnmt(copy_term(Var,Value)).
-do_meta_hook(copy_term_nat, Var, Value, 1):-!, wnmt(copy_term_nat(Var,Value)).
-do_meta_hook(Hook,Var,Value,1):-get_val(Var,AA),w_hooks(call(Hook,AA,Value)).
-do_meta_hook('$undo_unify',Var,_Value,1):-get_attr(Var,'$undo_unify',G),!,G.
+do_meta_hook('==',Var,Value, 1):- !, wnmt(Var==Value). % this one ends up calling compare/3 
+do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
+do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),BA==AA,!.
+do_meta_hook('=@=', Var, Value, 1):- !, wnmt(Var=@=Value).
+do_meta_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
+do_meta_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
+do_meta_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
+do_meta_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
+do_meta_hook(Hook,Var,Value,1):- get_val(Var,AA),w_hooks(call(Hook,AA,Value)).
+do_meta_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
 % 0: == call handler
 do_meta_hook(compare,Var,Value,0):- do_meta_hook(==,Var,Value,1),!.
 % call back
@@ -704,29 +745,29 @@ compare_to_retcode(==,0).
 
 swap_args(_,_,4).
 set_as(N,N,N,4).
-attrs_val(Var,AttsO):-'$visible_attrs'(Var,AttsO).
+attrs_val(Var,AttsO):- '$visible_attrs'(Var,AttsO).
 
-mkmeta(Fluent):-get_attrs(Fluent,att('$atts',_,_)),!.
-mkmeta(Fluent):-get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
+mkmeta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
+mkmeta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
 
-set_val(Var,Value):-get_attr(Var,gvar,AA),!,nb_setval(AA,Value).
-set_val(Var,Value):-put_attr(Var,value,Value).
+set_val(Var,Value):- get_attr(Var,gvar,AA),!,nb_setval(AA,Value).
+set_val(Var,Value):- put_attr(Var,value,Value).
 
-unify_val(Var,Value):-get_val(Var,AA),!,AA=Value.
-unify_val(Var,Value):-set_val(Var,Value).
+unify_val(Var,Value):- get_val(Var,AA),!,AA=Value.
+unify_val(Var,Value):- set_val(Var,Value).
 
-get_val(Var,Value):-get_attr(Var,gvar,AA),!,nb_linkval(AA,Value).
-get_val(Var,Value):-get_attr(Var,value,AA),!,AA=Value.
+get_val(Var,Value):- get_attr(Var,gvar,AA),!,nb_linkval(AA,Value).
+get_val(Var,Value):- get_attr(Var,value,AA),!,AA=Value.
 
 
-dshow(X):-dmsg(dshow(X)).
-dshow(X,Y):-dmsg(dshow(X,Y)).
-dshow(X,Y,Z):-dmsg(dshow(X,Y,Z)).
-dshow(S,X,Y,Z):-dmsg(dshow(S,X,Y,Z)).
-dshowf(X):-dmsg(dshowf(X)),fail.
-dshowf(X,Y):-dmsg(dshowf(X,Y)),fail.
-dshowf(X,Y,Z):-dmsg(dshowf(X,Y,Z)),fail.
-dshowf(S,X,Y,Z):-dmsg(dshowf(S,X,Y,Z)),fail.
+dshow(X):- dmsg(dshow(X)).
+dshow(X,Y):- dmsg(dshow(X,Y)).
+dshow(X,Y,Z):- dmsg(dshow(X,Y,Z)).
+dshow(S,X,Y,Z):- dmsg(dshow(S,X,Y,Z)).
+dshowf(X):- dmsg(dshowf(X)),fail.
+dshowf(X,Y):- dmsg(dshowf(X,Y)),fail.
+dshowf(X,Y,Z):- dmsg(dshowf(X,Y,Z)),fail.
+dshowf(S,X,Y,Z):- dmsg(dshowf(S,X,Y,Z)),fail.
 
 
 %%	matts(+Get,+Set) is det.
@@ -798,14 +839,14 @@ fbs_for_hooks_default(v(
 %
 % Print the system global modes
 %
-matts:-notrace((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
+matts:- notrace((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
 
 
 %% debug_hooks is det.
 %
 % Turn on extreme debugging
 %
-debug_hooks(true):-!, matts(+debug_hooks+debug_extreme).
+debug_hooks(true):- !, matts(+debug_hooks+debug_extreme).
 debug_hooks(_):- matts(-debug_hooks-debug_extreme).
 
 %%    datts_overriding(AttVar,BitsOut)
@@ -821,7 +862,7 @@ datts_overriding(AttVar,BitsOut):- wno_hooks(get_attr(AttVar,'$atts',Modes)->any
 % Set matts properties
 %
 
-put_datts(AttVar,Modes):-
+put_datts(AttVar,Modes):- 
  notrace((wno_hooks((var(AttVar),
   ((
    get_attr(AttVar,'$atts',Was)->
@@ -833,16 +874,16 @@ put_datts(AttVar,Modes):-
 %
 % Checks to see if a term has matts
 
-has_hooks(AttVar):-wno_hooks(get_attr(AttVar,'$meta',_)).
+has_hooks(AttVar):- wno_hooks(get_attr(AttVar,'$meta',_)).
 
 %%    new_meta(+Bits,-AttVar) is det.
 %
 % Create new matts with a given set of Overrides
 
-new_meta(Bits,AttVar):-notrace((put_atts(AttVar,'$meta':Bits))).
+new_meta(Bits,AttVar):- notrace((put_atts(AttVar,'$meta':Bits))).
 
 
-nb_extend_list(List,E):-arg(2,List,Was),nb_setarg(2,List,[E|Was]).
+nb_extend_list(List,E):- arg(2,List,Was),nb_setarg(2,List,[E|Was]).
 
 
 contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
@@ -860,39 +901,39 @@ tst(G):- G*-> true; throw(tst_fail(G)).
 tst_det(G):- G,deterministic(Y),(Y==true->true;throw(tst_fail(G))).
 
 
-merge_fbs(V,VV,VVV):-number(V),catch((V < 0),_,fail),!, V0 is - V, merge_fbs(-(V0),VV,VVV),!.
-merge_fbs(V,VV,VVV):-number(V),number(VV),VVV is (V \/ VV).
-merge_fbs(V,VV,VVV):-var(V),!,V=VV,V=VVV.
-merge_fbs(set(V),_,VVV):-fbs_to_number(V,VVV),!.
-merge_fbs(V,VV,VVV):-var(VV),!, fbs_to_number(V,VVV),!.
+merge_fbs(V,VV,VVV):- number(V),catch((V < 0),_,fail),!, V0 is - V, merge_fbs(-(V0),VV,VVV),!.
+merge_fbs(V,VV,VVV):- number(V),number(VV),VVV is (V \/ VV).
+merge_fbs(V,VV,VVV):- var(V),!,V=VV,V=VVV.
+merge_fbs(set(V),_,VVV):- fbs_to_number(V,VVV),!.
+merge_fbs(V,VV,VVV):- var(VV),!, fbs_to_number(V,VVV),!.
 merge_fbs(+(A),B,VVV):- tst((fbs_to_number(A,V),fbs_to_number(B,VV),!,VVV is (V \/ VV))).
 merge_fbs(*(A),B,VVV):- fbs_to_number(A,V),fbs_to_number(B,VV),!,VVV is (V /\ VV).
 merge_fbs(-(B),A,VVV):- fbs_to_number(A,V),fbs_to_number(B,VV),!,VVV is (V /\ \ VV).
 merge_fbs([A],B,VVV):-  tst(merge_fbs(A,B,VVV)),!.
-merge_fbs([A|B],C,VVV):-merge_fbs(A,C,VV),merge_fbs(B,VV,VVV),!.
-merge_fbs(A,C,VVV):-fbs_to_number(A,VV),!,tst(merge_fbs(VV,C,VVV)),!.
-merge_fbs(A,C,VVV):-fbs_to_number(override(A),VV),!,tst(merge_fbs(VV,C,VVV)),!.
+merge_fbs([A|B],C,VVV):- merge_fbs(A,C,VV),merge_fbs(B,VV,VVV),!.
+merge_fbs(A,C,VVV):- fbs_to_number(A,VV),!,tst(merge_fbs(VV,C,VVV)),!.
+merge_fbs(A,C,VVV):- fbs_to_number(override(A),VV),!,tst(merge_fbs(VV,C,VVV)),!.
 
 
-fbs_to_number(N,O):-number(N),!,N=O.
-fbs_to_number(V,VVV):-attvar(V),!,metaflags_get(V,VV),!,fbs_to_number(VV,VVV).
-fbs_to_number(V,O):-var(V),!,0=O.
+fbs_to_number(N,O):- number(N),!,N=O.
+fbs_to_number(V,VVV):- attvar(V),!,metaflags_get(V,VV),!,fbs_to_number(VV,VVV).
+fbs_to_number(V,O):- var(V),!,0=O.
 fbs_to_number([],0).
-fbs_to_number(B << A,VVV):-!, fbs_to_number(B,VV), VVV is (VV << A).
+fbs_to_number(B << A,VVV):- !, fbs_to_number(B,VV), VVV is (VV << A).
 fbs_to_number(B+A,VVV):- merge_fbs(+(A),B,VVV),!.
 fbs_to_number(B*A,VVV):- merge_fbs(*(A),B,VVV),!.
 fbs_to_number(B-A,VVV):- fbs_to_number(B,BB),fbs_to_number(A,AA),VVV is (BB /\ \ AA),!.
-fbs_to_number(+(Bit),VVV):-fbs_to_number((Bit),VVV),!.
-fbs_to_number(-(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
-fbs_to_number(~(Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
-fbs_to_number( \ (Bit),VVV):-fbs_to_number((Bit),V),!,VVV is ( \ V).
+fbs_to_number(+(Bit),VVV):- fbs_to_number((Bit),VVV),!.
+fbs_to_number(-(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
+fbs_to_number(~(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
+fbs_to_number( \ (Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(bit(Bit),VVV):- number(Bit),!,VVV is 2 ^ (Bit).
 fbs_to_number((Name),VVV):-   current_attv_mask(Name,VVV),!.
-fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,Name=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
-fbs_to_number((Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,override(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
-fbs_to_number(override(Name),VVV):-fbs_for_hooks_default(VV),arg(_,VV,(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
-fbs_to_number([A],VVV):-!,fbs_to_number(A,VVV).
-fbs_to_number([A|B],VVV):-!,merge_fbs(B,A,VVV).
+fbs_to_number((Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,Name=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
+fbs_to_number((Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,override(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
+fbs_to_number(override(Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
+fbs_to_number([A],VVV):- !,fbs_to_number(A,VVV).
+fbs_to_number([A|B],VVV):- !,merge_fbs(B,A,VVV).
 fbs_to_number(V,VVV) :- VVV is V.
 
 
@@ -921,7 +962,7 @@ wno_debug(Goal):- '$debuglevel'(W,0),W==0,!,Goal.
 wno_debug(Goal):- setup_call_cleanup(exit_debug,Goal,enter_debug(4)).
 w_debug(Goal):- setup_call_cleanup(enter_debug(4), Goal,exit_debug).
 
-testfv:-forall(test1(T),dmsg(passed(T))).
+testfv:- forall(test1(T),dmsg(passed(T))).
 
 
 a1:verify_attributes(_,_,[]).
@@ -931,25 +972,25 @@ a3:verify_attributes(_,_,[]).
 test1(cmp_fbs_variants0):- put_atts(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
 test1(cmp_fbs_variants0a):- put_attr(X,a1,1),put_attr(X,'$atts',4),put_attr(Y,'$atts',4),wi_atts(+variant,X=@=Y).
 
-test1(cmp_fbs_variants1):-
+test1(cmp_fbs_variants1):- 
   put_attr(X,a1,1),put_attr(X,a2,2),put_attr(X,'$atts',1),
   put_attr(Y,'$atts',1),put_attr(Y,a1,1),put_attr(Y,'$atts',1),
    wi_atts(+variant,X=@=Y).
 
-test1(cmp_fbs_variants2):-
+test1(cmp_fbs_variants2):- 
  put_attr(X,a1,1),put_attr(X,a2,2),
  meta_override(X,+variant),
  meta_override(Y,+variant),X=@=Y.
 
-test1(cmp_fbs_variants3):-
+test1(cmp_fbs_variants3):- 
  put_attr(X,'$atts',1),
  put_attr(Y,'$atts',1),
    wi_atts(+variant,X=@=Y).
 
 :- set_prolog_flag(atts_declared,auto).
 
-:-module_transparent(system:term_expansion/2).
-:-module_transparent(system:goal_expansion/2).
+:- module_transparent(system:term_expansion/2).
+:- module_transparent(system:goal_expansion/2).
 system:term_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_attvar(Dict,X).
 system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_attvar(Dict,X).
 
@@ -1027,14 +1068,14 @@ system:attr_undo_hook(_Var, _AttVal, _Value).
 
 % av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$meta_flags'(Y,1),X==X.
 % :- set_prolog_flag(save_history, false).
-:-prolog_debug('MSG_METATERM'),prolog_debug('MSG_WAKEUPS'). % ,prolog_debug('MSG_ATTVAR_GENERAL').
+:- prolog_debug('MSG_METATERM'),prolog_debug('MSG_WAKEUPS'). % ,prolog_debug('MSG_ATTVAR_GENERAL').
 wd:- ((prolog_nodebug('MSG_VMI'),prolog_nodebug('MSG_WAKEUPS'))).
-:-wd.
+:- wd.
 wd(X):-  prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_VMI'), call_cleanup(X,wd).
 
 % put_att_value(&gp[1],ATOM_true,makeRefL( valTermRef(id)));
 
-:-module_transparent(export_all/0).
+:- module_transparent(export_all/0).
 export_all:- source_location(S,_),prolog_load_context(module,M),
  forall(source_file(M:H,S),
  ignore((functor(H,F,A),M\=vn,
@@ -1063,7 +1104,7 @@ system:va(X):- put_attr(X,tAA,'AAA').
 system:vb(X):- put_attr(X,tBB,'BBB').
 system:vc(X):- put_attr(X,tCC,'CCC').
 
-:-retract(was_access_level_atts(Was)),set_prolog_flag(access_level,Was).
+:- retract(was_access_level_atts(Was)),set_prolog_flag(access_level,Was).
 
 :- export_all.
 

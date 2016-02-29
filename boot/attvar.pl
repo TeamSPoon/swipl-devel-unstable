@@ -84,15 +84,16 @@ amsg(G):- notrace(
        *         PRE_UNIFY        *
        *******************************/
 
-:- meta_predicate(system:pre_unify(+,0,+,+,+)).
+:- meta_predicate(system:pre_unify(+,:,+,+,+)).
 
 % METATERMs -> META_UNIFY
-system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
+system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
   writeln(meta_unify(Atom, Var, Value )),
+  (M==system->UM=user;UM=M),
   % next line disabled from being a  variable is now disabled
-  with_meta_disabled(Var,with_meta_enabled(global,meta_unify(Rest, Atom, Var, Value))),
+  with_meta_disabled(Var,with_meta_enabled(global,UM:meta_unify(Rest, Atom, Var, Value))),
   % global was re-disabled
-  call(Next).
+  M:call(Next).
 system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         pre_unify(Rest, Next, Var, Value,Atom).
@@ -146,9 +147,14 @@ system:collect_va(_,M:Next,Var,Value):-
 /* Note if a user doesnt know how they wished to handle all the properties of a variable
   they may call system:verify_attributes/2 since it will call attv_unify/2  */
 
+
 system:verify_attributes(Var, Value):- attvar(Var),!,
    '$trail_assignment'(Var),
-   ignore(attv_unify(Var,Value)).
+   ignore(attv_bind(Var,Value)).
+   
+system:verify_attributes(Value, Var ):- attvar(Var),!,
+   '$trail_assignment'(Var),
+   ignore(attv_bind(Var,Value)).
    
 system:verify_attributes(Value, Value).
 
