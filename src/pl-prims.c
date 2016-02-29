@@ -227,7 +227,7 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(LD->attvar.wakeup_ready || (META_USE_UNIFY_VAR & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
+  if(LD->attvar.wakeup_ready || (META_SOURCE & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
     LD->attvar.wakeup_ready = TRUE;
     if ( isAttVar(w1) )

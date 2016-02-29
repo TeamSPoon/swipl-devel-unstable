@@ -101,14 +101,25 @@
 %
 % Base class of "SinkFluent" that recieves bindings
 
-sink_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind).
+sink_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind),put_atts(Fluent,sink_fluent:[true]).
+
+sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->set_val(Var,Value);true.
+sink_fluent:meta_unify_hook(_Atom,_,Var,Value):-!.
 
 
 %%	source_fluent(-Fluent) is det.
 %
 % Base class of "SourceFluent" that creates bindings
 
-source_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind).
+source_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind+meta_source+use_unify_var).
+
+meta_source:meta_unify_hook(_Atom,Was,Var,Value):- var(Value),!,get_val(Var,Value).
+meta_source:meta_unify_hook(_Atom,Was,Var,Value):-  Was==[true] -> 
+                                  (ignore(get_val(Var,ValueO)),!, % Value=ValueO,
+                                    attvar(Var)->put_attr(Var,meta_source,call(ValueO=Value));true) ; true.
+
+meta_source:attr_unify_hook(call(Call),_Value):- !, call(Call).
+meta_source:attr_unify_hook(_AttVal,_Value).
 
 
 %%	empty_fluent(-Fluent) is det.

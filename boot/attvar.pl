@@ -74,8 +74,8 @@ system:nop(_).
 
 amsg(G):- notrace(
    ignore((current_prolog_flag(dmiles,true),
-           ifdef(logicmoo_util_dmsg:dmsg(G),
-                  format(user_error,'~N,~q~n',[G]))))).
+           with_meta_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
+                  format(user_error,'~N,~q~n',[G]))))))).
 
 
 
@@ -86,11 +86,17 @@ amsg(G):- notrace(
 
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
-% BOUND
+system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
+        ifdef(Module:attr_unify_hook(AttVal, Value),true),
+        pre_unify(Rest, Next, Var, Value,Atom).
+system:pre_unify(_,Next,_Var,_Value,Atom):- !, % Var=@=Value,
+        call(Next).
+
+% BOUND -> POST_UNIFY
 system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
    post_unify(Atts, Next, Var, Value, Atom  ).
 
-% METATERMs
+% METATERMs -> META_UNIFY
 system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
   writeln(meta_unify(Atom, Var, Value )),
   % next line disabled from being a  variable is now disabled
@@ -98,7 +104,7 @@ system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
   % global was re-disabled
   call(Next).
 
-% Normal ATTVARs
+% Normal ATTVARs -> VERIFY_ATTRIBUTES/3
 system:pre_unify(Atts, Next, Var, Value, Atom ):-
   nop(amsg(Atom:collect_va(Atts, Next, Var, Value ))),
    with_meta_enabled(global,
@@ -174,11 +180,13 @@ system:meta_unify(_,_Atom,_Var,_Value).
 :- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-  
   amsg(Atom:post_unify(Atts, Next, Var, Value )),!,
-  with_meta_disabled(Var,with_meta_enabled(global,call_uhooks(Atts, Next, Var, Value))).
+  with_meta_disabled(Var,
+       with_meta_enabled(global,
+               call_uhooks(Atts, Next, Var, Value))).
 
-		 /*******************************
-		 *	  ATTR UNIFY HOOK	*
-		 *******************************/
+     /*******************************
+     *	  ATTR UNIFY HOOK	*
+     *******************************/
 
 :- meta_predicate(call_uhooks(+,0,+,+)).
 system:call_uhooks(att(Module, AttVal, Rest), Next, Var, Value ):- !,
@@ -192,8 +200,8 @@ system:call_uhooks(_,Next,Var,Value):-
 
 
         /*******************************
-		 *	      FREEZE		*
-		 *******************************/
+        *	      FREEZE		*
+        *******************************/
 
 %%	freeze(@Var, :Goal)
 %

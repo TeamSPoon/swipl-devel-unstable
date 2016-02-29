@@ -190,18 +190,16 @@ static matts_flag matts_flags[] =
  MW("use_bind_const",   META_USE_BINDCONST ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
  MW("attv_must_trail",  ATTV_MUST_TRAIL ), 
- MW("no_trail",         META_NO_TRAIL	), 
  MW("attv_bindconst",     ATTV_BINDCONST ), 
  MW("meta_copy_var",    META_COPY_VAR 	),
- MW("meta_source",     META_SOURCE_VALUE ), 
- MW("use_unify_var",    META_USE_UNIFY_VAR ),
+ MW("meta_source",     META_SOURCE ), 
+ MW("no_trail",         META_NO_TRAIL	), 
 
  MW("meta_disabled",    META_DISABLED 	),
  MW("no_bind",          META_NO_BIND ), 
  MW("no_inherit",       META_NO_INHERIT ), 
  MW("no_swap",          META_DISABLE_SWAP ), 
  MW("no_wakeup",        META_NO_WAKEUP 	), 
- MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
  MW("use_trail_optimize",    META_PLEASE_OPTIMIZE_TRAIL ), 
  MW("attv_unify_pointers",  ATTV_UNIFY_PTRS ),  
  MW("use_skip_hidden",  META_SKIP_HIDDEN ), 
@@ -210,6 +208,7 @@ static matts_flag matts_flags[] =
  MW("use_vmi",          META_USE_VMI ), 
  MW("meta_default",     META_DEFAULT ),
  MW("use_dra_interp",   DRA_CALL ), 
+ MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
  MW(NULL,                 0)
 };
 
@@ -340,7 +339,7 @@ getMetaFlags(Word av, int flags ARG_LD)
     if (IS_META(META_NO_INHERIT))
         return value;
 
-    if (value==0) return META_DEFAULT;
+    if (value==0) return META_DISABLED|META_DEFAULT;
 
     flags = value;
     if (IS_META(META_DISABLED)) return META_DISABLED|META_DEFAULT;
@@ -382,75 +381,55 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  assert(!isRef(*value));
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
- if ( isAttVar(*value) )  
-  {
-    if ( av == value ) return;
-    { if ( value > av )
-      {
-        if ( !IS_META(META_DISABLE_SWAP) )
-        {
-          Word tmp = av;
-          av = value;
-          value = tmp;
-        } else
-        {
-          DEBUG(MSG_WAKEUPS, Sdprintf_ln("assignAttVar DISABLE_SWAP(%s)", vName(av)));
-        }
+  if ( isAttVar(*value) )
+  { if ( av == value ) return;
+    if ( av > value )
+    {
+      if ( IS_META(META_NO_BIND) )
+      { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value\n"));
+        return;
+      } else
+      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value\n"));
+        *av = makeRef(value);
+        return;
+      }      
+    } else
+    { if ( !IS_META(META_DISABLE_SWAP) )
+      { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av\n"));
+        *value = makeRef(av);
+        return;
+      } else
+      { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av\n"));
+        *av = makeRef(value);
+        return;
       }
     }
 
-    if(IS_META(META_KEEP_BOTH))
-    { DEBUG(MSG_METATERM, Sdprintf_ln("META_KEEP_BOTH\n"));
+  } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
+  { if ( IS_META(META_COPY_VAR) )
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_COPY_VAR Upgraging VAR to an ATTVAR ref\n"));
+      TrailAssignment(value);
+      make_new_attvar(value PASS_LD);      /* SHIFT: 3+0 */
+      deRef(value);
+      *valPAttVar(*value) = *valPAttVar(*av);
+      return;
+    } else
+    { if ( IS_META(META_NO_BIND) )
+      { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
+        return;
+      }
+      DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Assigning attvar with a plain VAR ref\n"));
+      *av = makeRef(value);
       return;
     }
 
-    if (av > value)
-    { 
-        if (IS_META(META_NO_BIND))
-        {  DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value\n"));
-        } else
-        {  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value\n"));
-           *av = makeRef(value);		            
-        }
-
-    } else
-    {  if (!IS_META(META_DISABLE_SWAP))
-       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av\n"));
-         TrailAssignment(value);
-         *value = makeRef(av);
-       } else
-       { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av\n"));
-         *av = makeRef(value);
-       }
-    }
-    
- } else if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
- {   if( (flags& ATTV_ASSIGNONLY) )
-	 {  if(IS_META(META_KEEP_BOTH))
-         { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_KEEP_BOTH Upgraging VAR to an ATTVAR ref\n"));
-           TrailAssignment(value);
-           make_new_attvar(value PASS_LD);			/* SHIFT: 3+0 */
-           deRef(value);
-           *valPAttVar(*value) = *valPAttVar(*av);
-         } else
-         { if (IS_META(META_NO_BIND))
-           { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
-             return;
-           }
-           DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Assigning attvar with a plain VAR ref\n"));
-           *av = makeRef(value);			            
-         }
-	 } else
-     { DEBUG(MSG_WAKEUPS, Sdprintf_ln("!ATTV_ASSIGNONLY FUNCTOR_unify4 with a plain VAR ref\n"));
-       atom_t atomcaller = current_caller_mask(flags);
-       registerWakeup(FUNCTOR_meta_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);       
-     }
-  } else 
-  { if (IS_META(META_NO_BIND))
+  } else
+  { if ( IS_META(META_NO_BIND) )
     { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a value\n"));
       return;
     } else
     { *av = *value;
+      return;
     }
   }
 }
