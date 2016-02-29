@@ -331,23 +331,28 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
 
 int
 getMetaFlags(Word av, int flags ARG_LD)
-{ Word found;
-    int value;
-    if (!find_attr(av, ATOM_datts, &found PASS_LD) || !isInteger(*found))
-        value = 0;
-    else value = valInteger(*found);
-    if (IS_META(META_NO_INHERIT))
+{ Word found ,n;
+  if(!isAttVar(*av)) return 0;
+  Word l = valPAttVar(*av);
+  if(!onGlobalArea(l)) return 0;
+  if(*l==0) return 0;
+  deRef(l);
+  if(!isTerm(*l)) return 0;
+  Functor f = valueTerm(*l);
+  if (!( f->definition == FUNCTOR_att3 )) return 0;
+  deRef2(&f->arguments[0], n);
+  if ( *n != ATOM_datts ) return 0;
+  deRef2(&f->arguments[1], found);
+  if(!isInteger(*found)) return 0;
+  int value = valInteger(*found);
+  if (value==0) return 0;
+  if (!IS_META(META_NO_INHERIT) && !(value&META_NO_INHERIT))
+  { value |= flags;
+  }
+  if(value&META_DISABLED)
+  { return META_DISABLED;
+  }
         return value;
-
-    if (value==0) return META_DISABLED|META_DEFAULT;
-
-    flags = value;
-    if (IS_META(META_DISABLED)) return META_DISABLED|META_DEFAULT;
-
-    flags = METATERM_GLOBAL_FLAGS;
-    if (IS_META(META_NO_INHERIT)) 
-        return(value);
-    return (value | flags);
 }
 
 
@@ -384,15 +389,9 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
   if ( isAttVar(*value) )
   { if ( av == value ) return;
     if ( av > value )
-    {
-      if ( IS_META(META_NO_BIND) )
-      { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND Unifying av <- value\n"));
-        return;
-      } else
       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value\n"));
         *av = makeRef(value);
         return;
-      }      
     } else
     { if ( !IS_META(META_DISABLE_SWAP) )
       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av\n"));
@@ -414,24 +413,12 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
       *valPAttVar(*value) = *valPAttVar(*av);
       return;
     } else
-    { if ( IS_META(META_NO_BIND) )
-      { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a plain putting into VAR maybe ref\n"));
-        return;
-      }
-      DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Assigning attvar with a plain VAR ref\n"));
+    { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR being assigned as a VAR value -> av\n"));
       *av = makeRef(value);
       return;
     }
-
-  } else
-  { if ( IS_META(META_NO_BIND) )
-    { DEBUG(MSG_METATERM, Sdprintf_ln("META_NO_BIND attvar with a value\n"));
-      return;
-    } else
-    { *av = *value;
-      return;
-    }
   }
+  *av = *value;
 }
 
 int
@@ -445,16 +432,42 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("assignAttVar(%s)", vName(av)));
+
+  
   int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
-  int flags = callflags | varflags;
 
   int rmask = ( META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR |META_USE_UNIFY_VP | META_USE_BINDCONST);
   
-  if((callflags & rmask)  && !(varflags & rmask))
+  atom_t atomcaller = 0;
+  
+  if((callflags & rmask))
   {
-    return FALSE;
+    if (!(varflags & callflags)) return FALSE;
+    atomcaller = current_caller_mask(varflags & callflags);
   }
 
+  int flags = callflags | varflags;
+
+  LD->attvar.wakeup_ready = TRUE;
+
+  if(isVar(*value))
+  {
+    if ( IS_META(META_COPY_VAR) )
+    { if(atomcaller==0) atomcaller = current_caller_mask(callflags);
+      registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
+      return TRUE;
+    }
+    if(!(varflags&META_USE_UNIFY_VAR) && !(callflags & rmask))
+    { 
+      if(flags& META_NO_TRAIL) 
+      {
+        *value = makeRef(av);
+        return TRUE;
+      }
+      Trail(value, makeRef(av));
+      return TRUE;
+    }
+  }
 
   if ( isAttVar(*value) )
   { if ( value > av )
@@ -472,11 +485,18 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     }
   }
 
- if(!(flags& META_NO_WAKEUP)) 
+  if(LD_no_wakeup)
  {
-    atom_t atomcaller = current_caller_mask(callflags);
+    flags |= META_NO_WAKEUP;
+  }
+
+ if(!(flags& META_NO_WAKEUP)) 
+ {  if(atomcaller==0) atomcaller = current_caller_mask(callflags);
     registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
     if(isVar(*value)) return TRUE;
+ } else
+ { /* This is the disabled state */
+   flags |= ATTV_WILL_UNBIND;
  }
 
  if((flags& ATTV_WILL_UNBIND))
