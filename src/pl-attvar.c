@@ -447,29 +447,76 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("assignAttVar(%s)", vName(av)));
-
-  
   int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+
+  // bool plainAttVar = (varflags==0);
+  
+  int flags = callflags | varflags;
+
 
   int rmask = (META_OVERRIDE_USAGES_MASK);
   
-  atom_t atomcaller = 0;
+  atom_t atomcaller = current_caller_mask(callflags);
+  if(atomcaller==0) atomcaller = current_caller_mask(varflags);
+  if(atomcaller==0) atomcaller = current_caller_mask(flags);
+
+  if(LD_no_wakeup)
+  {
+    if(isVar(*value))
+    {
+      Trail(value, makeRef(av));
+      return TRUE;
+    }
+
+    if(varflags!=0)
+    {
+      DEBUG(MSG_WAKEUPS, Sdprintf_ln("LD_no_wakeup(%d,%s,%s)",LD_no_wakeup, vName(av),my_atom_summary(atomcaller)));
+      return FALSE;
+    }
+
+    flags |= META_NO_WAKEUP;
+  }
   
   if((callflags & rmask))
   {
-    if (!(varflags & callflags)) return FALSE;
+    if (!(varflags & callflags)) 
+    { 
+      
+      
+      if(!(META_DEFAULT & callflags)) 
+      {
+        DEBUG(MSG_WAKEUPS, Sdprintf_ln("no_special_test(%s,%s)", vName(av),my_atom_summary(atomcaller)));
+        if(!IS_META(META_VALUE_SINK)) return FALSE;
+      }
+    }
     atomcaller = current_caller_mask(varflags & callflags);
+    DEBUG(MSG_WAKEUPS, Sdprintf_ln("special(%s,%s)", vName(av),my_atom_summary(atomcaller)));
   }
 
-  int flags = callflags | varflags;
-
-  LD->attvar.wakeup_ready = TRUE;
+  if(LD->attvar.call_residue_vars_count>0)
+  { if(isVar(*value))
+    {
+        Trail(value, makeRef(av));
+        return TRUE;
+    }
+  }
 
   if(isVar(*value))
   {
-    if ( IS_META(META_COPY_VAR) )
+    if(LD->attvar.call_residue_vars_count>0)
+    {
+      Trail(value, makeRef(av));
+      return TRUE;
+    }
+    if ( IS_META((META_SOURCE_VALUE | META_USE_UNIFY_VAR)) )
     { if(atomcaller==0) atomcaller = current_caller_mask(callflags);
+      if(varflags&META_DISABLED && IS_META(META_SOURCE_VALUE))
+      {
+          DEBUG(MSG_WAKEUPS, Sdprintf_ln("PRETENDIGN NOT DISABLED_META_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
+          //return FALSE;
+          //registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
+      }
+      DEBUG(MSG_WAKEUPS, Sdprintf_ln("META_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
       registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
       return TRUE;
     }
@@ -504,7 +551,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   if(LD_no_wakeup)
  {
     flags |= META_NO_WAKEUP;
-  }
+ }
 
  if(!(flags& META_NO_WAKEUP)) 
  {  if(atomcaller==0) atomcaller = current_caller_mask(callflags);
@@ -526,11 +573,11 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
  }
 
 
-  if( flags& META_NO_BIND && !(flags &ATTV_WILL_UNBIND) ) return TRUE;
+  if( (flags& META_NO_BIND) && !(flags &ATTV_WILL_UNBIND) ) return TRUE;
  
 
   if ( canBind(*value) )
-  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying two attvars "));
+  { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Two canBind(%s,%s,%s)", vName(av),vName(value),my_atom_summary(atomcaller)));
     *av = makeRef(value);
   } else
     *av = *value;
