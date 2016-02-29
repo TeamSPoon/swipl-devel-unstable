@@ -227,20 +227,26 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
 
-  if(LD->attvar.wakeup_ready || (META_SOURCE & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
+
+  if(LD->attvar.wakeup_ready || ((META_USE_UNIFY_VAR|META_SOURCE_VALUE|META_COPY_VAR) & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
   {
     LD->attvar.wakeup_ready = TRUE;
     if ( isAttVar(w1) )
     { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
-      assignAttVar(t1, t2, assignment_flags PASS_LD);
+      assignAttVar(&t1, &t2, assignment_flags PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
     { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
-      assignAttVar(t2, t1, assignment_flags PASS_LD);
+      assignAttVar(&t2, &t1, assignment_flags PASS_LD);
       continue;
     }
   }
+
+  if ( UNIFY_COMPLETE((META_USE_UNIFY_VAR|META_SOURCE_VALUE|META_COPY_VAR), t1, t2, assignment_flags) )
+  { continue;
+  }
+
 
     DEBUG(CHK_SECURE,
 	  { assert(w1 != ATOM_garbage_collected);
@@ -291,7 +297,7 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t1, t2, assignment_flags PASS_LD);
+      assignAttVar(&t1, &t2, assignment_flags PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
@@ -299,7 +305,7 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
       { rc = overflowCode(0);
 	goto out_fail;
       }
-      assignAttVar(t2, t1, assignment_flags PASS_LD);
+      assignAttVar(&t2, &t1, assignment_flags PASS_LD);
       continue;
     }
   #endif
@@ -427,7 +433,7 @@ raw_unify_ptrs(Word t1, Word t2, int assignment_flags ARG_LD)
          if(!(assignment_flags & META_PLEASE_OPTIMIZE_TRAIL))
          { return do_unify(t1, t2, assignment_flags PASS_LD);
          }
-         return raw_unify_ptrs_and_unbind(t1, t2, ATTV_MUST_TRAIL|assignment_flags PASS_LD);
+         return raw_unify_ptrs_and_unbind(t1, t2, ATTV_WILL_UNBIND|assignment_flags PASS_LD);
     }
     case OCCURS_CHECK_TRUE:
       return unify_with_occurs_check(t1, t2, assignment_flags, OCCURS_CHECK_TRUE PASS_LD);
@@ -650,7 +656,7 @@ unify_with_occurs_check(Word t1, Word t2, int assignment_flags, occurs_check_t m
 { mark m;
   int rc;
 
-  assignment_flags |= ATTV_MUST_TRAIL;
+  assignment_flags |= ATTV_WILL_UNBIND;
 
   deRef(t1);
   deRef(t2);
@@ -3321,7 +3327,7 @@ unify_all_trail_ptrs(Word t1, Word t2, int assignment_flags, mark *m ARG_LD)
 
     Mark(*m);
     LD->mark_bar = NO_MARK_BAR;
-    rc = raw_unify_ptrs(t1, t2, ATTV_MUST_TRAIL|assignment_flags PASS_LD);
+    rc = raw_unify_ptrs(t1, t2, ATTV_WILL_UNBIND|assignment_flags PASS_LD);
     if ( rc == TRUE )			/* Terms unified */
     { return rc;
     } else if ( rc == FALSE )		/* Terms did not unify */
@@ -3376,7 +3382,7 @@ unifiable(term_t t1, term_t t2, term_t subst ARG_LD)
 			   PL_ATOM, ATOM_nil);
   }
 
-int assignment_flags = META_NO_WAKEUP|ATTV_MUST_TRAIL;
+int assignment_flags = META_NO_WAKEUP|ATTV_WILL_UNBIND;
 
 retry:
   if ( unify_all_trail_ptrs(valTermRef(t1),	/* can do shift/gc */

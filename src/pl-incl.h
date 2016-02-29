@@ -2070,39 +2070,37 @@ typedef struct
 		 *	      METATERMS           	*
 		 *******************************/
 
-#define META_NO_BIND           0x0001 /* C should not bind attvar even in ASSIGNONLY  */
+#define META_DISABLED   	   0x0001 /* disable all options (allows the options to be saved) */
 #define META_NO_WAKEUP  	   0x0002 /* Dont call wakeup */
 #define META_NO_TRAIL          0x0004 /* Do not bother to trail the previous value */
 #define META_COPY_VAR   	   0x0008 /* allow attvar survival */
-#define META_SOURCE            0x0010 /* the attvar provides has an effective value */
+#define META_SOURCE_VALUE      0x0010 /* the attvar has an effective value */
 #define META_NO_INHERIT        0x0020 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-#define META_DISABLED   	   0x0040 /* disable all options (allows the options to be saved) */
+#define META_NO_BIND           0x0040 /* C should not bind attvar even in ASSIGNONLY  */
 #define META_DISABLE_SWAP      0x0080 /* dont sort attvars for unification */
-#define META_USE_BARG_VAR       0x0100  /* implies ATTV_BINDCONST|META_1_INTO_2 */
+#define META_USE_BARG_VAR       0x0100  /* implies ATTV_BINDCONST|META_NO_TRAIL| META_1_INTO_2 */
 #define META_USE_CONS_VAL       0x0200  /* implies META_NO_TRAIL|META_1_INTO_2 */
 #define META_USE_H_VAR          0x0400 /* META_NO_TRAIL|META_1_INTO_2 */
 #define META_USE_UNIFY_VP       0x0800 /* META_NO_TRAIL|META_1_INTO_2 */
 #define META_USE_BINDCONST      0x1000 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_NO_OPTIMIZE_TRAIL  0x2000 /* Dont Optimize Trail (Multiple wakeups) */
-                                    /* debugging for a moment trying to guage if damaging do_unify() 
+#define META_USE_UNIFY_VAR      0x2000 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
                                     as the result of unification.                                    
+                                    Or in the case of a META_SOURCE_VALUE have the variable beca                           
                                  */
 #define META_USE_VMI  	 0x4000 /* Hook WAM */
 #define META_USE_CPREDS	 0x8000 /* Hook CPREDS (WAM can misses a few)*/
 
-#define ATTV_DEFAULT     META_DEFAULT   /* bindConst() */
-#define ATTV_ASSIGNONLY  ATTV_WILL_UNBIND		 /* '$attvar_assign'/2 */
 
 /* This adds wakeups to attvars rather than binding them */
 #define ATTV_BINDCONST              0x010000   /* bindConst() */
 #define ATTV_UNIFY_PTRS             0x020000   /* '$attvar_assign'/2 */
-#define ATTV_MUST_TRAIL             0x040000   /* unifiable/3 and Occurs checking needs attvars trailed  */
-#define ATTV_WILL_UNBIND            0x080000   /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
-#define META_SKIP_HIDDEN            0x100000 /* dont factor $meta into attvar identity */
-#define META_USE_UNDO               0x200000 /* check attvars for undo hooks (perfomance checking) */
+#define ATTV_WILL_UNBIND            0x040000   /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
+#define META_SKIP_HIDDEN            0x080000 /* dont factor $meta into attvar identity */
+#define META_USE_UNDO               0x100000 /* check attvars for undo hooks (perfomance checking) */
+#define META_NO_OPTIMIZE_TRAIL      0x200000   /* Dont Optimize Trail (Multiple wakeups) */ /* expect unifiable/3 and Occurs checking needs attvars trailed  */
 #define META_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
 #define DRA_CALL                    0x800000
 
@@ -2132,11 +2130,11 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 
-#define UNIFY_COMPLETE(why,from,to,type) 0
-#define UNIFY_COMPLETE_NEW(why,from,to,type) \
+/*#define UNIFY_COMPLETE(why,from,to,type) 0*/
+#define UNIFY_COMPLETE(why,from,to,type) \
   ((LD->attvar.wakeup_ready!=0) && /*(!(why & METATERM_ENABLED)) && */ \
-   ((isAttVar(*to)   && assignAttVar(to, from, (why|type) PASS_LD)) || \
-   (isAttVar(*from) && assignAttVar(from, to, (why|type) PASS_LD))))
+   ((isAttVar(*to)   && assignAttVar(&to, &from, (why|type) PASS_LD)) || \
+   (isAttVar(*from) && assignAttVar(&from, &to, (why|type) PASS_LD))))
 
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)

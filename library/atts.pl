@@ -53,6 +53,10 @@
       has_hooks/1,
       matts/1,
       matts/2,
+      meta_copy_var/1,
+      get_val/2,
+      set_val/2,
+      meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       meta_override/2,
       datts_overriding/2,
@@ -104,7 +108,7 @@
 sink_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind),put_atts(Fluent,sink_fluent:[true]).
 
 sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->set_val(Var,Value);true.
-sink_fluent:meta_unify_hook(_Atom,_,Var,Value):-!.
+sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):-!.
 
 
 %%	source_fluent(-Fluent) is det.
@@ -113,13 +117,19 @@ sink_fluent:meta_unify_hook(_Atom,_,Var,Value):-!.
 
 source_fluent(Fluent):-mkmeta(Fluent),put_atts(Fluent,+no_bind+meta_source+use_unify_var).
 
-meta_source:meta_unify_hook(_Atom,Was,Var,Value):- var(Value),!,get_val(Var,Value).
+meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,get_val(Var,Value).
 meta_source:meta_unify_hook(_Atom,Was,Var,Value):-  Was==[true] -> 
                                   (ignore(get_val(Var,ValueO)),!, % Value=ValueO,
                                     attvar(Var)->put_attr(Var,meta_source,call(ValueO=Value));true) ; true.
 
 meta_source:attr_unify_hook(call(Call),_Value):- !, call(Call).
 meta_source:attr_unify_hook(_AttVal,_Value).
+
+
+
+meta_copy_var(Fluent):-mkmeta(Fluent),put_atts(Fluent,+meta_copy_var+use_unify_var).
+
+
 
 
 %%	empty_fluent(-Fluent) is det.
@@ -629,7 +639,8 @@ dict_attvar(Mod:Dict,Out):-
 eclipse:free(X):-var(X),\+attvar(X).
 
 % This type-checking predicate succeeds iff its argument is an attributed variable. For other type testing predicates an attributed variable behaves like a variable.
-eclipse:meta(X):- attvar(X).
+% eclipse:
+meta(X):- attvar(X),get_attr(X,'$atts',N),N>0.
 
 % A new attribute can be added to a variable using the tool predicate
 % add_attribute(Var, Attr).
@@ -751,7 +762,7 @@ fbs_for_hooks_default(v(
 
  attv_assignonly 			," '$attvar_assign'/2 " ,
  attv_bindconst  		," bindconst() " ,
- attv_must_trail       		," unify: assign and wakeup " ,
+ meta_copy_var       		," unify: assign and wakeup " ,
  attv_will_unbind   , " peer no trail ", 
  
 		 /*******************************
@@ -944,6 +955,7 @@ system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true)
 
 % :- set_dict_attvar_reader(true).
 
+:- matts(+use_unify_var).
 
 :- matts.
 

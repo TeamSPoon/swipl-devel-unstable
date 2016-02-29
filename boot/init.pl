@@ -208,6 +208,7 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 
 :- meta_predicate with_meta_disabled(?,0),
                   with_meta_enabled(?,0),
+   with_no_wakeups(?,0),
                   must_or_die(0),
                   setup_call_cleanup_each(0,0,0).
 
@@ -229,8 +230,8 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
      E, (must_atomic(Undo),throw(E))).
 
 
-
-with_meta_disabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,true,meta_disabled), G, metaterm_flags(Var,false,meta_disabled)); G.
+with_no_wakeups(_Var,G):- G. % metaterm_flags(Var,no_wakeup,0) -> setup_call_cleanup_each(metaterm_flags(Var,true,no_wakeup), G, metaterm_flags(Var,false,no_wakeup)); G.
+with_meta_disabled(Var,G):- with_no_wakeups(Var,((metaterm_flags(Var,meta_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,true,meta_disabled), G, metaterm_flags(Var,false,meta_disabled)); G))).
 with_meta_enabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,false,meta_disabled), G, metaterm_flags(Var,true,meta_disabled)).
 
 

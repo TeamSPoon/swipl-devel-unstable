@@ -86,6 +86,13 @@ amsg(G):- notrace(
 
 :- meta_predicate(system:pre_unify(+,0,+,+,+)).
 
+% METATERMs -> META_UNIFY
+system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
+  writeln(meta_unify(Atom, Var, Value )),
+  % next line disabled from being a  variable is now disabled
+  with_meta_disabled(Var,with_meta_enabled(global,meta_unify(Rest, Atom, Var, Value))),
+  % global was re-disabled
+  call(Next).
 system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         pre_unify(Rest, Next, Var, Value,Atom).
@@ -96,13 +103,6 @@ system:pre_unify(_,Next,_Var,_Value,Atom):- !, % Var=@=Value,
 system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
    post_unify(Atts, Next, Var, Value, Atom  ).
 
-% METATERMs -> META_UNIFY
-system:pre_unify(att('$atts',_Was,Rest), Next, Var, Value, Atom ):- !,
-  writeln(meta_unify(Atom, Var, Value )),
-  % next line disabled from being a  variable is now disabled
-  with_meta_disabled(Var,with_meta_enabled(global,meta_unify(Rest, Atom, Var, Value))),
-  % global was re-disabled
-  call(Next).
 
 % Normal ATTVARs -> VERIFY_ATTRIBUTES/3
 system:pre_unify(Atts, Next, Var, Value, Atom ):-
