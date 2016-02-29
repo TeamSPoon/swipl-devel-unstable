@@ -614,6 +614,7 @@ atts_put(PN,Var,M,Pair):-
 is_meta_att(Tmpl):- fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
 
 exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_meta_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
+
 exec_atts_put(-,Var,M,Tmpl):- !,
    (get_attr(Var,M,Cur)->
      (delete(Cur,Tmpl,Upd),put_attr(Var,M,Upd)) ;

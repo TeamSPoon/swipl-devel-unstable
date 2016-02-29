@@ -208,7 +208,11 @@ static matts_flag matts_flags[] =
  MW("use_dra_interp",   DRA_CALL ), 
  MW("use_unify_var",      META_USE_UNIFY_VAR ), 
  MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
- MW("meta_default",     META_DEFAULT ),
+ MW("meta_override_usages_mask",     META_OVERRIDE_USAGES_MASK ),
+ MW("meta_disable_overrides_mask",     META_DISABLE_OVERRIDES_MASK ),
+  
+  MW("meta_default",     META_DEFAULT ),
+  
  MW(NULL,                 0)
 };
 
@@ -350,7 +354,7 @@ getMetaFlags(Word av, int flags ARG_LD)
   { value |= flags;
   }  
   if(value&META_DISABLED)
-  { return value & (~(META_OVERRIDE_MASKS));
+  { return value & (~(META_DISABLE_OVERRIDES_MASK));
   }
   return value;
 }
@@ -441,7 +445,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   
   int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
 
-  int rmask = (META_OVERRIDE_MASKS);
+  int rmask = (META_OVERRIDE_USAGES_MASK);
   
   atom_t atomcaller = 0;
   
