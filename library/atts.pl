@@ -158,12 +158,9 @@ sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 source_fluent(Fluent):- put_atts(Fluent,+meta_source+use_unify_var+no_bind).
 
-meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,get_val(Var,Value).
-meta_source:meta_unify_hook(_Atom,Was,Var,Value):-  Was==[true] -> 
-                                  (ignore(get_val(Var,ValueO)),!, % Value=ValueO,
-                                    attvar(Var)->put_attr(Var,meta_source,call(ValueO=Value));true) ; true.
+meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,get_val(Var,Value),!.
+meta_source:meta_unify_hook(_Atom,_Was,_Var,_Value).
 
-meta_source:attr_unify_hook(call(Call),_Value):- !, call(Call).
 meta_source:attr_unify_hook(_AttVal,_Value).
 
 

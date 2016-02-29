@@ -808,7 +808,7 @@ subst_chars([H|T]) -->
 			   expand_goal(Corrected, Expanded),
 			   '$set_source_module'(M0)),
 	print_message(silent, toplevel_goal(Expanded, Bindings)),
-	'$execute_goal2'(Expanded, Bindings).
+	with_no_wakeups('$execute_goal2'(Expanded, Bindings)).
 '$execute'(_, _) :-
 	notrace,
 	print_message(query, query(no)),
@@ -816,7 +816,7 @@ subst_chars([H|T]) -->
 
 '$execute_goal2'(Goal, Bindings) :-
 	restore_debug,
-	residue_vars(Goal, Vars),
+	with_wakeups(residue_vars(Goal, Vars)),
 	deterministic(Det),
 	(   save_debug
 	;   restore_debug, fail
@@ -835,7 +835,7 @@ residue_vars(Goal, Vars) :-
 	current_prolog_flag(toplevel_residue_vars, true), !,
 	call_residue_vars(Goal, Vars).
 residue_vars(Goal, []) :-
-	call(Goal).
+	with_meta_enabled(global,with_wakeups(Goal)).
 
 %%	write_bindings(+Bindings, +ResidueVars, +Deterministic)
 %
