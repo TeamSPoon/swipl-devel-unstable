@@ -313,10 +313,10 @@ bindConst__LD(Word p, word c ARG_LD)
 
 #ifdef O_ATTVAR
   Word cP = &c;
-  if(UNIFY_COMPLETE(META_USE_BINDCONST, cP, p, ATTV_BINDCONST)) return;
-
   if ( isVar(*p) )
-  { *p = (c);
+  { 
+  if(UNIFY_COMPLETE(META_USE_BINDCONST, cP, p, ATTV_BINDCONST)) return;
+    *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else

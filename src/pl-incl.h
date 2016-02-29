@@ -2071,19 +2071,20 @@ typedef struct
 		 *******************************/
 
 #define META_DISABLED   	   0x0001 /* disable all options (allows the options to be saved) */
-#define META_NO_WAKEUP  	   0x0002 /* Dont call wakeup */
-#define META_NO_TRAIL          0x0004 /* Do not bother to trail the previous value */
-#define META_COPY_VAR   	   0x0008 /* allow attvar survival */
-#define META_SOURCE_VALUE      0x0010 /* the attvar has an effective value */
-#define META_NO_INHERIT        0x0020 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-#define META_NO_BIND           0x0040 /* C should not bind attvar even in ASSIGNONLY  */
-#define META_DISABLE_SWAP      0x0080 /* dont sort attvars for unification */
-#define META_USE_BARG_VAR       0x0100  /* implies ATTV_BINDCONST|META_NO_TRAIL| META_1_INTO_2 */
-#define META_USE_CONS_VAL       0x0200  /* implies META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_H_VAR          0x0400 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_UNIFY_VP       0x0800 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_BINDCONST      0x1000 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_UNIFY_VAR      0x2000 /* debugging for a moment trying to guage if damaging do_unify() 
+#define META_COPY_VAR   	   0x0002 /* allow attvar survival */
+#define META_SOURCE_VALUE      0x0004 /* the attvar has an effective value */
+#define META_VALUE_SINK        0x0008 /* the attvar has an effective value */
+#define META_NO_WAKEUP  	   0x0010 /* Dont call wakeup */
+#define META_NO_TRAIL          0x0020 /* Do not bother to trail the previous value */
+#define META_NO_INHERIT        0x0040 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define META_NO_BIND           0x0080 /* C should not bind attvar even in ASSIGNONLY  */
+#define META_DISABLE_SWAP      0x0100 /* dont sort attvars for unification */
+#define META_USE_BARG_VAR       0x0200  /* implies ATTV_BINDCONST|META_NO_TRAIL| META_1_INTO_2 */
+#define META_USE_CONS_VAL       0x0400  /* implies META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_H_VAR          0x0800 /* META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_UNIFY_VP       0x1000 /* META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_BINDCONST      0x2000 /* META_NO_TRAIL|META_1_INTO_2 */
+#define META_USE_UNIFY_VAR      0x4000 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
@@ -2092,24 +2093,25 @@ typedef struct
                                  */
 
 
-#define META_USE_VMI  	 0x4000 /* Hook WAM */
-#define META_USE_CPREDS	 0x8000 /* Hook CPREDS (WAM can misses a few)*/
+#define META_USE_VMI  	 0x8000 /* Hook WAM */
 
 
 /* This adds wakeups to attvars rather than binding them */
 #define ATTV_BINDCONST              0x010000   /* bindConst() */
-#define ATTV_UNIFY_PTRS             0x020000   /* '$attvar_assign'/2 */
-#define ATTV_WILL_UNBIND            0x040000   /* Set true whenever attempting to optimize trail (in order to minimize wakeups) */
-#define META_SKIP_HIDDEN            0x080000 /* dont factor $meta into attvar identity */
+#define ATTV_UNIFY_PTRS             0x020000   /* do_unify() */
+#define ATTV_WILL_UNBIND            0x040000   /* unifiable/3 Set true whenever attempting to optimize trail (in order to minimize wakeups) */
+
+#define META_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
 #define META_USE_UNDO               0x100000 /* check attvars for undo hooks (perfomance checking) */
 #define META_NO_OPTIMIZE_TRAIL      0x200000   /* Dont Optimize Trail (Multiple wakeups) */ /* expect unifiable/3 and Occurs checking needs attvars trailed  */
 #define META_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
-#define DRA_CALL                    0x800000
+#define META_ENABLED                0x800000
 
+#define DRA_CALL 1
 #define SLOW_UNIFY_DEFAULT TRUE
-#define META_DEFAULT  	    (META_USE_VMI|META_SKIP_HIDDEN|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL|META_DISABLED)
+#define META_DEFAULT  	    (META_USE_VMI|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL|META_DISABLED|META_USE_BARG_VAR|META_USE_BINDCONST|META_USE_UNIFY_VP)
 
-#define META_DISABLE_OVERRIDES_MASK  META_OVERRIDE_USAGES_MASK | META_SOURCE_VALUE | META_COPY_VAR
+#define META_DISABLE_OVERRIDES_MASK  META_OVERRIDE_USAGES_MASK | META_SOURCE_VALUE | META_COPY_VAR | META_VALUE_SINK
 #define META_OVERRIDE_USAGES_MASK  META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR|META_USE_UNIFY_VP|META_USE_BINDCONST|META_USE_UNIFY_VAR
 
 
@@ -2142,8 +2144,9 @@ typedef struct
    ((isAttVar(*to)   && assignAttVar(&to, &from, (why|type) PASS_LD)) || \
    (isAttVar(*from) && assignAttVar(&from, &to, (why|type) PASS_LD))))
 
+#define META_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
 
-#define METATERM_SKIP_HIDDEN(ValPAttVar) (META_SKIP_HIDDEN & METATERM_ENABLED ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (META_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_USE_CPREDS PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (META_USE_CPREDS & METATERM_ENABLED && \

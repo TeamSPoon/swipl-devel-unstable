@@ -205,10 +205,15 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 	call_cleanup(0,?,0).
 
 
+system:amsg(G):- notrace(
+   ignore((current_prolog_flag(dmiles,true),
+           with_meta_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
+                  format(user_error,'~N,~q~n',[G]))))))).
+
 
 :- meta_predicate with_meta_disabled(?,0),
                   with_meta_enabled(?,0),
-   with_no_wakeups(?,0),
+                  with_no_wakeups(0),
                   must_or_die(0),
                   setup_call_cleanup_each(0,0,0).
 
@@ -216,23 +221,25 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 must_or_die(G):- (G *-> true ; throw(failed_must_or_die(G))).
 
 :- module_transparent(must_atomic/1).
-must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
+must_atomic(Goal):- notrace('$sig_atomic'(must_or_die(Goal))).
 
 setup_call_cleanup_each(Setup,Goal,Undo):-
-   must_atomic(Setup), 
+   notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
+   setup_call_cleanup(true,
+   (( must_atomic(Setup),
    catch(( 
-     call((Goal, deterministic(Det),true)) 
+     call((WasTrace,Goal,notrace,deterministic(Det),true)) 
         *-> 
         (Det == true 
          -> must_atomic(Undo) 
           ; (must_atomic(Undo);(must_atomic(Setup),fail)))
      ; (must_atomic(Undo),fail)), 
-     E, (must_atomic(Undo),throw(E))).
+     E, (must_atomic(Undo),throw(E))))),WasTrace).
 
 
-with_no_wakeups(_Var,G):- G. % metaterm_flags(Var,no_wakeup,0) -> setup_call_cleanup_each(metaterm_flags(Var,true,no_wakeup), G, metaterm_flags(Var,false,no_wakeup)); G.
-with_meta_disabled(Var,G):- with_no_wakeups(Var,((metaterm_flags(Var,meta_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,true,meta_disabled), G, metaterm_flags(Var,false,meta_disabled)); G))).
-with_meta_enabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,false,meta_disabled), G, metaterm_flags(Var,true,meta_disabled)).
+with_no_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,X+1), G, set_no_wakeup(_,X)).
+with_meta_disabled(Var,G):- (((metaterm_flags(Var,meta_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,meta_disabled), G, metaterm_flags(Var,~,meta_disabled)); G))).
+with_meta_enabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,meta_disabled), G, metaterm_flags(Var,set,meta_disabled)).
 
 
 

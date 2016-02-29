@@ -148,7 +148,7 @@
 
 sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
 
-sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->set_val(Var,Value);true.
+sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- !, (nonvar(Value)->set_val(Var,Value);true).
 sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 
@@ -802,7 +802,7 @@ fbs_for_hooks_default(v(
 /* Global bits in an prolog accessable  get_attr/3,putt_attr/3 need it fit in valInt()*/
 
 
- attv_assignonly 			," '$attvar_assign'/2 " ,
+ sink_fluent,
  attv_bindconst  		," bindconst() " ,
  meta_copy_var       		," unify: assign and wakeup " ,
  attv_will_unbind   , " peer no trail ", 

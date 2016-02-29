@@ -190,10 +190,10 @@ static matts_flag matts_flags[] =
  MW("use_bind_const",   META_USE_BINDCONST ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
  MW("meta_copy_var",    META_COPY_VAR 	),
- MW("meta_source",      META_SOURCE_VALUE ), 
+ MW("sink_fluent",    META_VALUE_SINK 	), /*META_NO_BIND*/  
+ MW("meta_source",      META_SOURCE_VALUE ),  /*META_NO_BIND*/
  MW("no_trail",         META_NO_TRAIL	), 
 
- MW("meta_disabled",    META_DISABLED 	),
  MW("no_bind",          META_NO_BIND ), 
  MW("no_inherit",       META_NO_INHERIT ), 
  MW("no_swap",          META_DISABLE_SWAP ), 
@@ -201,7 +201,6 @@ static matts_flag matts_flags[] =
  MW("use_trail_optimize",    META_PLEASE_OPTIMIZE_TRAIL ), 
  MW("attv_unify_pointers",  ATTV_UNIFY_PTRS ),  
  MW("attv_bindconst",     ATTV_BINDCONST ), 
- MW("use_skip_hidden",  META_SKIP_HIDDEN ), 
  MW("use_cpreds",       META_USE_CPREDS ), 
  MW("use_undo",         META_USE_UNDO ), 
  MW("use_vmi",          META_USE_VMI ), 
@@ -210,6 +209,8 @@ static matts_flag matts_flags[] =
  MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
  MW("meta_override_usages_mask",     META_OVERRIDE_USAGES_MASK ),
  MW("meta_disable_overrides_mask",     META_DISABLE_OVERRIDES_MASK ),
+  MW("meta_enabled",    META_ENABLED 	),
+  MW("meta_disabled",    META_DISABLED 	),
   
   MW("meta_default",     META_DEFAULT ),
   
@@ -236,6 +237,7 @@ current_caller_mask(unsigned int mask)
   { if (!index->key) index->key = PL_new_atom(index->name);
     if ( (index->mask & mask) == index->mask )
       return index->key;
+    if(index->mask == 0) return 0;
   }
   return 0;
 }
@@ -383,6 +385,11 @@ unifiable/3 and raw_unify_ptrs()
 SHIFT-SAFE: returns TRUE, GLOBAL_OVERFLOW or TRAIL_OVERFLOW
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
+static const char* my_atom_summary(atom_t n)
+{
+  if(n==0) return "NOATOM";
+  return atom_summary(n,20);
+}
 void
 assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 {

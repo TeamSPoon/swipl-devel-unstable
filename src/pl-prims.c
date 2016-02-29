@@ -221,31 +221,15 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
   int compound = FALSE;
   int rc = FALSE;
   
+  static int wakeupReady = 0;
+
+  if(!wakeupReady) wakeupReady = LD->attvar.wakeup_ready;
+
   do
   { word w1, w2;
 
     deRef(t1); w1 = *t1;
     deRef(t2); w2 = *t2;
-
-
-  if(LD->attvar.wakeup_ready || ((META_USE_UNIFY_VAR|META_SOURCE_VALUE|META_COPY_VAR) & METATERM_ENABLED))   /* DM: dont call too early and trusting assignAttVar() with Vars */
-  {
-    LD->attvar.wakeup_ready = TRUE;
-    if ( isAttVar(w1) )
-    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
-      assignAttVar(&t1, &t2, assignment_flags PASS_LD);
-      continue;
-    }
-    if ( isAttVar(w2) )
-    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
-      assignAttVar(&t2, &t1, assignment_flags PASS_LD);
-      continue;
-    }
-  }
-
-  if ( UNIFY_COMPLETE((META_USE_UNIFY_VAR|META_SOURCE_VALUE|META_COPY_VAR), t1, t2, assignment_flags) )
-  { continue;
-  }
 
 
     DEBUG(CHK_SECURE,
@@ -254,10 +238,7 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
 	  });
 
     if ( isVar(w1) )
-    { if ( unlikely(tTop+1 >= tMax) )
-      { rc = TRAIL_OVERFLOW;
-	goto out_fail;
-      }
+    { if ( unlikely(tTop+1 >= tMax) ) { rc = TRAIL_OVERFLOW; goto out_fail; }
 
       if ( isVar(w2) )
       { if ( t1 < t2 )			/* always point downwards */
@@ -267,24 +248,26 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
 	if ( t1 == t2 )
 	  continue;
     Trail(t1, makeRef(t2));
-
 	continue;
       }
   #ifdef O_ATTVAR
       if ( isAttVar(w2 ) )
+      { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
+        if(wakeupReady && assignAttVar(&t2, &t1, assignment_flags|META_ENABLED PASS_LD)) continue;
 	w2 = makeRef(t2);
+      }
   #endif
       Trail(t1, w2);
       continue;
     }
     if ( isVar(w2) )
-    { if ( unlikely(tTop+1 >= tMax) )
-      { rc = TRAIL_OVERFLOW;
-	goto out_fail;
-      }
+    { if ( unlikely(tTop+1 >= tMax) ) { rc = TRAIL_OVERFLOW; goto out_fail; }
   #ifdef O_ATTVAR
       if ( isAttVar(w1) )
+      { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
+       if(wakeupReady && assignAttVar(&t1, &t2, assignment_flags|META_ENABLED PASS_LD)) continue;
 	w1 = makeRef(t1);
+      }
   #endif
 
       Trail(t2, w1);
@@ -293,19 +276,13 @@ do_unify(Word t1, Word t2, int assignment_flags ARG_LD)
 
   #ifdef O_ATTVAR
     if ( isAttVar(w1) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-	goto out_fail;
-      }
-      assignAttVar(&t1, &t2, assignment_flags PASS_LD);
+    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
+      assignAttVar(&t1, &t2, assignment_flags|META_ENABLED PASS_LD);
       continue;
     }
     if ( isAttVar(w2) )
-    { if ( !hasGlobalSpace(0) )
-      { rc = overflowCode(0);
-	goto out_fail;
-      }
-      assignAttVar(&t2, &t1, assignment_flags PASS_LD);
+    { if ( !hasGlobalSpace(0) ) { rc = overflowCode(0); goto out_fail; }
+      assignAttVar(&t2, &t1, assignment_flags|META_ENABLED PASS_LD);
       continue;
     }
   #endif

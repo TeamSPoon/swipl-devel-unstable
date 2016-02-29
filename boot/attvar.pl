@@ -88,8 +88,8 @@ amsg(G):- notrace(
 
 % METATERMs -> META_UNIFY
 system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
-  writeln(meta_unify(Atom, Var, Value )),
-  (M==system->UM=user;UM=M),
+  notrace((amsg(meta_unify(Atom, Var, Value )),
+  (M==system->UM=user;UM=M))),
   % next line disabled from being a  variable is now disabled
   with_meta_disabled(Var,with_meta_enabled(global,UM:meta_unify(Rest, Atom, Var, Value))),
   % global was re-disabled
