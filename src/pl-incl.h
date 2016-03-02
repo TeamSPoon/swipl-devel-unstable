@@ -2138,16 +2138,15 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 
-/*#define UNIFY_COMPLETE(why,from,to,type) 0*/
+/*#define UNIFY_COMPLETE(why,from,to,type) 0*//*(!(why & METATERM_ENABLED)) && */
 #define UNIFY_COMPLETE(why,from,to,type) \
-  ((LD->attvar.wakeup_ready!=0) && /*(!(why & METATERM_ENABLED)) && */ \
-   ((isAttVar(*to)   && assignAttVar(&to, &from, (why|type) PASS_LD)) || \
-   (isAttVar(*from) && assignAttVar(&from, &to, (why|type) PASS_LD))))
+   ((isAttVar(*to) && METATERM_ENABLED  && assignAttVar(&to, &from, (why|type) PASS_LD)) || \
+   (isAttVar(*from) && METATERM_ENABLED && assignAttVar(&from, &to, (why|type) PASS_LD)))
 
 #define META_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (META_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_USE_CPREDS PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (META_USE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \

@@ -97,7 +97,7 @@ system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
 system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
         ifdef(Module:attr_unify_hook(AttVal, Value),true),
         pre_unify(Rest, Next, Var, Value,Atom).
-system:pre_unify(_,Next,_Var,_Value,Atom):- !, % Var=@=Value,
+system:pre_unify(_,Next,_Var,_Value,_Atom):- !, % Var=@=Value,
         call(Next).
 
 % BOUND -> POST_UNIFY

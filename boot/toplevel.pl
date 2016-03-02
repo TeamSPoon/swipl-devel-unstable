@@ -835,7 +835,7 @@ residue_vars(Goal, Vars) :-
 	current_prolog_flag(toplevel_residue_vars, true), !,
 	call_residue_vars(Goal, Vars).
 residue_vars(Goal, []) :-
-	with_meta_enabled(global,with_wakeups(Goal)).
+	call(Goal).
 
 %%	write_bindings(+Bindings, +ResidueVars, +Deterministic)
 %

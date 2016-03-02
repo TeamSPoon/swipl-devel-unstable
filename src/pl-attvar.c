@@ -516,6 +516,11 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
           //return FALSE;
           //registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
       }
+      if(LD->attvar.wakeup_ready==0)
+	  {
+		  DEBUG(MSG_WAKEUPS, Sdprintf_ln("WAKUP UNREADY (%s,%s)", vName(av),my_atom_summary(atomcaller)));
+		  return FALSE;
+	  }
       DEBUG(MSG_WAKEUPS, Sdprintf_ln("META_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
       registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
       return TRUE;
@@ -555,6 +560,12 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
 
  if(!(flags& META_NO_WAKEUP)) 
  {  if(atomcaller==0) atomcaller = current_caller_mask(callflags);
+	 if(LD->attvar.wakeup_ready==0)
+	 {
+		  DEBUG(MSG_WAKEUPS, Sdprintf_ln("WAKUP UNREADY (%s,%s)", vName(av),my_atom_summary(atomcaller)));
+		  return FALSE;
+	 }
+
     registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
     if(isVar(*value)) return TRUE;
  } else
@@ -1900,6 +1911,7 @@ static int
 metaterm_flags(term_t aA1, term_t aA2, term_t aA3, int inherit_flags, int backtrack_flags ARG_LD )
 {
   Word av = valTermRef(aA1);
+  LD->attvar.wakeup_ready = TRUE;
   deRef(av);
   if ( isAttVar(*av) )
   { int flags = getMetaFlags(av, inherit_flags PASS_LD);
@@ -1950,7 +1962,7 @@ PRED_IMPL("set_no_wakeup", 2, set_no_wakeup, 0)
 { PRED_LD
   number n;
   word rval;
-
+  LD->attvar.wakeup_ready = TRUE;
   rval = PL_unify_int64_ex(A1, LD_no_wakeup);
   if(rval!=TRUE) return rval;
 
@@ -2012,6 +2024,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
     if (f->definition != FUNCTOR_att3) return origl;
     deRef2(&f->arguments[0],n);
     deRef2(&f->arguments[2],l);    
+    if (*n == ATOM_datts) continue;
     if (*n == name) 
       return l;    
   }

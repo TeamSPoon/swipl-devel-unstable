@@ -54,11 +54,11 @@
       matts/1,
       matts/2,
       meta_copy_var/1,
-      get_val/2,
-      set_val/2,
+      f_get/2,
+      f_set/2,
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
-      meta_override/2,
+      metaterm_override/2,
       datts_overriding/2,
       add_attribute/2,
       %add_attribute/3,
@@ -117,11 +117,11 @@
       matts/1,
       matts/2,
       meta_copy_var/1,
-      get_val/2,
-      set_val/2,
+      f_get/2,
+      f_set/2,
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
-      meta_override/2,
+      metaterm_override/2,
       datts_overriding/2,
       add_attribute/2,
       %add_attribute/3,
@@ -148,7 +148,7 @@
 
 sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
 
-sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- !, (nonvar(Value)->set_val(Var,Value);true).
+sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->f_set(Var,Value);true.
 sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 
@@ -158,8 +158,7 @@ sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 source_fluent(Fluent):- put_atts(Fluent,+meta_source+use_unify_var+no_bind).
 
-meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,get_val(Var,Value),!.
-meta_source:meta_unify_hook(_Atom,_Was,_Var,_Value).
+meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,f_get(Var,Value).
 
 meta_source:attr_unify_hook(_AttVal,_Value).
 
@@ -529,19 +528,19 @@ to_pind(PI,PI).
 
 system:'$undo_unify'(Var,Value):- dmsg(system:'$undo_unify'(Var,Value)).
 
-%  av(X),meta_override(X, = /2 : unify/2),'$attvar_overriding'(X,l(_,_),Y).
+%  av(X),metaterm_override(X, = /2 : unify/2),metaterm_overriding(X,l(_,_),Y).
 
-meta_override(X,BA):-  is_list(BA),!,maplist(meta_override,X,BA).
-meta_override(X,Atom):- atomic(Atom),!,meta_override(X,Atom:true([])).
-meta_override(X,Atom):- compound_name_arity(Atom,_,0),!,meta_override(X,Atom:true([])).
-meta_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,meta_override(X,BPI,API).
-meta_override(X,B=A):-  meta_override(X,B:A),!.
-meta_override(X,What):- put_atts(X,'$meta': + What).
+metaterm_override(X,BA):-  is_list(BA),!,maplist(metaterm_override,X,BA).
+metaterm_override(X,Atom):- atomic(Atom),!,metaterm_override(X,Atom:true([])).
+metaterm_override(X,Atom):- compound_name_arity(Atom,_,0),!,metaterm_override(X,Atom:true([])).
+metaterm_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,metaterm_override(X,BPI,API).
+metaterm_override(X,B=A):-  metaterm_override(X,B:A),!.
+metaterm_override(X,What):- put_atts(X,'$meta': + What).
 
-meta_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
+metaterm_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
 
 
-make_meta_override(X,B=A):- meta_override(X,B:A).
+make_metaterm_override(X,B=A):- metaterm_override(X,B:A).
 
 
 atts_modulize([], _) --> [].
@@ -723,14 +722,14 @@ do_meta_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:meta_hook(Pred,Var,Val
 do_meta_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
 
 do_meta_hook('==',Var,Value, 1):- !, wnmt(Var==Value). % this one ends up calling compare/3 
-do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
-do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),BA==AA,!.
+do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
+do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),BA==Cell,!.
 do_meta_hook('=@=', Var, Value, 1):- !, wnmt(Var=@=Value).
-do_meta_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,AA),!,BA=@=AA.
+do_meta_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
 do_meta_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
 do_meta_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
 do_meta_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
-do_meta_hook(Hook,Var,Value,1):- get_val(Var,AA),w_hooks(call(Hook,AA,Value)).
+do_meta_hook(Hook,Var,Value,1):- f_get(Var,Cell),w_hooks(call(Hook,Cell,Value)).
 do_meta_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
 % 0: == call handler
 do_meta_hook(compare,Var,Value,0):- do_meta_hook(==,Var,Value,1),!.
@@ -748,15 +747,22 @@ attrs_val(Var,AttsO):- '$visible_attrs'(Var,AttsO).
 mkmeta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
 mkmeta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
 
-set_val(Var,Value):- get_attr(Var,gvar,AA),!,nb_setval(AA,Value).
-set_val(Var,Value):- put_attr(Var,value,Value).
+f_set(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),fv_set(List,Value).
+f_set(Var,Value):- put_attr(Var,value,List),fv_set(List,Value).
 
-unify_val(Var,Value):- get_val(Var,AA),!,AA=Value.
-unify_val(Var,Value):- set_val(Var,Value).
+unify_val(Var,Value):- f_get(Var,Cell),!,Cell=Value.
+unify_val(Var,Value):- f_set(Var,Value).
 
-get_val(Var,Value):- get_attr(Var,gvar,AA),!,nb_linkval(AA,Value).
-get_val(Var,Value):- get_attr(Var,value,AA),!,AA=Value.
+f_get(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),!,fv_get(List,Value).
+f_get(Var,Value):- get_attr(Var,value,List),!,fv_get(List,Value).
 
+f_push(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),!,fv_push(List,Value).
+f_push(Var,Value):- get_attr(Var,value,List),!,fv_push(List,Value).
+f_push(Var,Value):- f_set(Var,Value).
+
+fv_set(List,Value):-must_or_die(List=[Value]->true;setarg(1,List,Value)).
+fv_push(List,Value):-must_or_die(List=[Value]->true;(arg(2,List,Was),setarg(2,List,[Value|Was]))).
+fv_get(List,Value):-must_or_die(member(Value,List)).
 
 dshow(X):- dmsg(dshow(X)).
 dshow(X,Y):- dmsg(dshow(X,Y)).
@@ -855,7 +861,7 @@ debug_hooks(_):- matts(-debug_hooks-debug_extreme).
 datts_overriding(AttVar,BitsOut):- wno_hooks(get_attr(AttVar,'$atts',Modes)->any_to_fbs(Modes,BitsOut);BitsOut=0).
 
 
-%%    meta_override(AttVar,BitsOut)
+%%    metaterm_override(AttVar,BitsOut)
 %
 % Set matts properties
 %
@@ -920,7 +926,7 @@ fbs_to_number([],0).
 fbs_to_number(B << A,VVV):- !, fbs_to_number(B,VV), VVV is (VV << A).
 fbs_to_number(B+A,VVV):- merge_fbs(+(A),B,VVV),!.
 fbs_to_number(B*A,VVV):- merge_fbs(*(A),B,VVV),!.
-fbs_to_number(B-A,VVV):- fbs_to_number(B,BB),fbs_to_number(A,AA),VVV is (BB /\ \ AA),!.
+fbs_to_number(B-A,VVV):- fbs_to_number(B,BB),fbs_to_number(A,Cell),VVV is (BB /\ \ Cell),!.
 fbs_to_number(+(Bit),VVV):- fbs_to_number((Bit),VVV),!.
 fbs_to_number(-(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(~(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
@@ -977,8 +983,8 @@ test1(cmp_fbs_variants1):-
 
 test1(cmp_fbs_variants2):- 
  put_attr(X,a1,1),put_attr(X,a2,2),
- meta_override(X,+variant),
- meta_override(Y,+variant),X=@=Y.
+ metaterm_override(X,+variant),
+ metaterm_override(Y,+variant),X=@=Y.
 
 test1(cmp_fbs_variants3):- 
  put_attr(X,'$atts',1),
@@ -1039,7 +1045,7 @@ system:pointers(X,Y):- dmsg(pointers(X,Y)).
            *	  ATTR UNDO HOOK	*
 
 
-?- meta_override(X,'$undo_unify'()),writeq(X),meta_overriding(X,'$undo_unify'(_,_),O).
+?- metaterm_override(X,'$undo_unify'()),writeq(X),meta_overriding(X,'$undo_unify'(_,_),O).
 
 
            *******************************/
@@ -1103,6 +1109,8 @@ system:vb(X):- put_attr(X,tBB,'BBB').
 system:vc(X):- put_attr(X,tCC,'CCC').
 
 :- retract(was_access_level_atts(Was)),set_prolog_flag(access_level,Was).
+
+:-  metaterm_flags(current,use_dra_interp,_).
 
 :- export_all.
 
