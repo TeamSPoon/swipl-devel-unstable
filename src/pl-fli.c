@@ -157,7 +157,7 @@ void
 bArgVar(Word ap, Word vp ARG_LD)
 { deRef(vp);
 
-  if(UNIFY_COMPLETE(META_USE_BARG_VAR, vp, ap, META_NO_TRAIL)) return;
+  if(METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, vp, ap, METATERM_NO_TRAIL)) return;
 
   if ( isVar(*vp) )
   { if ( ap < vp )
@@ -941,7 +941,7 @@ static inline void
 bindConsVal(Word to, Word p ARG_LD)
 { deRef(p);
 
-  if(UNIFY_COMPLETE(META_USE_CONS_VAL, p, to, META_NO_TRAIL)) return;
+  if(METATERM_UNIFY_COMPLETE(METATERM_USE_CONS_VAL, p, to, METATERM_NO_TRAIL)) return;
 
   if ( canBind(*p) )
   { if ( to < p && !isAttVar(*p) )

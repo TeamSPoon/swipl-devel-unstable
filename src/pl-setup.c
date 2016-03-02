@@ -1191,7 +1191,7 @@ emptyStacks(void)
 
     LD->attvar.metaterm_regs = PL_new_term_refs(2);
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
-    METATERM_CURRENT =  META_DEFAULT;
+    METATERM_CURRENT =  METATERM_DEFAULT;
     *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
     LD->slow_unify     = SLOW_UNIFY_DEFAULT;
 

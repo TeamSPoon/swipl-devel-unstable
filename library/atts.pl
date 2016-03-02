@@ -42,9 +42,10 @@
       wi_atts/2,
       wno_hooks/2,
       wno_debug/1,
-      mkmeta/1,
+      ensure_meta/1,
       wno_dmvars/1,
       wno_hooks/1,
+      export_all/0,
       % TODO remove  above before master
       
       'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
@@ -53,9 +54,11 @@
       has_hooks/1,
       matts/1,
       matts/2,
-      meta_copy_var/1,
-      f_get/2,
-      f_set/2,
+      metaterm_copy_var/1,
+      metaterm_get/2,
+      metaterm_set/2,
+      metaterm_push/2,
+      metaterm_pop/2,
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
@@ -73,16 +76,16 @@
       set_dict_attvar_reader/1,
       metaflag_unset/2,
       metaflag_set/2,
-      dict_attvar/1,
-      dict_attvar/2]).
+      dict_to_attvar/1,
+      dict_to_attvar/2]).
 
 :- meta_predicate('meta_attribute'(+,:)).
 :- meta_predicate(get_atts(+,:)).
 :- meta_predicate(put_atts(+,:)).
 :- meta_predicate(get_atts(+,:)).
 :- meta_predicate(put_atts(+,:)).
-:- meta_predicate(dict_attvar(:)).
-:- meta_predicate(dict_attvar(:,-)).
+:- meta_predicate(dict_to_attvar(:)).
+:- meta_predicate(dict_to_attvar(:,-)).
 :- meta_predicate wi_atts(+,0).
 
 :- meta_predicate w_hooks(0).
@@ -105,7 +108,7 @@
       wi_atts/2,
       wno_hooks/2,
       wno_debug/1,
-      mkmeta/1,
+      ensure_meta/1,
       wno_dmvars/1,
       wno_hooks/1,
       % TODO remove  above before master
@@ -116,9 +119,9 @@
       has_hooks/1,
       matts/1,
       matts/2,
-      meta_copy_var/1,
-      f_get/2,
-      f_set/2,
+      metaterm_copy_var/1,
+      metaterm_get/2,
+      metaterm_set/2,
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
@@ -136,8 +139,8 @@
       set_dict_attvar_reader/1,
       metaflag_unset/2,
       metaflag_set/2,
-      dict_attvar/1,
-      dict_attvar/2.
+      dict_to_attvar/1,
+      dict_to_attvar/2.
 
 :- nodebug(fluents).
 
@@ -148,23 +151,23 @@
 
 sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
 
-sink_fluent:meta_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->f_set(Var,Value);true.
-sink_fluent:meta_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
+sink_fluent:metaterm_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->metaterm_set(Var,Value);true.
+sink_fluent:metaterm_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 
 %%	source_fluent(-Fluent) is det.
 %
 % Base class of "SourceFluent" that creates bindings
 
-source_fluent(Fluent):- put_atts(Fluent,+meta_source+use_unify_var+no_bind).
+source_fluent(Fluent):- put_atts(Fluent,+source_fluent+use_unify_var+no_bind).
 
-meta_source:meta_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,f_get(Var,Value).
+source_fluent:metaterm_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,metaterm_get(Var,Value).
 
-meta_source:attr_unify_hook(_AttVal,_Value).
+source_fluent:attr_unify_hook(_AttVal,_Value).
 
 
 
-meta_copy_var(Fluent):- put_atts(Fluent,+meta_copy_var+use_unify_var).
+metaterm_copy_var(Fluent):- put_atts(Fluent,+metaterm_copy_var+use_unify_var).
 
 
 
@@ -177,7 +180,7 @@ meta_copy_var(Fluent):- put_atts(Fluent,+meta_copy_var+use_unify_var).
 % peer or otherwise
 % Tarau's "EmptySink" matts
 
-empty_fluent(Fluent):- mkmeta(Fluent),put_atts(Fluent,+no_wakeup+no_bind+no_trail).
+empty_fluent(Fluent):- ensure_meta(Fluent),put_atts(Fluent,+no_wakeup+no_bind+no_trail).
 
 
 get_metaflags(Get):- metaterm_flags(global,Get,Get).
@@ -320,7 +323,7 @@ The first argument is the term that was unified with the attributed variable, it
 The handler's job is to determine whether the binding is allowed with respect to the attribute. This could for example involve checking whether the bound term is in a domain described by the attribute. For variable-variable bindings, typically the remaining attribute must be updated to reflect the intersection of the two individual attributes. In case of success, suspension lists inside the attributes may need to be scheduled for waking.
 If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing notrace all unify-handlers are done.
 */
-meta_handler_name(unify).
+metaterm_handler_name(unify).
 
 /*
 test_unify:   REDIRECT ==  verify_attributes/3 TODO
@@ -328,7 +331,7 @@ a unifiability test which is not supposed to trigger constraints propagation. It
 test_unify_handler(+Term, ?Attribute)
 where the arguments are the same as for the unify handler. The handler's job is to determine whether Attribute allows unification with Term (not considering effects of woken goals). During the execution of the handler, the attributed variable may be bound to Term, however when all attribute handlers succeed, all bindings are undone again, and no waking occurs.
 */
-meta_handler_name(test_unify).
+metaterm_handler_name(test_unify).
 
 /*
 compare_instances:  C is done in branch 'eclipse_c' - PROLOG TODO
@@ -337,8 +340,8 @@ instance_handler(-Res, ?TermL, ?TermR)
 and its arguments are similar to the ones of the compare_instances/3 predicate. The handler is invoked with one or both of TermL and TermR being attributed variables. The task of the handler is to examine the two terms, and compute their instance relationship with respect to the extension attribute in question. The handler must bind Res to = iff the terms are variants, < iff TermL is a proper instance of TermR, or > iff TermR is a proper instance of TermL) with respect to the attribute under consideration. If the terms are not unifiable with respect to this attribute, the handler must fail.
 Even though one of TermL and TermR is guaranteed to be an attributed variable, they might not have the particular attribute that the handler is concerned with. The handler must therefore be written to correctly deal with all combinations of an attributed (but potentially uninstantiated attribute) variable with any other term.
 */
-meta_handler_name(compare_instances).
-meta_handler_name(compare).
+metaterm_handler_name(compare_instances).
+metaterm_handler_name(compare).
 
 /*
 copy_term:  C is done in branch 'eclipse_c' - PROLOG TODO
@@ -346,8 +349,8 @@ the handler is invoked by either copy_term/2 or copy_term_vars/3. The handler pr
 copy_handler(?AttrVar, ?Copy)
 AttrVar is the attributed variable encountered in the copied term, Copy is its corresponding variable in the copy. All extension handlers receive the same arguments. This means that if the attributed variable should be copied as an attributed variable, the handler must check if Copy is still a free variable or if it was already bound to an attributed variable by a previous handler.
 */
-meta_handler_name(copy_term).
-meta_handler_name(copy_term_nat).
+metaterm_handler_name(copy_term).
+metaterm_handler_name(copy_term_nat).
 
 /*
 suspensions:  REDIRECT ==  attribute_goals//1
@@ -355,7 +358,7 @@ this handler is invoked by the suspensions/2 predicate to collect all the suspen
 suspensions_handler(?AttrVar, -ListOfSuspLists, -Tail)
 AttrVar is an attributed variable. The handler should bind ListOfSuspLists to a list containing all the attribute's suspension lists and ending with Tail.
 */
-meta_handler_name(suspensions).
+metaterm_handler_name(suspensions).
 
 /*
 delayed_goals_number:   REDIRECT ==  attribute_goals//1 (count)
@@ -363,7 +366,7 @@ handler is invoked by the delayed_goals_number/2 predicate. The handler call pat
 delayed_goals_number_handler(?AttrVar, -Number)
 AttrVar is the attributed variable encountered in the term, Number is the number of delayed goals occurring in this attribute. Its main purpose is for the first-fail selection predicates, i.e., it should return the number of constraints imposed on the variable.
 */
-meta_handler_name(delayed_goals_number).
+metaterm_handler_name(delayed_goals_number).
 
 /*
 get_bounds:  OUT OF SCOPE (Should be done in CLP)
@@ -384,7 +387,7 @@ print_handler(?AttrVar, -PrintAttr)
 AttrVar is the attributed variable being printed, PrintAttr is the term which will be printed as a value for this attribute, prefixed by the attribute name. If no handler is specified for an attribute, or the print handler fails, the attribute will not be printed.
 The following handlers are still supported for compatibility, but their use is not recommened:
 */
-meta_handler_name(print).
+metaterm_handler_name(print).
 
 /*
 pre_unify:  REDIRECT ==  verify_attributes/3
@@ -392,7 +395,7 @@ this is another handler which can be invoked on normal unification, but it is ca
 pre_unify_handler(?AttrVar, +Term)
 The first argument is the attributed variable to be unfied, the second argument is the term it is going to be unified with. This handler is provided only for compatibility with SICStus Prolog and its use is not recommended, because it is less efficient than the unify handler and because its semantics is somewhat unclear, there may be cases where changes inside this handler may have unexpected effects.
 */
-meta_handler_name(pre_unify).
+metaterm_handler_name(pre_unify).
 
 /*
 delayed_goals:     REDIRECT == attribute_goals//1
@@ -400,7 +403,7 @@ this handler is superseded by the suspensions-handler, which should be preferred
 delayed_goals_handler(?AttrVar, ?GoalList, -GoalCont)
 AttrVar is the attributed variable encountered in the term, GoalList is an open-ended list of all delayed goals in this attribute and GoalCont is the tail of this list.
 */
-meta_handler_name(delayed_goals).
+metaterm_handler_name(delayed_goals).
 
 
 % auto-define attributes otherwise signal error is undeclared attributes are used
@@ -436,13 +439,13 @@ Name is an atom denoting the attribute name and usually it is the name of the mo
 
 new_meta_attribute(Base,V,M) :- (var(Base);var(M);var(V)), !, throw(error(instantiation_error,'meta_attribute'(Base,M:V))).
 new_meta_attribute(Base,Na/Ar,Mod) :- !, functor(At,Na,Ar),new_meta_attribute(Base,At,Mod).
-new_meta_attribute(Base,Mod:ANY,_) :- \+ meta_handler_name(Mod),!, new_meta_attribute(Base,ANY,Mod).
+new_meta_attribute(Base,Mod:ANY,_) :- \+ metaterm_handler_name(Mod),!, new_meta_attribute(Base,ANY,Mod).
 new_meta_attribute(_,[],_).
 new_meta_attribute(Base,(At1,At2),M) :- new_meta_attribute(Base,At1,M), new_meta_attribute(Base,At2,M).
 new_meta_attribute(Base,[At1|At2],M) :- new_meta_attribute(Base,At1,M), new_meta_attribute(Base,At2,M).
 
-new_meta_attribute(Base,P:At,Mod) :- assertion(meta_handler_name(P)),dynamic(Mod:meta_hook/3),
-  (Mod:meta_hook(Base,P,At) -> true; asserta(Mod:meta_hook(Base,P,At))).
+new_meta_attribute(Base,P:At,Mod) :- assertion(metaterm_handler_name(P)),dynamic(Mod:metaterm_hook/3),
+  (Mod:metaterm_hook(Base,P,At) -> true; asserta(Mod:metaterm_hook(Base,P,At))).
 
 new_meta_attribute(Base,At,Mod) :- dynamic(Mod:protobute/3),
   (Mod:protobute(Base,At,_) -> true; 
@@ -568,8 +571,8 @@ atts_get(Var,user,Atts):- var(Atts),!,get_attrs(Var,Attr),attrs_to_atts(Attr,Att
 % atts_get(Var,M,At):- var(At),!,get_attr(Var,M,At).
 atts_get(Var,M,List):- is_list(List),!,maplist(atts_get(Var,M),List).
 atts_get(Var,M,+At):- !,atts_get(M,Var,At).
-atts_get(Var,_,-(M:At)):- \+ meta_handler_name(M), !,atts_get(Var,M,-At).
-atts_get(Var,_, (M:At)):- \+ meta_handler_name(M), !,atts_get(Var,M,At).
+atts_get(Var,_,-(M:At)):- \+ metaterm_handler_name(M), !,atts_get(Var,M,-At).
+atts_get(Var,_, (M:At)):- \+ metaterm_handler_name(M), !,atts_get(Var,M,At).
 atts_get(Var,M, - Pair):- !,
   atts_to_att(Pair,At),
    atts_exist(M,At),
@@ -596,8 +599,8 @@ atts_put(PN,Var,M, +X-Y):- !, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,-Y).
 atts_put(PN,Var,M, List):- is_list(List),!,atts_module(Var,M),maplist(atts_put(PN,Var,M),List).
 atts_put(_, Var,M,  +At):- !, atts_put(+,Var,M,At).
 atts_put(PN,Var,M,  -At):- invert_pn(PN,NP),!,atts_put(NP,Var,M,At).
-atts_put(PN,Var,_,(M:At)):- \+ meta_handler_name(M), !,atts_put(PN,Var,M,At).
-atts_put(PN,Var,M, Meta):- \+ \+ clause(M:meta_hook(Meta,_,_),_), !, forall(M:meta_hook(Meta,P,A),atts_put(PN,Var,M,P=A)).
+atts_put(PN,Var,_,(M:At)):- \+ metaterm_handler_name(M), !,atts_put(PN,Var,M,At).
+atts_put(PN,Var,M, Meta):- \+ \+ clause(M:metaterm_hook(Meta,_,_),_), !, forall(M:metaterm_hook(Meta,P,A),atts_put(PN,Var,M,P=A)).
 % =(+a,b) -->   +(A=B).
 atts_put(PN,Var,M, Pair):- compound(Pair),Pair=..[P,Arg1,Arg2],attsep(P),compound(Arg1),tst((Arg1=..List,append(Head,[Last],List),At=..[P,Last,Arg2],append(Head,[At],ListNew),Try=..ListNew,!,atts_put(PN,Var,M, Try))).
 
@@ -607,9 +610,9 @@ atts_put(PN,Var,M,Pair):-
   atts_exist(PN,Tmpl),
   exec_atts_put(PN,Var,M,Tmpl).
 
-is_meta_att(Tmpl):- fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
+is_metaterm_att(Tmpl):- fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
 
-exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_meta_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
+exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_metaterm_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
 
 exec_atts_put(-,Var,M,Tmpl):- !,
    (get_attr(Var,M,Cur)->
@@ -641,9 +644,9 @@ update_hooks(PN,Var,_,Hook):-
   update_hooks1(PN,Var,_,Hook).
 
 update_hooks1(+,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
-   (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));(mkmeta(Var),put_attr(Var,'$atts',Number))))).
+   (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));(ensure_meta(Var),put_attr(Var,'$atts',Number))))).
 update_hooks1(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
-   (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));(mkmeta(Var),put_attr(Var,'$atts',Number))))).
+   (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));(ensure_meta(Var),put_attr(Var,'$atts',Number))))).
 
 handler_fbs(Hook,Number):- notrace(catch(fbs_to_number(Hook,Number),_,Number=0)).
 
@@ -662,15 +665,15 @@ set_dict_attvar_reader(X):- set_prolog_flag(set_dict_attvar_reader,X).
 
 
 
-dict_attvar(Dict):- dict_attvar(Dict,_),!.
-dict_attvar(_:Dict,Out):- \+ compound(Dict),!,Out=Dict.
-dict_attvar(Mod:Dict,Out):- 
+dict_to_attvar(Dict):- dict_to_attvar(Dict,_),!.
+dict_to_attvar(_:Dict,Out):- \+ compound(Dict),!,Out=Dict.
+dict_to_attvar(Mod:Dict,Out):- 
    is_dict(Dict),dict_pairs(Dict,M,Pairs),
    (atom(M)->atts_put(+,Out,M,Pairs);
    (var(M)-> (M=Out,put_atts(Out,Mod:Pairs)))),!.
-dict_attvar(Mod:Dict,Out):- 
+dict_to_attvar(Mod:Dict,Out):- 
   compound_name_arguments(Dict,F,Args),
-   maplist(Mod:dict_attvar,Args,ArgsO),!,
+   maplist(Mod:dict_to_attvar,Args,ArgsO),!,
    compound_name_arguments(Out,F,ArgsO).
 
 % This type-checking predicate succeeds iff its argument is an ordinary free variable, it fails if it is an attributed variable.
@@ -693,10 +696,10 @@ get_attribute(Var, M, Attr):- atts_get(Var,M, Attr).
 
 :- nodebug(matts).
 
-:- multifile('$atts':meta_hook/4).
-:- dynamic('$atts':meta_hook/4).
-:- meta_predicate('$atts':meta_hook(:,+,+,-)).
-'$atts':meta_hook(PredIn,Var,Value,RetCode):- strip_module(PredIn,M,Pred), do_meta_hook(M,Pred,Var,Value,RetCode),!.
+:- multifile('$atts':metaterm_hook/4).
+:- dynamic('$atts':metaterm_hook/4).
+:- meta_predicate('$atts':metaterm_hook(:,+,+,-)).
+'$atts':metaterm_hook(PredIn,Var,Value,RetCode):- strip_module(PredIn,M,Pred), do_metaterm_hook(M,Pred,Var,Value,RetCode),!.
 
 get_handler(M,Var,Hook,M:Handler):- get_attr(Var,M,Handlers),memberchk(Hook:Hndler,Handlers),as_handler(Hndler,Handler).
 get_handler(M,Var,Hook,M:Handler):- get_attr(Var,Hook,Hndler),as_handler(Hndler,Handler).
@@ -707,34 +710,34 @@ as_handler(M:Handler/_,M:Handler):- !.
 as_handler(Handler,Handler).
 
 :- meta_predicate wno_hooks(*,0).
-:- meta_predicate do_meta_hook(2,*,?,*).
+:- meta_predicate do_metaterm_hook(2,*,?,*).
 :- meta_predicate wd(0).
 :- meta_predicate(wnmt(:)).
 wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(W)).
-:- module_transparent(do_meta_hook/4).
+:- module_transparent(do_metaterm_hook/4).
 
 
 % unbind return code
-do_meta_hook(Pred,Var,Value,RetCode):- nonvar(RetCode),!,do_meta_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
+do_metaterm_hook(Pred,Var,Value,RetCode):- nonvar(RetCode),!,do_metaterm_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
 % print debug
-do_meta_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:meta_hook(Pred,Var,Value,RetCode)),fail)).
+do_metaterm_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:metaterm_hook(Pred,Var,Value,RetCode)),fail)).
 % Search for handler PER Var
-do_meta_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
+do_metaterm_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
 
-do_meta_hook('==',Var,Value, 1):- !, wnmt(Var==Value). % this one ends up calling compare/3 
-do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
-do_meta_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),BA==Cell,!.
-do_meta_hook('=@=', Var, Value, 1):- !, wnmt(Var=@=Value).
-do_meta_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
-do_meta_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
-do_meta_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
-do_meta_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
-do_meta_hook(Hook,Var,Value,1):- f_get(Var,Cell),w_hooks(call(Hook,Cell,Value)).
-do_meta_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
+do_metaterm_hook('==',Var,Value, 1):- !, wnmt(Var==Value). % this one ends up calling compare/3 
+do_metaterm_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
+do_metaterm_hook('==',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),BA==Cell,!.
+do_metaterm_hook('=@=', Var, Value, 1):- !, wnmt(Var=@=Value).
+do_metaterm_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,BA=@=Cell.
+do_metaterm_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
+do_metaterm_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
+do_metaterm_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
+do_metaterm_hook(Hook,Var,Value,1):- metaterm_get(Var,Cell),w_hooks(call(Hook,Cell,Value)).
+do_metaterm_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
 % 0: == call handler
-do_meta_hook(compare,Var,Value,0):- do_meta_hook(==,Var,Value,1),!.
+do_metaterm_hook(compare,Var,Value,0):- do_metaterm_hook(==,Var,Value,1),!.
 % call back
-do_meta_hook(compare,Var,Value,RetCode):- compare(Res,Value,Var),compare_to_retcode(Res,RetCode),!.
+do_metaterm_hook(compare,Var,Value,RetCode):- compare(Res,Value,Var),compare_to_retcode(Res,RetCode),!.
 
 compare_to_retcode(>,1).
 compare_to_retcode(<,-1).
@@ -744,25 +747,37 @@ swap_args(_,_,4).
 set_as(N,N,N,4).
 attrs_val(Var,AttsO):- '$visible_attrs'(Var,AttsO).
 
-mkmeta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
-mkmeta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
+ensure_meta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
+ensure_meta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
 
-f_set(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),fv_set(List,Value).
-f_set(Var,Value):- put_attr(Var,value,List),fv_set(List,Value).
+metaterm_set(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),fvi_set(Cont,Value).
+metaterm_set(Var,Value):- put_attr(Var,value,Cont),fvi_set(Cont,Value).
 
-unify_val(Var,Value):- f_get(Var,Cell),!,Cell=Value.
-unify_val(Var,Value):- f_set(Var,Value).
+unify_val(Var,Value):- metaterm_get(Var,Cell),!,Cell=Value.
+unify_val(Var,Value):- metaterm_set(Var,Value).
 
-f_get(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),!,fv_get(List,Value).
-f_get(Var,Value):- get_attr(Var,value,List),!,fv_get(List,Value).
+metaterm_get(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_get(Cont,Value).
+metaterm_get(Var,Value):- get_attr(Var,value,Cont),!,fvi_get(Cont,Value).
 
-f_push(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,List),!,fv_push(List,Value).
-f_push(Var,Value):- get_attr(Var,value,List),!,fv_push(List,Value).
-f_push(Var,Value):- f_set(Var,Value).
+metaterm_pop(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_pop(Cont,Value).
+metaterm_pop(Var,Value):- get_attr(Var,value,Cont),!,fvi_pop(Cont,Value).
 
-fv_set(List,Value):-must_or_die(List=[Value]->true;setarg(1,List,Value)).
-fv_push(List,Value):-must_or_die(List=[Value]->true;(arg(2,List,Was),setarg(2,List,[Value|Was]))).
-fv_get(List,Value):-must_or_die(member(Value,List)).
+metaterm_push(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_push(Cont,Value).
+metaterm_push(Var,Value):- get_attr(Var,value,Cont),!,fvi_push(Cont,Value).
+metaterm_push(Var,Value):- metaterm_set(Var,Value).
+
+
+
+fvi_set(Cont,Value):-
+     var(Cont)-> Cont=v([Value]);
+     (arg(1,List,Cont), (List==[]-> setarg(1,v([Value]),Cont); List=[_|_],setarg(1,Value,List))).
+
+fvi_push(Cont,Value):- var(Cont)-> Cont=v([Value]); (arg(1,List,Cont),setarg(1,Cont,[Value|List])).
+
+fvi_get(Cont,Value):- compound(Cont),arg(1,List,Cont),assertion(is_list(List)),member(Value,List).
+fvi_pop(Cont,Value):- compound(Cont),arg(1,[Value|List],Cont),assertion(is_list(List)),setarg(1,Cont,List).
+
+
 
 dshow(X):- dmsg(dshow(X)).
 dshow(X,Y):- dmsg(dshow(X,Y)).
@@ -807,17 +822,17 @@ fbs_for_hooks_default(v(
 
  sink_fluent,
  attv_bindconst  		," bindconst() " ,
- meta_copy_var       		," unify: assign and wakeup " ,
+ metaterm_copy_var       		," unify: assign and wakeup " ,
  attv_will_unbind   , " peer no trail ", 
  
 		 /*******************************
-		 *	      METATERMS      	*
+		 *	      FVS      	*
 		 *******************************/
- meta_default,
- meta_source      , " allow attvar survival ", 
- meta_disabled  , " disable all options (allows the options to be saved) ", 
+ metaterm_default,
+ source_fluent      , " allow attvar survival ", 
+ metaterm_disabled  , " disable all options (allows the options to be saved) ", 
  no_bind, " c should let only prolog do binding ",
- no_inherit, " this metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) ", 
+ no_inherit, " this fv doest not inherit from 'matts_default' flags (otherwise they are or-ed) ", 
  no_swap, " dont swap attvars", 
  no_wakeup, " dont call wakeup ", 
  no_trail, " do not bother to trail the previous value ", 
@@ -827,7 +842,7 @@ fbs_for_hooks_default(v(
  use_no_trail_optimize,
  use_skip_hidden , " dont factor $meta into attvar identity ", 
  use_dra_interp,
- meta_source,
+ source_fluent,
  use_cpreds , " hook cpreds (wam can misses a few)", 
  use_unify_var, " debugging for a moment trying to guage if damaging do_unify() ",
  use_undo , " check attvars for undo hooks (perfomance checking) ",
@@ -871,7 +886,7 @@ put_datts(AttVar,Modes):-
   ((
    get_attr(AttVar,'$atts',Was)->
        (merge_fbs(Modes,Was,Change),put_attr(AttVar,'$atts',Change)); 
-   (fbs_to_number(Modes,Number),mkmeta(AttVar),put_attr(AttVar,'$atts',Number)))))))),!.
+   (fbs_to_number(Modes,Number),ensure_meta(AttVar),put_attr(AttVar,'$atts',Number)))))))),!.
 
 
 %%    matts(+AttVar)
@@ -896,7 +911,7 @@ contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
 any_to_fbs(BitsIn,BitsOut):- notrace((
  tst((fbs_to_number(BitsIn,Mode),number(Mode))),
    Bits=[Mode],
-   ignore((current_attv_mask(N,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
+   ignore((current_metaterm_mask(N,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
    BitsOut = Bits)).
 
 
@@ -932,7 +947,7 @@ fbs_to_number(-(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(~(Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number( \ (Bit),VVV):- fbs_to_number((Bit),V),!,VVV is ( \ V).
 fbs_to_number(bit(Bit),VVV):- number(Bit),!,VVV is 2 ^ (Bit).
-fbs_to_number((Name),VVV):-   current_attv_mask(Name,VVV),!.
+fbs_to_number((Name),VVV):-   current_metaterm_mask(Name,VVV),!.
 fbs_to_number((Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,Name=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number((Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,override(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
 fbs_to_number(override(Name),VVV):- fbs_for_hooks_default(VV),arg(_,VV,(Name)=Bit),!,tst(fbs_to_number(Bit,VVV)),!.
@@ -954,9 +969,9 @@ wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_clea
 %%    wno_hooks(+Var,+Goal)
 %
 % Without hooks on Var call Goal
-wno_hooks(Var,Goal):- metaflag_set(Var,meta_disabled),Goal.
-wno_hooks(Goal):-  metaflag_set(current,meta_disabled),Goal.
-w_hooks(Goal):-  metaflag_unset(current,meta_disabled),Goal.
+wno_hooks(Var,Goal):- metaflag_set(Var,metaterm_disabled),Goal.
+wno_hooks(Goal):-  metaflag_set(current,metaterm_disabled),Goal.
+w_hooks(Goal):-  metaflag_unset(current,metaterm_disabled),Goal.
 
 
 wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).
@@ -995,8 +1010,8 @@ test1(cmp_fbs_variants3):-
 
 :- module_transparent(system:term_expansion/2).
 :- module_transparent(system:goal_expansion/2).
-system:term_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_attvar(Dict,X).
-system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_attvar(Dict,X).
+system:term_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_to_attvar(Dict,X).
+system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_to_attvar(Dict,X).
 
 % :- set_dict_attvar_reader(true).
 
@@ -1011,7 +1026,7 @@ system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true)
 % :- system:reconsult('boot/attvar').
 
 
-?- put_atts(X,'$meta':'$undo_unify'()=true(_)),meta_overriding(X,'$undo_unify',Z).
+?- put_atts(X,'$meta':'$undo_unify'()=true(_)),metaterm_overriding(X,'$undo_unify',Z).
 
 % Set =save_history= to =false= if you never want to save/restore the
 % command history.   Normally, the history is enabled if the system
@@ -1019,12 +1034,12 @@ system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true)
 rtrace(put_atts(X,'$undo_unify'()=true(_)))
 
 % END - THESE ARE ONLY FOR TESTING - WILL BE REMOVED
-meta_overriding(X,'$undo_unify',Z).
+metaterm_overriding(X,'$undo_unify',Z).
 */
 
 
-% ?- meta_overide(X,print(X),(writeln('You wanted to print X'))), print(X).
-% ?- meta_overide(X,==(_,_),same_thing(
+% ?- metaterm_overide(X,print(X),(writeln('You wanted to print X'))), print(X).
+% ?- metaterm_overide(X,==(_,_),same_thing(
 
 system:pointers(X,Y):- dmsg(pointers(X,Y)).
 
@@ -1039,13 +1054,13 @@ system:pointers(X,Y):- dmsg(pointers(X,Y)).
 '$meta':attr_unify_hook(_,_).
 '$atts':attr_unify_hook(_,_).
 
-% ?-put_atts(X,'$undo_unify'(_)=true(_)),meta_overriding(X,'$undo_unify',_).
+% ?-put_atts(X,'$undo_unify'(_)=true(_)),metaterm_overriding(X,'$undo_unify',_).
 
            /*******************************
            *	  ATTR UNDO HOOK	*
 
 
-?- metaterm_override(X,'$undo_unify'()),writeq(X),meta_overriding(X,'$undo_unify'(_,_),O).
+?- metaterm_override(X,'$undo_unify'()),writeq(X),metaterm_overriding(X,'$undo_unify'(_,_),O).
 
 
            *******************************/
@@ -1070,7 +1085,7 @@ system:attr_undo_hook(_Var, _AttVal, _Value).
 
 % END - THESE ARE ONLY FOR TESTING - WILL BE REMOVED
 
-% av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$meta_flags'(Y,1),X==X.
+% av(X),put_attr(X,'$meta',att(==(_,_),pointers(_,_),[])),'$metaterm_flags'(Y,1),X==X.
 % :- set_prolog_flag(save_history, false).
 :- prolog_debug('MSG_METATERM'),prolog_debug('MSG_WAKEUPS'). % ,prolog_debug('MSG_ATTVAR_GENERAL').
 wd:- ((prolog_nodebug('MSG_VMI'),prolog_nodebug('MSG_WAKEUPS'))).
@@ -1082,13 +1097,12 @@ wd(X):-  prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_VMI'), call_cleanup(X,wd)
 :- module_transparent(export_all/0).
 export_all:- source_location(S,_),prolog_load_context(module,M),
  forall(source_file(M:H,S),
- ignore((functor(H,F,A),M\=vn,
+ ignore((functor(H,F,A),
    \+ predicate_property(M:H,imported_from(_)),
-   \+ arg(_,[foo:attr_unify_hook,foo:'$pldoc',foo:'$mode',foo:attr_portray_hook,foo:attribute_goals],foo:F),
+   \+ arg(_,[attr_unify_hook/_,metaterm_unify_hook/_,verify_attributes/_,metaterm_unify_hook/_,'$pldoc'/4,'$mode'/2,attr_portray_hook/_,attribute_goals/_],F/A),
    \+ atom_concat('_',_,F),
-   ignore(((\+ atom_concat('$',_,F),export(F/A))))
-   % ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A))),
-   ))).
+   ignore(((\+ atom_concat('$',_,F),M:export(F/A),nop(writeln(M:export(F/A))),user:import(M:F/A)))),
+   ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A)))))).
 
 
 
@@ -1114,7 +1128,7 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 
 :- export_all.
 
-end_of_file.
+end_ometaterm_file.
 
 
 % swi prolog ignores peer wakeups ..

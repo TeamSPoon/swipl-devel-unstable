@@ -52,7 +52,7 @@ in pl-attvar.c
 %	attributed variables.
 
 % each variable will be shut off one at a time and global will be re-enabled once a var is shut off
-'$wakeup'(G) :- with_meta_disabled(global,G).
+'$wakeup'(G) :- with_metaterm_disabled(global,G).
 
 
        /*******************************
@@ -74,7 +74,7 @@ system:nop(_).
 
 amsg(G):- notrace(
    ignore((current_prolog_flag(dmiles,true),
-           with_meta_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
+           with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))))).
 
 
@@ -86,12 +86,12 @@ amsg(G):- notrace(
 
 :- meta_predicate(system:pre_unify(+,:,+,+,+)).
 
-% METATERMs -> META_UNIFY
+% FVs -> METATERM_UNIFY
 system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
-  notrace((amsg(meta_unify(Atom, Var, Value )),
+  notrace((amsg(metaterm_unify(Atom, Var, Value )),
   (M==system->UM=user;UM=M))),
   % next line disabled from being a  variable is now disabled
-  with_meta_disabled(Var,with_meta_enabled(global,UM:meta_unify(Rest, Atom, Var, Value))),
+  with_metaterm_disabled(Var,with_metaterm_enabled(global,UM:metaterm_unify(Rest, Atom, Var, Value))),
   % global was re-disabled
   M:call(Next).
 system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
@@ -108,9 +108,9 @@ system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
 % Normal ATTVARs -> VERIFY_ATTRIBUTES/3
 system:pre_unify(Atts, Next, Var, Value, Atom ):-
   nop(amsg(Atom:collect_va(Atts, Next, Var, Value ))),
-   with_meta_enabled(global,
+   with_metaterm_enabled(global,
        collect_va(Atts, Next, Var, Value)),
-   with_meta_disabled(global,
+   with_metaterm_disabled(global,
        post_unify(Atts, true, Var, Value, Atom)).
 
 
@@ -160,23 +160,23 @@ system:verify_attributes(Value, Value).
 
 
      /*******************************
-     *	  METATERM UNIFY HOOK	*
+     *	  FV UNIFY HOOK	*
      *******************************/
 
-:- meta_predicate(system:meta_unify(+,0,+,+)).
-system:meta_unify(att('var_replace', var_replace(Copy,Call), Rest), Atom, _Var, Value):- !,
+:- meta_predicate(system:metaterm_unify(+,0,+,+)).
+system:metaterm_unify(att('var_replace', var_replace(Copy,Call), Rest), Atom, _Var, Value):- !,
          call(Call),
          system:pre_unify(Rest,true,Copy,Value,Atom).
 
-system:meta_unify(att('$atts_saved', MV, Rest), Atom, Var, Value ):- !,
+system:metaterm_unify(att('$atts_saved', MV, Rest), Atom, Var, Value ):- !,
       ((var(Var),MV>0)->put_attr(Var,'$atts',MV);true),
-      system:meta_unify(Rest,Atom,Var,Value).
+      system:metaterm_unify(Rest,Atom,Var,Value).
 
-system:meta_unify(att(Module, AttVal, Rest), Atom, Var, Value ):- !,
-     ifdef(Module:meta_unify_hook(Atom, AttVal, Var, Value),true),    
-     meta_unify(Rest, Atom, Var, Value).
+system:metaterm_unify(att(Module, AttVal, Rest), Atom, Var, Value ):- !,
+     ifdef(Module:metaterm_unify_hook(Atom, AttVal, Var, Value),true),    
+     metaterm_unify(Rest, Atom, Var, Value).
 
-system:meta_unify(_,_Atom,_Var,_Value).
+system:metaterm_unify(_,_Atom,_Var,_Value).
 
 
      /*******************************
@@ -186,8 +186,8 @@ system:meta_unify(_,_Atom,_Var,_Value).
 :- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-  
   amsg(Atom:post_unify(Atts, Next, Var, Value )),!,
-  with_meta_disabled(Var,
-       with_meta_enabled(global,
+  with_metaterm_disabled(Var,
+       with_metaterm_enabled(global,
                call_uhooks(Atts, Next, Var, Value))).
 
      /*******************************
@@ -368,7 +368,7 @@ call_residue_vars(_, _) :-
 	fail.
 
 run_crv(Goal, Chp, Vars, Det) :-
-	with_meta_enabled(global,call(Goal)),
+	with_metaterm_enabled(global,with_wakeups(Goal)),
 	deterministic(Det),
         '$attvars_after_choicepoint'(Chp, Vars).
 

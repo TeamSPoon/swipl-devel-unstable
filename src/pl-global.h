@@ -419,7 +419,7 @@ struct PL_local_data
     int     wakeup_ready;
 
 #ifdef O_METATERM
-    term_t  metaterm_regs;   /*  registers for calling metatermOverrides */
+    term_t  metaterm_regs;   /*  registers for calling fvOverrides */
     term_t  metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_current; /* flags for current matts () */
 #endif

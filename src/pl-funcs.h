@@ -46,7 +46,7 @@ COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
 #endif
 
 #ifdef O_METATERM
-COMMON(int)     metatermOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
+COMMON(int)     fvOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
 COMMON(bool)  isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
 COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);

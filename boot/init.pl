@@ -207,12 +207,12 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 
 system:amsg(G):- notrace(
    ignore((current_prolog_flag(dmiles,true),
-           with_meta_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
+           with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))))).
 
 
-:- meta_predicate with_meta_disabled(?,0),
-                  with_meta_enabled(?,0),
+:- meta_predicate with_metaterm_disabled(?,0),
+                  with_metaterm_enabled(?,0),
                   with_no_wakeups(0),
                   with_wakeups(0),
                   must_or_die(0),
@@ -240,8 +240,8 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
 
 with_no_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,X+1), G, set_no_wakeup(_,X)).
 with_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,0), G, set_no_wakeup(_,X)).
-with_meta_disabled(Var,G):- (((metaterm_flags(Var,meta_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,meta_disabled), G, metaterm_flags(Var,~,meta_disabled)); G))).
-with_meta_enabled(Var,G):- metaterm_flags(Var,meta_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,meta_disabled), G, metaterm_flags(Var,set,meta_disabled)).
+with_metaterm_disabled(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G))).
+with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled)).
 
 
 

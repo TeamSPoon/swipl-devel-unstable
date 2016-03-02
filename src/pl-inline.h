@@ -315,12 +315,13 @@ bindConst__LD(Word p, word c ARG_LD)
   Word cP = &c;
   if ( isVar(*p) )
   { 
-  if(UNIFY_COMPLETE(META_USE_BINDCONST, cP, p, ATTV_BINDCONST)) return;
+  if(METATERM_UNIFY_COMPLETE(METATERM_USE_BINDCONST, cP, p, ATTV_BINDCONST)) return;
     *p = (c);
     if ( (void*)p >= (void*)lBase || p < LD->mark_bar )
       (tTop++)->address = p;
   } else
-  { assignAttVar(&p, &cP, ATTV_BINDCONST PASS_LD);
+  { LD->attvar.wakeup_ready = TRUE;
+    assignAttVar(&p, &cP, ATTV_BINDCONST PASS_LD);
   }
 #else
   *p = (c);

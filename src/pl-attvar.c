@@ -183,42 +183,42 @@ typedef struct matts_flag
 
 static matts_flag matts_flags[] =
 {
- MW("use_barg_var" ,    META_USE_BARG_VAR ),
- MW("use_cons_val",     META_USE_CONS_VAL ),
- MW("use_h_var" ,       META_USE_H_VAR ),
- MW("use_unify_vp",     META_USE_UNIFY_VP ),    
- MW("use_bind_const",   META_USE_BINDCONST ), 
+ MW("use_barg_var" ,    METATERM_USE_BARG_VAR ),
+ MW("use_cons_val",     METATERM_USE_CONS_VAL ),
+ MW("use_h_var" ,       METATERM_USE_H_VAR ),
+ MW("use_unify_vp",     METATERM_USE_UNIFY_VP ),    
+ MW("use_bind_const",   METATERM_USE_BINDCONST ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
- MW("meta_copy_var",    META_COPY_VAR 	),
- MW("sink_fluent",    META_VALUE_SINK 	), /*META_NO_BIND*/  
- MW("meta_source",      META_SOURCE_VALUE ),  /*META_NO_BIND*/
- MW("no_trail",         META_NO_TRAIL	), 
+ MW("meta_copy_var",    METATERM_COPY_VAR 	),
+ MW("sink_fluent",      METATERM_VALUE_SINK ), /*METATERM_NO_BIND*/  
+ MW("source_fluent",    METATERM_SOURCE_VALUE ),  /*METATERM_NO_BIND*/
+ MW("no_trail",         METATERM_NO_TRAIL	), 
 
- MW("no_bind",          META_NO_BIND ), 
- MW("no_inherit",       META_NO_INHERIT ), 
- MW("no_swap",          META_DISABLE_SWAP ), 
- MW("no_wakeup",        META_NO_WAKEUP 	), 
- MW("use_trail_optimize",    META_PLEASE_OPTIMIZE_TRAIL ), 
+ MW("no_bind",          METATERM_NO_BIND ), 
+ MW("no_inherit",       METATERM_NO_INHERIT ), 
+ MW("no_swap",          METATERM_DISABLE_SWAP ), 
+ MW("no_wakeup",        METATERM_NO_WAKEUP 	), 
+ MW("use_trail_optimize",    METATERM_PLEASE_OPTIMIZE_TRAIL ), 
  MW("attv_unify_pointers",  ATTV_UNIFY_PTRS ),  
  MW("attv_bindconst",     ATTV_BINDCONST ), 
- MW("use_cpreds",       META_USE_CPREDS ), 
- MW("use_undo",         META_USE_UNDO ), 
- MW("use_vmi",          META_USE_VMI ), 
+ MW("use_cpreds",       METATERM_USE_CPREDS ), 
+ MW("use_undo",         METATERM_USE_UNDO ), 
+ MW("use_vmi",          METATERM_USE_VMI ), 
  MW("use_dra_interp",   DRA_CALL ), 
- MW("use_unify_var",      META_USE_UNIFY_VAR ), 
- MW("use_no_trail_optimize", META_NO_OPTIMIZE_TRAIL ), 
- MW("meta_override_usages_mask",     META_OVERRIDE_USAGES_MASK ),
- MW("meta_disable_overrides_mask",     META_DISABLE_OVERRIDES_MASK ),
-  MW("meta_enabled",    META_ENABLED 	),
-  MW("meta_disabled",    META_DISABLED 	),
+ MW("use_unify_var",      METATERM_USE_UNIFY_VAR ), 
+ MW("use_no_trail_optimize", METATERM_NO_OPTIMIZE_TRAIL ), 
+ MW("meta_override_usages_mask",     METATERM_OVERRIDE_USAGES_MASK ),
+ MW("metaterm_disable_overrides_mask",     METATERM_DISABLE_OVERRIDES_MASK ),
+  MW("metaterm_enabled",    METATERM_ENABLE_VAR 	),
+  MW("metaterm_disabled",    METATERM_DISABLED 	),
   
-  MW("meta_default",     META_DEFAULT ),
+  MW("metaterm_default",     METATERM_DEFAULT ),
   
  MW(NULL,                 0)
 };
 
 static unsigned int
-current_attv_mask(atom_t key)
+current_metaterm_mask(atom_t key)
 { matts_flag *index;
 
   for(index=matts_flags; index->name; index++)
@@ -249,7 +249,7 @@ PL_get_integer_or_flag(term_t t, int *i)
   atom_t bitname;
 
   if(PL_get_atom(t, &bitname))
-  { int value = current_attv_mask(bitname);
+  { int value = current_metaterm_mask(bitname);
     if(!value) return FALSE;
     *i = value;
     return TRUE;
@@ -262,14 +262,14 @@ PL_unify_integer_or_flag(term_t t, int i)
 { GET_LD
   atom_t bitname;
   if(PL_get_atom(t, &bitname))
-  { int value = current_attv_mask(bitname);
+  { int value = current_metaterm_mask(bitname);
     if(value) return (value & i)==value;
   }
   return PL_unify_integer(t, i);
 }
 
 static
-PRED_IMPL("current_attv_mask", 2, current_attv_mask, PL_FA_NONDETERMINISTIC)
+PRED_IMPL("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
 { PRED_LD
   matts_flag *index, *next;
 
@@ -279,7 +279,7 @@ PRED_IMPL("current_attv_mask", 2, current_attv_mask, PL_FA_NONDETERMINISTIC)
         atom_t bt;
         int value;
       if ( PL_get_atom(A1, &bt) )
-      { int value = current_attv_mask(bt);
+      { int value = current_metaterm_mask(bt);
         return value && PL_unify_integer(A2, value);
       } if(!PL_is_variable(A1)) return FALSE;
 
@@ -332,7 +332,7 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
 
 /*
  Returns the "$atts" attvar property (supposed to be a small int)
- Ideally metaterms will have them at the begining
+ Ideally fvs will have them at the begining
 */
 
 int
@@ -352,11 +352,11 @@ getMetaFlags(Word av, int flags ARG_LD)
   if(!isInteger(*found)) return 0;
   int value = valInteger(*found);
   if (value==0) return 0;
-  if (!IS_META(META_NO_INHERIT) && !(value&META_NO_INHERIT))
+  if (!IS_META(METATERM_NO_INHERIT) && !(value&METATERM_NO_INHERIT))
   { value |= flags;
   }  
-  if(value&META_DISABLED)
-  { return value & (~(META_DISABLE_OVERRIDES_MASK));
+  if(value&METATERM_DISABLED)
+  { return value & (~(METATERM_DISABLE_OVERRIDES_MASK));
   }
   return value;
 }
@@ -398,20 +398,20 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
  DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
   if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
-  { if ( IS_META(META_COPY_VAR) )
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("META_COPY_VAR Upgraging VAR to an ATTVAR ref "));
+  { if ( IS_META(METATERM_COPY_VAR) )
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("METATERM_COPY_VAR Upgraging VAR to an ATTVAR ref "));
       TrailAssignment(value);
       make_new_attvar(value PASS_LD);      /* SHIFT: 3+0 */
       deRef(value);
       *valPAttVar(*value) = *valPAttVar(*av);
       return;
-    } else if ( !IS_META(META_USE_UNIFY_VAR) )
+    } else if ( !IS_META(METATERM_USE_UNIFY_VAR) )
     { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR normal into VAR value -> av "));	 
       *value = makeRef(av);
       return;
     } else
     { DEBUG(MSG_METATERM, Sdprintf_ln("ATTVAR being assigned as a VAR value -> av "));	 
-      if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
+      if ( IS_META(METATERM_NO_BIND) ) {Sdprintf_ln("Yet METATERM_NO_BIND "); }else *av = makeRef(value);
       return;
     }
   }
@@ -420,21 +420,21 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
   { if ( av == value ) return;
     if ( av > value )
       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Unifying Two attvars <- value "));
-        if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
+        if ( IS_META(METATERM_NO_BIND) ) {Sdprintf_ln("Yet METATERM_NO_BIND "); }else *av = makeRef(value);
         return;
     } else
-    { if ( !IS_META(META_DISABLE_SWAP) )
+    { if ( !IS_META(METATERM_DISABLE_SWAP) )
       { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("SWAPPING value <- av "));
         *value = makeRef(av);
         return;
       } else
-      { DEBUG(MSG_METATERM, Sdprintf_ln("META_DISABLE_SWAP value -> av "));
-        if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Yet META_NO_BIND "); }else *av = makeRef(value);
+      { DEBUG(MSG_METATERM, Sdprintf_ln("METATERM_DISABLE_SWAP value -> av "));
+        if ( IS_META(METATERM_NO_BIND) ) {Sdprintf_ln("Yet METATERM_NO_BIND "); }else *av = makeRef(value);
         return;
       }
     }
   } 
-  if ( IS_META(META_NO_BIND) ) {Sdprintf_ln("Const META_NO_BIND ");} else *av = *value;
+  if ( IS_META(METATERM_NO_BIND) ) {Sdprintf_ln("Const METATERM_NO_BIND ");} else *av = *value;
 }
 
 int
@@ -454,7 +454,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   int flags = callflags | varflags;
 
 
-  int rmask = (META_OVERRIDE_USAGES_MASK);
+  int rmask = (METATERM_OVERRIDE_USAGES_MASK);
   
   atom_t atomcaller = current_caller_mask(callflags);
   if(atomcaller==0) atomcaller = current_caller_mask(varflags);
@@ -474,7 +474,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
       return FALSE;
     }
 
-    flags |= META_NO_WAKEUP;
+    flags |= METATERM_NO_WAKEUP;
   }
   
   if((callflags & rmask))
@@ -483,10 +483,10 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     { 
       
       
-      if(!(META_DEFAULT & callflags)) 
+      if(!(METATERM_DEFAULT & callflags)) 
       {
         DEBUG(MSG_WAKEUPS, Sdprintf_ln("no_special_test(%s,%s)", vName(av),my_atom_summary(atomcaller)));
-        if(!IS_META(META_VALUE_SINK)) return FALSE;
+        if(!IS_META(METATERM_VALUE_SINK)) return FALSE;
       }
     }
     atomcaller = current_caller_mask(varflags & callflags);
@@ -508,11 +508,11 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
       Trail(value, makeRef(av));
       return TRUE;
     }
-    if ( IS_META((META_SOURCE_VALUE | META_USE_UNIFY_VAR)) )
+    if ( IS_META((METATERM_SOURCE_VALUE | METATERM_USE_UNIFY_VAR)) )
     { if(atomcaller==0) atomcaller = current_caller_mask(callflags);
-      if(varflags&META_DISABLED && IS_META(META_SOURCE_VALUE))
+      if(varflags&METATERM_DISABLED && IS_META(METATERM_SOURCE_VALUE))
       {
-          DEBUG(MSG_WAKEUPS, Sdprintf_ln("PRETENDIGN NOT DISABLED_META_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
+          DEBUG(MSG_WAKEUPS, Sdprintf_ln("PRETENDIGN NOT DISABLED_METATERM_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
           //return FALSE;
           //registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
       }
@@ -521,13 +521,13 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
 		  DEBUG(MSG_WAKEUPS, Sdprintf_ln("WAKUP UNREADY (%s,%s)", vName(av),my_atom_summary(atomcaller)));
 		  return FALSE;
 	  }
-      DEBUG(MSG_WAKEUPS, Sdprintf_ln("META_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
+      DEBUG(MSG_WAKEUPS, Sdprintf_ln("METATERM_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
       registerWakeup(FUNCTOR_pre_unify5, atomcaller, av, valPAttVar(*av), value PASS_LD);
       return TRUE;
     }
-    if(!(varflags&META_USE_UNIFY_VAR) && !(callflags & rmask))
+    if(!(varflags&METATERM_USE_UNIFY_VAR) && !(callflags & rmask))
     { 
-      if(flags& META_NO_TRAIL) 
+      if(flags& METATERM_NO_TRAIL) 
       {
         *value = makeRef(av);
         return TRUE;
@@ -539,7 +539,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
 
   if ( isAttVar(*value) )
   { if ( value > av )
-    {   if (!IS_META(META_DISABLE_SWAP))
+    {   if (!IS_META(METATERM_DISABLE_SWAP))
         {
           Word tmp = av;
           av = value;
@@ -555,10 +555,10 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
 
   if(LD_no_wakeup)
  {
-    flags |= META_NO_WAKEUP;
+    flags |= METATERM_NO_WAKEUP;
  }
 
- if(!(flags& META_NO_WAKEUP)) 
+ if(!(flags& METATERM_NO_WAKEUP)) 
  {  if(atomcaller==0) atomcaller = current_caller_mask(callflags);
 	 if(LD->attvar.wakeup_ready==0)
 	 {
@@ -580,11 +580,11 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
    TrailAssignment(av);
    DiscardMark(m);
  } else
- { if(!(flags& META_NO_TRAIL)) TrailAssignment(av);
+ { if(!(flags& METATERM_NO_TRAIL)) TrailAssignment(av);
  }
 
 
-  if( (flags& META_NO_BIND) && !(flags &ATTV_WILL_UNBIND) ) return TRUE;
+  if( (flags& METATERM_NO_BIND) && !(flags &ATTV_WILL_UNBIND) ) return TRUE;
  
 
   if ( canBind(*value) )
@@ -1862,7 +1862,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
 
         if (PL_is_variable(new))
         {
-           value = current_attv_mask(math);
+           value = current_metaterm_mask(math);
 
            if(value) return PL_unify_integer_or_flag(new,was&value);
         }
@@ -1886,7 +1886,7 @@ setFlagOptions(int *flag, term_t opval, term_t new)
           return TRUE;
         }
 
-        int maskwas = current_attv_mask(math);
+        int maskwas = current_metaterm_mask(math);
         if(maskwas)
         {
           return ((maskwas & was))==value;
@@ -1947,13 +1947,13 @@ metaterm_flags(term_t aA1, term_t aA2, term_t aA3, int inherit_flags, int backtr
 static
 PRED_IMPL("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
 { PRED_LD
-  return metaterm_flags(A1,A2,A3,META_NO_INHERIT, NB_PUTATTS PASS_LD);
+  return metaterm_flags(A1,A2,A3,METATERM_NO_INHERIT, NB_PUTATTS PASS_LD);
 }
 
 static
 PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
 { PRED_LD
-  return metaterm_flags(A1,A2,A3,META_NO_INHERIT,  B_PUTATTS PASS_LD);
+  return metaterm_flags(A1,A2,A3,METATERM_NO_INHERIT,  B_PUTATTS PASS_LD);
 }
 
 
@@ -2008,7 +2008,7 @@ PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
    return TRUE;
 }
 
-/* When a Metaterm is created it is most often the first attribute 
+/* When a Fv is created it is most often the first attribute 
  This is used as a way to hide attributes in term comparison to get 
  some modules the opertunity to not confuse =@= this happens with 
   METATERM_SKIP_HIDDEN(..)
@@ -2124,7 +2124,7 @@ PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
 
  Only for: =@=/2 compare/3 undo/1 and copy_term()
     
- metatermOverride returns TRUE only if a hook was implemented 
+ fvOverride returns TRUE only if a hook was implemented 
    otherwise retresult is invalid
 
  retresult was hooks returns:
@@ -2135,7 +2135,7 @@ PRED_IMPL("$set_delayed", 2, dset_delayed, 0)
 
 */
 int
-metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
+fvOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 { static predicate_t pred;
    wakeup_state wstate;
    int rc;
@@ -2152,7 +2152,7 @@ metatermOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
     *valTermRef(av+1) = *valTermRef(regs+0);
     *valTermRef(av+2) = *valTermRef(regs+1);
 
-        /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling metatermOverride)
+        /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling fvOverride)
         this prevents aquiring unwanted C stack */
     if (LD_no_wakeup>1)
     { term_t ex = av+3;
@@ -2199,7 +2199,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
-  functor_t becomes = getMetaOverride(av,f, META_USE_VMI|META_USE_CPREDS PASS_LD);
+  functor_t becomes = getMetaOverride(av,f, METATERM_USE_VMI|METATERM_USE_CPREDS PASS_LD);
   if(isAtom(becomes)) return PL_unify_atom(A3,becomes);
   return PL_unify_functor(A3,becomes);
 }
@@ -2283,7 +2283,7 @@ BeginPredDefs(attvar)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
   PRED_DEF("set_no_wakeup", 2, set_no_wakeup, 0)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
-  PRED_DEF("current_attv_mask", 2, current_attv_mask, PL_FA_NONDETERMINISTIC)
+  PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
 #endif
 

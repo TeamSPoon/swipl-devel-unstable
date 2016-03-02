@@ -2067,33 +2067,33 @@ typedef struct
 #define IS_META(option) ((flags & option) != 0)
 
 		 /*******************************
-		 *	      METATERMS           	*
+		 *	      FVS           	*
 		 *******************************/
 
-#define META_DISABLED   	   0x0001 /* disable all options (allows the options to be saved) */
-#define META_COPY_VAR   	   0x0002 /* allow attvar survival */
-#define META_SOURCE_VALUE      0x0004 /* the attvar has an effective value */
-#define META_VALUE_SINK        0x0008 /* the attvar has an effective value */
-#define META_NO_WAKEUP  	   0x0010 /* Dont call wakeup */
-#define META_NO_TRAIL          0x0020 /* Do not bother to trail the previous value */
-#define META_NO_INHERIT        0x0040 /* This Metaterm doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
-#define META_NO_BIND           0x0080 /* C should not bind attvar even in ASSIGNONLY  */
-#define META_DISABLE_SWAP      0x0100 /* dont sort attvars for unification */
-#define META_USE_BARG_VAR       0x0200  /* implies ATTV_BINDCONST|META_NO_TRAIL| META_1_INTO_2 */
-#define META_USE_CONS_VAL       0x0400  /* implies META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_H_VAR          0x0800 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_UNIFY_VP       0x1000 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_BINDCONST      0x2000 /* META_NO_TRAIL|META_1_INTO_2 */
-#define META_USE_UNIFY_VAR      0x4000 /* debugging for a moment trying to guage if damaging do_unify() 
+#define METATERM_DISABLED   	   0x0001 /* disable all options (allows the options to be saved) */
+#define METATERM_COPY_VAR   	   0x0002 /* allow attvar survival */
+#define METATERM_SOURCE_VALUE      0x0004 /* the attvar has an effective value */
+#define METATERM_VALUE_SINK        0x0008 /* the attvar has an effective value */
+#define METATERM_NO_WAKEUP  	   0x0010 /* Dont call wakeup */
+#define METATERM_NO_TRAIL          0x0020 /* Do not bother to trail the previous value */
+#define METATERM_NO_INHERIT        0x0040 /* This Fv doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
+#define METATERM_NO_BIND           0x0080 /* C should not bind attvar even in ASSIGNONLY  */
+#define METATERM_DISABLE_SWAP      0x0100 /* dont sort attvars for unification */
+#define METATERM_USE_BARG_VAR       0x0200  /* implies ATTV_BINDCONST|METATERM_NO_TRAIL| METATERM_1_INTO_2 */
+#define METATERM_USE_CONS_VAL       0x0400  /* implies METATERM_NO_TRAIL|METATERM_1_INTO_2 */
+#define METATERM_USE_H_VAR          0x0800 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
+#define METATERM_USE_UNIFY_VP       0x1000 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
+#define METATERM_USE_BINDCONST      0x2000 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
+#define METATERM_USE_UNIFY_VAR      0x4000 /* debugging for a moment trying to guage if damaging do_unify() 
                                     Goal, really I would like to figure out the best way to allow unification to 
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
                                     as the result of unification.                                    
-                                    Or in the case of a META_SOURCE_VALUE have the variable beca                           
+                                    Or in the case of a METATERM_SOURCE_VALUE have the variable beca                           
                                  */
 
 
-#define META_USE_VMI  	 0x8000 /* Hook WAM */
+#define METATERM_USE_VMI  	 0x8000 /* Hook WAM */
 
 
 /* This adds wakeups to attvars rather than binding them */
@@ -2101,18 +2101,18 @@ typedef struct
 #define ATTV_UNIFY_PTRS             0x020000   /* do_unify() */
 #define ATTV_WILL_UNBIND            0x040000   /* unifiable/3 Set true whenever attempting to optimize trail (in order to minimize wakeups) */
 
-#define META_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
-#define META_USE_UNDO               0x100000 /* check attvars for undo hooks (perfomance checking) */
-#define META_NO_OPTIMIZE_TRAIL      0x200000   /* Dont Optimize Trail (Multiple wakeups) */ /* expect unifiable/3 and Occurs checking needs attvars trailed  */
-#define META_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
-#define META_ENABLED                0x800000
+#define METATERM_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
+#define METATERM_USE_UNDO               0x100000 /* check attvars for undo hooks (perfomance checking) */
+#define METATERM_NO_OPTIMIZE_TRAIL      0x200000   /* Dont Optimize Trail (Multiple wakeups) */ /* expect unifiable/3 and Occurs checking needs attvars trailed  */
+#define METATERM_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
+#define METATERM_ENABLE_VAR              0x800000
 
 #define DRA_CALL 1
 #define SLOW_UNIFY_DEFAULT TRUE
-#define META_DEFAULT  	    (META_USE_VMI|META_USE_CPREDS|META_NO_OPTIMIZE_TRAIL|META_DISABLED|META_USE_BARG_VAR|META_USE_BINDCONST|META_USE_UNIFY_VP)
+#define METATERM_DEFAULT  	    (METATERM_USE_VMI|METATERM_USE_CPREDS|METATERM_NO_OPTIMIZE_TRAIL|METATERM_DISABLED|METATERM_USE_BARG_VAR|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VP)
 
-#define META_DISABLE_OVERRIDES_MASK  META_OVERRIDE_USAGES_MASK | META_SOURCE_VALUE | META_COPY_VAR | META_VALUE_SINK
-#define META_OVERRIDE_USAGES_MASK  META_USE_BARG_VAR|META_USE_CONS_VAL| META_USE_H_VAR|META_USE_UNIFY_VP|META_USE_BINDCONST|META_USE_UNIFY_VAR
+#define METATERM_DISABLE_OVERRIDES_MASK  METATERM_OVERRIDE_USAGES_MASK | METATERM_SOURCE_VALUE | METATERM_COPY_VAR | METATERM_VALUE_SINK
+#define METATERM_OVERRIDE_USAGES_MASK  METATERM_USE_BARG_VAR|METATERM_USE_CONS_VAL| METATERM_USE_H_VAR|METATERM_USE_UNIFY_VP|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VAR
 
 
 #define LOGICMOO_TRANSPARENT FALSE
@@ -2124,7 +2124,7 @@ typedef struct
 
 #ifdef O_METATERM
 
-#define METATERM_GLOBAL_FLAGS (METATERM_CURRENT = isVar(*METATERM_GLOBAL)?META_DEFAULT:valInteger(*METATERM_GLOBAL))
+#define METATERM_GLOBAL_FLAGS (METATERM_CURRENT = isVar(*METATERM_GLOBAL)?METATERM_DEFAULT:valInteger(*METATERM_GLOBAL))
 #define METATERM_GLOBAL valPHandle(LD->attvar.metaterm_opts PASS_LD)
 #define METATERM_CURRENT LD->attvar.metaterm_current
 
@@ -2138,22 +2138,22 @@ typedef struct
   ( "$meta" attribute is also hidden. )
   */
 
-/*#define UNIFY_COMPLETE(why,from,to,type) 0*//*(!(why & METATERM_ENABLED)) && */
-#define UNIFY_COMPLETE(why,from,to,type) \
+/*#define METATERM_UNIFY_COMPLETE(why,from,to,type) 0*//*(!(why & METATERM_ENABLED)) && */
+#define METATERM_UNIFY_COMPLETE(why,from,to,type) \
    ((isAttVar(*to) && METATERM_ENABLED  && assignAttVar(&to, &from, (why|type) PASS_LD)) || \
    (isAttVar(*from) && METATERM_ENABLED && assignAttVar(&from, &to, (why|type) PASS_LD)))
 
-#define META_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
+#define METATERM_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
 
-#define METATERM_SKIP_HIDDEN(ValPAttVar) (META_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & META_DISABLED) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
-#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, META_USE_CPREDS PASS_LD)
-#define METATERM_HOOK(atom,t1,t2,rc)  (META_USE_CPREDS & METATERM_ENABLED && \
+#define METATERM_SKIP_HIDDEN(ValPAttVar) (METATERM_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_CPREDS PASS_LD)
+#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
-                       metatermOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
+                       fvOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
 #define POST_SKIP_HIDDEN(l,r) if (*l==*r && *l==ATOM_nil) continue
-/*#define IS_META_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,META_NO_INHERIT)),option))))*/
+/*#define IS_METATERM_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,METATERM_NO_INHERIT)),option))))*/
 
 #else  /* for less noisey undefing of O_METATERM */
 #define METATERM_SKIP_HIDDEN(ValPAttVar) ValPAttVar

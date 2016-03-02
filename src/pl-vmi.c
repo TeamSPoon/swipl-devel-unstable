@@ -583,12 +583,12 @@ VMI(H_VAR, 0, 1, (CA1_VAR))
 	  Trail(k, makeRefG(ARGP));
 	} else
         {
-          if ( UNIFY_COMPLETE(META_USE_H_VAR, k, ARGP, META_NO_TRAIL) ) NEXT_INSTRUCTION;
+          if ( METATERM_UNIFY_COMPLETE(METATERM_USE_H_VAR, k, ARGP, METATERM_NO_TRAIL) ) NEXT_INSTRUCTION;
           *ARGP = makeRefG(k);    /* ARGP on global, so k also */
 	}
       } else if ( isAttVar(*k) )
       {
-        if ( UNIFY_COMPLETE(META_USE_H_VAR, k, ARGP, META_NO_TRAIL) ) NEXT_INSTRUCTION;
+        if ( METATERM_UNIFY_COMPLETE(METATERM_USE_H_VAR, k, ARGP, METATERM_NO_TRAIL) ) NEXT_INSTRUCTION;
         *ARGP = makeRefG(k);
       } else
       { *ARGP = *k;
@@ -1035,7 +1035,7 @@ VMI(B_ARGVAR, 0, 1, (CA1_VAR))
       Trail(k, makeRefG(ARGP++));
       NEXT_INSTRUCTION;
     }
-    if ( UNIFY_COMPLETE(META_USE_BARG_VAR, k, ARGP, META_NO_TRAIL) ) 
+    if ( METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
     {
       ARGP++;
       NEXT_INSTRUCTION;
@@ -1044,7 +1044,7 @@ VMI(B_ARGVAR, 0, 1, (CA1_VAR))
 #ifdef O_ATTVAR
   } else if ( isAttVar(*k) )
   {
-    if (FALSE && UNIFY_COMPLETE(META_USE_BARG_VAR, k, ARGP, META_NO_TRAIL) ) 
+    if (FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
     {
       ARGP++;
       NEXT_INSTRUCTION;
@@ -1642,7 +1642,7 @@ true:
 
 normal_call:
 
-  CHECK_METATERM(ARGP);
+  CHECK_FV(ARGP);
 
 #ifdef O_DRA_TABLING
 
@@ -3559,7 +3559,7 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 #ifdef O_PROF_PENTIUM
 #define PROF_FOREIGN \
 	{ END_PROF(); \
-      CHECK_FMETATERM(h0) \
+      CHECK_FFV(h0) \
 	  START_PROF(DEF->prof_index, DEF->prof_name); \
 	}
 #define PROF_FOREIGN0 \
@@ -3568,7 +3568,7 @@ VMI(A_FIRSTVAR_IS, VIF_BREAK, 1, (CA1_FVAR)) /* A is B */
 	}
 #else
 
-#define PROF_FOREIGN CHECK_FMETATERM(h0)
+#define PROF_FOREIGN CHECK_FFV(h0)
 #define PROF_FOREIGN0 (void)0
 #endif
 
