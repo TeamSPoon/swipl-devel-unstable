@@ -37,6 +37,7 @@
       matts/0,
       testfv/0,
       w_debug/1,
+      undo/1,
       w_dmvars/1,
       w_hooks/1,
       wi_atts/2,
@@ -150,7 +151,7 @@
 
 sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
 
-sink_fluent:metaterm_unify_hook(_Atom,[true],Var,Value):- nonvar(Value)->metaterm_set(Var,Value);true.
+sink_fluent:metaterm_unify_hook(_Atom,[true],Var,Value):- !, (nonvar(Value)->metaterm_set(Var,Value);true).
 sink_fluent:metaterm_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 
@@ -777,21 +778,53 @@ fvi_set(Cont,Value):-
      var(Cont)-> Cont=v([Value]);
      (arg(1,List,Cont), (List==[]-> setarg(1,v([Value]),Cont); List=[_|_],setarg(1,Value,List))).
 
-fvi_push(Cont,Value):- var(Cont)-> Cont=v([Value]); (arg(1,List,Cont),setarg(1,Cont,[Value|List])).
+fvi_push(Cont,Value):- var(Cont)-> Cont=v([Value]); (arg(1,Cont,List),setarg(1,Cont,[Value|List])).
 
 fvi_get(Cont,Value):- compound(Cont),arg(1,List,Cont),assertion(is_list(List)),member(Value,List).
 fvi_pop(Cont,Value):- compound(Cont),arg(1,[Value|List],Cont),assertion(is_list(List)),setarg(1,Cont,List).
 
 
+         /**************
+         *  UNDO HOOK  *
+         **************/
+/*    
+    ?- F='\n',undo(((writeln(F:1);writeln(F:2)),fail)),!,write(before),fail.  % prints: before,1,2
+    WAS BUG: ?- undo(((member(F,[1,2,3]),writeln(F),fail))),!,write(before),fail. % crashes ssytem
+*/
+system:'$meta'('$undo_unify', _, Goal, 1):- !, '$schedule_wakeup'(Goal).
+
+was_tracing(Tracing):-current_prolog_flag(query_debug_settings,debug(_, Tracing)),!.
+was_tracing(Tracing):- tracing -> Tracing = true ;   Tracing = false.
+
+:- meta_predicate(system:undo(:)).
+system:undo(Goal):-
+       was_tracing(Tracing),
+       set_prolog_flag(query_debug_settings,debug(true, Tracing)),
+        metaterm_flags(current,(\/),use_undo),
+        put_attr(Var,'$undo_unify',Goal),
+        '$trail_assignment'(Var),
+        ( current_prolog_flag(debug, true)  
+            -> attv_unify(Var,Goal)
+             ; (debug,attv_unify(Var,(Goal,nodebug)))).
+        
+:- debug.
 
 dshow(X):- dmsg(dshow(X)).
 dshow(X,Y):- dmsg(dshow(X,Y)).
 dshow(X,Y,Z):- dmsg(dshow(X,Y,Z)).
 dshow(S,X,Y,Z):- dmsg(dshow(S,X,Y,Z)).
+
 dshowf(X):- dmsg(dshowf(X)),fail.
 dshowf(X,Y):- dmsg(dshowf(X,Y)),fail.
 dshowf(X,Y,Z):- dmsg(dshowf(X,Y,Z)),fail.
 dshowf(S,X,Y,Z):- dmsg(dshowf(S,X,Y,Z)),fail.
+
+
+dskip(X):- nop(dshow(X)).
+dskip(X,Y):- nop(dshow(X,Y)).
+dskip(X,Y,Z):- nop(dshow(X,Y,Z)).
+dskip(S,X,Y,Z):- nop(dshow(S,X,Y,Z)).
+dskip(S,X,Y,Z,A):- nop(dshow(S,X,Y,Z,A)).
 
 
 %%	matts(+Get,+Set) is det.

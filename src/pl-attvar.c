@@ -189,7 +189,7 @@ static matts_flag matts_flags[] =
  MW("use_unify_vp",     METATERM_USE_UNIFY_VP ),    
  MW("use_bind_const",   METATERM_USE_BINDCONST ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
- MW("meta_copy_var",    METATERM_COPY_VAR 	),
+ MW("copy_var",    METATERM_COPY_VAR 	),
  MW("sink_fluent",      METATERM_VALUE_SINK ), /*METATERM_NO_BIND*/  
  MW("source_fluent",    METATERM_SOURCE_VALUE ),  /*METATERM_NO_BIND*/
  MW("no_trail",         METATERM_NO_TRAIL	), 
@@ -207,10 +207,10 @@ static matts_flag matts_flags[] =
  MW("use_dra_interp",   DRA_CALL ), 
  MW("use_unify_var",      METATERM_USE_UNIFY_VAR ), 
  MW("use_no_trail_optimize", METATERM_NO_OPTIMIZE_TRAIL ), 
- MW("meta_override_usages_mask",     METATERM_OVERRIDE_USAGES_MASK ),
+ MW("metaterm_override_usages_mask",     METATERM_OVERRIDE_USAGES_MASK ),
  MW("metaterm_disable_overrides_mask",     METATERM_DISABLE_OVERRIDES_MASK ),
-  MW("metaterm_enabled",    METATERM_ENABLE_VAR 	),
-  MW("metaterm_disabled",    METATERM_DISABLED 	),
+ MW("metaterm_enable_var",    METATERM_ENABLE_VAR 	),
+ MW("metaterm_disabled",    METATERM_DISABLED 	),
   
   MW("metaterm_default",     METATERM_DEFAULT ),
   

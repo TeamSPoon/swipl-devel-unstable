@@ -204,7 +204,6 @@ system:call_uhooks(_,Next,Var,Value):-
         call(Next).
 
 
-
         /*******************************
         *	      FREEZE		*
         *******************************/

@@ -93,6 +93,10 @@ const debug_topic debug_topics[] =
     /* DRA*/
     DEBUG_TOPIC(MSG_DRA),
 
+
+    /* DRA*/
+    DEBUG_TOPIC(MSG_UNDO),
+
   /* GC messages */
   DEBUG_TOPIC(MSG_AGC),
   DEBUG_TOPIC(MSG_CLAUSE_GC),

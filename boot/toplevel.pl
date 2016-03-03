@@ -729,8 +729,8 @@ save_debug :-
 	;   Tracing = false
 	),
 	current_prolog_flag(debug, Debugging),
-	set_prolog_flag(debug, false),
-	create_prolog_flag(query_debug_settings,
+        set_prolog_flag(debug, false),
+        create_prolog_flag(query_debug_settings,
 			   debug(Debugging, Tracing), []).
 
 restore_debug :-

@@ -1228,7 +1228,7 @@ reclaim_attvars(Word after ARG_LD)
 int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD) 
 { //if(!actuallyDoit)return FALSE;
 
- /* DEBUG(MSG_METATERM, Sdprintf("\nUNDO: %s\n", where));*/
+ /* DEBUG(MSG_UNDO, Sdprintf("\nUNDO: %s\n", where));*/
   if(!actuallyDoit)return FALSE;
   if(!isTrailVal(p))
   {
@@ -1249,7 +1249,7 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   } 
   else
   {
-    DEBUG(MSG_METATERM, Sdprintf("Dont actually UNDO "));
+    DEBUG(MSG_UNDO, Sdprintf("Dont actually UNDO "));
     return FALSE;
   }
 
@@ -1261,19 +1261,19 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   if ( !find_attr(location, ATOM_dundo_unify, &unused PASS_LD) )
     return rc;
 
-  if ( ! LD->attvar.metaterm_opts || !(METATERM_USE_UNDO & METATERM_ENABLED) )
+  if ( (! LD->attvar.metaterm_opts) || !(METATERM_USE_UNDO ) )
   {
-    DEBUG(MSG_METATERM, Sdprintf("ERROR: UNDO SKIPPED! "));
+    DEBUG(MSG_UNDO, Sdprintf("ERROR: UNDO SKIPPED! "));
     return rc;
   }
 
-  DEBUG(MSG_METATERM, Sdprintf("UNDO-ing\n"));
+  DEBUG(MSG_UNDO, Sdprintf("UNDO-ing\n"));
   if ( !fvOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD) )
   {
-    DEBUG(MSG_METATERM, Sdprintf("UNDO FAILED"));
+    DEBUG(MSG_UNDO, Sdprintf("UNDO FAILED"));
   } else
   {
-    DEBUG(MSG_METATERM, Sdprintf("UNDO SUCCEED"));
+    DEBUG(MSG_UNDO, Sdprintf("UNDO SUCCEED"));
   }
     
   /* DM:  I would have prefered to...
