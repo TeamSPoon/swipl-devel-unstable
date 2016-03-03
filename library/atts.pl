@@ -47,7 +47,6 @@
       wno_hooks/1,
       export_all/0,
       % TODO remove  above before master
-      
       'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
       add_attr/3,
       any_to_fbs/2,
@@ -76,7 +75,7 @@
       set_dict_attvar_reader/1,
       metaflag_unset/2,
       metaflag_set/2,
-      dict_to_attvar/1,
+      dict_to_attvar/1,attvar_to_dict/2,
       dict_to_attvar/2]).
 
 :- meta_predicate('meta_attribute'(+,:)).
@@ -99,7 +98,7 @@
 :- discontiguous(atts:metaterm_type/1).
 :- dynamic(atts:metaterm_type/1).
 
-:- module_transparent
+:- module_transparent 
       matts/0,
       testfv/0,
       w_debug/1,
@@ -113,7 +112,7 @@
       wno_hooks/1,
       % TODO remove  above before master
       
-      'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
+      'attribute'/1,get_atts/2,put_atts/2,del_atts/2, 
       add_attr/3,
       any_to_fbs/2,
       has_hooks/1,
@@ -663,7 +662,13 @@ pl_notrace(_)
 */
 set_dict_attvar_reader(X):- set_prolog_flag(set_dict_attvar_reader,X).
 
+attvar_to_dict(AttVar,Dict):-
+   get_attrs(AttVar,Att3s),
+   attrs_to_pairs(Att3s,DictPairs),
+   dict_create(Dict,AttVar,DictPairs).
 
+attrs_to_pairs(att(N,V,Att3s),[N=V|DictPairs]):-!,attrs_to_pairs(Att3s,DictPairs).
+attrs_to_pairs(DictPairs,DictPairs).
 
 dict_to_attvar(Dict):- dict_to_attvar(Dict,_),!.
 dict_to_attvar(_:Dict,Out):- \+ compound(Dict),!,Out=Dict.
@@ -1128,7 +1133,7 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 
 :- export_all.
 
-end_ometaterm_file.
+end_of_file.
 
 
 % swi prolog ignores peer wakeups ..
