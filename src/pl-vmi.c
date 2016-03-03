@@ -1623,7 +1623,7 @@ execution can continue at `next_instruction'
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 /* BEGIN_SHAREDVARS */
 Module module;
-
+static int busy_write = 0;
 VMI(I_CALL, VIF_BREAK, 1, (CA1_PROC))
 { Procedure proc = (Procedure) *PC++;
 
@@ -1641,6 +1641,9 @@ true:
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 normal_call:
+
+
+
 
   CHECK_FV(ARGP);
 
@@ -1739,6 +1742,26 @@ retry_continue:
 	THROW_EXCEPTION;
       }
     }
+
+    DEBUG(MSG_DRA,{
+      if(!busy_write)
+      { busy_write = 1;
+
+          Word a = argFrameP(FR, DEF->functor->arity);
+          
+         /*Word a = argFrameP(NFR, 0); */  /* get the goal */
+         //if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
+         deRef(a);
+         Sdprintf("DRA_CALL: ");
+         term_t g = pushWordAsTermRef(a);
+         LocalFrame ot = lTop;
+         lTop += 100;
+         pl_writeln(g);
+         popTermRef();
+         lTop = ot;
+          busy_write = 0;
+          }
+         });
 
 #ifdef O_PROFILE
     if ( LD->profile.active )
@@ -4605,6 +4628,16 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	  LocalFrame ot = lTop;
 	  lTop += 100;
       Sdprintf("I_USERCALL0: ");
+	  pl_writeln(g);
+	  popTermRef();
+	  lTop = ot;
+	});
+
+  DEBUG(MSG_DRA,
+	{ term_t g = pushWordAsTermRef(a);
+	  LocalFrame ot = lTop;
+	  lTop += 100;
+	  Sdprintf("I_USERCALL1: ");
 	  pl_writeln(g);
 	  popTermRef();
 	  lTop = ot;

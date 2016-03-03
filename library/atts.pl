@@ -54,9 +54,9 @@
       has_hooks/1,
       matts/1,
       matts/2,
-      metaterm_copy_var/1,
-      metaterm_get/2,
-      metaterm_set/2,
+      copy_var/1,
+      metaterm_getval/2,
+      metaterm_setval/2,
       metaterm_push/2,
       metaterm_pop/2,
       meta/1,
@@ -119,9 +119,9 @@
       has_hooks/1,
       matts/1,
       matts/2,
-      metaterm_copy_var/1,
-      metaterm_get/2,
-      metaterm_set/2,
+      copy_var/1,
+      metaterm_getval/2,
+      metaterm_setval/2,
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
@@ -149,25 +149,21 @@
 %
 % Base class of "SinkFluent" that recieves bindings
 
-sink_fluent(Fluent):- put_atts(Fluent,+sink_fluent+no_bind).
+sink_fluent(Fluent):- put_atts(Fluent, +(sink_fluent:metaterm_setval) -(source_fluent:_) +no_bind).
 
-sink_fluent:metaterm_unify_hook(_Atom,[true],Var,Value):- !, (nonvar(Value)->metaterm_set(Var,Value);true).
+sink_fluent:metaterm_unify_hook(_Atom,[Was],Var,Value):- !, (nonvar(Value)->call(Was,Var,Value);true).
 sink_fluent:metaterm_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
-
 
 %%	source_fluent(-Fluent) is det.
 %
 % Base class of "SourceFluent" that creates bindings
 
-source_fluent(Fluent):- put_atts(Fluent,+source_fluent+use_unify_var+no_bind).
+source_fluent(Fluent):- put_atts(Fluent,+(source_fluent:metaterm_getval) -(sink_fluent:_) +use_unify_var +no_bind).
 
-source_fluent:metaterm_unify_hook(_Atom,_Was,Var,Value):- var(Value),!,metaterm_get(Var,Value).
-
-source_fluent:attr_unify_hook(_AttVal,_Value).
+source_fluent:metaterm_unify_hook(_Atom,[Was],Var,Value):- call(Was,Var,ValueO)*->ValueO=Value;true.
 
 
-
-metaterm_copy_var(Fluent):- put_atts(Fluent,+metaterm_copy_var+use_unify_var).
+copy_var(Fluent):- put_atts(Fluent,+copy_var+use_unify_var).
 
 
 
@@ -321,7 +317,7 @@ the usual unification. The handler procedure is
 unify_handler(+Term, ?Attribute [,SuspAttr])
 The first argument is the term that was unified with the attributed variable, it is either a non-variable or another attributed variable. The second argument is the contents of the attribute slot corresponding to the extension. Note that, at this point in execution, the orginal attributed variable no longer exists, because it has already been bound to Term. The optional third argument is the suspend-attribute of the former variable; it may be needed to wake the variable's 'constrained' suspension list.
 The handler's job is to determine whether the binding is allowed with respect to the attribute. This could for example involve checking whether the bound term is in a domain described by the attribute. For variable-variable bindings, typically the remaining attribute must be updated to reflect the intersection of the two individual attributes. In case of success, suspension lists inside the attributes may need to be scheduled for waking.
-If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing notrace all unify-handlers are done.
+If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing once all unify-handlers are done.
 */
 metaterm_handler_name(unify).
 
@@ -477,10 +473,10 @@ new_meta_attribute(Base,At,Mod) :- dynamic(Mod:protobute/3),
 % put_attr(V, m1, [b(x1, y1)]),
 % put_attr(V, m2, [b(x2, y2)]) .
 
-put_atts(Var,M:Atts):- notrace((wno_hooks((atts_put(+,Var,M,Atts))),!)).
-put_atts(Var,M,Atts):- notrace((wno_hooks((atts_put(+,Var,M,Atts))),!)).
-del_atts(Var,M:Atts):- notrace((wno_hooks((atts_put(-,Var,M,Atts))),!)).
-get_atts(Var,M:Atts):- notrace((atts_get(Var,M,Atts))),!.
+put_atts(Var,M:Atts):- once((wno_hooks((atts_put(+,Var,M,Atts))),!)).
+put_atts(Var,M,Atts):- once((wno_hooks((atts_put(+,Var,M,Atts))),!)).
+del_atts(Var,M:Atts):- once((wno_hooks((atts_put(-,Var,M,Atts))),!)).
+get_atts(Var,M:Atts):- once((atts_get(Var,M,Atts))),!.
 
 
 %%    get_atts(+Var, ?AccessSpec) 
@@ -590,36 +586,40 @@ atts_get(Var,M,Pair):-
 invert_pn(+,-).
 invert_pn(-,+).
 
-atts_put(PN,Var,M,At):- var(At),!,throw(error(instantiation_error, M:put_atts(Var,PN:At))).
-atts_put(PN,Var,user,Atts):- !, atts_put(PN,Var,tst,Atts).
+atts_put(+,Var,M,At):- var(At),!,throw(error(instantiation_error, M:put_atts(Var,+At))).
+atts_put(PN,Var,M, List):- is_list(List),!,atts_module(Var,M),maplist(atts_put(PN,Var,M),List).
+atts_put(PN,Var,M,At):- var(At),!,exec_atts_put(PN,Var,M,At).
 atts_put(PN,Var,M, X+Y):- !, atts_put(PN,Var,M, X),atts_put(PN,Var,M,+Y).
 atts_put(PN,Var,M, X-Y):- !, atts_put(PN,Var,M, X),atts_put(PN,Var,M,-Y).
 atts_put(PN,Var,M, +X+Y):- !, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,+Y).
 atts_put(PN,Var,M, +X-Y):- !, atts_put(PN,Var,M, +X),atts_put(PN,Var,M,-Y).
-atts_put(PN,Var,M, List):- is_list(List),!,atts_module(Var,M),maplist(atts_put(PN,Var,M),List).
 atts_put(_, Var,M,  +At):- !, atts_put(+,Var,M,At).
 atts_put(PN,Var,M,  -At):- invert_pn(PN,NP),!,atts_put(NP,Var,M,At).
-atts_put(PN,Var,_,(M:At)):- \+ metaterm_handler_name(M), !,atts_put(PN,Var,M,At).
+% atts_put(PN,Var,_,(M:At)):- \+ metaterm_handler_name(M), !,atts_put(PN,Var,M,At).
 atts_put(PN,Var,M, Meta):- \+ \+ clause(M:metaterm_hook(Meta,_,_),_), !, forall(M:metaterm_hook(Meta,P,A),atts_put(PN,Var,M,P=A)).
 % =(+a,b) -->   +(A=B).
 atts_put(PN,Var,M, Pair):- compound(Pair),Pair=..[P,Arg1,Arg2],attsep(P),compound(Arg1),tst((Arg1=..List,append(Head,[Last],List),At=..[P,Last,Arg2],append(Head,[At],ListNew),Try=..ListNew,!,atts_put(PN,Var,M, Try))).
+atts_put(PN,Var,user,Atts):- atts_nv(Atts,N,V),atts_put(PN,Var,N,V).
+atts_put(PN,Var,atts,Atts):- atts_nv(Atts,N,V),atts_put(PN,Var,N,V).
 
 atts_put(PN,Var,M,Pair):- 
   atts_to_att(Pair,Tmpl),
-  update_hooks(PN,Var,M,Tmpl),!,
   atts_exist(PN,Tmpl),
   exec_atts_put(PN,Var,M,Tmpl).
 
 is_metaterm_att(Tmpl):- fbs_for_hooks_default(Comp),arg(_,Comp,Tmpl).
 
-exec_atts_put(Sign,Var,_,Tmpl):- nonvar(Tmpl),is_metaterm_att(Tmpl), !,exec_atts_put(Sign,Var,Tmpl,true).
+
+exec_atts_put(Sign,Var,_,NameNV):- nonvar(NameNV),atts_nv(NameNV,Name,Value),is_metaterm_att(Name),!,exec_atts_put(Sign,Var,Name,Value).
 
 exec_atts_put(-,Var,M,Tmpl):- !,
+  update_hooks(-,Var,M,Tmpl),!,
    (get_attr(Var,M,Cur)->
-     (delete(Cur,Tmpl,Upd),put_attr(Var,M,Upd)) ;
+     (delete(Cur,Tmpl,Upd),(Upd==[]->del_attr(Var,M);put_attr(Var,M,Upd))) ;
     true).
 
 exec_atts_put(+,Var,M,At):- 
+ update_hooks(+,Var,M,At),!,
    (get_attr(Var,M,Cur) ->
     (atts_tmpl(At,Tmpl),
      delete(Cur,Tmpl,Mid), % ord_del_element wont work here because -a(_) stops short of finding a(1).
@@ -631,6 +631,17 @@ attsep('=').
 attsep(':').
 attsep('-').
 
+
+atts_nv(Var,_N,_V):- var(Var),!,must_be(nonvar,Var),fail.
+atts_nv(N:V,N,V):- !.
+atts_nv(N-V,N,V):- !.
+atts_nv(N=V,N,V):- !.
+atts_nv(F/A,N,V):- !,assertion((atom(F),integer(A))),functor(Tmpl,F,A),atts_nv(Tmpl,N,V).
+atts_nv(Tmpl,Tmpl,true):-atom(Tmpl),!.
+atts_nv(Tmpl,N,V):- !,Tmpl=..[N,V].
+atts_nv(Tmpl,N,Tmpl):-functor(Tmpl,N,_),!.
+
+
 atts_to_att(Var,Var):- var(Var),!.
 atts_to_att(N-V,Tmpl):- !,atts_to_att(N=V,Tmpl).
 atts_to_att(N:V,Tmpl):- !,atts_to_att(N=V,Tmpl).
@@ -638,17 +649,16 @@ atts_to_att(N=V,Tmpl):- !,assertion(atom(N)),!,Tmpl=..[N,V].
 atts_to_att(F/A,Tmpl):- !,assertion((atom(F),integer(A))),functor(Tmpl,F,A).
 atts_to_att(Tmpl,Tmpl).
 
-
-update_hooks(PN,Var,_,Hook):- 
+update_hooks(PN,Var,Hook,_):- 
   ignore((handler_fbs(+ Hook,Number), Number>0, !,PNHook=..[PN,Hook], put_datts(Var, PNHook))),
   update_hooks1(PN,Var,_,Hook).
 
-update_hooks1(+,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
+update_hooks1(+,Var,At,_):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
    (get_attr(Var,'$atts',Was)-> (New is Was \/ Number,put_attr(Var,'$atts',New));(ensure_meta(Var),put_attr(Var,'$atts',Number))))).
 update_hooks1(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
    (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));(ensure_meta(Var),put_attr(Var,'$atts',Number))))).
 
-handler_fbs(Hook,Number):- notrace(catch(fbs_to_number(Hook,Number),_,Number=0)).
+handler_fbs(Hook,Number):- once(catch(fbs_to_number(Hook,Number),_,Number=0)).
 
 /*
 
@@ -726,7 +736,7 @@ wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(
 % unbind return code
 do_metaterm_hook(Pred,Var,Value,RetCode):- nonvar(RetCode),!,do_metaterm_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
 % print debug
-do_metaterm_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:metaterm_hook(Pred,Var,Value,RetCode)),fail)).
+do_metaterm_hook(Pred,Var,Value,RetCode):- once((dmsg(user:metaterm_hook(Pred,Var,Value,RetCode)),fail)).
 % Search for handler PER Var
 do_metaterm_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
 
@@ -738,7 +748,7 @@ do_metaterm_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,
 do_metaterm_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
 do_metaterm_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
 do_metaterm_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
-do_metaterm_hook(Hook,Var,Value,1):- metaterm_get(Var,Cell),w_hooks(call(Hook,Cell,Value)).
+do_metaterm_hook(Hook,Var,Value,1):- metaterm_getval(Var,Cell),w_hooks(call(Hook,Cell,Value)).
 do_metaterm_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
 % 0: == call handler
 do_metaterm_hook(compare,Var,Value,0):- do_metaterm_hook(==,Var,Value,1),!.
@@ -756,32 +766,36 @@ attrs_val(Var,AttsO):- '$visible_attrs'(Var,AttsO).
 ensure_meta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
 ensure_meta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
 
-metaterm_set(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),fvi_set(Cont,Value).
-metaterm_set(Var,Value):- put_attr(Var,value,Cont),fvi_set(Cont,Value).
+metaterm_setval(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),fvi_set(Cont,Value).
+metaterm_setval(Var,Value):- get_attr(Var,value,Cont),!,fvi_set(Cont,Value).
+metaterm_setval(Var,Value):- put_attr(Var,value,Cont),fvi_set(Cont,Value).
 
-unify_val(Var,Value):- metaterm_get(Var,Cell),!,Cell=Value.
-unify_val(Var,Value):- metaterm_set(Var,Value).
+unify_val(Var,Value):- metaterm_getval(Var,Cell),!,Cell=Value.
+unify_val(Var,Value):- metaterm_setval(Var,Value).
 
-metaterm_get(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_get(Cont,Value).
-metaterm_get(Var,Value):- get_attr(Var,value,Cont),!,fvi_get(Cont,Value).
+metaterm_getval(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_get(Cont,Value).
+metaterm_getval(Var,Value):- get_attr(Var,value,Cont),!,fvi_get(Cont,Value).
 
 metaterm_pop(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_pop(Cont,Value).
 metaterm_pop(Var,Value):- get_attr(Var,value,Cont),!,fvi_pop(Cont,Value).
 
 metaterm_push(Var,Value):- get_attr(Var,gvar,Cell),!,nb_linkval(Cell,Cont),!,fvi_push(Cont,Value).
 metaterm_push(Var,Value):- get_attr(Var,value,Cont),!,fvi_push(Cont,Value).
-metaterm_push(Var,Value):- metaterm_set(Var,Value).
+metaterm_push(Var,Value):- metaterm_setval(Var,Value).
 
 
 
 fvi_set(Cont,Value):-
      var(Cont)-> Cont=v([Value]);
-     (arg(1,List,Cont), (List==[]-> setarg(1,v([Value]),Cont); List=[_|_],setarg(1,Value,List))).
+     (arg(1,Cont,List), (List==[]-> setarg(1,Cont,[Value]); setarg(1,List,Value))).
 
 fvi_push(Cont,Value):- var(Cont)-> Cont=v([Value]); (arg(1,Cont,List),setarg(1,Cont,[Value|List])).
 
-fvi_get(Cont,Value):- compound(Cont),arg(1,List,Cont),assertion(is_list(List)),member(Value,List).
-fvi_pop(Cont,Value):- compound(Cont),arg(1,[Value|List],Cont),assertion(is_list(List)),setarg(1,Cont,List).
+fvi_get(Cont,Value):- compound(Cont),arg(1,Cont,List),assertion(is_list(List)),member(Value,List).
+
+fvi_pop(Cont,Value):- compound(Cont),arg(1,Cont,[Value|List]),assertion(is_list(List)),setarg(1,Cont,List).
+
+
 
 
          /**************
@@ -826,6 +840,10 @@ dskip(X,Y,Z):- nop(dshow(X,Y,Z)).
 dskip(S,X,Y,Z):- nop(dshow(S,X,Y,Z)).
 dskip(S,X,Y,Z,A):- nop(dshow(S,X,Y,Z,A)).
 
+/*
+foo(p,a,q).
+foo_dra(X,Y,Z):-dra(foo(p,a,q)).
+*/
 
 %%	matts(+Get,+Set) is det.
 %
@@ -860,7 +878,7 @@ fbs_for_hooks_default(v(
 
  sink_fluent,
  attv_bindconst  		," bindconst() " ,
- metaterm_copy_var       		," unify: assign and wakeup " ,
+ copy_var       		," unify: assign and wakeup " ,
  attv_will_unbind   , " peer no trail ", 
  
 		 /*******************************
@@ -896,7 +914,7 @@ fbs_for_hooks_default(v(
 %
 % Print the system global modes
 %
-matts:- notrace((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
+matts:- once((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
 
 
 %% debug_hooks is det.
@@ -920,7 +938,7 @@ datts_overriding(AttVar,BitsOut):- wno_hooks(get_attr(AttVar,'$atts',Modes)->any
 %
 
 put_datts(AttVar,Modes):- 
- notrace((wno_hooks((var(AttVar),
+ once((wno_hooks((var(AttVar),
   ((
    get_attr(AttVar,'$atts',Was)->
        (merge_fbs(Modes,Was,Change),put_attr(AttVar,'$atts',Change)); 
@@ -937,7 +955,7 @@ has_hooks(AttVar):- wno_hooks(get_attr(AttVar,'$meta',_)).
 %
 % Create new matts with a given set of Overrides
 
-new_meta(Bits,AttVar):- notrace((put_atts(AttVar,'$meta':Bits))).
+new_meta(Bits,AttVar):- once((put_atts(AttVar,'$meta':Bits))).
 
 
 nb_extend_list(List,E):- arg(2,List,Was),nb_setarg(2,List,[E|Was]).
@@ -946,7 +964,7 @@ nb_extend_list(List,E):- arg(2,List,Was),nb_setarg(2,List,[E|Was]).
 contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
 
 % any_to_fbs(Var,BitsOut):- attvar(Var), get_attr(Var,'$atts',BitsIn),!,any_to_fbs(BitsIn,BitsOut).
-any_to_fbs(BitsIn,BitsOut):- notrace((
+any_to_fbs(BitsIn,BitsOut):- once((
  tst((fbs_to_number(BitsIn,Mode),number(Mode))),
    Bits=[Mode],
    ignore((current_metaterm_mask(N,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
@@ -1002,7 +1020,7 @@ check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fa
 %
 % With inherited Hooks call Goal
 
-wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup_each(set_metaflags(N),Goal,set_metaflags(W)).
+wi_atts(M,Goal):- once((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup_each(set_metaflags(N),Goal,set_metaflags(W)).
 
 %%    wno_hooks(+Var,+Goal)
 %

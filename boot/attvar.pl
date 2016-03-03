@@ -293,7 +293,7 @@ unfreeze(Goal) :-
 portray_attvar(Var) :-
 	write('{'),
 	get_attrs(Var, Attr),
-	portray_attrs(Attr, Var),
+	with_no_wakeups(portray_attrs(Attr, Var)),
 	write('}').
 
 portray_attrs([], _).

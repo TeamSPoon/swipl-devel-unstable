@@ -399,7 +399,7 @@ assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 
   if ( isVar(*value) )  /* JW: Does this happen? */ /* Discussion:  https://github.com/SWI-Prolog/roadmap/issues/40#issuecomment-173002313 */
   { if ( IS_META(METATERM_COPY_VAR) )
-    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("METATERM_COPY_VAR Upgraging VAR to an ATTVAR ref "));
+    { DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("METATERM_COPY_VAR Upgrading VAR to an ATTVAR ref "));
       TrailAssignment(value);
       make_new_attvar(value PASS_LD);      /* SHIFT: 3+0 */
       deRef(value);
@@ -447,12 +447,21 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   assert(gTop+7 <= gMax && tTop+6 <= tMax);
   DEBUG(CHK_SECURE, assert(on_attvar_chain(av)));
 
-  int varflags = getMetaFlags(av, METATERM_GLOBAL_FLAGS PASS_LD);
+  int global = METATERM_GLOBAL_FLAGS;
 
-  // bool plainAttVar = (varflags==0);
-  
+  if(callflags&METATERM_ENABLE_VAR)
+  {
+	  global &= ~METATERM_DISABLED;
+  }
+
+  int varflags = getMetaFlags(av,global PASS_LD);
+
+  if(callflags&METATERM_ENABLE_VAR)
+  {
+	  varflags &= ~METATERM_DISABLED;
+  }
+
   int flags = callflags | varflags;
-
 
   int rmask = (METATERM_OVERRIDE_USAGES_MASK);
   
@@ -460,7 +469,9 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   if(atomcaller==0) atomcaller = current_caller_mask(varflags);
   if(atomcaller==0) atomcaller = current_caller_mask(flags);
 
-  if(LD_no_wakeup)
+  int nowu = LD_no_wakeup;
+
+  if(nowu)
   {
     if(isVar(*value))
     {
@@ -510,7 +521,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     }
     if ( IS_META((METATERM_SOURCE_VALUE | METATERM_USE_UNIFY_VAR)) )
     { if(atomcaller==0) atomcaller = current_caller_mask(callflags);
-      if(varflags&METATERM_DISABLED && IS_META(METATERM_SOURCE_VALUE))
+      if((varflags&METATERM_DISABLED) && IS_META(METATERM_SOURCE_VALUE))
       {
           DEBUG(MSG_WAKEUPS, Sdprintf_ln("PRETENDIGN NOT DISABLED_METATERM_SOURCE_VALUE(%s,%s)", vName(av),my_atom_summary(atomcaller)));
           //return FALSE;
@@ -592,6 +603,8 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     *av = makeRef(value);
   } else
     *av = *value;
+
+  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Was %d", nowu+varflags|callflags|global));
 
  return TRUE;
 }
