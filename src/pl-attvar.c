@@ -604,7 +604,8 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   } else
     *av = *value;
 
-  DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Was %d", nowu+varflags|callflags|global));
+  /*makes compiler retain some vars*/
+  if(0)DEBUG(MSG_ATTVAR_GENERAL, Sdprintf_ln("Was %d", nowu|varflags|callflags|global));
 
  return TRUE;
 }

@@ -2661,7 +2661,7 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_FV(a0) /*if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; }}*/
+#define CHECK_FV(a0)  if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 /* DM: possiblely anything that started in usercallN ends up inf foreign call.. so  swap_out_functor() might be able to be removed*/
 #define CHECK_FFV(a0) if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
@@ -2699,10 +2699,12 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
   Word ARG = argV - current_arity;
   for( ; current_arity-->0 ; ARG++) /* DM: How is this suppsoed to be coded?  I am assuming something wrong? */    
   {   Word argAV = ARG;
-      deRef(argAV);  
+      deRef(argAV);
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
+        pushWordAsTermRef(argAV);
         functor_t alt_functor = getMetaOverride(argAV,current_functor, METATERM_USE_VMI PASS_LD);
+        popTermRef();
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)

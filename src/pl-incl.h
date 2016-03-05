@@ -2146,7 +2146,7 @@ typedef struct
 #define METATERM_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (METATERM_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && ((!(METATERM_CURRENT & METATERM_DISABLED)) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_CPREDS PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_CPREDS & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
