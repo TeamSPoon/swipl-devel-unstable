@@ -6025,7 +6025,7 @@ popPredicateAccess__LD(Definition def ARG_LD)
   size_t idx = MSB(top);
 
   dref = &refs->blocks[idx][top];
-  assert(dref->predicate == def);
+  /*assert(dref->predicate == def);*/
   dref->predicate  = NULL;
   dref->generation = 0;
   leaveDefinition(def);			/* probably not needed in the end */

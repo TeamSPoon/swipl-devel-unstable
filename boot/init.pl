@@ -216,13 +216,18 @@ system:amsg(G):- notrace(
                   with_no_wakeups(0),
                   with_wakeups(0),
                   must_or_die(0),
-                  setup_call_cleanup_each(0,0,0).
+                  setup_call_cleanup_each(0,0,0),
+                  call_cleanup_each(0,0).
 
 :- module_transparent(must_or_die/1).
 must_or_die(G):- (G *-> true ; throw(failed_must_or_die(G))).
 
 :- module_transparent(must_atomic/1).
 must_atomic(Goal):- notrace('$sig_atomic'(must_or_die(Goal))).
+
+
+call_cleanup_each(Goal, Cleanup) :-
+	setup_call_cleanup_each(true, Goal, Cleanup).
 
 setup_call_cleanup_each(Setup,Goal,Undo):-
    notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
