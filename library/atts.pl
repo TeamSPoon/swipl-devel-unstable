@@ -62,7 +62,6 @@
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
-      datts_overriding/2,
       add_attribute/2,
       %add_attribute/3,
       get_attribute/2,
@@ -125,7 +124,6 @@
       meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
-      datts_overriding/2,
       add_attribute/2,
       %add_attribute/3,
       get_attribute/2,
@@ -534,9 +532,9 @@ metaterm_override(X,Atom):- atomic(Atom),!,metaterm_override(X,Atom:true([])).
 metaterm_override(X,Atom):- compound_name_arity(Atom,_,0),!,metaterm_override(X,Atom:true([])).
 metaterm_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,metaterm_override(X,BPI,API).
 metaterm_override(X,B=A):-  metaterm_override(X,B:A),!.
-metaterm_override(X,What):- put_atts(X,'$meta': + What).
+metaterm_override(X,What):- put_atts(X,'$meta': + What),put_atts(X,[+use_vmi, +use_cpreds]).
 
-metaterm_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)).
+metaterm_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)),put_atts(X,[+use_vmi, +use_cpreds]).
 
 
 make_metaterm_override(X,B=A):- metaterm_override(X,B:A).
@@ -924,14 +922,6 @@ matts:- once((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
 debug_hooks(true):- !, matts(+debug_hooks+debug_extreme).
 debug_hooks(_):- matts(-debug_hooks-debug_extreme).
 
-%%    datts_overriding(AttVar,BitsOut)
-%
-% Get matts properties
-%
-
-datts_overriding(AttVar,BitsOut):- wno_hooks(get_attr(AttVar,'$atts',Modes)->any_to_fbs(Modes,BitsOut);BitsOut=0).
-
-
 %%    metaterm_override(AttVar,BitsOut)
 %
 % Set matts properties
@@ -1025,9 +1015,9 @@ wi_atts(M,Goal):- once((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup
 %%    wno_hooks(+Var,+Goal)
 %
 % Without hooks on Var call Goal
-wno_hooks(Var,Goal):- metaflag_set(Var,metaterm_disabled),Goal.
-wno_hooks(Goal):-  metaflag_set(current,metaterm_disabled),Goal.
-w_hooks(Goal):-  metaflag_unset(current,metaterm_disabled),Goal.
+wno_hooks(Var,Goal):- with_metaterm_disabled(Var,Goal).
+wno_hooks(Goal):-  with_metaterm_disabled(global,Goal).
+w_hooks(Goal):- with_metaterm_enabled(global,Goal).
 
 
 wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).

@@ -1189,7 +1189,7 @@ emptyStacks(void)
     LD->attvar.tail         = PL_new_term_ref();
     LD->attvar.gc_attvars   = PL_new_term_ref();
 
-    LD->attvar.metaterm_regs = PL_new_term_refs(2);
+    LD->attvar.metaterm_regs = PL_new_term_refs(4);
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
     METATERM_CURRENT =  METATERM_DEFAULT;
     *METATERM_GLOBAL = consUInt(METATERM_CURRENT);

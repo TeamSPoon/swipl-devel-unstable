@@ -189,7 +189,7 @@ static matts_flag matts_flags[] =
  MW("use_unify_vp",     METATERM_USE_UNIFY_VP ),    
  MW("use_bind_const",   METATERM_USE_BINDCONST ), 
  MW("attv_will_unbind", ATTV_WILL_UNBIND ),
- MW("copy_var",    METATERM_COPY_VAR 	),
+ MW("term_copier",    METATERM_COPY_VAR 	), /*METATERM_NO_BIND*/  
  MW("sink_fluent",      METATERM_VALUE_SINK ), /*METATERM_NO_BIND*/  
  MW("source_fluent",    METATERM_SOURCE_VALUE ),  /*METATERM_NO_BIND*/
  MW("no_trail",         METATERM_NO_TRAIL	), 
@@ -2048,7 +2048,9 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 functor_t 
 getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
-  if(!(METATERM_ENABLED)) return f;
+  if(SAFETY_FIRST) return FALSE;
+  /*if(!(METATERM_ENABLED)) return f;*/
+  *valTermRef(LD->attvar.metaterm_regs+2) = linkVal(av);
   deRef(av);
   if(!isAttVar(*av)) return f;
   if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
@@ -2086,7 +2088,7 @@ bool
 isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
 {
   if(SAFETY_FIRST) return FALSE;
-
+  *valTermRef(LD->attvar.metaterm_regs+2) = linkVal(av);
   Word fdattrs,fdattrs2,found;
   if(!(override_flags & METATERM_ENABLED)) return FALSE;
   deRef(av);

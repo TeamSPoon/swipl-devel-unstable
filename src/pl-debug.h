@@ -125,6 +125,7 @@
 #define MSG_ATTVAR_GENERAL 	154
 #define MSG_DRA	 	155
 #define MSG_UNDO 156
+#define MSG_WAKEUP_VMI	 	157
 
 #define MSG_HASH_TABLE_API	 160
 #define MSG_HASH_TABLE_KVS	 161

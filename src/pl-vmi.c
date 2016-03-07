@@ -1743,7 +1743,7 @@ retry_continue:
       }
     }
 
-    DEBUG(MSG_DRA,{
+    if(0)DEBUG(MSG_DRA,{
       if(!busy_write)
       { busy_write = 1;
 
@@ -4624,24 +4624,15 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
     THROW_EXCEPTION;
 
   DEBUG(MSG_CALL,
-	{ term_t g = pushWordAsTermRef(a);
+	{ Sdprintf("I_USERCALL0: ");
 	  LocalFrame ot = lTop;
+	  term_t g = pushWordAsTermRef(a);
 	  lTop += 100;
-      Sdprintf("I_USERCALL0: ");
 	  pl_writeln(g);
 	  popTermRef();
 	  lTop = ot;
 	});
 
-  DEBUG(MSG_DRA,
-	{ term_t g = pushWordAsTermRef(a);
-	  LocalFrame ot = lTop;
-	  lTop += 100;
-	  Sdprintf("I_USERCALL1: ");
-	  pl_writeln(g);
-	  popTermRef();
-	  lTop = ot;
-	});
 
 #ifdef O_DRA_TABLING_UNUSED
 

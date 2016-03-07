@@ -28,6 +28,8 @@
 */
 :- module(metaterm,[memory_var/1,memberchk_same_q/2,
    lv/0,
+   use_unify_var/0,
+   no_bind/1,
    llv/0,
   anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
 
@@ -130,7 +132,7 @@ termfilter:attr_unify_hook(Goal,Value):-call(Goal,Value).
 % Aggressively make Fluent unify with non fluents (instead of the other way arround)
 %
 atts:metaterm_type(term_copier).
-term_copier(Fluent):- mkmeta(Fluent),put_attr(Fluent,term_copier,Fluent), put_atts(Fluent, +no_bind +use_unify_var).
+term_copier(Fluent):- put_atts(Fluent, +no_bind +term_copier +use_unify_var).
 term_copier:attr_unify_hook(Var,ValueIn):-
    notrace((must((get_attr(Var,'$saved_atts',AttVal),
    del_attr(Var,term_copier),
@@ -556,7 +558,7 @@ memb_r(X, List) :- Hold=hold(List), !, throw(broken_memb_r(X, List)),
 mv:attr_unify_hook(AttValue,FluentValue):- AttValue=old_vals(Waz),nb_setarg(1,AttValue,[FluentValue|Waz]).
 
 atts:metaterm_type(memory_var).
-memory_var(Fluent):- mkmeta(Fluent), (nonvar(Fluent) ->true; (get_attr(Fluent,mv,_)->true;put_attr(Fluent,mv,old_vals([])))).
+memory_var(Fluent):- ensure_meta(Fluent), (nonvar(Fluent) ->true; (get_attr(Fluent,mv,_)->true;put_attr(Fluent,mv,old_vals([])))).
 
 
 tst_ft(memory_var):- memory_var(X),  ignore((member(X,[1,2,3,3,3,1,2,3]),writeln(memory_var=X),fail)),get_attrs(X,Attrs),writeln(get_attrs=Attrs).
@@ -599,7 +601,7 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
 :- use_module(library(logicmoo_utils)).
 
 
-:- use_listing_vars.
+:- with_no_wakeups(use_listing_vars).
 
 :- debug(_).
 % :- debug_fluents.

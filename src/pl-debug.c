@@ -93,6 +93,7 @@ const debug_topic debug_topics[] =
     /* DRA*/
     DEBUG_TOPIC(MSG_DRA),
 
+    DEBUG_TOPIC(MSG_WAKEUP_VMI),
 
     /* DRA*/
     DEBUG_TOPIC(MSG_UNDO),

@@ -173,7 +173,7 @@ DbgPrintInstruction(LocalFrame FR, Code PC)
 { GET_LD
   static LocalFrame ofr = NULL;		/* not thread-safe */
 
-  if ( DEBUGGING(MSG_VMI) )
+  if ( DEBUGGING(MSG_VMI) || DEBUGGING(MSG_WAKEUP_VMI) )
   { if ( ofr != FR )
     { Sfprintf(Serror, "#%ld at [%ld] predicate %s\n",
 	       loffset(FR),
@@ -195,7 +195,7 @@ DbgPrintInstruction(LocalFrame FR, Code PC)
       } else
 	relto = NULL;
 
-      Sdprintf("\t%4ld %s\n", (long)(PC-relto), codeTable[decode(*PC)].name);
+      if (! DEBUGGING(MSG_WAKEUP_VMI) )Sdprintf("\t%4ld %s\n", (long)(PC-relto), codeTable[decode(*PC)].name);
     }
   }
 }
@@ -2676,35 +2676,47 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
       deRef(argAV);              
       if(argAV && isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
+        if(current_functor==(functor_t)0)
+        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is missing for %s \n", predicateName(DEF)));
+          return DEF;
+        }
         functor_t alt_functor = getMetaOverride(argAV,current_functor, METATERM_USE_VMI PASS_LD);
+
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          { DEBUG(MSG_METATERM, Sdprintf("FOREIGN: using overriden ffunctor for metatype"));
+          {  DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is now %s -> %s\n", predicateName(DEF) , predicateName(altDEF) ));
               return altDEF;
           }
-          DEBUG(MSG_METATERM, Sdprintf("FOREIGN: missing overriden ffunctor for metatype"));
+          DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: missing overriden ffunctor for metatype\n"));
+        } else
+        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: no overriden ffunctor for metatype %s \n", predicateName(DEF)));
         }
       }        
   }
   return DEF;
 }
 
+//  use_unify_var, metaterm_override(X,writeln=nop),source_fluent(X),sink_fluent(X), X="hi",writeln(X).
 /* IS DISABLED RIGHT NOW (segv's sometimes) check attvar meta hooks (only the last arg is looked at though)*/
 static inline
 Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
-{ size_t current_arity = ((Definition)DEF)->functor->arity;
+{ if(TRUE) return DEF;
+  size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+ 
   assert(LD_no_wakeup<5); /*catch loops*/
   Word ARG = argV - current_arity;
   for( ; current_arity-->0 ; ARG++) /* DM: How is this suppsoed to be coded?  I am assuming something wrong? */    
   {   Word argAV = ARG;
-      deRef(argAV);
+      *valTermRef(LD->attvar.metaterm_regs+3) = linkVal(argV);
+      deRef(argAV); 
       if(isAttVar(*argAV))
       { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        pushWordAsTermRef(argAV);
+        //pushWordAsTermRef(argAV);     
+        
         functor_t alt_functor = getMetaOverride(argAV,current_functor, METATERM_USE_VMI PASS_LD);
-        popTermRef();
+        //popTermRef();
         if(alt_functor && alt_functor!=current_functor) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
@@ -2715,7 +2727,7 @@ Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
         }
       }        
       /* derefing the next arg seems to segv  (so exit here) */
-      return DEF;
+     /* return DEF;*/
   }
   return DEF;
 }

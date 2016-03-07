@@ -162,7 +162,7 @@ handy for it someone wants to add a data type to the system.
 
 #define O_UNDO_HOOK 1
 /*#undef O_UNDO_HOOK*/
-#define SAFETY_FIRST 1
+#define SAFETY_FIRST 0
 
 #if defined(O_SIGPROF_PROFILE) || defined(__WINDOWS__)
 #define O_PROFILE		1

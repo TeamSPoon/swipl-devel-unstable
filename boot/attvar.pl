@@ -31,7 +31,7 @@
 :- module('$attvar',
 	  [ '$wakeup'/1,		% +Wakeup list
             % undo/1,                     % :Goal
-            freeze/2,			% +Var, :Goal
+            % freeze/2,			% +Var, :Goal
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
 	    copy_term/3                 % +Term, -Copy, -Residue
@@ -213,11 +213,12 @@ system:call_uhooks(_,Next,Var,Value):-
 %	Suspend execution of Goal until Var is bound.
 
 :- meta_predicate
-	freeze(?, 0).
+	system:freeze(?, 0).
 
-freeze(Var, Goal) :-
+
+system:freeze(Var, Goal) :-
 	'$freeze'(Var, Goal), !.	% Succeeds if delayed
-freeze(_, Goal) :-
+system:freeze(_, Goal) :-
 	call(Goal).
 
 %%	frozen(@Var, -Goals)
@@ -290,10 +291,19 @@ unfreeze(Goal) :-
 :- public
 	portray_attvar/1.
 
-portray_attvar(Var) :-
-	write('{'),
+
+
+portray_attvar(_) :- current_prolog_flag(write_attributes, ignore),!,write('{..}').
+portray_attvar(Var) :- tracing,notrace,!,portray_attvar(Var),trace.
+portray_attvar(Var) :- nb_current('$writing_attributes',Vars),member(V,Vars),V==Var,!,write('{..}').
+portray_attvar(Var) :- 
+        write('{'),
+        current_prolog_flag(write_attributes,W),
+        set_prolog_flag(write_attributes, ignore),
+        (nb_current('$writing_attributes',Vars)->b_setval('$writing_attributes',[Var|Vars]) ; b_setval('$writing_attributes',[Var])),
 	get_attrs(Var, Attr),
-	with_no_wakeups(portray_attrs(Attr, Var)),
+	portray_attrs(Attr, Var),
+        set_prolog_flag(write_attributes, W),
 	write('}').
 
 portray_attrs([], _).
@@ -306,12 +316,13 @@ portray_attrs(att(Name, Value, Rest), Var) :-
 	).
 
 portray_attr(freeze, Goal, Var) :- !,
-	format('freeze:freeze(~w, ~W)', [ Var, Goal,
+	format('freeze(~w, ~W)', [ Var, Goal,
 				   [ portray(true),
 				     quoted(true),
 				     attributes(ignore)
 				   ]
 				 ]).
+
 portray_attr(Name, Value, Var) :-
 	G = Name:attr_portray_hook(Value, Var),
 	(   '$c_current_predicate'(_, G),
@@ -325,7 +336,7 @@ system:attr_portray_hook(Name,Value):- fa(Name,Value).
 fa(Name,Value):-
   current_prolog_flag(write_attributes,W),
   set_prolog_flag(write_attributes, ignore),
-        format('~q:~W', [Name, Value,
+ format('~q:~W', [Name, Value,
 				   [ portray(true),
 				     quoted(true),
 				     attributes(ignore)
