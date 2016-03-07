@@ -331,17 +331,34 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
 }
 
 /*
+
+ Returns $metaterm_call" with N being the arity supplied
+
+ current_name will be a filtered soon to avoid special predicates like put_attrs/2
+ 
+*/
+functor_t 
+getMetaTermOverrideForArity(atom_t current_name, int arity ARG_LD )
+{ if(arity>256 || arity<1 || current_name==ATOM_dmetaterm_call) return (functor_t)0;
+  functor_t found = LD->attvar.metaterm_override[arity];
+  if(found==0) 
+  { found = LD->attvar.metaterm_override[arity] = PL_new_functor(ATOM_dmetaterm_call,arity);
+  }
+  return found;
+}
+
+/*
  Returns the "$atts" attvar property (supposed to be a small int)
  Ideally fvs will have them at the begining
 */
-
 int
 getMetaFlags(Word av, int flags ARG_LD)
 { Word found ,n;
   if(!isAttVar(*av)) return 0;
   Word l = valPAttVar(*av);
-  if(!onGlobalArea(l)) return 0;
-  if(*l==0) return 0;
+  if(!onGlobalArea(l))
+    return trap_gdb();
+  if(*l==0) return trap_gdb();
   deRef(l);
   if(!isTerm(*l)) return 0;
   Functor f = valueTerm(*l);
@@ -2048,9 +2065,7 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 functor_t 
 getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 { Word fdattrs,found;
-  if(SAFETY_FIRST) return FALSE;
-  /*if(!(METATERM_ENABLED)) return f;*/
-  *valTermRef(LD->attvar.metaterm_regs+2) = linkVal(av);
+  if(!(METATERM_ENABLED)) return f;
   deRef(av);
   if(!isAttVar(*av)) return f;
   if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
@@ -2086,18 +2101,24 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 
 bool 
 isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
-{
-  if(SAFETY_FIRST) return FALSE;
-  *valTermRef(LD->attvar.metaterm_regs+2) = linkVal(av);
+{ if(SAFETY_FIRST) return FALSE;
+  assert((av!=0 && *av!=0));
   Word fdattrs,fdattrs2,found;
   if(!(override_flags & METATERM_ENABLED)) return FALSE;
-  deRef(av);
-  if(!isAttVar(*av)) return FALSE;
+  int flags = getMetaFlags(av, METATERM_NO_INHERIT PASS_LD);
+  if(flags==0) return FALSE;
+  if(!(flags & METATERM_ENABLED))
+  { DEBUG(MSG_METATERM,Sdprintf_ln("!isMetaOverriden(%s,%s,%d)",vName(av),print_val(f,0),flags));
+    return FALSE;
+  }
+  if(TRUE) return TRUE;
+  *valTermRef(LD->attvar.metaterm_regs+2) = linkVal(av);
+
   if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
   { word fallback;
     if(!gvar_value__LD(ATOM_dmeta, &fallback PASS_LD)) return FALSE;
     if(!fallback)  return FALSE;
-    if(!isAttVar(fallback)) return FALSE;       
+    if(!isAttVar(fallback)) return FALSE;
     if(!find_attr(&fallback, ATOM_dmeta, &fdattrs2 PASS_LD)) return FALSE;
     fdattrs = fdattrs2;
   }

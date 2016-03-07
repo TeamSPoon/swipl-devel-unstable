@@ -2661,7 +2661,7 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 #ifdef O_METATERM 
-#define CHECK_FV(a0)  if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
+#define CHECK_FV(a0)  if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_functor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) { *ARGP++ = ((Definition)DEF)->functor->name;  DEF=newDef; goto normal_call; }}
 /* DM: possiblely anything that started in usercallN ends up inf foreign call.. so  swap_out_functor() might be able to be removed*/
 #define CHECK_FFV(a0) if(METATERM_USE_VMI & METATERM_ENABLED){Definition newDef = swap_out_ffunctor((Definition)DEF,a0 PASS_LD); if(newDef && DEF!=newDef) {DEF=newDef; goto normal_call; }}
 
@@ -2669,28 +2669,36 @@ typedef enum
 static inline
 Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 { size_t current_arity = ((Definition)DEF)->functor->arity;
-  if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+  int orig_current_arity = current_arity;
+  if (!(current_arity > 0)) return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
   assert(LD_no_wakeup<5); /*catch loops*/
+
+  term_t argV = h0+orig_current_arity;
+
   for( ; current_arity-->0 ; h0++)
   {   Word argAV = valTermRef(h0);
-      deRef(argAV);              
+      deRef(argAV);
       if(argAV && isAttVar(*argAV))
-      { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        if(current_functor==(functor_t)0)
-        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is missing for %s \n", predicateName(DEF)));
+      {  int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+         if(flags==0) continue; /*normal attvar*/
+         char* named = predicateName(DEF);
+         if(!IS_META(METATERM_USE_VMI)) continue; /*no vmi*/
+         atom_t current_name = ((Definition)DEF)->functor->name;        
+        if(current_name==(atom_t)0)
+        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is missing for %s \n", named));
           return DEF;
         }
-        functor_t alt_functor = getMetaOverride(argAV,current_functor, METATERM_USE_VMI PASS_LD);
-
-        if(alt_functor && alt_functor!=current_functor) 
+        functor_t alt_functor = getMetaTermOverrideForArity(current_name, orig_current_arity + 1 PASS_LD);
+        if(alt_functor && alt_functor!=current_name) 
         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
           if(altDEF)
-          {  DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is now %s -> %s\n", predicateName(DEF) , predicateName(altDEF) ));
-              return altDEF;
+          {  DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is now %s -> %s\n", named , predicateName(altDEF) ));
+             *valTermRef(argV)= current_name;
+             return altDEF;
           }
           DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: missing overriden ffunctor for metatype\n"));
         } else
-        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: no overriden ffunctor for metatype %s \n", predicateName(DEF)));
+        { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: no overriden ffunctor for metatype %s \n", named));
         }
       }        
   }
@@ -2701,33 +2709,42 @@ Definition swap_out_ffunctor(Definition DEF, term_t h0 ARG_LD )
 /* IS DISABLED RIGHT NOW (segv's sometimes) check attvar meta hooks (only the last arg is looked at though)*/
 static inline
 Definition swap_out_functor(Definition DEF, Word argV ARG_LD )
-{ if(TRUE) return DEF;
+{ // if(TRUE) return DEF;
   size_t current_arity = ((Definition)DEF)->functor->arity;
   if (!(current_arity > 0))  return DEF; /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
- 
+  int orig_current_arity = current_arity;
   assert(LD_no_wakeup<5); /*catch loops*/
   Word ARG = argV - current_arity;
+  deRef(ARG);
   for( ; current_arity-->0 ; ARG++) /* DM: How is this suppsoed to be coded?  I am assuming something wrong? */    
-  {   Word argAV = ARG;
-      *valTermRef(LD->attvar.metaterm_regs+3) = linkVal(argV);
-      deRef(argAV); 
-      if(isAttVar(*argAV))
-      { functor_t current_functor = ((Definition)DEF)->functor->functor;
-        //pushWordAsTermRef(argAV);     
-        
-        functor_t alt_functor = getMetaOverride(argAV,current_functor, METATERM_USE_VMI PASS_LD);
-        //popTermRef();
-        if(alt_functor && alt_functor!=current_functor) 
-        { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
-          if(altDEF)
-          { DEBUG(MSG_METATERM, Sdprintf("INTERP: using overriden functor for metatype"));
-              return altDEF;
+  { Word argAV = ARG;
+    if(argAV && isAttVar(*argAV))
+    {    *valTermRef(LD->attvar.metaterm_regs+3) = makeRef(argAV);
+         int flags = getMetaFlags(valTermRef(LD->attvar.metaterm_regs+3), METATERM_NO_INHERIT PASS_LD);
+         if(flags==0) continue; /*normal attvar*/
+         char* named = predicateName(DEF);
+          if(!IS_META(METATERM_USE_VMI))
+          {
+        	  DEBUG(MSG_METATERM, Sdprintf("\nCALL: functor for skipped for %s \n", named));
+        	  continue; /*no vmi*/
           }
-          DEBUG(MSG_METATERM, Sdprintf("INTERP: missing overriden functor for metatype"));
-        }
-      }        
-      /* derefing the next arg seems to segv  (so exit here) */
-     /* return DEF;*/
+          atom_t current_name = ((Definition)DEF)->functor->name;
+         if(current_name==(atom_t)0)
+         { DEBUG(MSG_METATERM, Sdprintf("\nCALL: functor missing for %s \n", named));
+           return DEF;
+         }
+         functor_t alt_functor = getMetaTermOverrideForArity(current_name, orig_current_arity + 1 PASS_LD);
+         if(alt_functor && alt_functor!=current_name)
+         { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
+           if(altDEF)
+           {  DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: ffunctor for metatype is now %s -> %s\n", named , predicateName(altDEF) ));
+              return altDEF;
+           }
+           DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: missing overriden ffunctor for metatype\n"));
+         } else
+         { DEBUG(MSG_METATERM, Sdprintf("\nFOREIGN: no overriden ffunctor for metatype %s \n", named));
+         }
+    }
   }
   return DEF;
 }

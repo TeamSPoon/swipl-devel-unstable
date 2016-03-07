@@ -47,12 +47,14 @@ COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
 
 #ifdef O_METATERM
 COMMON(int)     fvOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
-COMMON(bool)  isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
-COMMON(functor_t)  getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
+COMMON(int) 	metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD );
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
 
-COMMON(int) 	metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD );
+COMMON(functor_t) getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
+COMMON(int)       getMetaFlags(Word av, int flags ARG_LD);
+COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
+COMMON(functor_t) getMetaTermOverrideForArity(atom_t current_name, int arity ARG_LD );
 
 #endif
 

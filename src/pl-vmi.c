@@ -1636,13 +1636,11 @@ This is the common part of the call variations.  By now the following is
 true:
 
   - NFR			Points to new frame
-  - arguments		filled
+  - arguments  (ARGP)  	filled
   - DEF			filled with predicate to call
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 normal_call:
-
-
 
 
   CHECK_FV(ARGP);
@@ -1650,30 +1648,32 @@ normal_call:
 #ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
-  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",proc->dra_depth);});
-      if ( proc->dra_depth <2 )
-      { proc->dra_depth++;
-
-        Word a = argFrameP(NFR, 0);		/* get the goal */
-  
-        Word expr = gTop;
-        gTop += 3;
-        expr[0] = FUNCTOR_call2;
+  { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra= %d\n",proc->dra_depth);});
+    if ( proc->dra_depth <2 )
+    { proc->dra_depth++;
+      atom_t current_name = DEF->functor->name;
+      int current_arity = DEF->functor->arity;
+      word expr;
 #ifdef DRA_INTERP_TERM_T
-        expr[1] = linkVal(valPHandle(DEF->dra_interp));
+      expr = linkVal(valPHandle(DEF->dra_interp));
 #else
-        expr[1] = DEF->dra_interp;
+      expr = DEF->dra_interp;
 #endif        
-        expr[2] = linkVal(a);
-  
-        ARGP = argFrameP(lTop, 0);
-        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
-        NFR = lTop;
-        DEF = PROCEDURE_dwakeup1->definition;
-        setNextFrameFlags(NFR, FR);
-        goto normal_call;
+      functor_t alt_functor = getMetaTermOverrideForArity(current_name, current_arity + 2 PASS_LD);
+      if(alt_functor) 
+      { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
+        if(altDEF)
+        {  DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: ffunctor for metatype is now %s -> %s\n", predicateName(DEF) , predicateName(altDEF) ));
+           DEF = altDEF;
+           *ARGP++ = expr;
+           *ARGP++ = current_name;
+        }
+        DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: missing overriden ffunctor for metatype\n"));
+      } else
+      { DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: no overriden ffunctor for metatype %s \n", predicateName(DEF)));
       }
-  } }
+    }
+  }
 #endif
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
@@ -1723,46 +1723,28 @@ retry_continue:
 #endif
 
   if ( unlikely(LD->alerted) )
-  {					/* play safe */
+  {         /* play safe */
     lTop = (LocalFrame) argFrameP(FR, DEF->functor->arity);
 
     if ( is_signalled(PASS_LD1) )
-    { SAVE_REGISTERS(qid);
+    {
+      SAVE_REGISTERS(qid);
       handleSignals(PASS_LD1);
       LOAD_REGISTERS(qid);
       if ( exception_term )
-      { CL = NULL;
+      {
+        CL = NULL;
 
-	enterDefinition(DEF);
-					/* The catch is not yet installed, */
-					/* so we ignore it */
-	if ( FR->predicate == PROCEDURE_catch3->definition )
-	  set(FR, FR_CATCHED);
+        enterDefinition(DEF);
+        /* The catch is not yet installed, */
+        /* so we ignore it */
+        if ( FR->predicate == PROCEDURE_catch3->definition )
+          set(FR, FR_CATCHED);
 
-	THROW_EXCEPTION;
+        THROW_EXCEPTION;
       }
     }
-
-    if(0)DEBUG(MSG_DRA,{
-      if(!busy_write)
-      { busy_write = 1;
-
-          Word a = argFrameP(FR, DEF->functor->arity);
-          
-         /*Word a = argFrameP(NFR, 0); */  /* get the goal */
-         //if ( !(a = stripModule(a, &module PASS_LD)) ) THROW_EXCEPTION;
-         deRef(a);
-         Sdprintf("DRA_CALL: ");
-         term_t g = pushWordAsTermRef(a);
-         LocalFrame ot = lTop;
-         lTop += 100;
-         pl_writeln(g);
-         popTermRef();
-         lTop = ot;
-          busy_write = 0;
-          }
-         });
-
+  
 #ifdef O_PROFILE
     if ( LD->profile.active )
       FR->prof_node = profCall(DEF PASS_LD);
@@ -1793,7 +1775,7 @@ retry_continue:
 	THROW_EXCEPTION;
     }
 #endif
-
+  
 #if O_DEBUGGER
     if ( debugstatus.debugging )
     { int rc;
