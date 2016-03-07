@@ -1025,6 +1025,7 @@ PL_cons_functor_v(term_t h, functor_t fd, term_t a0)
 }
 
 
+
 int
 PL_cons_list__LD(term_t l, term_t head, term_t tail ARG_LD)
 { Word a;

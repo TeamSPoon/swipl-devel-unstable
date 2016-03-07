@@ -245,6 +245,9 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
 
 with_no_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,X+1), G, set_no_wakeup(_,X)).
 with_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,0), G, set_no_wakeup(_,X)).
+
+with_metaterm_disabled(G):-with_metaterm_disabled(global,G).
+with_metaterm_enabled(G):-with_metaterm_enabled(global,G).
 with_metaterm_disabled(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G))).
 with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled)).
 

@@ -70,10 +70,26 @@ system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 % nop/1 is for disabling code while staying in syntax
 system:nop(_).
+system:nop(_,_).
+system:nop(_,_,_).
+system:nop(_,_,_,_).
+system:nop(_,_,_,_,_).
+system:nop(_,_,_,_,_,_).
+system:nop(_,_,_,_,_,_,_).
+system:nop(_,_,_,_,_,_,_,_).
 
+system:'$metaterm_call'(A,B,C,D,E,F,G,P):- amsgc('call'(P,A,B,C,D,E,F,G)).
+system:'$metaterm_call'(A,B,C,D,E,F,P):- amsgc('call'(P,A,B,C,D,E,F)).
+system:'$metaterm_call'(A,B,C,D,E,P):- amsgc('call'(P,A,B,C,D,E)).
+system:'$metaterm_call'(A,B,C,D,P):- amsgc('call'(P,A,B,C,D)).
+system:'$metaterm_call'(A,B,C,P):- amsgc('call'(P,A,B,C)).
+system:'$metaterm_call'(A,B,P):- amsgc('call'(P,A,B)).
+system:'$metaterm_call'(A,P):- trace, amsgc('call'(P,A)).
+
+amsgc(C):-amsg(C),with_metaterm_disabled(C).
 
 amsg(G):- notrace(
-   ignore((current_prolog_flag(dmiles,true),
+   ignore(( % current_prolog_flag(dmiles,true),
            with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))))).
 
@@ -177,7 +193,6 @@ system:metaterm_unify(att(Module, AttVal, Rest), Atom, Var, Value ):- !,
      metaterm_unify(Rest, Atom, Var, Value).
 
 system:metaterm_unify(_,_Atom,_Var,_Value).
-
 
      /*******************************
      *   C POST UNIFY HOOK	*

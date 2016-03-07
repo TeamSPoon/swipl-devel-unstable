@@ -423,6 +423,7 @@ struct PL_local_data
     term_t  metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_current; /* flags for current matts () */
     functor_t  metaterm_override[256]; /* flags for current matts () */
+    functor_t  metaterm_never_override[256]; /* flags for current matts () */
 #endif
   } attvar;
 #endif
