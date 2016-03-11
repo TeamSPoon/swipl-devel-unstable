@@ -119,7 +119,7 @@ code into functions.
 #endif
 
 
-#define unDEFinded(DEF)  (!DEF  || ( !DEF->impl.any && false(DEF, PROC_DEFINED)))
+#define unDEFinded(DEF)  (!DEF  || (FALSE && !DEF->impl.any && false(DEF, PROC_DEFINED)))
 
 		 /*******************************
 		 *	    DEBUGGING		*
@@ -1651,7 +1651,7 @@ normal_call:
   /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
   size_t orig_arity = ((Definition)DEF)->functor->arity;
   int now_arity = orig_arity;
-  if ( orig_arity > 0 && orig_arity <= 255 )
+  if ( !isNeverOverriden(current_name,orig_arity, ((Definition)DEF)->functor->functor PASS_LD) )
   {
     assert(LD_no_wakeup<5); /*catch loops*/
     if ( current_name == ATOM_dmetaterm_call ) goto as_normal;
@@ -1690,7 +1690,7 @@ normal_call:
         functor_t alt_functor = getMetaOverride(argAV, current_name, METATERM_USE_VMI PASS_LD);
         if(alt_functor==0)
         { generic_dmetaterm_call++;
-          continue;
+          alt_functor = PL_new_functor(ATOM_dmetaterm_call, now_arity);
         }
 
         if ((alt_functor == ((Definition)DEF)->functor->functor ) )
@@ -1784,59 +1784,66 @@ as_wakeup:
       goto as_normal; 
     }
 
-    int cells = orig_arity+ BIND_GLOBAL_SPACE;
+    int cells = 1+orig_arity+ BIND_GLOBAL_SPACE;
     if (!( gTop+cells <= gMax && tTop+BIND_TRAIL_SPACE <= tMax ))
     { DEBUG(0, Sdprintf("\n NORMAL_CALL: WAITING FOR SPACE \n"));
       goto as_normal; 
     }
-
+    // is(X,Y) -> $metaterm_call(is,X,Y);
     SAVE_REGISTERS(qid);
-    if ( push_frame_to_wakeup(ATOM_dmetaterm_call,DEF,NFR) != TRUE )
-    { DEBUG(0, Sdprintf("\n NORMAL_CALL: NO SPACE FOR GOAL! \n"));
-
+    Word frameWord = frame_to_consP(2,now_arity,NFR);
+    if(frameWord==0)
+    { DEBUG(0, Sdprintf("\n NORMAL_CALL: NO SPACE FOR GOAL! \n"));    
       LOAD_REGISTERS(qid);
       goto as_normal;
     }
-
+    alt_functor = PL_new_functor(ATOM_call,orig_arity+1);
+    frameWord[0] = alt_functor;
+    frameWord[1] = altDEF->functor->name;
+    scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
     LOAD_REGISTERS(qid);
     DEF = nopDEF;
     goto as_normal;
 }
 
-
-as_normal:
 #endif /*O_METATERM*/
 
 #ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
-  { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
+  {
+    DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
     if ( proc->dra_depth <2 )
-    { proc->dra_depth++;
-      atom_t current_name = DEF->functor->name;
+    {
+      proc->dra_depth++;
       int orig_arity = DEF->functor->arity;
       word expr;
-#ifdef DRA_INTERP_TERM_T
+  #ifdef DRA_INTERP_TERM_T
       expr = linkVal(valPHandle(DEF->dra_interp));
-#else
+  #else
       expr = DEF->dra_interp;
-#endif        
-      functor_t alt_functor = getMetaTermOverrideForArity(current_name, orig_arity + 2 PASS_LD);
-      if(alt_functor) 
-      { Definition altDEF = lookupDefinition(alt_functor,resolveModule(0));
-        if(altDEF)
-        {  DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: functor for metatype is now %s -> %s\n", predicateName(DEF) , predicateName(altDEF) ));
-           DEF = altDEF;
-           *ARGP++ = expr;
-           *ARGP++ = current_name;
-        }
-        DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: missing overriden functor for metatype\n"));
-      } else
-      { DEBUG(MSG_DRA, Sdprintf("\nDRA_TABLING: no overriden functor for metatype %s \n", predicateName(DEF)));
+  #endif        
+      SAVE_REGISTERS(qid);
+      Word frameWord = frame_to_consP(1, orig_arity, NFR);
+      if ( frameWord==0 )
+      {
+        DEBUG(0, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));    
+        LOAD_REGISTERS(qid);
+        goto as_normal;
       }
+      frameWord[0] = expr;
+      int callargs = orig_arity+1;
+      functor_t alt_functor = PL_new_functor(ATOM_call,orig_arity+1);
+      DEF = lookupDefinition(alt_functor,resolveModule(0));
+      *PC = callargs;
+      VMI_GOTO(I_USERCALLN);
+      /*    goto normal_call;*/
     }
   }
 #endif /*O_DRA_TABLING*/
+
+as_normal:
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -1847,6 +1854,8 @@ not worthwile.
 Note: we are working above `lTop' here!!   We restore this as quickly as
 possible to be able to call-back to Prolog.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+
   NFR->parent         = FR;
   NFR->predicate      = DEF;		/* TBD */
   NFR->programPointer = PC;		/* save PC in child */

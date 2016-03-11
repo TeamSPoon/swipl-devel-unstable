@@ -2661,40 +2661,32 @@ typedef enum
 	NEXT_INSTRUCTION;
 
 
-static int
-push_frame_to_wakeup(atom_t head, Definition def, LocalFrame frame)
+static Word
+frame_to_consP(int pre, int arity, LocalFrame frame)
 { GET_LD
 
-  int argc = def->functor->arity;
   Word argv = argFrameP(frame, 0);
-
   Word t, argp;
-  assert ( argc > 0 );
-  int alloc = 1+argc+1;
+  int alloc = pre+arity;
 
   { int rc;				/* TrailAssignment() */
     if ( (rc=ensureGlobalSpace(alloc, ALLOW_NOTHING)) != TRUE )
     {
-       return raiseStackOverflow(rc);
+       raiseStackOverflow(rc);
+       return NULL;
     }     
   }
-
   int i;
   argp = t = gTop;
   gTop += alloc;
-
-  *argp++ = PL_new_functor(head, argc+1);
-
-  for(i=0; i<argc; i++)
+  argp += pre;
+  for(i=0; i<arity; i++)
   { Word a;
     deRef2(argv+i, a);
     *argp++ = (needsRef(*a) ? makeRef(a) : *a);
   }
 
-  *argp++ = def->functor->name;
-
-  scheduleWakeup(consPtr(t, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-  return TRUE;
+  return t;
 }
 
 int
