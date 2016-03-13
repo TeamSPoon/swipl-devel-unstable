@@ -81,7 +81,9 @@ expansion.
 	user:goal_expansion/4.
 
 :- meta_predicate
-	expand_terms(4, +, ?, -, -).
+	expand_terms(4, +, ?, -, -),
+    expand_term_list(4, +, +, -, -). % reduces check/0 complaints
+
 
 %%	expand_term(+Input, -Output) is det.
 %%	expand_term(+Input, +Pos0, -Output, -Pos) is det.

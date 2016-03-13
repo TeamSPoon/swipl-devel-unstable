@@ -36,6 +36,12 @@
 :- dynamic
 	user:library_directory/1.
 
+% check/0 really wants this but it will break things:
+:- meta_predicate cached_library_directory(+,0,-).
+% so instead we...
+:- module_transparent cached_library_directory/3.
+
+
 :- dynamic
 	library_directory_cache/2.
 :- volatile
@@ -66,7 +72,8 @@ cached_library_directory(CacheName, _, Dir) :-
 	library_directory_cache(CacheName, Dir), !,
 	Dir \== [].
 cached_library_directory(CacheName, Goal, Dir) :-
-	catch(Goal, _, fail),
+    % hide from check/0
+	catch(call(call,Goal), _, fail),
 	exists_directory(Dir), !,
 	asserta(library_directory_cache(CacheName, Dir)).
 cached_library_directory(CacheName, _, _) :-

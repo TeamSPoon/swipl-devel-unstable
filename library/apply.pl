@@ -79,6 +79,26 @@ members of a list.
 	scanl(5, +, +, +, +, -),
 	scanl(6, +, +, +, +, +, -).
 
+% check/0 insists! (so we belive it in some cases)
+:- meta_predicate
+      scanl_(+, 3, ?, -), 
+      scanl_(+, +, 4, ?, -), 
+      scanl_(+, +, +, 5, ?, -), 
+      scanl_(+, +, +, +, 6, ?, -),
+      partition_(+, +, 2, +, + ,+ , -),
+      partition_(+, 2, +, +, -), 
+      partition_(+, 1, +, -), 
+      include_(+, 1, -), 
+      foldl_(+, 3, ?, -), 
+      foldl_(+, +, 4, ?, -), 
+      foldl_(+, +, +, 5, ?, -), 
+      foldl_(+, +, +, +, 6, ?, -), 
+      exclude_(+, 1, -), 
+      maplist_(?,1),
+      maplist_(?,?,2),
+      maplist_(?,?,?,3),
+      maplist_(?,?,?,?,4).
+
 
 %%	include(:Goal, +List1, ?List2) is det.
 %

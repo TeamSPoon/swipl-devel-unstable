@@ -44,6 +44,11 @@
 :- meta_predicate
 	meta_options(1, :, -).
 
+% check/0 insists! (so we belive it in some cases)
+:- meta_predicate
+        meta_option(?, 1, ?, -),
+        meta_options(?, 1, ?, -).
+
 /** <module> Option list processing
 
 The library(option) provides some utilities for processing option lists.

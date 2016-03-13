@@ -104,6 +104,10 @@ map_bits(Pred, ?(Name), Old, Old) :- !,	% ask a bit
 map_bits(_, Term, _, _) :-
 	'$type_error'('+|-|?(Flag)', Term).
 
+% check/0 insists (so we belive it in some cases)
+:- meta_predicate
+	bit(2,+,-).
+
 bit(Pred, Name, Bits) :-
 	call(Pred, Name, Bits), !.
 bit(_:Pred, Name, _) :-

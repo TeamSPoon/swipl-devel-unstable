@@ -45,6 +45,10 @@
 	bagof(?, ^, -),
 	setof(?, ^, -).
 
+:- meta_predicate findnsols_loop(*,*,0,*,*).
+:- meta_predicate findall_loop(*,0,*,*).
+
+
 :- noprofile((
 	findall/4,
 	findall/3,

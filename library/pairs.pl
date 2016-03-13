@@ -37,6 +37,9 @@
 	    map_list_to_pairs/3
 	  ]).
 
+% check/0 insists! (so we belive it in some cases)
+:- meta_predicate map_list_to_pairs2(+,2,+).
+
 /** <module> Operations on key-value lists
 
 This module implements common operations on  Key-Value lists, also known

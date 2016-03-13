@@ -341,7 +341,7 @@ walk_called_by_body(Body, Module, OTerm) :-
 	format(user_error, 'Failed to analyse:~n', []),
 	portray_clause(('<head>' :- Body)),
 	(   debugging(codewalk(trace))
-	->  gtrace,
+	->  call(catch,gtrace,E,throw(E)), % supress or correct check/0 warnings (and belive those warnings in some cases)
 	    walk_called_by_body(Body, Module, OTerm)
 	;   true
 	).
