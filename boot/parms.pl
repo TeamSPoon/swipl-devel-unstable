@@ -36,9 +36,9 @@
 :- dynamic
 	user:library_directory/1.
 
-% check/0 really wants this but it will break things:
-:- meta_predicate cached_library_directory(+,0,-).
-% so instead we...
+% check/0 really wants this:
+% :- meta_predicate cached_library_directory(+,0,-).
+%  but it would break break things so instead we...
 :- module_transparent cached_library_directory/3.
 
 
