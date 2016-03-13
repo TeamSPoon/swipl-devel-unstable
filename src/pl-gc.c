@@ -1280,7 +1280,7 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
   Word gKeep = (LD->frozen_bar > m->globaltop ? LD->frozen_bar : m->globaltop);
 
 #ifdef O_UNDO_HOOK
-       if(!metaterm_did_undo("GCTrailEntry", te, 0, 0  PASS_LD))   ;
+       /*if(!metaterm_did_undo("GCTrailEntry", te, 0, 0  PASS_LD))   ;*/
 #endif
 
   for( ; te >= tm; te-- )		/* early reset of vars */
@@ -1292,7 +1292,7 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
       if ( tard >= top || (tard >= gKeep && tard < gMax) )
       {
 #ifdef O_UNDO_HOOK
-       if(!metaterm_did_undo("te-tard", te, 0, tard  PASS_LD))   ;
+       /*if(!metaterm_did_undo("te-tard", te, 0, tard  PASS_LD))   ;*/
 #endif
         te->address = 0;
 	te--;
@@ -1320,7 +1320,7 @@ early_reset_vars(mark *m, Word top, GCTrailEntry te ARG_LD)
       } else
       { Word gp = val_ptr(te->address);
 #ifdef O_UNDO_HOOK
-          if(!metaterm_did_undo("Early reset", te, 0, gp  PASS_LD))   ;
+          /*if(!metaterm_did_undo("Early reset", te, 0, gp  PASS_LD))   ;*/
 #endif
 	DEBUG(MSG_GC_RESET,
 	      char b1[64]; char b2[64]; char b3[64];

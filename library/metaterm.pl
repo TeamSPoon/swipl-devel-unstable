@@ -26,11 +26,53 @@
     invalidate any other reasons why the executable file might be covered by
     the GNU General Public License.
 */
-:- module(metaterm,[memory_var/1,memberchk_same_q/2,
-   lv/0,
+:- module(metaterm,[
+   with_prolog_debug/2,
+   w_dt/1,
+   var_info/1,
+   v1/2,
+   use_unify_vp/1,
+   use_unify_var/1,
    use_unify_var/0,
+   use_h_var/1,
+   use_cons_val/1,
+   use_bind_const/1,
+   use_barg_var/1,
+   tst_ft/1,
+   termfilter/2,
+   term_copier_filter/2,
+   term_copier_filter/1,
+   term_copier/1,
+   show_var/2,
+   show_var/1,
+   set_unifyp/2,
+   set_prolog_nodebug/1,
+   set_prolog_debug/1,
+   run_b_test/1,
+   rtrace_each/1,
+   print_var/1,
+   override_none/1,
+   override_all/1,
    no_bind/1,
+   nb_var/2,
+   nb_var/1,
+   must_ts_det/1,
+   must_ts/1,
+   metaterm_call/2,
+   memory_var/1,
+   memory_fluent/1,
+   maplist_local/2,
+   make_list_with_element/3,
+   lv/0,
    llv/0,
+   label_sources/2,
+   label_sources/1,
+   global_or_var/2,
+   enter_debug/1,
+   do_test_type/1,
+   dbg_list/1,
+   counter_var/1,
+
   anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
 
 :- multifile(atts:metaterm_type/1).
@@ -283,6 +325,11 @@ nb_var(N, V):- source_fluent(V), nb_linkval(N,V),put_attr(V,nb_var,N),nb_linkval
 
 :-'$debuglevel'(_,0).
 
+system:push_current_source_module(M):- prolog_load_context(module,SM),asserta('$source_context':'$c_source_context'(SM)),'$set_source_module'(M).
+system:pop_current_source_module:- retract('$source_context':'$c_source_context'(SM)),'$set_source_module'(SM).
+
+:- push_current_source_module(user).
+
 
 ab(a1,b1).
 ab(a2,b2).
@@ -305,6 +352,8 @@ equals0(b3,y3).
 
 
 q(A,B):-ab(A,B),xy(A,B).
+
+:- pop_current_source_module.
 
 %% set_unifyp(+Pred,?Fluent) is det.
 %
@@ -336,7 +385,7 @@ label_sources(A,B):-label_sources(A),label_sources(B).
 label_sources( Fluent):- get_attr(Fluent,unifyp,binding(_,Fluent,Value)),!,attv_bind(Fluent,Value).
 label_sources(_Fluent):-!.
 
-lv:- metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
+lv:- user: ((metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))))).
 llv:- set_prolog_flag(dmiles,true),user:reconsult(library(metaterm)), metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
 lv2:- put_atts(X,[+use_unify_var]),X=_.
 
@@ -443,6 +492,27 @@ t123(X):- print_var(xbefore=X),L=link_term(X,Y,Z),dmsg(before=L),
 
 maplist_local(G,List):-List==[]->!;(List=[H|T],must_ts(call(G,H)),maplist_local(G,T)).
 
+
+:- meta_predicate w_dt(0).
+w_dt(G):- 
+  % undo(exit_debug), 
+  setup_call_cleanup_each(enter_debug(4),G,exit_debug).
+
+
+% dbg_list([]):-!.
+% dbg_list(['MSG_WAKEUPS','MSG_METATERM','MSG_CONTINUE','MSG_ATTVAR_GENERAL']). 
+dbg_list(['MSG_WAKEUPS','MSG_METATERM','MSG_CONTINUE','MSG_ATTVAR_GENERAL','MSG_CUT','MSG_CLEANUP','MSG_DRA','MSG_THROW','MSG_CALL','MSG_TRACE','MSG_VMI']).
+enter_debug(N):-notrace(('$debuglevel'(_,0),dbg_list(Lst),!,maplist(set_prolog_debug,Lst),'$debuglevel'(_,N))).
+exit_debug:-notrace(('$debuglevel'(_,0),set_prolog_nodebug('MSG_VMI'),dbg_list(Lst),!,maplist(set_prolog_nodebug,Lst))).
+
+
+% setting these flags in debugging so we can remember to turn them off/on with list_debug_topics/0.
+set_prolog_debug(M):-  ignore(retract(prolog_debug:debugging(M, false,[user_error]))),prolog_debug(M),retractall(prolog_debug:debugging(M,_,_)),assert(prolog_debug:debugging(M, true,[user_error])).
+set_prolog_nodebug(M):- ignore(retract(prolog_debug:debugging(M, true,[user_error]))),prolog_nodebug(M),retractall(prolog_debug:debugging(M, _,_)),assert(prolog_debug:debugging(M, false,[user_error])).
+
+:- meta_predicate with_prolog_debug(+,0).
+with_prolog_debug(M,G):- setup_call_cleanup_each(set_prolog_debug(M),G,set_prolog_nodebug(M)).
+
 :- debug(fluents).
 
 var_info(V):- wno_dmvars(show_var(V)).
@@ -487,9 +557,9 @@ use_h_var(Var):- global_or_var(Var, +use_h_var).
 use_cons_val(Var):- global_or_var(Var, +use_cons_val).
 use_barg_var(Var):- global_or_var(Var, +use_barg_var).
 
-use_unify_var:- global_or_var(global,+use_unify_var+use_vmi).
+use_unify_var:- global_or_var(global,+use_unify_var-use_vmi).
 noeagerly:- override_none.
-source_fluent:- global_or_var(global,+source_fluent+use_vmi).
+source_fluent:- global_or_var(global,+source_fluent-use_vmi).
 pass_ref:- global_or_var(global,+source_fluent).
 override_none(Var):-  global_or_var(Var,-metaterm_override_usages_mask).
 override_all(Var):-  global_or_var(Var,+metaterm_override_usages_mask).

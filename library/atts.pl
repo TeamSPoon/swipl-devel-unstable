@@ -34,49 +34,91 @@
 */
 
 :- module(atts,[
-      matts/0,
-      testfv/0,
-      w_debug/1,
-      undo/1,
-      w_dmvars/1,
-      w_hooks/1,
-      wi_atts/2,
-      wno_hooks/2,
-      wno_debug/1,
-      ensure_meta/1,
+      wno_hooks/2,wno_hooks/1,
       wno_dmvars/1,
-      wno_hooks/1,
-      export_all/0,
-      % TODO remove  above before master
-      'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
-      add_attr/3,
-      any_to_fbs/2,
-      has_hooks/1,
-      matts/1,
-      matts/2,
-      copy_var/1,
-      metaterm_getval/2,
+      wno_debug/1,
+      wnmt/1,
+      wi_atts/2,
+      wd/1,
+      was_tracing/1,
+      was_access_level_atts/1,
+      w_hooks/1,
+      w_dmvars/1,
+      w_debug/1,
+      unify_val/2,
+      undo/1,
+      testfv/0,
+      swap_args/3,
+      source_fluent/1,sink_fluent/1,empty_fluent/1,
+      set_metaflags/1,
+      set_dict_attvar_reader/1,
+      set_as/4,
+      put_atts/3,
+      new_meta_attribute/3,
+      new_meta/2,
+      new_attribute/2,
+      nb_extend_list/2,
       metaterm_setval/2,
       metaterm_push/2,
       metaterm_pop/2,
-      meta/1,
-      source_fluent/1,sink_fluent/1,empty_fluent/1,
+      metaterm_override/3,
       metaterm_override/2,
-      add_attribute/2,
-      %add_attribute/3,
-      get_attribute/2,
-      %get_attribute/3,
-      get_metaflags/1,
-      set_metaflags/1,
-      merge_fbs/3,
-      new_meta/2,
-      fbs_to_number/2,
-      'meta_attribute'/2,
-      set_dict_attvar_reader/1,
+      metaterm_handler_name/1,
+      metaterm_getval/2,
       metaflag_unset/2,
       metaflag_set/2,
-      dict_to_attvar/1,attvar_to_dict/2,
-      dict_to_attvar/2]).
+      metaflag_get/2,
+      meta/1,
+      merge_fbs/3,
+      matts/2,
+      matts/1,
+      matts/0,
+      make_metaterm_override/2,
+      is_metaterm_att/1,
+      has_hooks/1,
+      get_metaflags/1,
+      get_handler/4,
+      get_attribute/3,
+      get_attribute/2,
+      fvi_set/2,
+      fvi_push/2,
+      fvi_pop/2,
+      fvi_get/2,
+      fbs_to_number/2,
+      fbs_for_hooks_default/1,
+      export_all/0,
+      exec_atts_put/4,
+      ensure_meta/1,
+      dskip/5,dskip/4,dskip/3,dskip/2,dskip/1,
+      dshowf/4,dshowf/3,dshowf/2,dshowf/1,
+      dshow/4,dshow/3,dshow/2,dshow/1,
+      do_metaterm_hook/4,
+      debug_hooks/1,
+      copy_var/1,
+      contains_fbs/2,
+      compare_to_retcode/2,
+      check/1,
+      atts_tmpl/2,
+      atts_put/4,
+      atts_modulize/4,
+      atts_module/2,
+      atts_get/3,
+      atts_exist/2,
+      attrs_val/2,
+      attrs_to_pairs/2,
+      attrs_to_atts/3,
+      as_handler/2,
+      any_to_fbs/2,
+      add_attribute/3,
+      add_attribute/2,
+      add_attr/3,
+      'meta_attribute'/2,
+      'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
+      %get_attribute/3,
+      %add_attribute/3,
+      % TODO remove some of above before master
+      attvar_to_dict/2,dict_to_attvar/1,dict_to_attvar/2]).
+
 
 :- meta_predicate('meta_attribute'(+,:)).
 :- meta_predicate(get_atts(+,:)).
@@ -1085,7 +1127,7 @@ metaterm_overriding(X,'$undo_unify',Z).
 
 
 % ?- metaterm_overide(X,print(X),(writeln('You wanted to print X'))), print(X).
-% ?- metaterm_overide(X,==(_,_),same_thing(
+% ?- metaterm_overide(X,==(_,_),same_thing(.......))
 
 system:pointers(X,Y):- dmsg(pointers(X,Y)).
 
@@ -1141,14 +1183,24 @@ wd(X):-  prolog_debug('MSG_WAKEUPS'),prolog_debug('MSG_VMI'), call_cleanup(X,wd)
 % put_att_value(&gp[1],ATOM_true,makeRefL( valTermRef(id)));
 
 :- module_transparent(export_all/0).
-export_all:- source_location(S,_),prolog_load_context(module,M),
+export_all:- 
+ source_location(S,_),prolog_load_context(module,M),
  forall(source_file(M:H,S),
  ignore((functor(H,F,A),
    \+ predicate_property(M:H,imported_from(_)),
-   \+ arg(_,[attr_unify_hook/_,metaterm_unify_hook/_,verify_attributes/_,metaterm_unify_hook/_,'$pldoc'/4,'$mode'/2,attr_portray_hook/_,attribute_goals/_],F/A),
+   add_never_overriden(H),
+   \+ arg(_,v(attr_unify_hook/_,metaterm_unify_hook/_,verify_attributes/_,metaterm_unify_hook/_,'$pldoc'/4,'$mode'/2,attr_portray_hook/_,attribute_goals/_),F/A),
    \+ atom_concat('_',_,F),
-   ignore(((\+ atom_concat('$',_,F),M:export(F/A),nop(writeln(M:export(F/A))),user:import(M:F/A)))),
-   ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A)))))).
+   ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A))),
+   \+ atom_concat('$',_,F),
+   module_property(M,exports(L)),
+   \+ memberchk(F/A,L),
+   M:export(F/A),
+   user:import(M:F/A),
+   A\==0,   
+   nop((writeq(F/A),writeln(',')))))).
+
+ 
 
 
 

@@ -104,6 +104,21 @@ code into functions.
 #define END_SHAREDVARS   }
 
 
+/* for Intellisense */
+#include "pl-incl.h"
+/* the above doent break the build becasue it was included already*/
+#ifdef INTELLISENSE_PARSER
+
+#define VMI(A,B,C,D) static int INST_ ##  A ()
+#define BEGIN_SHAREDVARS static
+#define END_SHAREDVARS   
+static Code PC;
+static Word ARGP;
+static Definition DEF;
+#endif /*INTELLISENSE_PARSER*/
+
+
+
 		 /*******************************
 		 *	 ATTRIBUTED VARS	*
 		 *******************************/
@@ -119,7 +134,7 @@ code into functions.
 #endif
 
 
-#define unDEFinded(DEF)  (!DEF  || (FALSE && !DEF->impl.any && false(DEF, PROC_DEFINED)))
+#define unDEFined(DEF)  (!DEF  || (FALSE && !DEF->impl.any && false(DEF, PROC_DEFINED)))
 
 		 /*******************************
 		 *	    DEBUGGING		*
@@ -1038,17 +1053,14 @@ VMI(B_ARGVAR, 0, 1, (CA1_VAR))
       NEXT_INSTRUCTION;
     }
     if ( METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
-    {
-      ARGP++;
+    { ARGP++;
       NEXT_INSTRUCTION;
     }
     *ARGP++ = makeRefG(k);	/* both on global stack! */
 #ifdef O_ATTVAR
   } else if ( isAttVar(*k) )
-  {
-    if (FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
-    {
-      ARGP++;
+  { if (FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
+    { ARGP++;
       NEXT_INSTRUCTION;
     }
     *ARGP++ = makeRefG(k);
@@ -1644,87 +1656,91 @@ true:
 normal_call:
 
 #ifdef O_METATERM
+#define DEBUG_TRAP(WHY, CODE) if (debugstatus.tracing) {  trap_gdb(); prolog_debug_from_string(#WHY, TRUE);  CODE ; }	
+#define SHOW_IF_FALSE(CODE) if(!CODE) Sdprintf(#CODE " = FALSE");
   {}
-  Definition altDEF = NULL;
-  functor_t alt_functor;
-  atom_t current_name = ((Definition)DEF)->functor->name;
-  /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-  size_t orig_arity = ((Definition)DEF)->functor->arity;
-  int now_arity = orig_arity;
-  if ( !isNeverOverriden(current_name,orig_arity, ((Definition)DEF)->functor->functor PASS_LD) )
-  {
-    assert(LD_no_wakeup<5); /*catch loops*/
-    if ( current_name == ATOM_dmetaterm_call ) goto as_normal;
-    char* named = predicateName(DEF);
-    if ( current_name==(atom_t)0 )
-    {
-      DEBUG(0, Sdprintf("\n METATERM_CALL: functor missing for %s \n", named));
-      goto as_normal;
-    }
-    Word ARG = argFrameP(NFR, 0);
-    int metaterms_present = 0;
-    int generic_dmetaterm_call = 0;
+	atom_t orig_name = ((Definition)DEF)->functor->name;
+	if (orig_name == ATOM_dmetaterm_callp) goto as_normal;
+	if (orig_name == ATOM_dmetaterm_call) goto as_normal;
 
-    /*Word ARG = lTop; //ARGP - (orig_arity+1);*/
-    for ( ; orig_arity-->0 ; ARG++ ) /* DM: How is this suppsoed to be coded?  I am assuming something wrong? */
-    {
-      Word argAV = ARG;
+    /*if (orig_name == ATOM_call) goto as_normal;
+*/
+
+  Definition altDEF = NULL;
+  Word alt_var = NULL;
+	int alt_argNum = 0;
+  functor_t alt_functor;
+	functor_t current_functor = ((Definition)DEF)->functor->functor;
+  /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
+	int orig_arity = ((Definition)DEF)->functor->arity;
+	int alt_arity = orig_arity;
+	int slack = 0;
+	if ((!isNeverOverriden(orig_name, orig_arity, current_functor PASS_LD)) && (METATERM_USE_VMI & METATERM_ENABLED))
+  { assert(LD_no_wakeup<5); /*catch loops*/
+    Word ARG = argFrameP(NFR, 0);
+		int metaterm_overrides_present = 0;
+		int metaterms_disabled = 0;
+    int generic_dmetaterm_call = 0;
+	  int orig_arg = 0;
+	  char* named = predicateName(DEF);
+      int temp_arity = orig_arity;
+	  for (; temp_arity --> 0; ARG++) 
+    { Word argAV = ARG;
+	    orig_arg++;
       deRef(argAV);
       if ( argAV && isAttVar(*argAV) )
-      {
-        int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+      { int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
         if ( flags==0 ) continue; /*normal attvar*/
 
         if ( !IS_META(METATERM_USE_VMI) )
-        { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: functor for skipped for %s \n", named));
+				{ 	DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: non-vmi durring %s \n", named));
           continue; /*no vmi*/
         }
 
-        if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLED) )
-        { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: functor for skipped for disabled metaterm %s \n", named));
-          continue; /* disabled */
-        }
-
-        metaterms_present++;
+		metaterm_overrides_present++;       
+		word alt_functor = getMetaOverride(argAV, current_functor, METATERM_USE_VMI PASS_LD);
        
-        functor_t alt_functor = getMetaOverride(argAV, current_name, METATERM_USE_VMI PASS_LD);
         if(alt_functor==0)
         { generic_dmetaterm_call++;
-          alt_functor = PL_new_functor(ATOM_dmetaterm_call, now_arity);
+	      alt_arity = orig_arity + 1;
+	      alt_functor = PL_new_functor(ATOM_dmetaterm_callp, alt_arity);
+	    } else if (alt_functor == current_functor || alt_functor == orig_name)
+		{ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
+	      DEBUG_TRAP(MSG_METATERM, alt_functor = getMetaOverride(argAV, current_functor, METATERM_USE_VMI PASS_LD));
+		  metaterm_overrides_present--;
+		  continue;		      
         }
 
-        if ((alt_functor == ((Definition)DEF)->functor->functor ) )
-        { DEBUG(0, Sdprintf("\n METATERM_CALL: not overriden functor for metatype %s \n", named));
-          continue;
+	    if (IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR))
+		{ metaterms_disabled++;
+			DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: functor for skipped for disabled metaterm %s \n", named));
+		  continue; /* disabled */
         }
 
         Definition maybeAltDef = lookupDefinition(alt_functor,resolveModule(0));
-
-        if ( unDEFinded(maybeAltDef)  )
-        { DEBUG(0, Sdprintf("\n METATERM_CALL: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
+        if ( unDEFined(maybeAltDef)  )
+		{ DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
           continue;
         }
         if ( altDEF != NULL && altDEF != maybeAltDef )
-        { DEBUG(0, Sdprintf("\n METATERM_CALL: %s Uneeded %s -> %s\n", named , predicateName(maybeAltDef) , predicateName(altDEF) ));
+        { DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_CALL: %s Uneeded %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
           continue;
         }
-
+	    alt_argNum = orig_arg;
+	    alt_var = argAV;
         altDEF = maybeAltDef;
       }
    }
 
-    if ( !metaterms_present )
-    {
-      /*DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: %s \n", named));*/
+	if (!metaterm_overrides_present)
+    { /*DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: %s \n", named));*/
       goto as_normal;
     }
     if ( altDEF==NULL && generic_dmetaterm_call )
-    {
-      alt_functor = PL_new_functor(ATOM_dmetaterm_call, now_arity);
+    { alt_functor = PL_new_functor(ATOM_dmetaterm_callp, alt_arity);
       altDEF = lookupDefinition(alt_functor,resolveModule(0));
-      if ( unDEFinded(altDEF) )
-      {
-        DEBUG(0, Sdprintf("\n METATERM_CALL: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
+      if ( unDEFined(altDEF) )
+      { DEBUG(0, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
         goto as_normal;
       }
     }
@@ -1732,66 +1748,86 @@ normal_call:
     if ( altDEF == NULL ) goto as_normal;
 
     if ( altDEF && altDEF != DEF )
-    {
-      //  SAVE_REGISTERS(qid);
+    { //  SAVE_REGISTERS(qid);
       //  altDEF = getProcDefinedDefinition(altDEF PASS_LD);
       //  LOAD_REGISTERS(qid);
       if ( ! METATERM_ENABLED )
-      {
-        DEBUG(0, Sdprintf("\n WARN METATERM_CALL: DISABLED %s -> %s\n", named , predicateName(altDEF) ));
+	    {   DEBUG(0, Sdprintf("\n WARN METATERM_CALL: DISABLED %s -> %s\n", named, predicateName(altDEF)));
         goto as_normal;
       }
-      if ( true(altDEF, P_VARARG) )
-      {
-        DEBUG(0, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n current_name=%s\n", named , predicateName(altDEF),atom_summary(current_name, 50)));           
+	    else if (true(altDEF, P_VARARG))
+	    {  DEBUG(0, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n current_functor=%s\n", named, predicateName(altDEF), atom_summary(current_functor, 50)));           
         goto as_wakeup;
       }
-      if ( true(altDEF, P_FOREIGN) )
-      {
-        DEBUG(0, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n current_name=%s\n", named , predicateName(altDEF),atom_summary(current_name, 50)));           
+	    else if (true(altDEF, P_FOREIGN))
+	    {  DEBUG(0, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n current_functor=%s\n", named, predicateName(altDEF), atom_summary(current_functor, 50)));           
         goto as_wakeup;
       }
-      DEBUG(0, Sdprintf("\n METATERM_CALL: functor %s for metatype is now %s \n current_name=%s\n", named , predicateName(altDEF),atom_summary(current_name, 50)));
+	    slack = orig_arity - alt_arity;
+	    if(slack <=0)
+	    {  DEBUG(0, Sdprintf("\n METATERM_CALL: functor %s for metatype is now %s \n current_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_name, 50)));
       DEF = altDEF;
-      assert(isAtom(current_name));
-      *ARGP++ = current_name;
       goto as_normal;
+	    } 
+	    else 
+	    {  goto as_wakeup;
+	  }
     } else
-    {
-      goto as_normal;    
+    {  goto as_normal;    
     }
   }
   goto as_normal;
 
+/* 
+   Adds the next instruction to the wakeup list and replaces this with nop/N
+   Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N 
+   
+  */
 as_wakeup:
 {
-    //if ( unDEFinded( altDEF )) goto as_normal;
+    //if ( unDEFined( altDEF )) goto as_normal;
     // nop out this call
-    if ( !METATERM_ENABLED ) goto as_normal;
+	if (!METATERM_ENABLED)
+	{ DEBUG(0, Sdprintf("\n METATERM_GLOBALLY_DISABLED %s \n current_functor=%s\n", predicateName(DEF), predicateName(altDEF)));
+		
+		SHOW_IF_FALSE(!(METATERM_CURRENT & METATERM_DISABLED));
+		SHOW_IF_FALSE((LD->IO.portray_nesting < 1));
+		SHOW_IF_FALSE((LD->autoload_nesting < 1));
+		if (exception_term) 
+		{ SHOW_IF_FALSE(!(exception_term));
+			SHOW_IF_FALSE(isVar(*valTermRef(exception_term)));
+		}
+	   goto as_normal;
+	}
+
     if ( altDEF != NULL )
-    { now_arity = ((Definition)altDEF)->functor->arity;
+  { alt_arity = ((Definition)altDEF)->functor->arity;
     } 
-    functor_t nop_functor = PL_new_functor(ATOM_nop, now_arity);
+  functor_t nop_functor = PL_new_functor(ATOM_nop, alt_arity);
     Definition nopDEF = lookupDefinition(nop_functor,resolveModule(0));
     if ( nopDEF==DEF ) goto as_normal;
-    if ( unDEFinded(nopDEF) )
+  if ( unDEFined(nopDEF) )
     { DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: MISSING NOP \n"));
       goto as_normal; 
     }
 
-    if (unDEFinded(PROCEDURE_dwakeup1->definition))
+  if (unDEFined(PROCEDURE_dwakeup1->definition))
     { DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: MISSING PROCEDURE_dwakeup1 \n"));
       goto as_normal; 
     }
 
-    int cells = 1+orig_arity+ BIND_GLOBAL_SPACE;
+	{ int cells = 1 + alt_arity + BIND_GLOBAL_SPACE;
     if (!( gTop+cells <= gMax && tTop+BIND_TRAIL_SPACE <= tMax ))
-    { DEBUG(0, Sdprintf("\n NORMAL_CALL: WAITING FOR SPACE \n"));
+		{ DEBUG(0, Sdprintf("\n ERROR_NORMAL_CALL: NOT WAITING FOR SPACE \n"));
       goto as_normal; 
     }
+	}
+	
+	int pre_spaces = -slack + 1;
+	
     // is(X,Y) -> $metaterm_call(is,X,Y);
     SAVE_REGISTERS(qid);
-    Word frameWord = frame_to_consP(2,now_arity,NFR);
+	Word frameWord = frame_to_consP(pre_spaces, orig_arity, NFR);
     if(frameWord==0)
     { DEBUG(0, Sdprintf("\n NORMAL_CALL: NO SPACE FOR GOAL! \n"));    
       LOAD_REGISTERS(qid);
@@ -1799,7 +1835,9 @@ as_wakeup:
     }
     alt_functor = PL_new_functor(ATOM_call,orig_arity+1);
     frameWord[0] = alt_functor;
-    frameWord[1] = altDEF->functor->name;
+	if (pre_spaces > 1) frameWord[1] = orig_name;
+	if (pre_spaces > 2) frameWord[2] = linkVal(alt_var);
+	if (pre_spaces > 3) frameWord[3] = consInt(alt_argNum);
     scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
     LOAD_REGISTERS(qid);
     DEF = nopDEF;
@@ -1810,9 +1848,10 @@ as_wakeup:
 
 #ifdef O_DRA_TABLING
 
+  
   if ( DRA_CALL && DEF->dra_interp )
-  {
-    DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
+  { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
+    assert(0);
     if ( proc->dra_depth <2 )
     {
       proc->dra_depth++;
@@ -4781,7 +4820,7 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
     THROW_EXCEPTION;
 
   DEBUG(MSG_CALL,
-	{ Sdprintf("I_USERCALL0: ");
+	{ Sdprintf("MSG_CALL: (I_USERCALL0) ");
 	  LocalFrame ot = lTop;
 	  term_t g = pushWordAsTermRef(a);
 	  lTop += 100;
@@ -4789,33 +4828,6 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
 	  popTermRef();
 	  lTop = ot;
 	});
-
-
-#ifdef O_DRA_TABLING_UNUSED
-
-  if ( DRA_CALL && DEF->dra_interp )
-  { { DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_USERCALL0 in_dra= %d\n",proc->dra_depth);});
-      if ( proc->dra_depth <2 )
-      { proc->dra_depth++;
-
-        Word a = argFrameP(NFR, 0);		/* get the goal */
-
-        Word expr = gTop;
-        gTop += 3;
-        expr[0] = FUNCTOR_call2;
-        expr[1] = proc->dra_interp;
-        expr[2] = linkVal(a);
-
-        ARGP = argFrameP(lTop, 0);
-        *ARGP++ = consPtr(expr, TAG_COMPOUND|STG_GLOBAL);
-        NFR = lTop;
-        DEF = PROCEDURE_dwakeup1->definition;
-        setNextFrameFlags(NFR, FR);
-        goto normal_call;
-      }
-  } }
-#endif
-
 
   DEBUG(CHK_SECURE, checkStacks(NULL));
 

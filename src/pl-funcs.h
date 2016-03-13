@@ -51,10 +51,9 @@ COMMON(int) 	metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoi
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
 
-COMMON(functor_t) getMetaOverride(Word av, functor_t metaprop, int override_flags ARG_LD);
+COMMON(word) getMetaOverride(Word av, word metaprop, int override_flags ARG_LD);
 COMMON(int)       getMetaFlags(Word av, int flags ARG_LD);
 COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
-COMMON(functor_t) getMetaTermOverrideForArity(atom_t current_name, int arity ARG_LD );
 COMMON(bool) isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
 COMMON(void) setupMetaterms(ARG1_LD);
 

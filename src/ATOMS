@@ -155,7 +155,7 @@ A cut_parent		"cut_parent"
 A cutted		"cut"
 A cycles		"cycles"
 A cyclic_term		"cyclic_term"
-A dand			"$and"
+A dand_froze			"$and_froze"
 A date			"date"
 A datts			"$atts"
 A db_reference		"db_reference"
@@ -202,6 +202,7 @@ A dmessage_queue	"$message_queue"
 A dmeta			"$meta"
 A dmeta_call		"$meta_call"
 A dmetaterm_call	"$metaterm_call"
+A dmetaterm_callp	"$metaterm_callp"
 A dmutex		"$mutex"
 A domain_error		"domain_error"
 A dos			"dos"
@@ -832,7 +833,7 @@ F cputime		0
 F curl			1
 F cut_call		1
 F cut_exit		1
-F dand			2
+F dand_froze		2
 F date			3
 F date			9
 F dc_call_prolog	0

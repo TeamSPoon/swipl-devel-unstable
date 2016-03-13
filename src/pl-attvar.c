@@ -328,30 +328,15 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
     put_attr(av, ATOM_datts, &wval, backtrack_flags PASS_LD);
 }
 
-/*
-
- Returns $metaterm_call" with N being the arity supplied
-
- current_name will be a filtered soon to avoid special predicates like put_attrs/2
- 
-*/
-functor_t 
-getMetaTermOverrideForArity(atom_t current_name, int arity ARG_LD )
-{ if(isNeverOverriden(current_name,arity,0 PASS_LD)) return (functor_t)0;
-  functor_t found = LD->attvar.metaterm_override[arity];
-  if(found==0) 
-  { found = LD->attvar.metaterm_override[arity] = PL_new_functor(ATOM_dmetaterm_call,arity);
-  }
-  return found;
-}
-
 bool 
 isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD)
-{ if(arity>256 || arity<1 || current_name==ATOM_dmetaterm_call) return TRUE;
-  functor_t* found = LD->attvar.metaterm_never_override;
-  while(*found!=0)
+{ if(arity>256 || arity<0 || current_name==ATOM_dmetaterm_call) return TRUE;
+  	Word found = LD->attvar.metaterm_never_override;
+	int maxsize = 2560;
+  while(*found)
   { if(*found==current_name) return TRUE;
     if(*found==current_functor) return TRUE;
+	  if (--maxsize <= 0) { trap_gdb(); return FALSE;}
     found++;
   }
   return FALSE;
@@ -359,13 +344,15 @@ isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_
 
 void
 addNeverOverriden(word current_name ARG_LD)
-{ functor_t* found = LD->attvar.metaterm_never_override;
-  while(*found != 0)
+{ Word found = LD->attvar.metaterm_never_override; 
+  while(*found)
   {
+	  if (*found == current_name) return;
     found++;
   }
   *found = current_name;
-  *found++ = 0;
+	*(++found) = 0;
+	*(++found) = 0;
 }
 
 /*
@@ -814,7 +801,7 @@ find_attr(Word av, atom_t name, Word *vp ARG_LD)
 
 
 static int
-find_sub_attr(Word l, word name, Word *vp ARG_LD)
+find_sub_attr(Word l, functor_t name, Word *vp ARG_LD)
 { for(;;)
   { if ( isNil(*l) )
     { *vp = l;
@@ -829,10 +816,12 @@ find_sub_attr(Word l, word name, Word *vp ARG_LD)
       { Word n;
 
 	deRef2(&f->arguments[0], n);
-	if ( *n == name )
+	if (isAtom(*n)) 
+	{ if (*n == name)
 	{ *vp = &f->arguments[1];
 
 	  succeed;
+	 }
 	} else  
     {  if ( isTerm(*n) ) /* for sub-attributes (these are not stored in toplevel of att/3s) */
        {   Functor fn = valueTerm(*n);
@@ -1303,7 +1292,7 @@ PRED_IMPL("$freeze", 2, freeze, 0)
       { Word gc = gTop;
 
 	gTop += 3;
-	gc[0] = FUNCTOR_dand2;
+	gc[0] = FUNCTOR_dand_froze2;
 	gc[1] = linkVal(vp);
 	gc[2] = *goal;
 
@@ -2081,11 +2070,13 @@ Word attrs_after(Word origl, atom_t name ARG_LD)
 }
 
 /* sometimes sneaking in an atom instead of a functor here */
-functor_t 
-getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
+word 
+getMetaOverride(Word av, word f, int override_flags ARG_LD)
 { Word fdattrs,found;
-  if(!(METATERM_ENABLED)) return f;
   deRef(av);
+	if (debugstatus.tracing)
+	{ trap_gdb();		
+	}
   if(!isAttVar(*av)) return f;
   if(!find_attr(av, ATOM_dmeta, &fdattrs PASS_LD)) 
   { word fallback;
@@ -2119,7 +2110,7 @@ getMetaOverride(Word av, functor_t f, int override_flags ARG_LD)
 }
 
 bool 
-isMetaOverriden(Word av, atom_t f, int override_flags ARG_LD)
+isMetaOverriden(Word av, functor_t f, int override_flags ARG_LD)
 { if(SAFETY_FIRST) return FALSE;
   assert((av!=0 && *av!=0));
   Word fdattrs,fdattrs2,found;
@@ -2247,11 +2238,20 @@ fvOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 }
 
 static
+PRED_IMPL("add_never_overriden", 1, add_never_overriden, 0)
+{ PRED_LD  
+  word f;
+  if(!(PL_get_functor(A1,&f) ||
+      PL_get_atom(A1,&f))) return FALSE;
+  addNeverOverriden(f PASS_LD);
+  return TRUE;
+}
+    
+static
 PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
 { PRED_LD
   Word av;
   word f;
-  if(!METATERM_ENABLED) fail;
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
@@ -2338,6 +2338,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
   PRED_DEF("set_no_wakeup", 2, set_no_wakeup, 0)
+  PRED_DEF("add_never_overriden", 1, add_never_overriden, 0)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
   PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
@@ -2363,9 +2364,20 @@ setupMetaterms(ARG1_LD)
       from2++;
   }
   addNeverOverriden(ATOM_dmeta PASS_LD);
+	addNeverOverriden(ATOM_call PASS_LD);
   addNeverOverriden(FUNCTOR_dmeta4 PASS_LD);
+	addNeverOverriden(ATOM_dmetaterm_call PASS_LD);
+  addNeverOverriden(ATOM_equals PASS_LD);
+  addNeverOverriden(FUNCTOR_equals2 PASS_LD);
+  addNeverOverriden(ATOM_dmetaterm_callp PASS_LD);
+  
+    
+ 
 
-  char* names[] = {"meta_unify","post_unify", "pre_unify" ,"with_metaterm_enabled","with_metaterm_disabled","label_sources","nop" ,NULL};
+  char* names[] = {"meta_unify","post_unify","current_predicate","=", "with_metaterm_disabled",
+    "simplify_goal_printed", "metaterm_unify","amsg", "with_metaterm_enabled","pre_unify" ,"copy_term", "dmsg","with_metaterm_enabled","with_metaterm_disabled","label_sources",
+    "attr_unify_hook","metaterm_unify_hook","verify_attributes","metaterm_unify_hook","attr_portray_hook","attribute_goals",    
+    "nop" ,NULL};
   char** from3 = names;
   while(*from3)
   { addNeverOverriden(PL_new_atom(*from3) PASS_LD);

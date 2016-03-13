@@ -37,6 +37,10 @@
 #define TRACE_FIND_NAME	2
 #define TRACE_FIND_TERM	3
 
+#ifdef __CYGWIN__
+#include <stdio.h>
+#endif
+
 typedef struct find_data_tag
 { int	 port;				/* Port to find */
   bool	 searching;			/* Currently searching? */

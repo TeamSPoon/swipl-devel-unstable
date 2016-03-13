@@ -205,8 +205,41 @@ public(Spec)		 :- '$set_pattr'(Spec, pred, (public)).
 	call_cleanup(0,?,0).
 
 
-system:amsg(G):- notrace(
-   ignore((current_prolog_flag(dmiles,true),
+
+% nop/1 is for disabling code while staying in syntax
+nop(_).
+nop(_,_).
+nop(_,_,_).
+nop(_,_,_,_).
+nop(_,_,_,_,_).
+nop(_,_,_,_,_,_).
+nop(_,_,_,_,_,_,_).
+nop(_,_,_,_,_,_,_,_).
+
+:- meta_predicate(ifdef(+,0)).
+ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
+
+'$metaterm_callp'(A,B,C,D,E,F,G,P):- amsgc('call'(P,A,B,C,D,E,F,G)).
+'$metaterm_callp'(A,B,C,D,E,F,P):- amsgc('call'(P,A,B,C,D,E,F)).
+'$metaterm_callp'(A,B,C,D,E,P):- amsgc('call'(P,A,B,C,D,E)).
+'$metaterm_callp'(A,B,C,D,P):- amsgc('call'(P,A,B,C,D)).
+'$metaterm_callp'(A,B,C,P):- amsgc('call'(P,A,B,C)).
+'$metaterm_callp'(A,B,P):- amsgc('call'(P,A,B)).
+'$metaterm_callp'(A,P):- amsgc('call'(P,A)).
+
+'$metaterm_call'(P,A,B,C,D,E,F,G):- amsgc('call'(P,A,B,C,D,E,F,G)).
+'$metaterm_call'(P,A,B,C,D,E,F):- amsgc('call'(P,A,B,C,D,E,F)).
+'$metaterm_call'(P,A,B,C,D,E):- amsgc('call'(P,A,B,C,D,E)).
+'$metaterm_call'(P,A,B,C,D):- amsgc('call'(P,A,B,C,D)).
+'$metaterm_call'(P,A,B,C):- amsgc('call'(P,A,B,C)).
+'$metaterm_call'(P,A,B):- amsgc('call'(P,A,B)).
+'$metaterm_call'(P,A):- amsgc('call'(P,A)).
+
+amsgc(C):-with_metaterm_disabled((amsg(C),C)).
+
+amsg(_):-!.
+amsg(G):- notrace(
+   ignore(( % current_prolog_flag(dmiles,true),
            with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))))).
 

@@ -1191,7 +1191,8 @@ emptyStacks(void)
 
     LD->attvar.metaterm_regs = PL_new_term_refs(4);
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
-    LD->attvar.metaterm_never_override[0] = NULL;
+    LD->attvar.metaterm_never_override[0] = (word)0;
+    LD->attvar.metaterm_override[0] = (word)0;
     METATERM_CURRENT =  METATERM_DEFAULT;
     *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
     LD->slow_unify     = SLOW_UNIFY_DEFAULT;

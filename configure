@@ -11,6 +11,8 @@ TARGET=lite
 configoptions=""
 kerneloptions=""
 
+echo $0 $*
+
 usage()
 { cat << _EOM_
 Usage: configure option ...

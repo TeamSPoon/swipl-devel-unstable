@@ -31,7 +31,8 @@
 :- module('$attvar',
 	  [ '$wakeup'/1,		% +Wakeup list
             % undo/1,                     % :Goal
-            % freeze/2,			% +Var, :Goal
+            freeze/2,			% +Var, :Goal
+            unfreeze/1,
 	    frozen/2,			% @Var, -Goal
 	    call_residue_vars/2,        % :Goal, -Vars
 	    copy_term/3                 % +Term, -Copy, -Residue
@@ -64,35 +65,10 @@ system:goals_with_module([G|Gs], M):- !,
 	system:goals_with_module(Gs, M).
 system:goals_with_module(_,_).
 
-:- meta_predicate(system:ifdef(0,0)).
-system:ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-
-% nop/1 is for disabling code while staying in syntax
-system:nop(_).
-system:nop(_,_).
-system:nop(_,_,_).
-system:nop(_,_,_,_).
-system:nop(_,_,_,_,_).
-system:nop(_,_,_,_,_,_).
-system:nop(_,_,_,_,_,_,_).
-system:nop(_,_,_,_,_,_,_,_).
-
-system:'$metaterm_call'(A,B,C,D,E,F,G,P):- amsgc('call'(P,A,B,C,D,E,F,G)).
-system:'$metaterm_call'(A,B,C,D,E,F,P):- amsgc('call'(P,A,B,C,D,E,F)).
-system:'$metaterm_call'(A,B,C,D,E,P):- amsgc('call'(P,A,B,C,D,E)).
-system:'$metaterm_call'(A,B,C,D,P):- amsgc('call'(P,A,B,C,D)).
-system:'$metaterm_call'(A,B,C,P):- amsgc('call'(P,A,B,C)).
-system:'$metaterm_call'(A,B,P):- amsgc('call'(P,A,B)).
-system:'$metaterm_call'(A,P):- trace, amsgc('call'(P,A)).
-
-amsgc(C):-amsg(C),with_metaterm_disabled(C).
-
-amsg(G):- notrace(
-   ignore(( % current_prolog_flag(dmiles,true),
-           with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
-                  format(user_error,'~N,~q~n',[G]))))))).
-
+:- meta_predicate run_crv(0,*,*,*).
+:- meta_predicate unfreeze(0).
+:- meta_predicate freeze:attr_unify_hook(0,*).
 
 
 
@@ -241,12 +217,12 @@ system:freeze(_, Goal) :-
 %	Unify Goals with the goals frozen on Var or true if no
 %	goals are grozen on Var.
 
-frozen(Var, Goals) :-
+system:frozen(Var, Goals) :-
 	get_attr(Var, freeze, Goals0), !,
 	make_conjunction(Goals0, Goals).
-frozen(_, true).
+system:frozen(_, true).
 
-make_conjunction('$and'(A0, B0), (A, B)) :- !,
+make_conjunction('$and_froze'(A0, B0), (A, B)) :- !,
 	make_conjunction(A0, A),
 	make_conjunction(B0, B).
 make_conjunction(G, G).
@@ -257,11 +233,11 @@ freeze:verify_attributes(Var, Other, Gs) :-
 	(   get_attr(Var, freeze, Goal)
 	->  (	attvar(Other)
 	    ->	(   get_attr(Other, freeze, G2)
-		->  put_attr(Other, freeze, '$and'(G2, Goal))
+		->  put_attr(Other, freeze, '$and_froze'(G2, Goal))
 		;   put_attr(Other, freeze, Goal)
 		),
 		Gs = []
-	    ;	Gs = ['$attvar':unfreeze(Goal)]
+	    ;	Gs = [unfreeze(Goal)]
 	    )
 	;   Gs = []
 	).
@@ -272,7 +248,7 @@ freeze:attr_unify_hook(Goal, Y) :-
 	current_prolog_flag(wakeups,va3) -> true ;
 	(   attvar(Y)
 	->  (   get_attr(Y, freeze, G2)
-	    ->	put_attr(Y, freeze, '$and'(G2, Goal))
+	    ->	put_attr(Y, freeze, '$and_froze'(G2, Goal))
 	    ;	put_attr(Y, freeze, Goal)
 	    )
 	;   unfreeze(Goal)
@@ -287,11 +263,17 @@ freeze:attr_unify_hook(Goal, Y) :-
 %	note that we cannot use a direct conjunction as this would break
 %	freeze(X, (a, !, b)).
 
-unfreeze('$and'(A,B)) :- !,
-	unfreeze(A),
-	unfreeze(B).
-unfreeze(Goal) :-
-	Goal.
+unfreeze(Goal) :- call(Goal).
+system:'$and_froze'(A,B):-unfreeze(A),unfreeze(B).
+
+freeze:attr_portray_hook(Goal, Var) :-
+	format('freeze(~w, ~W)', [ Var, Goal,
+				   [ portray(true),
+				     quoted(true),
+				     attributes(ignore)
+				   ]
+				 ]).
+
 
 		 /*******************************
 		 *	       PORTRAY		*
@@ -323,32 +305,15 @@ portray_attvar(Var) :-
 
 portray_attrs([], _).
 portray_attrs(att(Name, Value, Rest), Var) :-
-	portray_attr(Name, Value, Var),
+	Name:attr_portray_hook(Value, Var),
 	(   Rest == []
 	->  true
 	;   write(', '),
 	    portray_attrs(Rest, Var)
 	).
 
-portray_attr(freeze, Goal, Var) :- !,
-	format('freeze(~w, ~W)', [ Var, Goal,
-				   [ portray(true),
-				     quoted(true),
-				     attributes(ignore)
-				   ]
-				 ]).
 
-portray_attr(Name, Value, Var) :-
-	G = Name:attr_portray_hook(Value, Var),
-	(   '$c_current_predicate'(_, G),
-	    G
-	->  true
-	;  fa(Name,Value)
-	).
-
-system:attr_portray_hook(Name,Value):- fa(Name,Value).
-
-fa(Name,Value):-
+system:attr_portray_hook(Name,Value):- 
   current_prolog_flag(write_attributes,W),
   set_prolog_flag(write_attributes, ignore),
  format('~q:~W', [Name, Value,
@@ -456,14 +421,14 @@ delete_attributes_([V|Vs]) :-
 
 %%	frozen_residuals(+FreezeAttr, +Var)// is det.
 %
-%	Instantiate  a  freeze  goal  for  each    member  of  the  $and
+%	Instantiate  a  freeze  goal  for  each    member  of  the  $and_froze
 %	conjunction. Note that we cannot  map   this  into a conjunction
 %	because  freeze(X,  a),  freeze(X,  !)  would  create  freeze(X,
 %	(a,!)),  which  is  fundamentally  different.  We  could  create
 %	freeze(X,  (call(a),  call(!)))  or  preform  a  more  eleborate
 %	analysis to validate the semantics are not changed.
 
-frozen_residuals('$and'(X,Y), V) --> !,
+frozen_residuals('$and_froze'(X,Y), V) --> !,
 	frozen_residuals(X, V),
 	frozen_residuals(Y, V).
 frozen_residuals(X, V) -->

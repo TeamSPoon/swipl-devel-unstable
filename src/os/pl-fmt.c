@@ -31,6 +31,11 @@ source should also use format() to produce error messages, etc.
 #include "pl-utf8.h"
 #include <ctype.h>
 
+#ifdef __CYGWIN__
+#include <stdio.h>
+#endif
+
+
 static char *	formatInteger(PL_locale *locale, int div, int radix,
 			     bool smll, Number n, Buffer out);
 static char *	formatFloat(PL_locale *locale, int how, int arg,
