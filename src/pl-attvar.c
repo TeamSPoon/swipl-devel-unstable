@@ -587,10 +587,6 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     }
   }
 
-  if(LD_no_vmi_hacks)
- {
-    flags |= METATERM_NO_WAKEUP;
- }
 
  if(!(flags& METATERM_NO_WAKEUP)) 
  {  if(atomcaller==0) atomcaller = current_caller_mask(callflags);

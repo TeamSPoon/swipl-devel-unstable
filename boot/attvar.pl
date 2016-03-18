@@ -53,7 +53,7 @@ in pl-attvar.c
 %	attributed variables.
 
 % each variable will be shut off one at a time and global will be re-enabled once a var is shut off
-'$wakeup'(G) :- with_metaterm_disabled(global,G).
+'$wakeup'(G) :- wo_metaterm(wo_metavmi(G)).
 
 
        /*******************************
@@ -66,9 +66,9 @@ system:goals_with_module([G|Gs], M):- !,
 system:goals_with_module(_,_).
 
 
-:- meta_predicate run_crv(0,*,*,*).
+:- meta_predicate run_crv(0,+,+,-).
 :- meta_predicate unfreeze(0).
-:- meta_predicate freeze:attr_unify_hook(0,*).
+:- meta_predicate freeze:attr_unify_hook(0,?).
 
 
 
@@ -83,7 +83,7 @@ system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
   notrace((amsg(metaterm_unify(Atom, Var, Value )),
   (M==system->UM=user;UM=M))),
   % next line disabled from being a  variable is now disabled
-  with_metaterm_disabled(Var,with_metaterm_enabled(global,UM:metaterm_unify(Rest, Atom, Var, Value))),
+  wo_metaterm(Var,with_metaterm(UM:metaterm_unify(Rest, Atom, Var, Value))),
   % global was re-disabled
   M:call(Next).
 system:pre_unify(att(Module, AttVal, Rest), Next, Var, Value,Atom ):- !,
@@ -100,9 +100,9 @@ system:pre_unify(Atts, Next, Var, Value, Atom ):- \+ attvar(Var),!,
 % Normal ATTVARs -> VERIFY_ATTRIBUTES/3
 system:pre_unify(Atts, Next, Var, Value, Atom ):-
   nop(amsg(Atom:collect_va(Atts, Next, Var, Value ))),
-   with_metaterm_enabled(global,
+   with_metaterm(
        collect_va(Atts, Next, Var, Value)),
-   with_metaterm_disabled(global,
+   wo_metaterm(
        post_unify(Atts, true, Var, Value, Atom)).
 
 
@@ -177,8 +177,8 @@ system:metaterm_unify(_,_Atom,_Var,_Value).
 :- meta_predicate(system:post_unify(+,0,+,+,+)).
 system:post_unify(Atts, Next, Var, Value, Atom ):-  
   amsg(Atom:post_unify(Atts, Next, Var, Value )),!,
-  with_metaterm_disabled(Var,
-       with_metaterm_enabled(global,
+  wo_metaterm(Var,
+       with_metaterm(
                call_uhooks(Atts, Next, Var, Value))).
 
      /*******************************
@@ -358,7 +358,7 @@ call_residue_vars(_, _) :-
 	fail.
 
 run_crv(Goal, Chp, Vars, Det) :-
-	with_metaterm_enabled(global,with_wakeups(Goal)),
+	with_metaterm(with_metavmi(Goal)),
 	deterministic(Det),
         '$attvars_after_choicepoint'(Chp, Vars).
 
