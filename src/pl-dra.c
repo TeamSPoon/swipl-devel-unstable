@@ -890,7 +890,7 @@ PRED_IMPL("b_set_interp",   2, b_set_interp,   0)
 
   def = getProcDefinition(proc);
 
-#ifdef DRA_INTERP_TERM_T
+#ifdef O_DRA_INTERP_TERM_T
    TrailAssignment(&def->dra_interp);
    return PL_put_term(def->dra_interp,A2);
 #else
@@ -909,7 +909,7 @@ PRED_IMPL("nb_set_interp",   2, nb_set_interp,   0)
 
   def = getProcDefinition(proc);
 
-#ifdef DRA_INTERP_TERM_T
+#ifdef O_DRA_INTERP_TERM_T
    return PL_put_term(def->dra_interp,A2);
 #else
    return save_word(&def->dra_interp, A2, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);

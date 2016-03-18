@@ -1878,8 +1878,8 @@ as_wakeup:
 
       Definition nopDEF = lookupDefinition(nop_functor,PARENT_MODULE);
     if ( nopDEF==DEF ) goto as_normal;
-  if ( unDEFined(nopDEF) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
+    if ( unDEFined(nopDEF) )
+    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
       goto as_normal; 
     }
 
@@ -1897,157 +1897,107 @@ as_wakeup:
 
 #define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
 	
-      Word frameWord;
-
-	    
-      /* source_fluents */
-      if( altDEF->functor->name == ATOM_dmetaterm_call)
-      {       
-         frameWord = gTop;
-         word newVar = makeRef(&frameWord[4]);
-         assert(substVar(alt_var,newVar,orig_arity, NFR));
-         frameWord[0] = altDEF->functor->functor;
-         frameWord[1] = orig_name;
-         frameWord[2] = consInt(alt_argNum);
-         frameWord[3] = *alt_var;
-         frameWord[4] = NULL;
-         gTop+=5;
-         scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-         goto wakeup;
-      }
-	    
-      /* source_fluents */
-      if( altDEF->functor->name == ATOM_dmetaterm_call)
-      {	      	      
-	
-    SAVE_REGISTERS(qid);
-         frameWord = frame_to_consP(7, 0,orig_arity,0, NFR);	      
-         CHECK_FRAME_SPACE;
-
-         word newVar = linkVal(&frameWord[5]);
-         word oldVar = linkVal(alt_var);
-
-         frameWord[0] = altDEF->functor->functor;
-         frameWord[1] = orig_name;
-         frameWord[2] = consInt(alt_argNum);
-         frameWord[3] = consPtr(&frameWord[6], TAG_COMPOUND|STG_GLOBAL);
-         frameWord[4] = oldVar;
-         frameWord[5] = NULL;
-         frameWord[6] = DEF->functor->functor;
-         Word originalArgs = &frameWord[7]; 
-	     int found = 0;
-	     if (orig_arity==1) 
-	     { assert(*originalArgs==oldVar);
-		   *originalArgs=newVar;
-	     } else
-		 { for(int i=0;i<orig_arity;i++)
-		   { Word originalArg = &originalArgs[i];
-			 if(*originalArg == oldVar)
-			 { found++;
-               *originalArg = newVar;
-			 }
-		   }
-           assert(found);
-		 }	     
-         scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-         LOAD_REGISTERS(qid);
-         DEF = nopDEF;
-      goto as_normal; 
+  Word frameWord;
+    
+    /* source_fluents */
+    if ( altDEF->functor->name == ATOM_dmetaterm_call )
+    { frameWord = gTop;
+      word newVar = makeRef(&frameWord[4]);
+      assert(substVar(alt_var,newVar,orig_arity, NFR));
+      frameWord[0] = altDEF->functor->functor;
+      frameWord[1] = orig_name;
+      frameWord[2] = consInt(alt_argNum);
+      frameWord[3] = makeRef(alt_var);
+      frameWord[4] = (word)0;
+      gTop+=5;
+      scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+      goto wakeup;
     }
 
-      /* plain generic metaterms */
-      if( altDEF->functor->name == ATOM_dmetaterm_call)
-      {
-         SAVE_REGISTERS(qid);
-         frameWord = frame_to_consP(1, 0,orig_arity,5, NFR);
-         CHECK_FRAME_SPACE;
-         frameWord[0] = DEF->functor->functor;
-         Word wakeFrame = frameWord+orig_arity+1;
+    int skipSpaces = orig_arity - alt_arity;
 
-         wakeFrame[0] = altDEF->functor->functor;
-         wakeFrame[1] = orig_name;
-         wakeFrame[2] = consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL);
-         wakeFrame[3] = linkVal(alt_var);
-         wakeFrame[4] = consInt(alt_argNum);
-         scheduleWakeup(consPtr(wakeFrame, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+    /* exact metaterm override */
+    if ( skipSpaces>=0 )
+    { SAVE_REGISTERS(qid);
+      frameWord = frame_to_consP(1, skipSpaces,orig_arity,0, NFR);
+      CHECK_FRAME_SPACE;
+      frameWord[0] = altDEF->functor->functor;
+      scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
       LOAD_REGISTERS(qid);
-         DEF = nopDEF;
+      DEF = nopDEF;
       goto as_normal;
-	}
-	
-      int skipSpaces = orig_arity - alt_arity;
-	
-      /* exact metaterm override */
-      if(skipSpaces>=0)
-      {
-    SAVE_REGISTERS(qid);
-        frameWord = frame_to_consP(1, skipSpaces,orig_arity,0, NFR);
-        CHECK_FRAME_SPACE;
-        frameWord[0] = altDEF->functor->functor;
-    scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+    } else
+    { SAVE_REGISTERS(qid);
+      skipSpaces = - skipSpaces;
+      frameWord = frame_to_consP(1, 0,orig_arity,1+skipSpaces, NFR);
+      CHECK_FRAME_SPACE;
+      frameWord[0] = altDEF->functor->functor;
+      Word wakeFrame = frameWord+orig_arity+1;
+      if ( skipSpaces > 0 ) wakeFrame[0] = orig_name;
+      if ( skipSpaces > 1 ) wakeFrame[1] = consInt(alt_argNum);
+      if ( skipSpaces > 2 ) wakeFrame[2] = linkVal(alt_var);
+      if ( skipSpaces > 3 ) wakeFrame[3] = consInt(metaterm_overrides_present);
+      scheduleWakeup(consPtr(wakeFrame, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
       LOAD_REGISTERS(qid);
-    DEF = nopDEF;
+      DEF = nopDEF;
       goto as_normal;
     }
-      skipSpaces = -skipSpaces;
-      if(skipSpaces>=0)
-      {
-        SAVE_REGISTERS(qid);
-        frameWord = frame_to_consP(1, 0,orig_arity,1+skipSpaces, NFR);
-        CHECK_FRAME_SPACE;
-        frameWord[0] = altDEF->functor->functor;
-        Word wakeFrame = frameWord+orig_arity+1;
-        if ( skipSpaces > 0 ) wakeFrame[0] = orig_name;
-        if ( skipSpaces > 1 ) wakeFrame[1] = consInt(alt_argNum);
-        if ( skipSpaces > 2 ) wakeFrame[2] = linkVal(alt_var);
-        if ( skipSpaces > 3 ) wakeFrame[3] = consInt(metaterm_overrides_present);
-        scheduleWakeup(consPtr(wakeFrame, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-    LOAD_REGISTERS(qid);
-    DEF = nopDEF;
-    goto as_normal;
-}
-    } //as_wakeup:
+   } //as_wakeup:
   } // !isNeverOver
 } // maybe_metaterm:
 
 #endif /*O_METATERM*/
 
-#ifdef O_DRA_TABLING_NEVER
+#ifdef O_DRA_TABLING
   
   if ( DRA_CALL && DEF->dra_interp )
   {
     DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
     assert(0);
     if ( proc->dra_depth <2 )
-    {
+    { 
       proc->dra_depth++;
       int orig_arity = DEF->functor->arity;
       word expr;
-  #ifdef DRA_INTERP_TERM_T
-      expr = linkVal(valPHandle(DEF->dra_interp));
+  #ifdef O_DRA_INTERP_TERM_T
+      expr = linkVal(valPHandle(DEF->dra_interp PASS_LD));
   #else
       expr = DEF->dra_interp;
   #endif        
       SAVE_REGISTERS(qid);
       if(isAtom(expr)) 
       {
-        Word frameWord = frame_to_consP(1, orig_arity,0, NFR);
-      if ( frameWord==0 )
-      {
-          DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));    
-        LOAD_REGISTERS(qid);
-        goto as_normal;
+        Word frameWord = frame_to_consP(2, 0, orig_arity,0, NFR);
+        if ( frameWord==0 )
+        { DEBUG(MSG_DRA, Sdprintf("\n MSG_DRA: NO SPACE FOR DRA! \n"));    
+          LOAD_REGISTERS(qid);
+          goto as_normal;
+        }
+        frameWord[0] = PL_new_functor(expr,1);
+        frameWord[1] = DEF->functor->functor;
+        /*frameWord[2-N] is the orignal arguments*/
+        scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+        /* nop out the original call - mainly for debug consistancy*/
+        DEF = lookupDefinition(PL_new_functor(ATOM_nop, orig_arity),PARENT_MODULE);
+        goto as_wakeup;
+      } else
+      { 
+        assert(!isVar(expr));
+        Word frameWord = frame_to_consP(3, 0, orig_arity,0, NFR);
+        if ( frameWord==0 )
+        { DEBUG(MSG_DRA, Sdprintf("\n MSG_DRA: NO SPACE FOR DRA! \n"));    
+          LOAD_REGISTERS(qid);
+          goto as_normal;
+        }
+        frameWord[0] = FUNCTOR_call2;
+        frameWord[1] = expr;
+        frameWord[2] = DEF->functor->functor;
+        /*frameWord[3-N] is the orignal arguments*/
+        scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+        DEF = lookupDefinition(PL_new_functor(ATOM_nop, orig_arity),PARENT_MODULE);
+        /* nop out the original call - mainly for debug consistancy*/
+        goto as_wakeup;
       }
-        frameWord[0] = DEF->functor->functor;
-        frameWord[] = PL_new_functor((atom_t)expr,1);
-      }
-
-      frameWord[0] = expr;
-      int callargs = orig_arity+1;
-      functor_t alt_functor = PL_new_functor(ATOM_call,orig_arity+1);
-      DEF = lookupDefinition(alt_functor,PARENT_MODULE);
-      *PC = callargs;
-      VMI_GOTO(I_USERCALLN);
       //   goto normal_call;
     }
   }

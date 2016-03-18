@@ -39,8 +39,9 @@ test_resource_error :-
 small_stacks(limits(LLimit, GLimit)) :-
 	prolog_stack_property(local, limit(LLimit)),
 	prolog_stack_property(global, limit(GLimit)),
-	set_prolog_stack(local, limit(1*1024*1024)),
-	set_prolog_stack(global, limit(1*1024*1024)).
+	catch(set_prolog_stack(local, limit(1*1024*1024)),E,format(user_error,'~N~q~n',[])),
+        catch(set_prolog_stack(global, limit(1*1024*1024)),E,format(user_error,'~N~q~n',[])).
+	
 
 restore_stacks(limits(LLimit, GLimit)) :-
 	set_prolog_stack(local, limit(LLimit)),

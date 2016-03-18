@@ -72,8 +72,8 @@
    do_test_type/1,
    dbg_list/1,
    counter_var/1,
-
-  anything_once/1,termfilter/1,subsumer_var/1,plvar/1]).
+   plvar/1,
+  anything_once/1,termfilter/1,subsumer_var/1,plvar_ex/1]).
 
 :- multifile(atts:metaterm_type/1).
 :- discontiguous(atts:metaterm_type/1).
@@ -194,7 +194,7 @@ term_copier_filter(Fluent):-termfilter(Fluent),term_copier(Fluent).
 %
 
 
-%% plvar(-X) is det.
+%% plvar_ex(-X) is det.
 %
 % Example of the well known "Prolog" variable!
 %
@@ -203,30 +203,42 @@ term_copier_filter(Fluent):-termfilter(Fluent),term_copier(Fluent).
 % the code:
 % ==
 % /* if the new value is the same as the old value accept the unification*/
-% plvar(X):- source_fluent(X),put_attr(X,plvar,binding(X,_)).
-% plvar:attr_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plvar,binding(Var,Value)).
+% plvar_ex(X):- source_fluent(X),put_attr(X,plvar_ex,binding(X,_)).
+% plvar_ex:attr_unify_hook(binding(Var,Prev),Value):-  Value=Prev,put_attr(Var,plvar_ex,binding(Var,Value)).
 % ==
 %
 % ==
-% metaterm_test:- plvar(X), X = 1.
+% metaterm_test:- plvar_ex(X), X = 1.
 % X = 1.
 %
-% metaterm_test:- plvar(X), X = 1, X = 2.
+% metaterm_test:- plvar_ex(X), X = 1, X = 2.
 % false.
 % ==
 %
 /* if the new value is the same as the old value accept the unification*/
 
 
-%plvar(Var):- put_atts(Var,+source_fluent),put_attr(Var,plvar,binding(Var,_)).
-% plvar:verify_attributes(Var,Value,[]):- get_attr(Var,plvar,binding(Var,Prev)), Value=Prev, put_attr(Var,plvar,binding(Var,Value)).
+%plvar_ex(Var):- put_atts(Var,+source_fluent),put_attr(Var,plvar_ex,binding(Var,_)).
+% plvar_ex:verify_attributes(Var,Value,[]):- get_attr(Var,plvar_ex,binding(Var,Prev)), Value=Prev, put_attr(Var,plvar_ex,binding(Var,Value)).
+atts:metaterm_type(plvar_ex).
+
+plvar_ex:metaterm_unify_hook(_Atom,binding(Var,Prev),_,Value):- Value=Prev,put_attr(Var,plvar_ex,binding(Var,Value)).
+
+plvar_ex:attr_unify_hook(binding(_Var,Prev),Value):- Value=Prev.
+
+plvar_ex(Var):- source_fluent(Var), put_attr(Var,plvar_ex,binding(Var,_)).
+
+
+
+%plvar_ex(Var):- put_atts(Var,+source_fluent),put_attr(Var,plvar_ex,binding(Var,_)).
+% plvar_ex:verify_attributes(Var,Value,[]):- get_attr(Var,plvar_ex,binding(Var,Prev)), Value=Prev, put_attr(Var,plvar_ex,binding(Var,Value)).
 atts:metaterm_type(plvar).
 
-plvar:metaterm_unify_hook(_Atom,binding(Var,Prev),_,Value):- Value=Prev,put_attr(Var,plvar,binding(Var,Value)).
+plvar:metaterm_unify_hook(_Atom,Var,Var,Value):- metaterm_getval(Var,Prev),Value=Prev.
 
-plvar:attr_unify_hook(binding(_Var,Prev),Value):- Value=Prev.
+plvar:attr_unify_hook(Var,Value):- metaterm_getval(Var,Prev),!,Value==Prev.
 
-plvar(Var):- source_fluent(Var), put_attr(Var,plvar,binding(Var,_)).
+plvar(Var):- source_fluent(Var),put_attr(Var,plvar,Var), metaterm_setval(Var,_).
 
 
 
@@ -328,7 +340,7 @@ nb_var(N, V):- source_fluent(V), nb_linkval(N,V),put_attr(V,nb_var,N),nb_linkval
 system:push_current_source_module(M):- prolog_load_context(module,SM),asserta('$source_context':'$c_source_context'(SM)),'$set_source_module'(M).
 system:pop_current_source_module:- retract('$source_context':'$c_source_context'(SM)),'$set_source_module'(SM).
 
-:- push_current_source_module(user).
+%:- push_current_source_module(user).
 
 
 ab(a1,b1).
@@ -353,7 +365,7 @@ equals0(b3,y3).
 
 q(A,B):-ab(A,B),xy(A,B).
 
-:- pop_current_source_module.
+%:- pop_current_source_module.
 
 %% set_unifyp(+Pred,?Fluent) is det.
 %
@@ -557,9 +569,9 @@ use_h_var(Var):- global_or_var(Var, +use_h_var).
 use_cons_val(Var):- global_or_var(Var, +use_cons_val).
 use_barg_var(Var):- global_or_var(Var, +use_barg_var).
 
-use_unify_var:- global_or_var(global,+use_unify_var-use_vmi).
+use_unify_var:- global_or_var(global,+use_unify_var).
 noeagerly:- override_none.
-source_fluent:- global_or_var(global,+source_fluent-use_vmi).
+source_fluent:- global_or_var(global,+source_fluent).
 pass_ref:- global_or_var(global,+source_fluent).
 override_none(Var):-  global_or_var(Var,-metaterm_override_usages_mask).
 override_all(Var):-  global_or_var(Var,+metaterm_override_usages_mask).
@@ -671,7 +683,7 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
 :- use_module(library(logicmoo_utils)).
 
 
-:- with_no_wakeups(use_listing_vars).
+:- wo_metaterm(use_listing_vars).
 
 :- debug(_).
 % :- debug_fluents.
@@ -731,7 +743,7 @@ metaterm_test:-
   metaterm_setval(X,bar),
   X=Z,
   dmsg([x=X,y=Y,z=Z]),
-  with_no_wakeups(dmsg([x=X,y=Y,z=Z])),
+  wo_metaterm(dmsg([x=X,y=Y,z=Z])),
   meta(X),
   writeln(X).
 

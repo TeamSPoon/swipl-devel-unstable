@@ -34,7 +34,7 @@
 */
 
 :- module(atts,[
-      wno_hooks/2,wno_hooks/1,
+      wo_metaterm/2,wo_metaterm/1,
       wno_dmvars/1,
       wno_debug/1,
       wnmt/1,
@@ -42,7 +42,7 @@
       wd/1,
       was_tracing/1,
       was_access_level_atts/1,
-      w_hooks/1,
+      with_metaterm/1,
       w_dmvars/1,
       w_debug/1,
       unify_val/2,
@@ -51,6 +51,7 @@
       swap_args/3,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       set_metaflags/1,
+      set_module_metaterm_overriden/2,
       set_dict_attvar_reader/1,
       set_as/4,
       put_atts/3,
@@ -129,8 +130,6 @@
 :- meta_predicate(dict_to_attvar(:,-)).
 :- meta_predicate wi_atts(+,0).
 
-:- meta_predicate w_hooks(0).
-:- meta_predicate wno_hooks(0).
 :- meta_predicate w_dmvars(0).
 :- meta_predicate wno_dmvars(0).
 :- meta_predicate w_debug(0).
@@ -145,13 +144,10 @@
       testfv/0,
       w_debug/1,
       w_dmvars/1,
-      w_hooks/1,
       wi_atts/2,
-      wno_hooks/2,
       wno_debug/1,
       ensure_meta/1,
       wno_dmvars/1,
-      wno_hooks/1,
       % TODO remove  above before master
       
       'attribute'/1,get_atts/2,put_atts/2,del_atts/2, 
@@ -191,7 +187,7 @@
 
 sink_fluent(Fluent):- put_atts(Fluent, +(sink_fluent:metaterm_setval) -(source_fluent:_) +no_bind).
 
-sink_fluent:metaterm_unify_hook(_Atom,[Was],Var,Value):- !, (nonvar(Value)->call(Was,Var,Value);true).
+sink_fluent:metaterm_unify_hook(_Atom,[Was],Var,Value):- !, notrace(nonvar(Value)->call(Was,Var,Value);true).
 sink_fluent:metaterm_unify_hook(_Atom,_AttVal,_Var,_Value):- !.
 
 %%	source_fluent(-Fluent) is det.
@@ -357,7 +353,7 @@ the usual unification. The handler procedure is
 unify_handler(+Term, ?Attribute [,SuspAttr])
 The first argument is the term that was unified with the attributed variable, it is either a non-variable or another attributed variable. The second argument is the contents of the attribute slot corresponding to the extension. Note that, at this point in execution, the orginal attributed variable no longer exists, because it has already been bound to Term. The optional third argument is the suspend-attribute of the former variable; it may be needed to wake the variable's 'constrained' suspension list.
 The handler's job is to determine whether the binding is allowed with respect to the attribute. This could for example involve checking whether the bound term is in a domain described by the attribute. For variable-variable bindings, typically the remaining attribute must be updated to reflect the intersection of the two individual attributes. In case of success, suspension lists inside the attributes may need to be scheduled for waking.
-If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing once all unify-handlers are done.
+If an attributed variable is unified with a standard variable, the variable is bound to the attributed variable and no handlers are invoked. If an attributed variable is unified with another attributed variable or a non-variable, the attributed variable is bound (like a standard variable) to the other term and all handlers for the unify operation are invoked. Note that several attributed variable bindings can occur simultaneously, e.g. during a head unification or during the unification of two compound terms. The handlers are only invoked at certain trigger points (usually before the next regular predicate call). Woken goals will start executing notrace all unify-handlers are done.
 */
 metaterm_handler_name(unify).
 
@@ -513,10 +509,10 @@ new_meta_attribute(Base,At,Mod) :- dynamic(Mod:protobute/3),
 % put_attr(V, m1, [b(x1, y1)]),
 % put_attr(V, m2, [b(x2, y2)]) .
 
-put_atts(Var,M:Atts):- once((wno_hooks((atts_put(+,Var,M,Atts))),!)).
-put_atts(Var,M,Atts):- once((wno_hooks((atts_put(+,Var,M,Atts))),!)).
-del_atts(Var,M:Atts):- once((wno_hooks((atts_put(-,Var,M,Atts))),!)).
-get_atts(Var,M:Atts):- once((atts_get(Var,M,Atts))),!.
+put_atts(Var,M:Atts):- notrace((wo_metaterm((atts_put(+,Var,M,Atts))),!)).
+put_atts(Var,M,Atts):- notrace((wo_metaterm((atts_put(+,Var,M,Atts))),!)).
+del_atts(Var,M:Atts):- notrace((wo_metaterm((atts_put(-,Var,M,Atts))),!)).
+get_atts(Var,M:Atts):- notrace((atts_get(Var,M,Atts))),!.
 
 
 %%    get_atts(+Var, ?AccessSpec) 
@@ -567,19 +563,23 @@ to_pind(PI,PI).
 
 system:'$undo_unify'(Var,Value):- dmsg(system:'$undo_unify'(Var,Value)).
 
-%  av(X),metaterm_override(X, = /2 : unify/2),metaterm_overriding(X,l(_,_),Y).
+%  av(X),metaterm_override_(X, = /2 : unify/2),metaterm_overriding(X,l(_,_),Y).
 
-metaterm_override(X,BA):-  is_list(BA),!,maplist(metaterm_override,X,BA).
-metaterm_override(X,Atom):- atomic(Atom),!,metaterm_override(X,Atom:true([])).
-metaterm_override(X,Atom):- compound_name_arity(Atom,_,0),!,metaterm_override(X,Atom:true([])).
-metaterm_override(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,metaterm_override(X,BPI,API).
-metaterm_override(X,B=A):-  metaterm_override(X,B:A),!.
-metaterm_override(X,What):- put_atts(X,'$meta': + What),put_atts(X,[+use_vmi, +use_cpreds]).
+metaterm_override(X,BPIAPI):-notrace((metaterm_override_(X,BPIAPI))).
 
-metaterm_override(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),!,put_attr(X,'$meta',att(BPI,API,W)),put_atts(X,[+use_vmi, +use_cpreds]).
+metaterm_override_(X,BA):-  is_list(BA),!,maplist(metaterm_override_,X,BA).
+metaterm_override_(X,Atom):- atomic(Atom),!,metaterm_override_(X,Atom:true([])).
+metaterm_override_(X,Atom):- compound_name_arity(Atom,_,0),!,metaterm_override_(X,Atom:true([])).
+metaterm_override_(X,B:A):- to_pind(B,BPI),functor(BPI,_,AB),(atom(A)->functor(API,A,AB);to_pind(A,API)),!,metaterm_override_(X,BPI,API).
+metaterm_override_(X,B=A):-  metaterm_override_(X,B:A),!.
+metaterm_override_(X,What):- put_atts(X,'$meta': + What),put_atts(X,[+use_vmi]).
+
+metaterm_override(X,BPI,API):- notrace(metaterm_override_(X,BPI,API)).
+
+metaterm_override_(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),put_attr(X,'$meta',att(BPI,API,W)),add_overriden(BPI,true),put_atts(X,[+use_vmi]).
 
 
-make_metaterm_override(X,B=A):- metaterm_override(X,B:A).
+make_metaterm_override(X,B=A):- metaterm_override_(X,B:A).
 
 
 atts_modulize([], _) --> [].
@@ -698,7 +698,7 @@ update_hooks1(+,Var,At,_):- ignore((compound(At),compound_name_arguments(At,Hook
 update_hooks1(-,Var,_M,At):- ignore((compound(At),compound_name_arguments(At,Hook,[_Value]),handler_fbs(Hook,Number),!,Number>0,
    (get_attr(Var,'$atts',Was)-> (New is Was /\ \ Number,put_attr(Var,'$atts',New));(ensure_meta(Var),put_attr(Var,'$atts',Number))))).
 
-handler_fbs(Hook,Number):- once(catch(fbs_to_number(Hook,Number),_,Number=0)).
+handler_fbs(Hook,Number):- notrace(catch(fbs_to_number(Hook,Number),_,Number=0)).
 
 /*
 
@@ -765,7 +765,6 @@ as_handler(Handler/_,Handler):- !.
 as_handler(M:Handler/_,M:Handler):- !.
 as_handler(Handler,Handler).
 
-:- meta_predicate wno_hooks(*,0).
 :- meta_predicate do_metaterm_hook(2,*,?,*).
 :- meta_predicate wd(0).
 :- meta_predicate(wnmt(:)).
@@ -776,7 +775,7 @@ wnmt(G):-  get_metaflags(W),setup_call_cleanup(set_metaflags(0),G,set_metaflags(
 % unbind return code
 do_metaterm_hook(Pred,Var,Value,RetCode):- nonvar(RetCode),!,do_metaterm_hook(Pred,Var,Value,RetCode0),RetCode0=RetCode.
 % print debug
-do_metaterm_hook(Pred,Var,Value,RetCode):- once((dmsg(user:metaterm_hook(Pred,Var,Value,RetCode)),fail)).
+do_metaterm_hook(Pred,Var,Value,RetCode):- notrace((dmsg(user:metaterm_hook(Pred,Var,Value,RetCode)),fail)).
 % Search for handler PER Var
 do_metaterm_hook(Hook,Var,Value,1):- get_handler(user,Var,Hook,Handler),!,call(Handler,Var,Value).
 
@@ -788,7 +787,7 @@ do_metaterm_hook('=@=',Var,Value,1):- attrs_val(Value,BA),attrs_val(Var,Cell),!,
 do_metaterm_hook(compare, Var, Value, RetCode):- !, wnmt(compare(Cmp,Var,Value)),compare_to_retcode(Cmp,RetCode).
 do_metaterm_hook(copy_term, Var, Value, 1):- !, wnmt(copy_term(Var,Value)).
 do_metaterm_hook(copy_term_nat, Var, Value, 1):- !, wnmt(copy_term_nat(Var,Value)).
-do_metaterm_hook(Hook,Var,Value,1):- metaterm_getval(Var,Cell),w_hooks(call(Hook,Cell,Value)).
+do_metaterm_hook(Hook,Var,Value,1):- metaterm_getval(Var,Cell),with_metaterm(call(Hook,Cell,Value)).
 do_metaterm_hook('$undo_unify',Var,_Value,1):- get_attr(Var,'$undo_unify',G),!,G.
 % 0: == call handler
 do_metaterm_hook(compare,Var,Value,0):- do_metaterm_hook(==,Var,Value,1),!.
@@ -939,7 +938,7 @@ fbs_for_hooks_default(v(
  use_skip_hidden , " dont factor $meta into attvar identity ", 
  use_dra_interp,
  source_fluent,
- use_cpreds , " hook cpreds (wam can misses a few)", 
+ disable_vmi , " dont hook wam or cpreds", 
  use_unify_var, " debugging for a moment trying to guage if damaging do_unify() ",
  use_undo , " check attvars for undo hooks (perfomance checking) ",
  use_vmi , " hook wam ", 
@@ -954,7 +953,7 @@ fbs_for_hooks_default(v(
 %
 % Print the system global modes
 %
-matts:- once((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
+matts:- notrace((get_metaflags(M),any_to_fbs(M,B),format('~N~q.~n',[matts(M=B)]))).
 
 
 %% debug_hooks is det.
@@ -970,7 +969,7 @@ debug_hooks(_):- matts(-debug_hooks-debug_extreme).
 %
 
 put_datts(AttVar,Modes):- 
- once((wno_hooks((var(AttVar),
+ notrace((wo_metaterm((var(AttVar),
   ((
    get_attr(AttVar,'$atts',Was)->
        (merge_fbs(Modes,Was,Change),put_attr(AttVar,'$atts',Change)); 
@@ -981,13 +980,13 @@ put_datts(AttVar,Modes):-
 %
 % Checks to see if a term has matts
 
-has_hooks(AttVar):- wno_hooks(get_attr(AttVar,'$meta',_)).
+has_hooks(AttVar):- wo_metaterm(get_attr(AttVar,'$meta',_)).
 
 %%    new_meta(+Bits,-AttVar) is det.
 %
 % Create new matts with a given set of Overrides
 
-new_meta(Bits,AttVar):- once((put_atts(AttVar,'$meta':Bits))).
+new_meta(Bits,AttVar):- notrace((put_atts(AttVar,'$meta':Bits))).
 
 
 nb_extend_list(List,E):- arg(2,List,Was),nb_setarg(2,List,[E|Was]).
@@ -996,7 +995,7 @@ nb_extend_list(List,E):- arg(2,List,Was),nb_setarg(2,List,[E|Was]).
 contains_fbs(AttVar,Bit):- any_to_fbs(AttVar,Bits),!,member(Bit,Bits).
 
 % any_to_fbs(Var,BitsOut):- attvar(Var), get_attr(Var,'$atts',BitsIn),!,any_to_fbs(BitsIn,BitsOut).
-any_to_fbs(BitsIn,BitsOut):- once((
+any_to_fbs(BitsIn,BitsOut):- notrace((
  tst((fbs_to_number(BitsIn,Mode),number(Mode))),
    Bits=[Mode],
    ignore((current_metaterm_mask(N,VV), VV is VV /\ Mode , nb_extend_list(Bits,N),fail)),!,
@@ -1052,18 +1051,12 @@ check(Key):- flag(Key,Check,Check+1),b_getval(Key,G),dmsg(check(Key,Check,G)),fa
 %
 % With inherited Hooks call Goal
 
-wi_atts(M,Goal):- once((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup_each(set_metaflags(N),Goal,set_metaflags(W)).
-
-%%    wno_hooks(+Var,+Goal)
-%
-% Without hooks on Var call Goal
-wno_hooks(Var,Goal):- with_metaterm_disabled(Var,Goal).
-wno_hooks(Goal):-  with_metaterm_disabled(global,Goal).
-w_hooks(Goal):- with_metaterm_enabled(global,Goal).
+wi_atts(M,Goal):- notrace((get_metaflags(W),merge_fbs(M,W,N))),!,setup_call_cleanup_each(set_metaflags(N),Goal,set_metaflags(W)).
 
 
-wno_dmvars(Goal):- wno_hooks(wno_debug(Goal)).
-w_dmvars(Goal):- w_hooks(w_debug(Goal)).
+
+wno_dmvars(Goal):- wo_metaterm(wno_debug(Goal)).
+w_dmvars(Goal):- with_metaterm(w_debug(Goal)).
 
 wno_debug(Goal):- '$debuglevel'(W,0),W==0,!,Goal.
 wno_debug(Goal):- setup_call_cleanup(exit_debug,Goal,enter_debug(4)).
@@ -1086,8 +1079,8 @@ test1(cmp_fbs_variants1):-
 
 test1(cmp_fbs_variants2):- 
  put_attr(X,a1,1),put_attr(X,a2,2),
- metaterm_override(X,+variant),
- metaterm_override(Y,+variant),X=@=Y.
+ metaterm_override_(X,+variant),
+ metaterm_override_(Y,+variant),X=@=Y.
 
 test1(cmp_fbs_variants3):- 
  put_attr(X,'$atts',1),
@@ -1102,6 +1095,12 @@ system:term_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true)
 system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true),dict_to_attvar(Dict,X).
 
 % :- set_dict_attvar_reader(true).
+
+
+set_module_metaterm_overriden(M,TF):- 
+         module_property(M,file(F)),
+         forall((current_predicate(_,_:PP), predicate_property(PP,file(F))),add_overriden(PP,TF)),
+         forall((current_predicate(_,M:X),\+ predicate_property(X,imported_from(_))),add_overriden(X,TF)).
 
 :- matts(+use_unify_var).
 
@@ -1148,7 +1147,7 @@ system:pointers(X,Y):- dmsg(pointers(X,Y)).
            *	  ATTR UNDO HOOK	*
 
 
-?- metaterm_override(X,'$undo_unify'()),writeq(X),metaterm_overriding(X,'$undo_unify'(_,_),O).
+?- metaterm_override_(X,'$undo_unify'()),writeq(X),metaterm_overriding(X,'$undo_unify'(_,_),O).
 
 
            *******************************/
@@ -1188,7 +1187,7 @@ export_all:-
  forall(source_file(M:H,S),
  ignore((functor(H,F,A),
    \+ predicate_property(M:H,imported_from(_)),
-   add_never_overriden(H),
+   add_overriden(H,false),
    \+ arg(_,v(attr_unify_hook/_,metaterm_unify_hook/_,verify_attributes/_,metaterm_unify_hook/_,'$pldoc'/4,'$mode'/2,attr_portray_hook/_,attribute_goals/_),F/A),
    \+ atom_concat('_',_,F),
    ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A))),
@@ -1223,6 +1222,15 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 :- retract(was_access_level_atts(Was)),set_prolog_flag(access_level,Was).
 
 :-  metaterm_flags(current,use_dra_interp,_).
+
+:- set_module_metaterm_overriden('$attvar',false).
+:- set_module_metaterm_overriden('atts',false).
+:- add_overriden(set_varname(_,_,_),false).
+:- add_overriden(var(_),false).
+:- add_overriden('$metaterm_call'(_,_,_,_,_),false).
+
+
+system:'$metaterm_call'(_PredName,_ArgNum,Var,Value):- notrace(metaterm_getval(Var,Value)).
 
 :- export_all.
 

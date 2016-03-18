@@ -157,6 +157,8 @@ handy for it someone wants to add a data type to the system.
 #define O_CYCLIC		1
 
 #define O_DRA_TABLING 1
+#define O_DRA_INTERP_TERM_T 1
+#undef O_DRA_INTERP_TERM_T /* would need term_t pinned */
 #define O_METATERM 1
 /*#undef O_METATERM*/
 
@@ -1379,7 +1381,7 @@ struct definition
   mode_mask	modes;		/* modes of the predicate */
   unsigned int  flags;			/* booleans (P_*) */
 #ifdef O_DRA_TABLING
- #ifdef DRA_INTERP_TERM_T
+ #ifdef O_DRA_INTERP_TERM_T
   term_t dra_interp;         /* VMI calls this Name/1 instead */
  #else
   word dra_interp;

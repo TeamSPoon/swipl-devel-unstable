@@ -80,8 +80,11 @@ lookupProcedure(functor_t f, Module m)
   def->functor = valueFunctor(f);
   def->module  = m;
   def->shared  = 1;
-#ifdef DRA_INTERP_TERM_T
+#ifdef O_DRA_INTERP_TERM_T
+  /* would need to have a PL_new_term_ref to survive the GC shift but this doesnt work out here (obviously)   */
   def->dra_interp  = PL_new_term_ref();
+#else 
+  def->dra_interp  = (word)0;
 #endif
   resetProcedure(proc, TRUE);
 
@@ -2831,7 +2834,7 @@ pl_get_predicate_attribute(term_t pred,
 
   } else if ( key == ATOM_interp )
   { def = getProcDefinition(proc);
-#ifdef DRA_INTERP_TERM_T
+#ifdef O_DRA_INTERP_TERM_T
   return (def->dra_interp && PL_unify(value,def->dra_interp);
 #else
   return (def->dra_interp && unify_ptrs(valPHandle(value PASS_LD),&def->dra_interp, 0 PASS_LD));
@@ -3004,7 +3007,7 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
       fail;
     def = getProcDefinition(proc);
     if(!def) return FALSE;
-#ifdef DRA_INTERP_TERM_T
+#ifdef O_DRA_INTERP_TERM_T
    return PL_put_term(def->dra_interp,value);
 #else
   return save_word(&def->dra_interp, value, HT_LINK_TERM|HT_NB_ASSIGN PASS_LD);

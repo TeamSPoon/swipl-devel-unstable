@@ -37,6 +37,8 @@ test_wake_all:verify_attributes(Var,_,
 reset_test_wake_all:-flag(test_wake_all,_,0).
 wake_all_result(N):-flag(test_wake_all,N,N).
 
+:- discontiguous wake/1.
+
 wake(Var,N):- put_attr(Var,test_wake_all,N).
 
 
