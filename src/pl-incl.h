@@ -2062,7 +2062,7 @@ typedef struct
 
 #define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
-#define LD_no_vmi_hacks LD->attvar.no_wakeups
+#define LD_no_vmi_hacks LD->attvar.vmi_recursion
 
 #define IS_META(option) ((flags & option) != 0)
 
@@ -2094,14 +2094,14 @@ typedef struct
 
 
 #define METATERM_USE_VMI  	 0x8000 /* Hook WAM */
-
+#define METATERM_DISABLE_VMI	 0x080000 /* DISABLEs USE_VMI*/
+#define METATERM_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
 
 /* This adds wakeups to attvars rather than binding them */
 #define ATTV_BINDCONST              0x010000   /* bindConst() */
 #define ATTV_UNIFY_PTRS             0x020000   /* do_unify() */
 #define ATTV_WILL_UNBIND            0x040000   /* unifiable/3 Set true whenever attempting to optimize trail (in order to minimize wakeups) */
 
-#define METATERM_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
 #define METATERM_USE_UNDO               0x100000 /* check attvars for undo hooks (perfomance checking) */
 #define METATERM_NO_OPTIMIZE_TRAIL      0x200000   /* Dont Optimize Trail (Multiple wakeups) */ /* expect unifiable/3 and Occurs checking needs attvars trailed  */
 #define METATERM_PLEASE_OPTIMIZE_TRAIL  0x400000 /* Make the default to optimize trail */
@@ -2109,7 +2109,7 @@ typedef struct
 
 #define DRA_CALL 1
 #define SLOW_UNIFY_DEFAULT TRUE
-#define METATERM_DEFAULT  	    (METATERM_USE_VMI|METATERM_USE_CPREDS|METATERM_NO_OPTIMIZE_TRAIL|METATERM_DISABLED|METATERM_USE_BARG_VAR|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VP)
+#define METATERM_DEFAULT  	    (METATERM_USE_VMI|METATERM_NO_OPTIMIZE_TRAIL|METATERM_DISABLED|METATERM_USE_BARG_VAR|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VP)
 
 #define METATERM_DISABLE_OVERRIDES_MASK  METATERM_OVERRIDE_USAGES_MASK /*| METATERM_SOURCE_VALUE | METATERM_COPY_VAR | METATERM_VALUE_SINK*/
 #define METATERM_OVERRIDE_USAGES_MASK  METATERM_USE_BARG_VAR|METATERM_USE_CONS_VAL| METATERM_USE_H_VAR|METATERM_USE_UNIFY_VP|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VAR
@@ -2146,9 +2146,10 @@ typedef struct
 #define METATERM_USE_SKIP_HIDDEN            1 /* dont factor $meta into attvar identity */
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (METATERM_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
-#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && ((!(METATERM_CURRENT & METATERM_DISABLED)) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
-#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_CPREDS PASS_LD)
-#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_CPREDS & METATERM_ENABLED && \
+#define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED)) && METATERM_REALLY_OK
+#define METATERM_REALLY_OK  !LD->in_print_message && GD->initialised && ((!( GD->cleaning > CLN_PROLOG )) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_VMI PASS_LD)
+#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_VMI & METATERM_ENABLED && \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        fvOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))

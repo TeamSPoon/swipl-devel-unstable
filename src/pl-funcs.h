@@ -49,11 +49,14 @@ COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
 COMMON(int)     fvOverride(atom_t method, Word av, Word value, int* hook_result ARG_LD);
 COMMON(int) 	metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD );
 COMMON(Word) 	attrs_after(Word av, atom_t hidden_prop ARG_LD);
+
+/*pl-codelist.c*/
 COMMON(Word) 	valPHandle(term_t r ARG_LD);
 
 COMMON(word) getMetaOverride(Word av, word metaprop, int override_flags ARG_LD);
 COMMON(int)       getMetaFlags(Word av, int flags ARG_LD);
 COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
+COMMON(bool) isSometimesOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
 COMMON(bool) isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
 COMMON(void) setupMetaterms(ARG1_LD);
 

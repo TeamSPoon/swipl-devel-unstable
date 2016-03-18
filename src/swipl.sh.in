@@ -42,4 +42,5 @@ case "$1" in
    *) ;;
 esac
 
-$bdir/@PL@@EXEEXT@ "$@" || exit 1
+# $bdir/@PL@@EXEEXT@ "$@" || exit 1
+gdb --command=$bdir/test/gdbinit --args $bdir/@PL@@EXEEXT@ "$@" || exit 1

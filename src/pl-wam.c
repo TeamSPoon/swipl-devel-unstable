@@ -2662,17 +2662,17 @@ typedef enum
 
 
 static Word
-frame_to_consP(int pre, int arity, LocalFrame frame)
+frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
 { GET_LD
 
   Word argv = argFrameP(frame, 0);
   Word t, argp;
-  int alloc = pre+arity;
+  int alloc = pre+ (arity-frameSkip) + post;
 
   { int rc;				/* TrailAssignment() */
     if ( (rc=ensureGlobalSpace(alloc, ALLOW_NOTHING)) != TRUE )
     {
-       raiseStackOverflow(rc);
+       /*raiseStackOverflow(rc);*/
        return NULL;
     }     
   }
@@ -2680,13 +2680,36 @@ frame_to_consP(int pre, int arity, LocalFrame frame)
   argp = t = gTop;
   gTop += alloc;
   argp += pre;
-  for(i=0; i<arity; i++)
+  argp += frameSkip;
+  for(i=frameSkip; i<arity; i++)
   { Word a;
     deRef2(argv+i, a);
     *argp++ = (needsRef(*a) ? makeRef(a) : *a);
   }
 
   return t;
+}
+
+static int
+substVar(Word old, word new, int arity, LocalFrame frame)
+{ GET_LD
+
+  int found = 0;
+  Word argv = argFrameP(frame, 0);
+  Word argp = argv;
+
+  for(int i=0; i<arity; i++)
+  { Word a;
+    deRef2(argv+i, a);
+    if(*a==*old) 
+    { found++;
+      *argp++ = new;
+    } else 
+    { *argp++ = (needsRef(*a) ? makeRef(a) : *a);
+    }
+  }
+
+  return found;
 }
 
 int
@@ -2862,6 +2885,9 @@ resumebreak:
   switch ( thiscode )
 #endif
   {
+#ifdef INTELLISENSE_PARSER
+#undef INTELLISENSE_PARSER
+#endif
 #include "pl-vmi.c"
   }
 

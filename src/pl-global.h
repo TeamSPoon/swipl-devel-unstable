@@ -415,7 +415,7 @@ struct PL_local_data
     term_t	gc_attvars;		/* place for attvars during GC */
     Word	attvars;		/* linked list of all attvars */
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
-    int		no_wakeups;  /* >0 Dont register wakeups (also to trap recursion) */
+    int		vmi_recursion;  /* >0 Dont register wakeups (also to trap recursion) */
     int     wakeup_ready;
 
 #ifdef O_METATERM
