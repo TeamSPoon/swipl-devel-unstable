@@ -69,7 +69,8 @@ Prolog internal database after loaded files have been edited.
 %	reloading.
 
 make :-
-	notrace(make_no_trace).
+	% DM: restore notrace
+        once(make_no_trace).
 
 make_no_trace :-
 	'$update_library_index',

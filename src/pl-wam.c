@@ -1268,6 +1268,9 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   }
 
   DEBUG(MSG_UNDO, Sdprintf("UNDO-ing\n"));
+  int was = LD_no_vmi_hacks;
+  /* DM: undo needs a clean slate */
+  LD_no_vmi_hacks = 0;
   if ( !fvOverride(ATOM_dundo_unify,location,&newer,NULL PASS_LD) )
   {
     DEBUG(MSG_UNDO, Sdprintf("UNDO FAILED"));
@@ -1275,7 +1278,7 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   {
     DEBUG(MSG_UNDO, Sdprintf("UNDO SUCCEED"));
   }
-    
+  LD_no_vmi_hacks = was;
   /* DM:  I would have prefered to...
       scheduleWakeup(newer, TRUE PASS_LD); <- problem was the when wakeups ran 'newer's inner arguments are already gone (untrailed)
     Slightly confused why this doesnt happen to the fvOverride.. see code called in attvar.pl .. why doesn't it need copy_term/2 ?  */
@@ -2691,26 +2694,32 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
 }
 
 static int
-substVar(Word old, word new, int arity, LocalFrame frame)
+substVarWord(Word old, word new, int arity, Word argv)
 { GET_LD
 
   int found = 0;
-  Word argv = argFrameP(frame, 0);
-  Word argp = argv;
+	Word argp = argv;
 
-  for(int i=0; i<arity; i++)
-  { Word a;
-    deRef2(argv+i, a);
-    if(*a==*old) 
-    { found++;
-      *argp++ = new;
-    } else 
-    { *argp++ = (needsRef(*a) ? makeRef(a) : *a);
-    }
-  }
+	for (int i = 0; i < arity; i++)
+	{ Word a;
+		deRef2(argv + i, a);
+		if (*a == *old) 
+		{ found++;
+			*argp++ = new;
+		}
+		else 
+		{ *argp++ = (needsRef(*a) ? makeRef(a) : *a);
+		}
+	}
 
-  return found;
+	return found;
 }
+
+static int
+substVar(Word old, word new, int arity, LocalFrame frame)
+{ return substVarWord(old, new, arity, argFrameP(frame, 0));
+}
+
 
 int
 PL_next_solution(qid_t qid)

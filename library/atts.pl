@@ -34,17 +34,16 @@
 */
 
 :- module(atts,[
-      wo_metaterm/2,wo_metaterm/1,
-      wno_dmvars/1,
-      wno_debug/1,
+      % in init.pl
+      % wo_metaterm/2,wo_metaterm/1,  with_metaterm/1,
+      wno_dmvars/1,w_dmvars/1,
+      wno_debug/1,w_debug/1,
       wnmt/1,
       wi_atts/2,
       wd/1,
       was_tracing/1,
       was_access_level_atts/1,
-      with_metaterm/1,
-      w_dmvars/1,
-      w_debug/1,
+      
       unify_val/2,
       undo/1,
       testfv/0,
@@ -110,8 +109,7 @@
       attrs_to_atts/3,
       as_handler/2,
       any_to_fbs/2,
-      add_attribute/3,
-      add_attribute/2,
+      add_attribute/3, add_attribute/2,
       add_attr/3,
       'meta_attribute'/2,
       'attribute'/1,get_atts/2,put_atts/2,del_atts/2, op(1150, fx, 'attribute'),
@@ -1230,7 +1228,8 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 :- add_overriden('$metaterm_call'(_,_,_,_,_),false).
 
 
-system:'$metaterm_call'(_PredName,_ArgNum,Var,Value):- notrace(metaterm_getval(Var,Value)).
+system:'$metaterm_call'(_PredName,_ArgNum,Var,Value):- notrace(must_or_die(metaterm_getval(Var,Value))).
+
 
 :- export_all.
 

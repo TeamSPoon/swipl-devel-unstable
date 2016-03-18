@@ -437,7 +437,8 @@ install-arch:	idirs iruntime
 		    $(INSTALL_PROGRAM) $$f $(DESTDIR)$(PLBASE)/bin/$(INSTALL_PLARCH); \
 		done
 
-install-libs:	idirs iboot ilib iruntime iinclude icustom install-demo
+# iboot ilib 
+install-libs:	idirs iruntime iinclude icustom install-demo
 		$(INSTALL_DATA) $(STARTUPPATH) "$(DESTDIR)$(PLBASE)/$(BOOTFILE)"
 		echo . > "$(DESTDIR)$(PLBASE)/swipl.home"
 		echo .. > "$(DESTDIR)$(PLBASE)/bin/swipl.home"

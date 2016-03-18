@@ -157,7 +157,8 @@ void
 bArgVar(Word ap, Word vp ARG_LD)
 { deRef(vp);
 
-  if(METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, vp, ap, METATERM_NO_TRAIL)) return;
+  /*disabled for now*/
+  if(0)if(METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, vp, ap, METATERM_NO_TRAIL)) return;
 
   if ( isVar(*vp) )
   { if ( ap < vp )
