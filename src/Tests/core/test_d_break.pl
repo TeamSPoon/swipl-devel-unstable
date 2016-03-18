@@ -247,20 +247,20 @@ prolog:break_hook(Clause, PC, FR, BFR, What, continue) :-
 	stress(hook).
 
 
-gshift :- shift(global_shifts).
-tshift :- shift(trail_shifts).
+gshift :- shift_dbreak(global_shifts).
+tshift :- shift_dbreak(trail_shifts).
 
-shift(Stat) :-
+shift_dbreak(Stat) :-
         statistics(Stat, S0),
-	shift(S0, Stat, X),
+	shift_dbreak(S0, Stat, X),
         shift_a(X).			% ensure term is used.
 
 shift_a(_).
 
-shift(S0, Stat, s(X)) :-
+shift_dbreak(S0, Stat, s(X)) :-
         statistics(Stat, S0), !,
-        shift(S0, Stat, X).
-shift(_, _, _).
+        shift_dbreak(S0, Stat, X).
+shift_dbreak(_, _, _).
 
 
 lshift :-

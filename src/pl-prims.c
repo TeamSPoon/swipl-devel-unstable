@@ -3726,7 +3726,7 @@ PRED_IMPL("atom_number", 2, atom_number, 0)
 /* MacOS X Mavericks and Yosemite write a char (nul) too many if the
  * buffer is short.  Thanks to Samer Abdallah for sorting this out.
  */
-#ifdef __APPLE__
+#if defined(__APPLE__) || defined(__CYGWIN__)
 #define WCSXFRM_BUFFER_OVERRUN 1
 #else
 #define WCSXFRM_BUFFER_OVERRUN 0
@@ -3735,7 +3735,7 @@ PRED_IMPL("atom_number", 2, atom_number, 0)
 static
 PRED_IMPL("collation_key", 2, collation_key, 0)
 {
-#ifdef HAVE_WCSXFRM
+#if defined(HAVE_WCSXFRM) &&  !defined(__CYGWIN__)
   wchar_t *s;
   size_t len;
   wchar_t buf[256];
@@ -3754,7 +3754,8 @@ PRED_IMPL("collation_key", 2, collation_key, 0)
 
       return rc;
     } else
-    { assert(o == buf);
+    { 
+      assert(o == buf);
       buflen = n+1;
       o = PL_malloc(buflen*sizeof(wchar_t));
     }

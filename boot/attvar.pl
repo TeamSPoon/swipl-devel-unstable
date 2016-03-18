@@ -53,7 +53,7 @@ in pl-attvar.c
 %	attributed variables.
 
 % each variable will be shut off one at a time and global will be re-enabled once a var is shut off
-'$wakeup'(G) :- with_metaterm_disabled(global,G).
+'$wakeup'(G) :- wo_metaterm(wo_metavmi(G)).
 
 
        /*******************************

@@ -2,15 +2,16 @@
 
 # Break on fatal errors and intended traps
 
-set breakpoint pending on
+# set breakpoint pending on
 break trap_gdb
 break sysError
 break fatalError
-set breakpoint pending off
+# set breakpoint pending off
 
 # Pass `normal signals'
 
 handle SIGPIPE noprint nostop pass
+handle SIGINT print nostop pass
 handle SIGUSR1 noprint nostop pass
 handle SIGUSR2 noprint nostop pass
 set print thread-events off
@@ -49,3 +50,28 @@ end
 define public
   set environment SWI_HOME_DIR=/home/jan/lib/pl-5.9.5
 end
+
+
+# some more macros
+
+define cls
+    shell clear
+end
+document cls
+Syntax: cls
+| Clear screen.
+end
+
+
+
+handle SIGQUIT pass nostop print
+set $_exitcode = -1
+run
+if $_exitcode != -1 
+    quit
+end
+backtrace
+# maybe quit
+# quit
+
+

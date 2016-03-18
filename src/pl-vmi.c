@@ -1676,7 +1676,7 @@ normal_call:
 	int alt_arity = orig_arity;
 	int slack = 0;
 	if ((!isNeverOverriden(orig_name, orig_arity, current_functor PASS_LD)) && (METATERM_USE_VMI & METATERM_ENABLED))
-  { assert(LD_no_wakeup<5); /*catch loops*/
+  { assert(LD_no_vmi_hacks<5); /*catch loops*/
     Word ARG = argFrameP(NFR, 0);
 		int metaterm_overrides_present = 0;
 		int metaterms_disabled = 0;

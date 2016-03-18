@@ -2062,7 +2062,7 @@ typedef struct
 
 #define GROW_OR_RET_OVERFLOW(n) if ( !hasGlobalSpace(n) ) { int rc; if ( (rc=ensureGlobalSpace(n, ALLOW_GC)) != TRUE ) return raiseStackOverflow(rc); }
 
-#define LD_no_wakeup LD->attvar.no_wakeups
+#define LD_no_vmi_hacks LD->attvar.no_wakeups
 
 #define IS_META(option) ((flags & option) != 0)
 

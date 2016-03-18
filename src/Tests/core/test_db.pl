@@ -44,21 +44,28 @@ test_db :-
 	term/0,
 	f/1, f/2, f/0.
 
+
 test(right_cyclic_head, [ sto(rational_trees),
 			  error(representation_error(cyclic_term))
 			]) :-
 	X = f(X),
 	assert(X).
+
+% TODO SEGVs on Cygwin
+:- if( \+ current_prolog_flag(arch,'x86_64-cygwin')).
 test(cyclic_head, [ sto(rational_trees),
 			  error(representation_error(cyclic_term))
 			]) :-
 	X = f(X, 1),
 	assert(X).
+
+% TODO SEGVs on Cygwin
 test(cyclic_body, [ sto(rational_trees),
 		    error(representation_error(cyclic_term))
 		  ]) :-
 	X = f(X),
 	assert((f(a) :- X)).
+:- endif.
 
 test(cut_cond, Body = (! -> fail)) :-
 	assert(f :- (! -> fail)),

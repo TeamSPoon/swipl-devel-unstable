@@ -115,7 +115,7 @@ void
 registerWakeup(functor_t wakeup_type, atom_t atomcaller, Word attvar, Word attrs, Word value ARG_LD)
 { Word wake;
 
-  if(LD_no_wakeup > 0)
+  if(LD_no_vmi_hacks > 0)
   { DEBUG(MSG_WAKEUPS, Sdprintf_ln("registering wakeups durring recursion"));
   }
 
@@ -492,7 +492,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   if(atomcaller==0) atomcaller = current_caller_mask(varflags);
   if(atomcaller==0) atomcaller = current_caller_mask(flags);
 
-  int nowu = LD_no_wakeup;
+  int nowu = LD_no_vmi_hacks;
 
   if(nowu)
   {
@@ -504,7 +504,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
 
     if(varflags!=0)
     {
-      DEBUG(MSG_WAKEUPS, Sdprintf_ln("LD_no_wakeup(%d,%s,%s)",LD_no_wakeup, vName(av),my_atom_summary(atomcaller)));
+      DEBUG(MSG_WAKEUPS, Sdprintf_ln("LD_no_vmi_hacks(%d,%s,%s)",LD_no_vmi_hacks, vName(av),my_atom_summary(atomcaller)));
       return FALSE;
     }
 
@@ -587,7 +587,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
     }
   }
 
-  if(LD_no_wakeup)
+  if(LD_no_vmi_hacks)
  {
     flags |= METATERM_NO_WAKEUP;
  }
@@ -1997,12 +1997,12 @@ PRED_IMPL("metaterm_flags", 3, metaterm_flags, 0)
 
 
 static
-PRED_IMPL("set_no_wakeup", 2, set_no_wakeup, 0)
+PRED_IMPL("set_no_metavmi", 2, set_no_metavmi, 0)
 { PRED_LD
   number n;
   word rval;
   LD->attvar.wakeup_ready = TRUE;
-  rval = PL_unify_int64_ex(A1, LD_no_wakeup);
+  rval = PL_unify_int64_ex(A1, LD_no_vmi_hacks);
   if(rval!=TRUE) return rval;
 
   rval = PL_unify(A1,A2);
@@ -2012,7 +2012,7 @@ PRED_IMPL("set_no_wakeup", 2, set_no_wakeup, 0)
   {
     return PL_error("flag", 3, NULL, ERR_TYPE, ATOM_flag_value, A2);
   }
-  LD_no_wakeup = n.value.i;
+  LD_no_vmi_hacks = n.value.i;
   return TRUE;
 }
 
@@ -2201,7 +2201,7 @@ fvOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 
         /* Prevent calling a second time (allowing 1 in case no_wakeup is used by a one other wake hook calling fvOverride)
         this prevents aquiring unwanted C stack */
-    if (LD_no_wakeup>1)
+    if (LD_no_vmi_hacks>1)
     { term_t ex = av+3;
      
      rc = PL_unify_term(ex,PL_FUNCTOR, 
@@ -2221,11 +2221,11 @@ fvOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 
     if(!pred) return FALSE;
 
-    LD_no_wakeup++;
+    LD_no_vmi_hacks++;
     DEBUG(MSG_METATERM, NEVER_WRITELN(av));
     rc = PL_call_predicate(NULL,  
                            PL_Q_PASS_EXCEPTION, pred, av);
-    LD_no_wakeup--;
+    LD_no_vmi_hacks--;
     if (rc == TRUE)
     { if (PL_get_integer(av+3,&rc))
       { if(retresult) *retresult = rc;
@@ -2337,7 +2337,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$trail_assignment",    1, dtrail_assignment,    0)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
-  PRED_DEF("set_no_wakeup", 2, set_no_wakeup, 0)
+  PRED_DEF("set_no_metavmi", 2, set_no_metavmi, 0) 
   PRED_DEF("add_never_overriden", 1, add_never_overriden, 0)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
   PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)

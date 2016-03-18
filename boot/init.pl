@@ -216,6 +216,10 @@ nop(_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_,_).
 
+% nop/1 is for disabling code while staying in syntax
+
+
+
 :- meta_predicate(ifdef(+,0)).
 ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
@@ -227,27 +231,32 @@ ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 '$metaterm_callp'(A,B,P):- amsgc('call'(P,A,B)).
 '$metaterm_callp'(A,P):- amsgc('call'(P,A)).
 
-'$metaterm_call'(P,A,B,C,D,E,F,G):- amsgc('call'(P,A,B,C,D,E,F,G)).
-'$metaterm_call'(P,A,B,C,D,E,F):- amsgc('call'(P,A,B,C,D,E,F)).
-'$metaterm_call'(P,A,B,C,D,E):- amsgc('call'(P,A,B,C,D,E)).
-'$metaterm_call'(P,A,B,C,D):- amsgc('call'(P,A,B,C,D)).
-'$metaterm_call'(P,A,B,C):- amsgc('call'(P,A,B,C)).
-'$metaterm_call'(P,A,B):- amsgc('call'(P,A,B)).
-'$metaterm_call'(P,A):- amsgc('call'(P,A)).
 
-amsgc(C):-with_metaterm_disabled((amsg(C),C)).
+%call_using(var,V,1,CallvarV):-!,setarg(2,CallvarV,Var).
+%call_using(P,V,N,Goal):-
+
+amsgc(C):-wo_metaterm((amsg(C),C)).
 
 amsg(_):-!.
 amsg(G):- notrace(
    ignore(( % current_prolog_flag(dmiles,true),
-           with_metaterm_disabled(global,(ifdef(logicmoo_util_dmsg:dmsg(G),
+           wo_metaterm((ifdef(logicmoo_util_dmsg:dmsg(G),
                   format(user_error,'~N,~q~n',[G]))))))).
 
 
-:- meta_predicate with_metaterm_disabled(?,0),
-                  with_metaterm_enabled(?,0),
-                  with_no_wakeups(0),
-                  with_wakeups(0),
+:- meta_predicate
+				with_metaterm_disabled(?,0),
+				with_metaterm_enabled(?,0),
+				with_no_wakeups(0),
+				with_wakeups(0),
+				wo_metaterm(?,0),
+				with_metaterm(?,0),
+				wo_metaterm(0),
+				with_metaterm(0),
+				wo_metavmi(0),
+				with_metavmi(0),
+				with_metavmi_maybe(0),
+				must_atomic(0),
                   must_or_die(0),
                   setup_call_cleanup_each(0,0,0),
                   call_cleanup_each(0,0).
@@ -276,13 +285,30 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
      E, (must_atomic(Undo),throw(E))))),WasTrace).
 
 
-with_no_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,X+1), G, set_no_wakeup(_,X)).
-with_wakeups(G):-  setup_call_cleanup_each(set_no_wakeup(X,0), G, set_no_wakeup(_,X)).
+with_no_wakeups(G):-  G. %% setup_call_cleanup_each(set_no_metavmi(X,X+1), G, set_no_metavmi(_,X)).
+with_wakeups(G):- G. %% setup_call_cleanup_each(set_no_metavmi(X,0), G, set_no_metavmi(_,X)).
 
 with_metaterm_disabled(G):-with_metaterm_disabled(global,G).
 with_metaterm_enabled(G):-with_metaterm_enabled(global,G).
 with_metaterm_disabled(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G))).
 with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled)).
+
+
+wo_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), G, set_no_metavmi(_,X)).
+with_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), G, set_no_metavmi(_,X)).
+
+with_metavmi_maybe(G):- 
+ set_no_metavmi(X,_), 
+  (X > 1 
+    -> setup_call_cleanup_each(set_no_metavmi(_,X-1), G, set_no_metavmi(_,X)) 
+    ; setup_call_cleanup_each(set_no_metavmi(_,0), G, set_no_metavmi(_,X))).
+
+
+wo_metaterm(G):- wo_metaterm(global,wo_metavmi(G)).
+with_metaterm(G):-with_metaterm(global,with_metavmi_maybe(G)).
+
+wo_metaterm(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G ))).
+with_metaterm(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled) )))).
 
 
 

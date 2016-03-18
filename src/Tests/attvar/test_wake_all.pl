@@ -42,9 +42,9 @@ wake(Var,N):- put_attr(Var,test_wake_all,N).
 
 wake(1) :- wake(A,1), wake(A,2), wake_all_result(0).
 
-va_test:verify_attributes(Var,_,[]):-get_attr(Var,va_test,Val),must_be(var,Val).
+test_wake_all_two:verify_attributes(Var,_,[]):-get_attr(Var,test_wake_all_two,Val),must_be(var,Val).
 
-wake(2) :- put_attr(X,va_test,Y), t(X,Y)=t(1,1).
+wake(2) :- put_attr(X,test_wake_all_two,Y), t(X,Y)=t(1,1).
 
 wake(3) :- wake(A,1), wake(B,2), A=a, A=B, wake_all_result(3).
 
