@@ -316,7 +316,7 @@ PRED_IMPL("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINIS
     PL_unify_integer(A2,index->mask);
 
   next = index+1;
-  if ( next && next->name )
+  if (*next && next->name )
     ForeignRedoPtr(next);
   return rc;
 }
