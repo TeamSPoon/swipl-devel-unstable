@@ -64,7 +64,7 @@ end
 
 
 
-handle SIGQUIT pass nostop print
+handle SIGQUIT pass stop print
 set $_exitcode = -1
 run
 if $_exitcode != -1 

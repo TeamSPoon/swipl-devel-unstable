@@ -43,6 +43,6 @@ case "$1" in
 esac
 
 
-$bdir/@PL@@EXEEXT@ "$@" || exit 1
+#$bdir/@PL@@EXEEXT@ "$@" || exit 1
 # doesnt work for making the .prc in VS2010
-gdb --command=$bdir/test/gdbinit --args $bdir/@PL@@EXEEXT@ "$@" || exit 1
+gdb --nh --command=$bdir/test/gdbinit --args $bdir/@PL@@EXEEXT@ "$@" || exit 1
