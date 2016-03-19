@@ -1643,7 +1643,9 @@ again:
 		{ unblockSignal(sig);	/* into pl_break() itself */
 		  pl_break();
 		} else
-		{ Sfprintf(Sdout, "Cannot break from forced interrupt\n");
+		{ Sfprintf(Sdout, "Shouldn't break from forced interrupt\n");
+		  unblockSignal(sig);
+		  pl_break();
 		}
 		goto again;
     case 'c':	if ( safe )

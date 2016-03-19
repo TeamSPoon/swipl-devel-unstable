@@ -437,7 +437,8 @@ install-arch:	idirs iruntime
 		    $(INSTALL_PROGRAM) $$f $(DESTDIR)$(PLBASE)/bin/$(INSTALL_PLARCH); \
 		done
 
-# iboot ilib 
+# DM: currently --link doent work.. and copy creates work.. so they are junctioned already
+ifeq ($(CYGWIN),true)
 install-libs:	idirs iruntime iinclude icustom install-demo
 		$(INSTALL_DATA) $(STARTUPPATH) "$(DESTDIR)$(PLBASE)/$(BOOTFILE)"
 		echo . > "$(DESTDIR)$(PLBASE)/swipl.home"
@@ -445,6 +446,16 @@ install-libs:	idirs iruntime iinclude icustom install-demo
 		$(DEVPL) -C "$(DESTDIR)$(PLBASE)" -f none -F none \
 			-g 'make_library_index(library)' \
 			-t halt
+else
+install-libs:	idirs iboot ilib iruntime iinclude icustom install-demo
+		$(INSTALL_DATA) $(STARTUPPATH) "$(DESTDIR)$(PLBASE)/$(BOOTFILE)"
+		echo . > "$(DESTDIR)$(PLBASE)/swipl.home"
+		echo .. > "$(DESTDIR)$(PLBASE)/bin/swipl.home"
+		$(DEVPL) -C "$(DESTDIR)$(PLBASE)" -f none -F none \
+			-g 'make_library_index(library)' \
+			-t halt
+endif
+
 
 .PHONY:	install-mingw install-plterm install-plwin install-mkboot install-icon iruntime
 

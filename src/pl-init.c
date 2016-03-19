@@ -1402,6 +1402,9 @@ action:
   switch(getSingleChar(Sinput, FALSE))
   { case EOF:
       Sfprintf(Serror, "EOF: exit\n");
+    case 'b':
+      pl_break();
+      break;
     case 'e':
       PL_halt(3);
       break;

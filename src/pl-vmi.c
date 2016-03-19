@@ -4611,7 +4611,7 @@ again:
     LOAD_REGISTERS(qid);
 
     LD_no_vmi_hacks++;
-    
+
     if ( !rc )          /* uncaught exception */
     {
       atom_t a;
@@ -4639,9 +4639,11 @@ again:
       }
       LOAD_REGISTERS(qid);
     }
+
+    LD_no_vmi_hacks--;
+
   }
 
-  LD_no_vmi_hacks--;
 
   if ( debugstatus.debugging )
   {
