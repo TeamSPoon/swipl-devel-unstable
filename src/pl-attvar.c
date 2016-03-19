@@ -442,6 +442,10 @@ static const char* my_atom_summary(atom_t n)
   if(n==0) return "NOATOM";
   return atom_summary(n,20);
 }
+
+/* if assigning an attvar into value that is a var.. or  with a compound that is nonground 
+   the value should have been trailed before hand
+  */
 void
 assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 {
