@@ -266,11 +266,12 @@ plvar(Var):- source_fluent(Var),put_attr(Var,plvar,Var), metaterm_setval(Var,_).
 atts:metaterm_type(subsumer_var).
 subsumer_var(X):- source_fluent(X),init_accumulate(X,pattern,term_subsumer).
 
-:- module_transparent(tst:verify_attributes/3).
+metaterm_call(FluentFactory,Goal):-
+   term_variables(Goal,Vs),
+   maplist(FluentFactory,Vs),
+   Goal.
 
-%tst:metaterm_unify_hook(_,_,_,_).
-%no_bind:metaterm_unify_hook(_,_,_,_).
-%use_unify_var:metaterm_unify_hook(_,_,_,_).
+
 tst:verify_attributes(X, Value, [format('~N~q, ~n',[goal_for(Name)])]) :- sformat(Name,'~w',X), get_attr(X, tst, Attr),format('~Nverifying: ~w = ~w (attr: ~w),~n', [X,Value,Attr]).
 
 % tst:attr_unify_hook(Attr,Value):-format('~N~q, ~n',[tst:attr_unify_hook(Attr,Value)]).
@@ -339,9 +340,110 @@ nb_var(N, V):- source_fluent(V), nb_linkval(N,V),put_attr(V,nb_var,N),nb_linkval
 system:push_current_source_module(M):- prolog_load_context(module,SM),asserta('$source_context':'$c_source_context'(SM)),'$set_source_module'(M).
 system:pop_current_source_module:- retract('$source_context':'$c_source_context'(SM)),'$set_source_module'(SM).
 
+%:- push_current_source_module(user).
+
+
+ab(a1,b1).
+ab(a2,b2).
+ab(a3,b3).
+
+xy(x1,y1).
+xy(x2,y2).
+xy(x3,y3).
+
+
+equals(X,Y):-equals0(X,Y),!.
+
+equals0(X,X).
+equals0(a1,x1).
+equals0(a2,x2).
+equals0(a3,x3).
+equals0(b1,y1).
+equals0(b2,y2).
+equals0(b3,y3).
+
+
+q(A,B):-ab(A,B),xy(A,B).
+
+%:- pop_current_source_module.
+
+%% set_unifyp(+Pred,?Fluent) is det.
+%
+% Create or alter a Prolog variable to have overrideed unification
+%
+% Done with these steps:
+% 1) +sink_fluent = Allow to remain a variable after binding with a nonvar
+% 2) +source_fluent = Declares the variable to be a value producing with on_unify_keep_vars
+% 3) Set the unifyp attribute to the Pred.
+set_unifyp(Pred,Fluent):- wno_dmvars((no_bind(Fluent),put_attr(Fluent,unifyp,binding(Pred,Fluent,_Uknown)))).
+
+% unifyp:attr_unify_hook(binding(Pred,Fluent,Prev),Value):- unifyp:metaterm_unify_hook(_Why,binding(Pred,Fluent,Prev),_What,Value).
+
+% Our implimentation of a unifyp variable
+unifyp:metaterm_unify_hook(_Atom,binding(_Pred,_Fluent,_Prev),Var,_Value):-nonvar(Var),!. % ,ignore(call(Pred,Var,Value)).
+unifyp:metaterm_unify_hook(_Atom,binding(Pred,Fluent,Prev),_Var,Value):-
+        % This is how we produce a binding for +source_fluent "on_unify_keep_vars"
+          (var(Value),nonvar(Prev)) ->  Value=Prev;
+         % same binding (effectively)
+             Value==Prev->true;
+         % unification we will update the internal value
+             Value=Prev->put_attr(Fluent,unifyp,binding(Pred,Fluent,Value));
+         % Check if out override was ok
+             call(Pred,Prev,Value) -> true;
+         % Symmetrically if out override was ok
+             call(Pred,Value,Prev)-> true.
+
+label_sources(A,B):-label_sources(A),label_sources(B).
+label_sources( Fluent):- get_attr(Fluent,unifyp,binding(_,Fluent,Value)),!,attv_bind(Fluent,Value).
+label_sources(_Fluent):-!.
+
+lv:- user: ((metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))))).
+llv:- set_prolog_flag(dmiles,true),user:reconsult(library(metaterm)), metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
+lv2:- put_atts(X,[+use_unify_var]),X=_.
+
+:- module_transparent(tst:verify_attributes/3).
+
+%tst:metaterm_unify_hook(_,_,_,_).
+%no_bind:metaterm_unify_hook(_,_,_,_).
+%use_unify_var:metaterm_unify_hook(_,_,_,_).
+
+/*
+
+
+
+metaterm_test:- 
+ put_attr(X, tst, a), X = a.
+verifying: _G389386 = a;  (attr: a)
+X = a.
+
+
+metaterm_test:-  put_attr(X,tst, vars(Y)), put_attr(Y,tst, vars(X)), [X,Y] = [x,y(X)].
+verifying: _G389483 = x;  (attr: vars(_G389490))
+verifying: _G389490 = y(x);  (attr: vars(x))
+
+
+metaterm_test:- VARS = vars([X,Y,Z]), put_attr(X,tst, VARS), put_attr(Y,tst,VARS), put_attr(Z,tst, VARS), [X,Y,Z]=[0,1,2].
+verifying: _G389631 = 0;  (attr: vars([_G389631,_G389638,_G389645]))
+verifying: _G389638 = 1;  (attr: vars([0,_G389638,_G389645]))
+verifying: _G389645 = 2;  (attr: vars([0,1,_G389645]))
+VARS = vars([0, 1, 2]),
+X = 0,
+Y = 1,
+Z = 2.
+
+
+*/
+
+
+
 
 
 % :- autoload.
+
+
+t1:- must_ts(rtrace((when(nonvar(X),member(X,[a(1),a(2),a(3)])),!,findall(X,X=a(_),List),List==[a(1),a(2),a(3)]))).
+
+t2:- must_ts(rtrace( (freeze(Foo,setarg(1,Foo,cant)),  Foo=break_me(borken), Foo==break_me(cant)))).
 
 
 /* This tells C, even when asked, to not do bindings (yet) 
@@ -562,169 +664,172 @@ atts:metaterm_type(memory_fluent).
 memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(Sink,zar,Sink),memory_var(Fluent),Fluent=Sink.
 
 
+
+
+% :- [src/test_va]. 
+
+
+
+/*
+:- if((
+  exists_source( library(logicmoo_utils)),
+  current_predicate(gethostname/1), 
+  % fail,
+  gethostname(ubuntu))).
+*/
+
+:- use_module(library(http/http_path)).
+:- use_module(library(http/http_host)).
+:- use_module(library(logicmoo_utils)).
+
+
+:- wo_metaterm(use_listing_vars).
+
+:- debug(_).
+% :- debug_fluents.
+% :- source_fluent.
+:- debug(fluents).
+
+:-export(demo_nb_linkval/1).
+  demo_nb_linkval(T) :-
+           T = nice(N),
+           (   N = world,
+               nb_linkval(myvar, T),
+               fail
+           ;   nb_getval(myvar, V),
+               writeln(V)
+           ).
+/*
+   :- debug(_).
+   :- nodebug(http(_)).
+   :- debug(mpred).
+
+   % :- begin_file(pl).
+
+
+   :- dynamic(sk_out/1).
+   :- dynamic(sk_in/1).
+
+   :- read_attvars(true).
+
+   sk_in(avar([vn='Ex',sk='SKF-666'])).
+
+   :- listing(sk_in).
+
+   :- must_ts((sk_in(Ex),get_attr(Ex,sk,What),What=='SKF-666')).
+
+*/
+
+v1(X,V) :- put_atts(V,X),show_var(V).
+
+
+
+%:- endif.
+
 make_list_with_element(0,_,[]):-!. 
 make_list_with_element(N,Init,[Init|List]):- Nm1 is N-1, make_list_with_element(Nm1,Init,List).
 
 
 
+do_metaterm_tests:- forall(clause(metaterm_test,B),(nl,nl,run_b_test(B),nl,nl)).
 
-% =========================================================================
-%   Evil overide of unification
-% =========================================================================
-metaterm_call(FluentFactory,Goal):-
-   term_variables(Goal,Vs),
-   maplist(FluentFactory,Vs),
-   Goal.
+:- discontiguous(metaterm_test/0).
 
+metaterm_test:- 
+  source_fluent(X),metaterm_setval(X,foo),
+  dmsg([x=X,y=Y,z=Z]),
+  Y=X,
+  dmsg([x=X,y=Y,z=Z]),
+  metaterm_setval(X,bar),
+  X=Z,
+  dmsg([x=X,y=Y,z=Z]),
+  wo_metaterm(dmsg([x=X,y=Y,z=Z])),
+  meta(X),
+  writeln(X).
 
-%% set_unifyp(+Pred,?Fluent) is det.
-%
-% Create or alter a Prolog variable to have overrideed unification
-%
-% Done with these steps:
-% 1) +sink_fluent = Allow to remain a variable after binding with a nonvar
-% 2) +source_fluent = Declares the variable to be a value producing with on_unify_keep_vars
-% 3) Set the unifyp attribute to the Pred.
-set_unifyp(Pred,Fluent):- wno_dmvars((no_bind(Fluent),put_attr(Fluent,unifyp,binding(Pred,Fluent,_Uknown)))).
+metaterm_test:- 
+  source_fluent(X),
+  metaterm_setval(X,foo),
+  dmsg([x=X,y=Y,z=Z]),
+  Y=X,
+  dmsg([x=X,y=Y,z=Z]),
+  metaterm_setval(X,bar),
+  X=Z,
+  dmsg([x=X,y=Y,z=Z]),
+  meta(X),
+  writeln(X).
 
-% unifyp:attr_unify_hook(binding(Pred,Fluent,Prev),Value):- unifyp:metaterm_unify_hook(_Why,binding(Pred,Fluent,Prev),_What,Value).
+run_b_test(B):- amsg(run_test(B)),fail.
+run_b_test(B):- catch((call((B,deterministic(Det),true)),!,(Det==true->amsg(test_passed(B));amsg(test_warn_nondet(B)))),_,fail),!.
+run_b_test(B):- catch((rtrace_each(B),fail),E,amsg(test_error(E,B))),!.
+run_b_test(B):- amsg(test_failed(B)),!.
 
-% Our implimentation of a unifyp variable
-unifyp:metaterm_unify_hook(_Atom,binding(_Pred,_Fluent,_Prev),Var,_Value):-nonvar(Var),!. % ,ignore(call(Pred,Var,Value)).
-unifyp:metaterm_unify_hook(_Atom,binding(Pred,Fluent,Prev),_Var,Value):-
-        % This is how we produce a binding for +source_fluent "on_unify_keep_vars"
-          (var(Value),nonvar(Prev)) ->  Value=Prev;
-         % same binding (effectively)
-             Value==Prev->true;
-         % unification we will update the internal value
-             Value=Prev->put_attr(Fluent,unifyp,binding(Pred,Fluent,Value));
-         % Check if out override was ok
-             call(Pred,Prev,Value) -> true;
-         % Symmetrically if out override was ok
-             call(Pred,Value,Prev)-> true.
-
-label_sources(A,B):-label_sources(A),label_sources(B).
-label_sources( Fluent):- get_attr(Fluent,unifyp,binding(_,Fluent,Value)),!,attv_bind(Fluent,Value).
-label_sources(_Fluent):-!.
+rtrace_each((A,B)):-!,rtrace_each(A),!,rtrace_each(B),!.
+rtrace_each(B):-rtrace(B).
 
 
 :- export_all.
 
-lv:- user: ((metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))))).
-llv:- set_prolog_flag(dmiles,true),user:reconsult(library(metaterm)), metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
-lv2:- put_atts(X,[+use_unify_var]),X=_.
+:- if(current_prolog_flag(dmiles,true)).
+:- set_prolog_flag(dmiles,false).
+:- autoload.
+
+% metaterm_test:- source_fluent(X),metaterm_setval(X,foo),Y=X,Y==foo,meta(X).
+
+%  source_fluent(X),metaterm_copy_var(X),metaterm_setval(X,foo),dmsg( ( x : X , y : Y ) ),trace,Y=X,Y=foo,meta(X).
+
+:- metaterm_flags(current,use_dra_interp,_).
+cls :- shell(clear),shell(cls).
+% :- forall(lv,true).
+
+:- prolog_debug('MSG_WAKEUPS').
+
+:- use_unify_var.
 
 
 
-ab(a1,b1).
-ab(a2,b2).
-ab(a3,b3).
-
-xy(x1,y1).
-xy(x2,y2).
-xy(x3,y3).
+metaterm_test:- source_fluent(X),\+ X=1.
 
 
-equals(X,Y):-equals0(X,Y),!.
+% :- module(fv).
+% :- do_metaterm_tests.
+% :- break.
 
-equals0(X,X). equals0(a1,x1). equals0(a2,x2). equals0(a3,x3). equals0(b1,y1).  equals0(b2,y2). equals0(b3,y3). 
-
-
-q(A,B):-ab(A,B),xy(A,B).
-
-/*
-
- forall(human(X),
-   exists(M,
-     and(human(M),mother(X,M)))).
-
- M= {(mother(X,M),human(X)),human(M)}.
- X= {(mother(X,_),human(X))}.
+metaterm_test:- no_bind(X),X=1,X=2.
 
 
- isa(motherOfFn,skolemFunction).
- human(motherOfFn(H)):-human(H).
- mother(H,motherOf(H)):-human(H).
- ~human(H):- ~mother(H,_).
+metaterm_test:- sink_fluent(X),source_fluent(X),X=1,Y=X,_Z=Y,Y==1,X\==1,meta(X).
 
-    forall(human(H),
-      exists(M,
-       exists(P,
-        and(human(M),genlPreds(P,mother),holds(P,H,M)))).
+metaterm_test:- sink_fluent(X),X=1,X=2.
 
-P=_{genlPreds:mother,arg1Isa:mother(Arg1Isa),arg2Isa:mother(Arg2Isa)}
+metaterm_test:- source_fluent(X),metaterm_setval(X,1),X=1.
 
+metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),X=3.
 
+metaterm_test:- source_fluent(X),not(X=1).
 
-w(a).
-w(b).
-w(c).
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),metaterm_push(X,4),get_attr(X,value,Vs),!,Vs==[1,2,3,4].
 
-?- w(X).
-X=a ;
-X=b ;
-X=c ;
-no.
+metaterm_test:- source_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),!,findall(X,X=_,List),List==[1,2,3].
 
-??- w(X).
-X = {member(X,[a,b,c])}.
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),findall(X,X=_,List),List==[].
 
-??- w(X), X==a.
-X = a.
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
 
-??- w(X), X=a.
-X = {member(X,[a,b,c])}.
+metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
 
+metaterm_test:- sink_fluent(X),dif(X,1),X=2,copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
 
-?- w(X), (X=a;X=b).
-X=a;
-X=b.
+metaterm_test:- sink_fluent(X),metaterm_push(X,1), dif(X,1),copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
+
+% metaterm_test:- source_fluent(X),catch(sink_fluent(X),E,true),compound(E).
+
+metaterm_test:- sink_fluent(X),catch(source_fluent(X),E,true),var(E).
+
+metaterm_test:- source_fluent(X),metaterm_setval(X,2),trace,3 is X + 1.
+
+metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),3 is X + 1.
+
+:- endif.
 
 
-?- w(X), (X=a;X=b).
-X=a;
-X=b;
-
-??- w(X), (X=a;X=b).
-X = {member(X,[a,b]);dif(X,c)}.
-
-
-??- w(X), X=6.
-X = {member(X,[])}.
-
-
-??- w(X),X,trace.
-X = {member(X,[a,b,c])} ,
-X = 6 -> X = {member(X,[6])}.
-X = {member(X,[])}.
-
-
-??- human(X).
-X = {human(X)}.
-
-?- freeze(X,human(X)).
-X = {human(X)}.
-
-
-  mother(H,X) :- 
-   biological_Mother(H,X) ; adopted_Mother(H,X).
-
- _{motherOf:_}
-
- motherOf(bill)
-
-
- goesToStoreFor(_{motherOf:bill},_{gallonOf:milk}).
-
- human(bill).
- mother(bill,motherOf(bill)).
-
-segv_test:-  no_bind(X),freeze(X,human(X)),X=x1,X=x1234,copy_term(X,THAWX,G),call(G).
-
-
-
- /*human(motherOf(bill)).*/
-
-
-
-*/
