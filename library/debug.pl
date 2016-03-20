@@ -117,23 +117,28 @@ debugging(Topic, Bool) :-
 %	either a stream or  stream-alias  or   a  filename  (atom). This
 %	redirects debug information on this topic to the given output.
 
+debug(Topic) :- var(Topic),!,forall(debugging(Topic, false, _),debug(Topic)).
 debug(Topic) :-
 	debug(Topic, true).
+
+nodebug(Topic) :- var(Topic),!,forall(debugging(Topic, true, _),nodebug(Topic)).
 nodebug(Topic) :-
 	debug(Topic, false).
+
+assert_ifn(G):-retractall(G),assert(G).
 
 debug(Spec, Val) :-
 	debug_target(Spec, Topic, Out),
 	(   (   retract(debugging(Topic, Enabled0, To0))
 	    *-> update_debug(Enabled0, To0, Val, Out, Enabled, To),
-		assert(debugging(Topic, Enabled, To)),
+		assert_ifn(debugging(Topic, Enabled, To)),
 		fail
 	    ;   (   prolog_load_context(file, _)
 		->  true
 		;   print_message(warning, debug_no_topic(Topic))
 		),
 		update_debug(false, [], Val, Out, Enabled, To),
-	        assert(debugging(Topic, Enabled, To))
+	        assert_ifn(debugging(Topic, Enabled, To))
 	    )
 	->  true
 	;   true
@@ -166,7 +171,7 @@ debug_topic(Topic) :-
 	(   debugging(Registered, _, _),
 	    Registered =@= Topic
 	->  true
-	;   assert(debugging(Topic, false, []))
+	;   assert_ifn(debugging(Topic, false, []))
 	).
 
 %%	list_debug_topics is det.

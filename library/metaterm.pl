@@ -106,7 +106,6 @@
 
 :- user:use_module(library(atts)).
 
-:- debug(_).
 :- debug(fluents).
 :- debug(attvars).
 :- meta_predicate maplist_local(+,+).
@@ -676,16 +675,17 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
   current_predicate(gethostname/1), 
   % fail,
   gethostname(ubuntu))).
-*/
+
+
 
 :- use_module(library(http/http_path)).
 :- use_module(library(http/http_host)).
+*/
 :- use_module(library(logicmoo_utils)).
 
 
-:- wo_metaterm(use_listing_vars).
+% :- wo_metaterm(use_listing_vars).
 
-:- debug(_).
 % :- debug_fluents.
 % :- source_fluent.
 :- debug(fluents).
@@ -700,7 +700,7 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
                writeln(V)
            ).
 /*
-   :- debug(_).
+    %  % :- debug(_).
    :- nodebug(http(_)).
    :- debug(mpred).
 

@@ -1812,7 +1812,7 @@ if(METATERM_REALLY_OK)
       alt_argNum = some_source_fluent_argNum;
       alt_flags = some_source_fluent_flags;
       alt_functor = PL_new_functor(ATOM_dmetaterm_call, alt_arity);
-      altDEF = lookupDefinition(alt_functor, PARENT_MODULE);
+      altDEF = lookupDefinition(alt_functor, MODULE_user);
       metaterm_overrides_present++;
    }
 
