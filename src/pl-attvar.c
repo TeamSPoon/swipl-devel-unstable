@@ -316,7 +316,7 @@ PRED_IMPL("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINIS
     PL_unify_integer(A2,index->mask);
 
   next = index+1;
-  if ( next && next->name )
+  if (*next && next->name )
     ForeignRedoPtr(next);
   return rc;
 }
@@ -442,6 +442,10 @@ static const char* my_atom_summary(atom_t n)
   if(n==0) return "NOATOM";
   return atom_summary(n,20);
 }
+
+/* if assigning an attvar into value that is a var.. or  with a compound that is nonground 
+   the value should have been trailed before hand
+  */
 void
 assignAttVarBinding(Word av, Word value, int flags ARG_LD)
 {
