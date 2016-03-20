@@ -1662,6 +1662,8 @@ normal_call:
       
     
 #ifdef O_METATERM
+
+#define METATERM_CALL_ARITY 6
 #define DEBUG_TRAP(WHY, CODE) if (debugstatus.tracing) {  trap_gdb(); prolog_debug_from_string(#WHY, TRUE);  CODE ; }	
 #define SHOW_IF_FALSE(CODE) if(!CODE) Sdprintf(#CODE " = FALSE");
 // maybe_metaterm:
@@ -1676,7 +1678,7 @@ if(METATERM_REALLY_OK)
 
   Definition altDEF = NULL;
   Word alt_var = NULL;
-  Word some_source_fluent = NULL;
+  Word some_source_fluent = NULL; 
   int some_source_fluent_argNum = 0;
   int some_source_fluent_flags = 0;
 	int alt_argNum = 0;
@@ -1694,7 +1696,15 @@ if(METATERM_REALLY_OK)
 	
   if ( isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
   {
-    assert(LD_no_vmi_hacks<5); /*catch loops*/
+	/*catch loops*/
+    if(LD_no_vmi_hacks>5) 
+	{
+		trap_gdb();
+		int wasV = LD_no_vmi_hacks;
+		LD_no_vmi_hacks=0;
+		pl_break();
+		LD_no_vmi_hacks=wasV;
+	}
     Word ARG = argFrameP(NFR, 0);
 		int metaterm_overrides_present = 0;
 		int metaterms_disabled = 0;
@@ -1736,7 +1746,7 @@ if(METATERM_REALLY_OK)
 
         word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
         if ( malt_functor==0 )
-        { malt_functor = PL_new_functor(ATOM_dmetaterm_call, 5);
+        { malt_functor = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
         } else if (malt_functor == orig_name)
         { malt_functor = orig_functor;
         } else if(isAtom(malt_functor)) 
@@ -1797,7 +1807,7 @@ if(METATERM_REALLY_OK)
         goto as_normal;
       }
       DEBUG(MSG_METATERM, Sdprintf("\n some_source_fluent about to call: %s \n", named));
-      alt_arity = 4;
+      alt_arity = METATERM_CALL_ARITY;
       alt_var = some_source_fluent;
       alt_argNum = some_source_fluent_argNum;
       alt_flags = some_source_fluent_flags;
@@ -1839,7 +1849,7 @@ if(METATERM_REALLY_OK)
       }
       goto as_normal;
 	    } 
-      if ( LD_no_vmi_hacks )
+      if ( LD_no_vmi_hacks > 0 )
       { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: LD_no_vmi_hacks: %s \n", named));
         goto as_normal;
 	  }
@@ -1890,67 +1900,56 @@ as_wakeup:
       goto as_normal; 
     }
 	}
-      if ( LD_no_vmi_hacks )
+      if ( LD_no_vmi_hacks>0 )
       { DEBUG(MSG_METATERM_VMI, Sdprintf("\n LD_no_vmi_hacks: %s \n", named));
-      goto as_normal; 
-    }
+        goto as_normal; 
+      }
 
-#define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
-	
   Word frameWord;
-#ifdef NEVER_DOIT
-    /* source_fluents */
-	if (altDEF->functor->name == ATOM_dmetaterm_call)
-	{   frameWord = gTop;
-		word newVar = makeRef(&frameWord[4]);
-		assert(substVar(alt_var, newVar, orig_arity, NFR));
-		frameWord[0] = altDEF->functor->functor;
-		frameWord[1] = orig_name;
-		frameWord[2] = consInt(alt_argNum);
-		frameWord[3] = makeRef(alt_var);	  
-		frameWord[4] = (word)0;
-		gTop += 5;
-		scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-	    goto wakeup;    
-	}
-#else    /* source_fluents */
-	if (altDEF->functor->name == ATOM_dmetaterm_call)
+ /* source_fluents */
+    if (altDEF->functor->name == ATOM_dmetaterm_call)
 	{   SAVE_REGISTERS(qid);
 		{ int rc;
-			if ((rc = ensureGlobalSpace(5 + orig_arity + 1, ALLOW_NOTHING)) != TRUE)
+			if ((rc = ensureGlobalSpace(METATERM_CALL_ARITY + 1 + orig_arity + 1, ALLOW_NOTHING)) != TRUE)
 			{
 			   DEBUG(MSG_METATERM_VMI, Sdprintf("\n NO GLOBAL SPACE!?!\n"));
 			   LOAD_REGISTERS(qid);
-			   goto as_normal;
+               goto as_normal;
 			}     
 		}
 		LOAD_REGISTERS(qid);
+        
 		/*copy the frame goal*/
 		Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
 		frameGoal[0] = DEF->functor->functor;
 		
 		frameWord = gTop;			
-		word newVar = makeRef(&frameWord[4]);
+		word newVar = makeRef(&frameWord[6]);
 		/*word newVar = makeRef(valHandle(noGC));*/
 		/*word newOldVar = makeRef(*valHandle(noGC+1));*/
-		assert(substVarWord(alt_var, newVar, orig_arity, frameGoal+1));
+        int found = substVarWord(alt_var, newVar, orig_arity, frameGoal+1);
+		assert(found>0);
 		frameWord[0] = altDEF->functor->functor;
 		frameWord[1] = orig_name;
-		frameWord[2] = consInt(alt_argNum);
-		frameWord[3] = makeRef(alt_var);  
-		frameWord[4] = (word)0;
-		gTop += 5;
+		frameWord[2] = consPtr(frameGoal, TAG_COMPOUND | STG_GLOBAL);
+        frameWord[3] = consInt(alt_argNum);
+        frameWord[4] = consInt(found);
+		frameWord[5] = makeRef(alt_var);
+		frameWord[6] = (word)0;
+		gTop += 7;
 		/* Assigns the value */
-		scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), 0 PASS_LD);
-		/* Runs new expression using the value */
-		scheduleWakeup(consPtr(frameGoal, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+        /* Runs new expression using the value */
+		scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
 		/* disabled the next instruction */
 		DEF = nopDEF;
 		goto wakeup;
 	    
 	}
-#endif
 	
+
+#define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
+	
+
     int skipSpaces = orig_arity - alt_arity;
 
     /* exact metaterm override */
@@ -4610,12 +4609,10 @@ again:
     rc = isCaughtInOuterQuery(qid, exception_term PASS_LD);
     LOAD_REGISTERS(qid);
 
-    LD_no_vmi_hacks++;
-
     if ( !rc )          /* uncaught exception */
     {
       atom_t a;
-
+      LD_no_vmi_hacks++;
       SAVE_REGISTERS(qid);
       if ( PL_is_functor(exception_term, FUNCTOR_error2) &&
            truePrologFlag(PLFLAG_DEBUG_ON_ERROR) )
@@ -4638,9 +4635,9 @@ again:
         PL_put_term(exception_printed, exception_term);
       }
       LOAD_REGISTERS(qid);
+      LD_no_vmi_hacks--;
     }
 
-    LD_no_vmi_hacks--;
 
   }
 

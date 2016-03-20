@@ -68,7 +68,6 @@
       metaflag_unset/2,
       metaflag_set/2,
       metaflag_get/2,
-      meta/1,
       merge_fbs/3,
       matts/2,
       matts/1,
@@ -157,7 +156,6 @@
       copy_var/1,
       metaterm_getval/2,
       metaterm_setval/2,
-      meta/1,
       source_fluent/1,sink_fluent/1,empty_fluent/1,
       metaterm_override/2,
       add_attribute/2,
@@ -726,7 +724,7 @@ eclipse:free(X):- var(X),\+attvar(X).
 
 % This type-checking predicate succeeds iff its argument is an attributed variable. For other type testing predicates an attributed variable behaves like a variable.
 % eclipse:
-meta(X):- attvar(X),get_attr(X,'$atts',N),N>0.
+system:meta(X):- attvar(X),get_attr(X,'$atts',N),N>0.
 
 % A new attribute can be added to a variable using the tool predicate
 % add_attribute(Var, Attr).
@@ -1218,8 +1216,16 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 :- add_overriden(var(_),false).
 :- add_overriden('$metaterm_call'(_,_,_,_,_),false).
 
-
-system:'$metaterm_call'(_PredName,_ArgNum,Var,Value):- notrace(must_or_die(metaterm_getval(Var,Value))).
+/* This snoozes the pending wakeups durring Goal 
+  Initialy this impl is incomplete for source 
+   terms as it only deals with one Term per goal.
+*/
+:- meta_predicate(system:'$metaterm_call'(+,:,+,+,-,-)).
+system:'$metaterm_call'(_PredName,Goal,_ArgNum,_Count,Var,Value):- 
+   setup_call_cleanup_each(
+      notrace(('$save_wakeup'(RW),must_or_die(metaterm_getval(Var,Value)))),
+      Goal,
+      '$restore_wakeup'(RW)).
 
 
 :- export_all.

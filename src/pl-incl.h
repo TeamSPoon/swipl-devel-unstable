@@ -2095,9 +2095,8 @@ typedef struct
                                  */
 
 
-#define METATERM_USE_VMI  	 0x8000 /* Hook WAM */
-#define METATERM_DISABLE_VMI	 0x080000 /* DISABLEs USE_VMI*/
-#define METATERM_USE_CPREDS	 0x080000 /* Hook CPREDS (WAM can misses a few)*/
+#define METATERM_USE_VMI  	    0x8000 /* Hook WAM */
+#define METATERM_DISABLE_VMI  0x080000 /* DISABLEs USE_VMI (until next call)*/
 
 /* This adds wakeups to attvars rather than binding them */
 #define ATTV_BINDCONST              0x010000   /* bindConst() */
@@ -2114,8 +2113,8 @@ typedef struct
 #define METATERM_DEFAULT  	    (METATERM_USE_VMI|METATERM_NO_OPTIMIZE_TRAIL|METATERM_USE_BARG_VAR|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VP)
 
 #define METATERM_DISABLE_OVERRIDES_MASK  METATERM_OVERRIDE_USAGES_MASK /*| METATERM_SOURCE_VALUE | METATERM_COPY_VAR | METATERM_VALUE_SINK*/
-#define METATERM_OVERRIDE_USAGES_MASK  METATERM_USE_BARG_VAR|METATERM_USE_CONS_VAL| METATERM_USE_H_VAR|METATERM_USE_UNIFY_VP|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VAR
-
+#define METATERM_OVERRIDE_USAGES_MASK  METATERM_USE_BARG_VAR| METATERM_USE_H_VAR|METATERM_USE_UNIFY_VP|METATERM_USE_BINDCONST|METATERM_USE_UNIFY_VAR
+/*METATERM_USE_CONS_VAL|*/
 
 #define LOGICMOO_TRANSPARENT FALSE
 /* Soon ":" will no longer need transparent since its captures the 
@@ -2151,7 +2150,7 @@ typedef struct
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED)) && METATERM_REALLY_OK
 #define METATERM_REALLY_OK  !LD->in_print_message && GD->initialised && ((!( GD->cleaning > CLN_PROLOG )) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_VMI PASS_LD)
-#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_VMI & METATERM_ENABLED && \
+#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_VMI & METATERM_ENABLED && (!(METATERM_CURRENT & METATERM_DISABLE_VMI)) \
                     (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
                       (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
                        fvOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))

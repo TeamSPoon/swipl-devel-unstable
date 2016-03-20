@@ -942,7 +942,7 @@ static inline void
 bindConsVal(Word to, Word p ARG_LD)
 { deRef(p);
 
-  if(METATERM_UNIFY_COMPLETE(METATERM_USE_CONS_VAL, p, to, METATERM_NO_TRAIL)) return;
+  if(FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_CONS_VAL, p, to, METATERM_NO_TRAIL)) return;
 
   if ( canBind(*p) )
   { if ( to < p && !isAttVar(*p) )

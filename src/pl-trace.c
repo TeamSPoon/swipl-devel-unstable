@@ -185,8 +185,10 @@ isDebugFrame(LocalFrame FR)
 
     if ( levelFrame(FR) == levelFrame(parent)+1 )
     {					/* not last-call optimized */
+      /*if(LD->prolog_flag.access_level == ACCESS_LEVEL_SYSTEM) return TRUE;*/
+
       if ( false(parent->predicate, HIDE_CHILDS) )
-	return TRUE;			/* user calls system */
+        return TRUE;			/* user calls system */
       return FALSE;			/* system calls system */
     } else
     { if ( false(parent, FR_HIDE_CHILDS) )

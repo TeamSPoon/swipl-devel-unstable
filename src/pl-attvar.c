@@ -203,9 +203,9 @@ static matts_flag matts_flags[] =
  MW("use_trail_optimize",    METATERM_PLEASE_OPTIMIZE_TRAIL ), 
  MW("attv_unify_pointers",  ATTV_UNIFY_PTRS ),  
  MW("attv_bindconst",     ATTV_BINDCONST ), 
- MW("use_cpreds",       METATERM_USE_CPREDS ), 
  MW("use_undo",         METATERM_USE_UNDO ), 
  MW("use_vmi",          METATERM_USE_VMI ), 
+ MW("disable_vmi",          METATERM_DISABLE_VMI ), 
  MW("use_dra_interp",   DRA_CALL ), 
  MW("use_unify_var",      METATERM_USE_UNIFY_VAR ), 
  MW("use_no_trail_optimize", METATERM_NO_OPTIMIZE_TRAIL ), 
@@ -521,7 +521,7 @@ assignAttVar(Word* avP, Word* valueP, int callflags ARG_LD)
   if(atomcaller==0) atomcaller = current_caller_mask(varflags);
   if(atomcaller==0) atomcaller = current_caller_mask(flags);
 
-  int nowu = LD_no_vmi_hacks;
+  int nowu = (LD_no_vmi_hacks>0);
 
   if(nowu)
   {
@@ -2295,7 +2295,7 @@ PRED_IMPL("metaterm_overriding", 3, metaterm_overriding, 0)
   deRef2(valTermRef(A1),av);
   if(!(PL_get_functor(A2,&f) ||
       PL_get_atom(A2,&f))) return FALSE;
-  functor_t becomes = getMetaOverride(av,f, METATERM_USE_VMI|METATERM_USE_CPREDS PASS_LD);
+  functor_t becomes = getMetaOverride(av,f, METATERM_USE_VMI PASS_LD);
   if(isAtom(becomes)) return PL_unify_atom(A3,becomes);
   return PL_unify_functor(A3,becomes);
 }
@@ -2344,6 +2344,32 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
    return TRUE;
 }
 
+
+static
+PRED_IMPL("$save_wakeup", 1, save_wakeup, 0)
+{ PRED_LD
+  int index = ++LD_no_vmi_hacks;
+  DEBUG(CHK_SECURE,assert(LD_no_vmi_hacks==1));
+  assert(LD_no_vmi_hacks<5); 
+  return TRUE;
+  saveWakeup(&LD->attvar.wstates[index], FALSE PASS_LD);
+  return PL_unify_integer(A1, index);
+}
+
+static
+PRED_IMPL("$restore_wakeup", 1, restore_wakeup, 0)
+{ PRED_LD
+  int index;
+  int rc = PL_get_integer(A1, &index);
+  assert(LD_no_vmi_hacks == index);  
+  --LD_no_vmi_hacks;
+  return TRUE;
+  restoreWakeup(&LD->attvar.wstates[index] PASS_LD);
+  return rc;
+}
+
+
+
 #endif /*O_METATERM*/
 
 
@@ -2383,6 +2409,8 @@ BeginPredDefs(attvar)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
   PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
+  PRED_DEF("$save_wakeup",    1, save_wakeup,    0)
+  PRED_DEF("$restore_wakeup",    1, restore_wakeup,    0)
 #endif
 
 EndPredDefs

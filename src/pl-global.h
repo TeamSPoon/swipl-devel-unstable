@@ -417,6 +417,7 @@ struct PL_local_data
     int		call_residue_vars_count; /* # call_residue_vars/2 active */
     int		vmi_recursion;  /* >0 Dont register wakeups (also to trap recursion) */
     int     wakeup_ready;
+    wakeup_state wstates[20];
 
 #ifdef O_METATERM
     term_t  metaterm_regs;   /*  registers for calling fvOverrides */

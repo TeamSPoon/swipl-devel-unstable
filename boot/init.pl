@@ -294,7 +294,7 @@ with_metaterm_disabled(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> se
 with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled)).
 
 
-wo_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), G, set_no_metavmi(_,X)).
+wo_metavmi(G):-  set_no_metavmi(X,_),(X>0 -> G ;setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), G, set_no_metavmi(_,X))).
 with_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), G, set_no_metavmi(_,X)).
 
 with_metavmi_maybe(G):- 
