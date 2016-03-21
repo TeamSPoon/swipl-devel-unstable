@@ -69,7 +69,7 @@
 
 #define PL_KERNEL		1
 #include <inttypes.h>
-#include "pl-builtin.h" 
+#include "pl-builtin.h"
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 		      PROLOG SYSTEM OPTIONS
@@ -161,6 +161,8 @@ handy for it someone wants to add a data type to the system.
 #undef O_DRA_INTERP_TERM_T /* would need term_t pinned */
 #define O_METATERM 1
 /*#undef O_METATERM*/
+
+#define O_NAUGHTY 1
 
 #define O_UNDO_HOOK 1
 /*#undef O_UNDO_HOOK*/
@@ -1361,7 +1363,7 @@ typedef struct hashtable_with_grefs
  /* u_int32_t	flags;		*/	/* flags used to open the database */
 } hashtable_with_grefs;
 
-typedef struct htref { 
+typedef struct htref {
   hashtable_with_grefs *value;
 } htref;
 
@@ -2086,12 +2088,12 @@ typedef struct
 #define METATERM_USE_H_VAR          0x0800 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
 #define METATERM_USE_UNIFY_VP       0x1000 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
 #define METATERM_USE_BINDCONST      0x2000 /* METATERM_NO_TRAIL|METATERM_1_INTO_2 */
-#define METATERM_USE_UNIFY_VAR      0x4000 /* debugging for a moment trying to guage if damaging do_unify() 
-                                    Goal, really I would like to figure out the best way to allow unification to 
+#define METATERM_USE_UNIFY_VAR      0x4000 /* debugging for a moment trying to guage if damaging do_unify()
+                                    Goal, really I would like to figure out the best way to allow unification to
                                     a between an attvar and a variable.   Instead of merly placing the entire attvar self into the variable,
                                     I want the attvar's hook to copy some attributes onto the plain variable (turning it into an attvar)
-                                    as the result of unification.                                    
-                                    Or in the case of a METATERM_SOURCE_VALUE have the variable beca                           
+                                    as the result of unification.
+                                    Or in the case of a METATERM_SOURCE_VALUE have the variable beca
                                  */
 
 
@@ -2117,7 +2119,7 @@ typedef struct
 /*METATERM_USE_CONS_VAL|*/
 
 #define LOGICMOO_TRANSPARENT FALSE
-/* Soon ":" will no longer need transparent since its captures the 
+/* Soon ":" will no longer need transparent since its captures the
        module without  changing the call context'*/
 #define NEEDS_TRANSPARENT(ma)  (ma == MA_META && !LOGICMOO_TRANSPARENT)
 
@@ -2132,10 +2134,10 @@ typedef struct
 /*
  METATERM_SKIP_HIDDEN(.)
  Only when "$meta" is present as an attribute:
-   A feature for prolog programmers who want to hide their attributes from value 
-  based term comparisons like "=@=" and "=="  
+   A feature for prolog programmers who want to hide their attributes from value
+  based term comparisons like "=@=" and "=="
   They do so by put_attrs/2 their attrbute "imhiden" as parent of "$meta" like:
-      att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them. 
+      att(imhiden,value,att('$meta',0,VisibleAtts)) to hide them.
   ( "$meta" attribute is also hidden. )
   */
 
@@ -2150,9 +2152,9 @@ typedef struct
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED)) && METATERM_REALLY_OK
 #define METATERM_REALLY_OK  !LD->in_print_message && GD->initialised && ((!( GD->cleaning > CLN_PROLOG )) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_VMI PASS_LD)
-#define METATERM_HOOK(atom,t1,t2,rc)  (METATERM_USE_VMI & METATERM_ENABLED && (!(METATERM_CURRENT & METATERM_DISABLE_VMI)) \
-                    (((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
-                      (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom)))) && \
+#define METATERM_HOOK(atom,t1,t2,rc) (METATERM_USE_VMI & METATERM_ENABLED && \
+                    ((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \
+                      (tag(*t2)==TAG_ATTVAR && METATERM_OVERIDES(t2,ATOM_ ## atom))) && \
                        fvOverride(ATOM_ ## atom,t1,t2,rc PASS_LD))
 #define POST_SKIP_HIDDEN(l,r) if (*l==*r && *l==ATOM_nil) continue
 /*#define IS_METATERM_VAR_D(var,option) (((tag(*var) == TAG_ATTVAR && METATERM_ENABLED && IS_META((METATERM_CURRENT=getMetaFlags(var,METATERM_NO_INHERIT)),option))))*/

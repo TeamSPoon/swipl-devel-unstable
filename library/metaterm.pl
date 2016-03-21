@@ -1,7 +1,7 @@
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
-    E-mail:        logicmoo@gmail.com 
+    E-mail:        logicmoo@gmail.com
     WWW:           http://www.swi-prolog.org http://www.prologmoo.com
     Copyright (C): naw...
 
@@ -54,9 +54,12 @@
    override_none/1,
    override_all/1,
    no_bind/1,
+   use_vmi/1,
    nb_var/2,
    nb_var/1,
    must_ts_det/1,
+   exists/1,
+   unbind/1,
    must_ts/1,
    metaterm_call/2,
    memory_var/1,
@@ -72,6 +75,7 @@
    do_test_type/1,
    dbg_list/1,
    counter_var/1,
+   do_metaterm_tests/0,
    plvar/1,
   anything_once/1,termfilter/1,subsumer_var/1,plvar_ex/1]).
 
@@ -92,12 +96,11 @@
    Some experiments ongoing
 
    With any of the above set the system still operates as normal
-              until the user invokes  'global_or_var'/2 to 
+              until the user invokes  'global_or_var'/2 to
 
-   None of these option being enabled will cost more than 
+   None of these option being enabled will cost more than
               if( (LD->attrvar.global_or_var & SOME_OPTION) != 0) ...
-  
-    
+
 */
 
 :- meta_predicate must_ts_det(0).
@@ -117,9 +120,9 @@
 %  if the Variable is on the local stack, FrameCount will tell you for
 %  how many levels it has been levels it is away from the creation frame
 %
-%  This can be a powerfull heuristic in inference engines and 
+%  This can be a powerfull heuristic in inference engines and
 %  Sat solvers to *help* judge when they are being unproductive.
-%  (The example bellow is a loop ... but another idea is that we 
+%  (The example bellow is a loop ... but another idea is that we
 %    can iteratively lengthen the depth allowance of each variable
 %   (variable to survive for deeper ))
 %
@@ -129,7 +132,7 @@
 % q(X) :- depth_ometaterm_var(X, D), format('Depth = ~w~n', [D]), D < 5, q(X), notail.
 % notail.
 % ==
-% 
+%
 % Running this says:
 % ==
 % 1 metaterm_test:- q.
@@ -140,7 +143,7 @@
 % Depth = 5
 % false.
 % ==
-% 
+%
 
 %% anything_once(+Var) is det.
 %
@@ -175,12 +178,12 @@ termfilter:attr_unify_hook(Goal,Value):-call(Goal,Value).
 atts:metaterm_type(term_copier).
 term_copier(Fluent):- put_atts(Fluent, +no_bind +term_copier +use_unify_var).
 term_copier:attr_unify_hook(Var,ValueIn):-
-   notrace((must((get_attr(Var,'$saved_atts',AttVal),
+   must_notrace((must((get_attr(Var,'$saved_atts',AttVal),
    del_attr(Var,term_copier),
    copy_term(Var,Value),
    put_attr(Value,'$atts',AttVal))))),
    ValueIn=Value.
-  
+
 
 
 term_copier_filter(Goal,Fluent):-termfilter(Goal,Fluent),term_copier(Fluent).
@@ -237,8 +240,23 @@ plvar:metaterm_unify_hook(_Atom,Var,Var,Value):- metaterm_getval(Var,Prev),Value
 
 plvar:attr_unify_hook(Var,Value):- metaterm_getval(Var,Prev),!,Value==Prev.
 
+
+use_vmi(Var):- put_atts(Var, +use_vmi).
+
+%% exists(Var) is det.
+% declare an a rebindable var that acts like a prolog variable
 plvar(Var):- source_fluent(Var),put_attr(Var,plvar,Var), metaterm_setval(Var,_).
 
+
+%% exists(Var) is det.
+% declare an a rebindable var that acts like a minikanren variable
+exists(Var):- 
+    must_notrace((  (meta(Var)->true;metaterm_setval(Var,_)),
+      put_atts(Var, +(source_fluent:metaterm_getval) +(sink_fluent:metaterm_setval) +use_unify_var +no_bind + use_vmi))).
+
+%% unbind(Var) is det.
+% unbind a variable
+unbind(Var):- must_notrace((metaterm_reset(Var,_),exists(Var))).
 
 
 %% subsumer_var(-X) is det.
@@ -287,7 +305,7 @@ tst:verify_attributes(X, Value, [format('~N~q, ~n',[goal_for(Name)])]) :- sforma
 % ==
 % counter_var(X):- source_fluent(X),init_accumulate(X,numeric,plus).
 % ==
-% 
+%
 % ==
 %  metaterm_test:-  counter_var(X), X= 1, X = 1.
 %  X = 2.
@@ -316,10 +334,10 @@ nb_var:attr_unify_hook(N,Value):-
 %%  nb_var(+Name,+X) is det.
 %
 % Using prolog variable that is stored as a global Name (for later use)
-% 
+%
 %  like nb_linkvar(+Name,+X)
 %
-%  with the difference that more complex operations are now available at the address 
+%  with the difference that more complex operations are now available at the address
 %  (Like fifdling with the sinkvar props)
 %
 % ==
@@ -329,7 +347,7 @@ nb_var:attr_unify_hook(N,Value):-
 %  metaterm_test:- nb_var('ForLater',X).
 %  X = 1.
 %
-%  
+%
 % ==
 nb_var(N, V):- source_fluent(V), nb_linkval(N,V),put_attr(V,nb_var,N),nb_linkval(N,V).
 
@@ -397,7 +415,7 @@ label_sources( Fluent):- get_attr(Fluent,unifyp,binding(_,Fluent,Value)),!,attv_
 label_sources(_Fluent):-!.
 
 lv:- user: ((metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))))).
-llv:- set_prolog_flag(dmiles,true),user:reconsult(library(metaterm)), metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
+llv:- log_flag(dmiles,true),user:reconsult(library(metaterm)), metaterm_call(set_unifyp(equals),(q(A,B),label_sources(A,B),dmsg(q(A,B)))).
 lv2:- put_atts(X,[+use_unify_var]),X=_.
 
 :- module_transparent(tst:verify_attributes/3).
@@ -410,7 +428,7 @@ lv2:- put_atts(X,[+use_unify_var]),X=_.
 
 
 
-metaterm_test:- 
+metaterm_test:-
  put_attr(X, tst, a), X = a.
 verifying: _G389386 = a;  (attr: a)
 X = a.
@@ -445,25 +463,25 @@ t1:- must_ts(rtrace((when(nonvar(X),member(X,[a(1),a(2),a(3)])),!,findall(X,X=a(
 t2:- must_ts(rtrace( (freeze(Foo,setarg(1,Foo,cant)),  Foo=break_me(borken), Foo==break_me(cant)))).
 
 
-/* This tells C, even when asked, to not do bindings (yet) 
+/* This tells C, even when asked, to not do bindings (yet)
                       This is to allow the variables to interact with the standard prolog terms, clause databases and foriegn objects.. for example:
                     tst:put_attr(Fluent,+no_bind),jpl_to_string("hi",Fluent),X="HI",X=['h','i'],
                        Even if verify_attributes succeeds, still do not bind to the value.
-                       verify_attributes should in this case 
+                       verify_attributes should in this case
                        use continuation goals to update some internal state to decides
-                       later how it will continue to operate 
-                       for exmaple:  It has been unified with 'Red'  and 'Blue' (primary colors) .. 
+                       later how it will continue to operate
+                       for exmaple:  It has been unified with 'Red'  and 'Blue' (primary colors) ..
 
                         Fluent='Red',Fluent='Blue'
-   
+
 
                        verify_attribute now only unify with purple as a secondary color.
-                       
+
                        and have the vars attributes manipulated yet still remain a Fluent and able to continue to work with further standard prolog terms
                        (like in the 'Purple' example).      */
 
 
-/* attempt to linkval and replace whatever  we unify with 
+/* attempt to linkval and replace whatever  we unify with
              (we are passed a new variable that is linkvaled into the slot )
               if X_no_trail is set, the structure modification does not backtrack
               if X_peer_trail is set, the new variable is trailed
@@ -479,15 +497,15 @@ must_ts(G):- G*-> true; throw(must_ts_fail(G)).
 must_ts_det(G):- !, must(G),!.
 must_ts_det(G):- G,deterministic(Y),(Y==true->true;throw(must_ts_fail_det(G))).
 
-do_test_type(MType):- strip_module(MType,_M,Type), atts:metaterm_type(Type), writeln(maplist_local=Type+X),  
+do_test_type(MType):- strip_module(MType,_M,Type), atts:metaterm_type(Type), writeln(maplist_local=Type+X),
    call(Type,X),
   maplist_local(=(X),[1,2,3,3,3,1,2,3]),
-  writeln(value=X),  
+  writeln(value=X),
   var_info(X).
-  
 
-do_test_type(MType):- strip_module(MType,_M,Type),atts:metaterm_type(Type), 
-  once((writeln(vartype=call(Type,X)),  
+
+do_test_type(MType):- strip_module(MType,_M,Type),atts:metaterm_type(Type),
+  once((writeln(vartype=call(Type,X)),
       call(Type,X),
       ignore((member(X,[1,2,3,3,3,1,2,3]),writeln(Type=X),
       ignore((get_attrs(X,Ats),writeln(Ats=X))),
@@ -505,16 +523,16 @@ maplist_local(G,List):-List==[]->!;(List=[H|T],must_ts(call(G,H)),maplist_local(
 
 
 :- meta_predicate w_dt(0).
-w_dt(G):- 
-  % undo(exit_debug), 
+w_dt(G):-
+  % undo(exit_debug),
   setup_call_cleanup_each(enter_debug(4),G,exit_debug).
 
 
 % dbg_list([]):-!.
-% dbg_list(['MSG_WAKEUPS','MSG_METATERM','MSG_CONTINUE','MSG_ATTVAR_GENERAL']). 
+% dbg_list(['MSG_WAKEUPS','MSG_METATERM','MSG_CONTINUE','MSG_ATTVAR_GENERAL']).
 dbg_list(['MSG_WAKEUPS','MSG_METATERM','MSG_CONTINUE','MSG_ATTVAR_GENERAL','MSG_CUT','MSG_CLEANUP','MSG_DRA','MSG_THROW','MSG_CALL','MSG_TRACE','MSG_VMI']).
-enter_debug(N):-notrace(('$debuglevel'(_,0),dbg_list(Lst),!,maplist(set_prolog_debug,Lst),'$debuglevel'(_,N))).
-exit_debug:-notrace(('$debuglevel'(_,0),set_prolog_nodebug('MSG_VMI'),dbg_list(Lst),!,maplist(set_prolog_nodebug,Lst))).
+enter_debug(N):-must_notrace(('$debuglevel'(_,0),dbg_list(Lst),!,maplist(set_prolog_debug,Lst),'$debuglevel'(_,N))).
+exit_debug:-must_notrace(('$debuglevel'(_,0),set_prolog_nodebug('MSG_VMI'),dbg_list(Lst),!,maplist(set_prolog_nodebug,Lst))).
 
 
 % setting these flags in debugging so we can remember to turn them off/on with list_debug_topics/0.
@@ -586,8 +604,8 @@ test123:verify_attributes(Fluent,_Value,[]):- member(Fluent,[default1,default2,d
 
 
 
-'$ident':attr_unify_hook(Var,Value):- 
-  wno_dmvars((((ignore((var(Var),get_attrs(Var,Attribs), 
+'$ident':attr_unify_hook(Var,Value):-
+  wno_dmvars((((ignore((var(Var),get_attrs(Var,Attribs),
    debug(termsinks,'~N~q.~n',['$ident':attr_unify_hook({var=Var,attribs=Attribs},{value=Value})]))))))).
 '$ident':attr_unify_hook(Var,Value):- var(Var),contains_fbs(Var,iteratorVar),var(Value),!,member(Value,[default1,default2,default3]).
 
@@ -665,14 +683,14 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
 
 
 
-% :- [src/test_va]. 
+% :- [src/test_va].
 
 
 
 /*
 :- if((
   exists_source( library(logicmoo_utils)),
-  current_predicate(gethostname/1), 
+  current_predicate(gethostname/1),
   % fail,
   gethostname(ubuntu))).
 
@@ -681,6 +699,8 @@ memory_fluent(Fluent):-put_atts(Fluent,[]),put_attr(Fluent,'_',Fluent),put_attr(
 :- use_module(library(http/http_path)).
 :- use_module(library(http/http_host)).
 */
+
+
 :- use_module(library(logicmoo_utils)).
 
 
@@ -726,7 +746,7 @@ v1(X,V) :- put_atts(V,X),show_var(V).
 
 %:- endif.
 
-make_list_with_element(0,_,[]):-!. 
+make_list_with_element(0,_,[]):-!.
 make_list_with_element(N,Init,[Init|List]):- Nm1 is N-1, make_list_with_element(Nm1,Init,List).
 
 
@@ -735,7 +755,7 @@ do_metaterm_tests:- forall(clause(metaterm_test,B),(nl,nl,run_b_test(B),nl,nl)).
 
 :- discontiguous(metaterm_test/0).
 
-metaterm_test:- 
+metaterm_test:-
   source_fluent(X),metaterm_setval(X,foo),
   dmsg([x=X,y=Y,z=Z]),
   Y=X,
@@ -747,7 +767,7 @@ metaterm_test:-
   meta(X),
   writeln(X).
 
-metaterm_test:- 
+metaterm_test:-
   source_fluent(X),
   metaterm_setval(X,foo),
   dmsg([x=X,y=Y,z=Z]),
@@ -770,66 +790,32 @@ rtrace_each(B):-rtrace(B).
 
 :- export_all.
 
-:- if(current_prolog_flag(dmiles,true)).
-:- set_prolog_flag(dmiles,false).
-:- autoload.
 
-% metaterm_test:- source_fluent(X),metaterm_setval(X,foo),Y=X,Y==foo,meta(X).
-
-%  source_fluent(X),metaterm_copy_var(X),metaterm_setval(X,foo),dmsg( ( x : X , y : Y ) ),trace,Y=X,Y=foo,meta(X).
-
-:- metaterm_flags(current,use_dra_interp,_).
-cls :- shell(clear),shell(cls).
-% :- forall(lv,true).
-
-:- prolog_debug('MSG_WAKEUPS').
-
-:- use_unify_var.
-
-
-
-metaterm_test:- source_fluent(X),\+ X=1.
-
-
-% :- module(fv).
-% :- do_metaterm_tests.
-% :- break.
-
-metaterm_test:- no_bind(X),X=1,X=2.
-
-
-metaterm_test:- sink_fluent(X),source_fluent(X),X=1,Y=X,_Z=Y,Y==1,X\==1,meta(X).
-
-metaterm_test:- sink_fluent(X),X=1,X=2.
-
-metaterm_test:- source_fluent(X),metaterm_setval(X,1),X=1.
-
-metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),X=3.
+cls0 :- shell(clear),shell(cls).
 
 metaterm_test:- source_fluent(X),not(X=1).
-
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),metaterm_push(X,4),get_attr(X,value,Vs),!,Vs==[1,2,3,4].
-
+metaterm_test:- source_fluent(X),metaterm_setval(X,foo),Y=X,Y==foo,meta(X).
+metaterm_test:- source_fluent(X),metaterm_setval(X,1),X=1.
 metaterm_test:- source_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),!,findall(X,X=_,List),List==[1,2,3].
-
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),findall(X,X=_,List),List==[].
-
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
-
+metaterm_test:- source_fluent(X),copy_var(X),metaterm_setval(X,foo),dmsg( ( x : X , y : Y ) ),Y=X,Y=foo,meta(X).
+metaterm_test:- source_fluent(X),\+ X=1.
+metaterm_test:- sink_fluent(X),X=1,X=2.
+metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),X=3.
 metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
-
-metaterm_test:- sink_fluent(X),dif(X,1),X=2,copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
-
+metaterm_test:- sink_fluent(X),source_fluent(X),X=1,Y=X,_Z=Y,Y==1,X\==1,meta(X).
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),metaterm_push(X,4),get_attr(X,value,Vs),!,Vs==[1,2,3,4].
+metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),findall(X,X=_,List),List==[].
 metaterm_test:- sink_fluent(X),metaterm_push(X,1), dif(X,1),copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
+metaterm_test:- sink_fluent(X),dif(X,1),X=2,copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
+metaterm_test:- no_bind(X),X=1,X=2.
+metaterm_test:- exists(X),var(X),X=1,meta(X),writeln(X),unbind(X),var(X),X=2,writeln(X).
+metaterm_test:- copy_var(X),Y=X,Y=1,X==Y.
+metaterm_test:- copy_var(X),Y=X,Y=1,unbind(X).
+metaterm_test:- copy_var(X),Y=X,X=1,writeln(Y),Y==1,unbind(Y),var(Y),X=1.
 
-% metaterm_test:- source_fluent(X),catch(sink_fluent(X),E,true),compound(E).
 
-metaterm_test:- sink_fluent(X),catch(source_fluent(X),E,true),var(E).
 
+metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),trace,3 is X + 1.
 metaterm_test:- source_fluent(X),metaterm_setval(X,2),trace,3 is X + 1.
-
-metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),3 is X + 1.
-
-:- endif.
-
 

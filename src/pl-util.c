@@ -52,6 +52,15 @@ atom_summary(atom_t name, unsigned int maxlen)
   Buffer b;
   size_t i;
 
+#ifdef O_NAUGHTY
+  if (name==(atom_t)0)
+  { return "<null-not-atom>";
+  }
+  if(!isAtom(name))
+  { return print_val(name,0);
+  }
+#endif
+
   if ( !get_atom_text(name, &txt) )
     return NULL;
 

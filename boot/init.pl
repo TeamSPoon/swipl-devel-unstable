@@ -69,7 +69,7 @@ attempt to call the Prolog defined trace interceptor.
         interp(+,:),
         nondet(:),
         det(:).
-    
+
 
 %%	dynamic(+Spec)
 %%	multifile(+Spec)
@@ -257,6 +257,7 @@ amsg(G):- notrace(
 				with_metavmi(0),
 				with_metavmi_maybe(0),
 				must_atomic(0),
+                                must_notrace(0),
                   must_or_die(0),
                   setup_call_cleanup_each(0,0,0),
                   call_cleanup_each(0,0).
@@ -265,23 +266,25 @@ amsg(G):- notrace(
 must_or_die(G):- (G *-> true ; throw(failed_must_or_die(G))).
 
 :- module_transparent(must_atomic/1).
-must_atomic(Goal):- notrace('$sig_atomic'(must_or_die(Goal))).
+must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
 
+:- module_transparent(must_notrace/1).
+must_notrace(Goal):- notrace(must_or_die(Goal)).
 
 call_cleanup_each(Goal, Cleanup) :-
 	setup_call_cleanup_each(true, Goal, Cleanup).
 
 setup_call_cleanup_each(Setup,Goal,Undo):-
-   notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
+   must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
    setup_call_cleanup(true,
    (( must_atomic(Setup),
-   catch(( 
-     call((WasTrace,Goal,notrace,deterministic(Det),true)) 
-        *-> 
-        (Det == true 
-         -> must_atomic(Undo) 
+   catch((
+     call((WasTrace,Goal,notrace,deterministic(Det),true))
+        *->
+        (Det == true
+         -> must_atomic(Undo)
           ; (must_atomic(Undo);(must_atomic(Setup),fail)))
-     ; (must_atomic(Undo),fail)), 
+     ; (must_atomic(Undo),fail)),
      E, (must_atomic(Undo),throw(E))))),WasTrace).
 
 
@@ -297,10 +300,10 @@ with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; se
 wo_metavmi(G):-  set_no_metavmi(X,_),(X>0 -> G ;setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), G, set_no_metavmi(_,X))).
 with_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), G, set_no_metavmi(_,X)).
 
-with_metavmi_maybe(G):- 
- set_no_metavmi(X,_), 
-  (X > 1 
-    -> setup_call_cleanup_each(set_no_metavmi(_,X-1), G, set_no_metavmi(_,X)) 
+with_metavmi_maybe(G):-
+ set_no_metavmi(X,_),
+  (X > 1
+    -> setup_call_cleanup_each(set_no_metavmi(_,X-1), G, set_no_metavmi(_,X))
     ; setup_call_cleanup_each(set_no_metavmi(_,0), G, set_no_metavmi(_,X))).
 
 

@@ -105,7 +105,7 @@ code into functions.
 
 #define PARENT_MODULE contextModule(NFR->parent?NFR->parent:LD->environment)
 /*||LD->slow_unify*/
-#define DEBUGGING_OR_SLOW (debugstatus.debugging) 
+#define DEBUGGING_OR_SLOW (debugstatus.debugging)
 #define REALLY_DEBUGGING (debugstatus.debugging)
 
 /* for Intellisense */
@@ -115,7 +115,7 @@ code into functions.
 
 #define VMI(A,B,C,D) static int INST_ ##  A ()
 #define BEGIN_SHAREDVARS static
-#define END_SHAREDVARS   
+#define END_SHAREDVARS
 static Code PC;
 static Word ARGP;
 static Definition DEF;
@@ -1056,14 +1056,14 @@ VMI(B_ARGVAR, 0, 1, (CA1_VAR))
       Trail(k, makeRefG(ARGP++));
       NEXT_INSTRUCTION;
     }
-    if ( METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
+    if ( METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) )
     { ARGP++;
       NEXT_INSTRUCTION;
     }
     *ARGP++ = makeRefG(k);	/* both on global stack! */
 #ifdef O_ATTVAR
   } else if ( isAttVar(*k) )
-  { if (FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) ) 
+  { if (FALSE && METATERM_UNIFY_COMPLETE(METATERM_USE_BARG_VAR, k, ARGP, METATERM_NO_TRAIL) )
     { ARGP++;
       NEXT_INSTRUCTION;
     }
@@ -1659,12 +1659,12 @@ true:
 
 normal_call:
 
-      
-    
+
+
 #ifdef O_METATERM
 
 #define METATERM_CALL_ARITY 6
-#define DEBUG_TRAP(WHY, CODE) if (debugstatus.tracing) {  trap_gdb(); prolog_debug_from_string(#WHY, TRUE);  CODE ; }	
+#define DEBUG_TRAP(WHY, CODE) if (debugstatus.tracing) {  trap_gdb(); prolog_debug_from_string(#WHY, TRUE);  CODE ; }
 #define SHOW_IF_FALSE(CODE) if(!CODE) Sdprintf(#CODE " = FALSE");
 // maybe_metaterm:
 if(METATERM_REALLY_OK)
@@ -1678,7 +1678,7 @@ if(METATERM_REALLY_OK)
 
   Definition altDEF = NULL;
   Word alt_var = NULL;
-  Word some_source_fluent = NULL; 
+  Word some_source_fluent = NULL;
   int some_source_fluent_argNum = 0;
   int some_source_fluent_flags = 0;
 	int alt_argNum = 0;
@@ -1690,14 +1690,22 @@ if(METATERM_REALLY_OK)
   //static term_t av4 = PL_new_term_ref_noshift();
 	int alt_arity = orig_arity;
   //assert(PL_is_variable(av4));
-  
+
   char* named = predicateName(DEF);
-  
-	
-  if ( isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
+
+
+  if (!LD_no_vmi_hacks && !isNeverOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
   {
+    if(!METATERM_ENABLED)
+    {
+      /* DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: glbval-disable-vmi durring %s \n", named));*/
+      goto as_normal;
+    }
+
+    int sometimes = isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD);
+
 	/*catch loops*/
-    if(LD_no_vmi_hacks>5) 
+    if(LD_no_vmi_hacks>5)
 	{
 		trap_gdb();
 		int wasV = LD_no_vmi_hacks;
@@ -1710,7 +1718,7 @@ if(METATERM_REALLY_OK)
 		int metaterms_disabled = 0;
     int orig_argNum = 0;
       int temp_arity = orig_arity;
-	  for (; temp_arity --> 0; ARG++) 
+	  for (; temp_arity --> 0; ARG++)
     {
       Word argAV = ARG;
       orig_argNum++;
@@ -1720,6 +1728,13 @@ if(METATERM_REALLY_OK)
         if(alt_var==argAV) continue;
         int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
         if ( flags==0 ) continue; /*normal attvar*/
+
+        if ( IS_META(METATERM_DISABLE_VMI) )
+        {
+          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring %s \n", named));
+          continue; /*no vmi*/
+        }
+
 
         if ( IS_META(METATERM_SOURCE_VALUE) )
         {
@@ -1737,9 +1752,10 @@ if(METATERM_REALLY_OK)
           }
           /*some source fluent*/
         }
-  
+
         if ( !IS_META(METATERM_USE_VMI) )
         {
+          if(some_source_fluent == argAV) continue;
           DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: non-vmi durring %s \n", named));
           continue; /*no vmi*/
         }
@@ -1749,14 +1765,24 @@ if(METATERM_REALLY_OK)
         { malt_functor = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
         } else if (malt_functor == orig_name)
         { malt_functor = orig_functor;
-        } else if(isAtom(malt_functor)) 
+        } else if(isAtom(malt_functor))
         { malt_functor = PL_new_functor(malt_functor, orig_arity);
         }
-       
+
+        if ( malt_functor == orig_functor )
+        { if(sometimes && some_source_fluent_argNum==0)
+          { some_source_fluent = argAV;
+            some_source_fluent_argNum = orig_argNum;
+            some_source_fluent_flags = flags;
+            continue;
+          }
+        }
+
         if ( malt_functor == orig_functor )
         { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
-          DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
-		  continue;		      
+          continue;
+          /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
+		      continue;*/
         }
 
         if ( !isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
@@ -1797,7 +1823,7 @@ if(METATERM_REALLY_OK)
         altDEF = maybeAltDef;
         alt_arity = altDEF->functor->arity;
         alt_functor = altDEF->functor->functor;
-        
+
       } //isAttVar
     } //for loop
 
@@ -1836,7 +1862,7 @@ if(METATERM_REALLY_OK)
       }
       if ( !(METATERM_USE_VMI & METATERM_ENABLED) )
       {
-        DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !(METATERM_USE_VMI & METATERM_ENABLED) %s \n", named));
+       // DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !(METATERM_USE_VMI & METATERM_ENABLED) %s \n", named));
         if ( !(METATERM_ENABLED) )
         {
           DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: DISABLED %s -> %s\n", named, predicateName(altDEF)));
@@ -1848,7 +1874,7 @@ if(METATERM_REALLY_OK)
       }
       }
       goto as_normal;
-	    } 
+	    }
       if ( LD_no_vmi_hacks > 0 )
       { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: LD_no_vmi_hacks: %s \n", named));
         goto as_normal;
@@ -1857,11 +1883,11 @@ if(METATERM_REALLY_OK)
       //  altDEF = getProcDefinedDefinition(altDEF PASS_LD);
       //  LOAD_REGISTERS(qid);
       if ( true(altDEF, P_VARARG) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));           
+      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
         goto as_wakeup;
       } else if ( true(altDEF, P_FOREIGN) )
       {
-        DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));           
+        DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
         goto as_wakeup;
     }
       if ( orig_arity < alt_arity )
@@ -1872,10 +1898,10 @@ if(METATERM_REALLY_OK)
   goto as_normal;
     } // alt_call:
 
-/* 
+/*
    Adds the next instruction to the wakeup list and replaces this with nop/N
-   Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N 
-   
+   Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N
+
   */
 as_wakeup:
 {
@@ -1886,23 +1912,23 @@ as_wakeup:
 
       functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
 
-      Definition nopDEF = lookupDefinition(nop_functor,PARENT_MODULE);
+      Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
     if ( nopDEF==DEF ) goto as_normal;
     if ( unDEFined(nopDEF) )
     { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
-      goto as_normal; 
+      goto as_normal;
     }
 
 	{ int cells = 1 + alt_arity + BIND_GLOBAL_SPACE;
     if (!( gTop+cells <= gMax && tTop+BIND_TRAIL_SPACE <= tMax ))
         {
           DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NOT WAITING FOR SPACE \n"));
-      goto as_normal; 
+      goto as_normal;
     }
 	}
       if ( LD_no_vmi_hacks>0 )
       { DEBUG(MSG_METATERM_VMI, Sdprintf("\n LD_no_vmi_hacks: %s \n", named));
-        goto as_normal; 
+        goto as_normal;
       }
 
   Word frameWord;
@@ -1915,15 +1941,15 @@ as_wakeup:
 			   DEBUG(MSG_METATERM_VMI, Sdprintf("\n NO GLOBAL SPACE!?!\n"));
 			   LOAD_REGISTERS(qid);
                goto as_normal;
-			}     
+			}
 		}
 		LOAD_REGISTERS(qid);
-        
+
 		/*copy the frame goal*/
 		Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
 		frameGoal[0] = DEF->functor->functor;
-		
-		frameWord = gTop;			
+
+		frameWord = gTop;
 		word newVar = makeRef(&frameWord[6]);
 		/*word newVar = makeRef(valHandle(noGC));*/
 		/*word newOldVar = makeRef(*valHandle(noGC+1));*/
@@ -1943,12 +1969,12 @@ as_wakeup:
 		/* disabled the next instruction */
 		DEF = nopDEF;
 		goto wakeup;
-	    
+
 	}
-	
+
 
 #define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
-	
+
 
     int skipSpaces = orig_arity - alt_arity;
 
@@ -1985,7 +2011,7 @@ as_wakeup:
 #endif /*O_METATERM*/
 
 #ifdef O_DRA_TABLING_NEVER
-  
+
   if ( DRA_CALL && DEF->dra_interp )
   {
     DEBUG(MSG_DRA,{Sdprintf("DRA_MAYBE I_CALL in_dra=%s  depth=%d\n",predicateName(DEF),proc->dra_depth);});
@@ -1999,14 +2025,14 @@ as_wakeup:
       expr = linkVal(valPHandle(DEF->dra_interp));
   #else
       expr = DEF->dra_interp;
-  #endif        
+  #endif
       SAVE_REGISTERS(qid);
-      if(isAtom(expr)) 
+      if(isAtom(expr))
       {
         Word frameWord = frame_to_consP(1, orig_arity,0, NFR);
       if ( frameWord==0 )
       {
-          DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));    
+          DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));
         LOAD_REGISTERS(qid);
         goto as_normal;
       }
@@ -2027,8 +2053,8 @@ as_wakeup:
 
 as_normal:
 
-  
-  
+
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 Initialise those slots of the frame that are common to Prolog predicates
 and foreign ones.  There might be some possibilities for optimisation by
@@ -2100,7 +2126,7 @@ retry_continue:
         THROW_EXCEPTION;
       }
     }
-  
+
 #ifdef O_PROFILE
     if ( LD->profile.active )
       FR->prof_node = profCall(DEF PASS_LD);
@@ -2131,7 +2157,7 @@ retry_continue:
 	THROW_EXCEPTION;
     }
 #endif
-  
+
 #if O_DEBUGGER
     if ( debugstatus.debugging )
     { int rc;
@@ -2195,7 +2221,7 @@ VMI(I_DEPART, VIF_BREAK, 1, (CA1_PROC))
     }
 
 
-   
+
 
     if ( true(FR, FR_WATCHED) )
     { LD->query->next_environment = lTop;
@@ -2216,7 +2242,7 @@ VMI(I_DEPART, VIF_BREAK, 1, (CA1_PROC))
       clear(FR, FR_CLEAR_NEXT);
       set(FR, FR_CONTEXT);
     } else if ( true(DEF, P_META) )
-    { /* Potentially switch to the Goals module instead */ 
+    { /* Potentially switch to the Goals module instead */
       FR->context = contextModule(FR);
       FR->level++;
       clear(FR, FR_CLEAR_NEXT);
@@ -4751,7 +4777,7 @@ again:
     }
   } else
 #endif /*O_DEBUGGER*/
-  
+
   {
     DEBUG(3, Sdprintf("Unwinding for exception\n"));
 

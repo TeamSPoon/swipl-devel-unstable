@@ -83,7 +83,7 @@ lookupProcedure(functor_t f, Module m)
 #ifdef O_DRA_INTERP_TERM_T
   /* would need to have a PL_new_term_ref to survive the GC shift but this doesnt work out here (obviously)   */
   def->dra_interp  = PL_new_term_ref();
-#else 
+#else
   def->dra_interp  = (word)0;
 #endif
   resetProcedure(proc, TRUE);
@@ -347,7 +347,11 @@ isStaticSystemProcedure(functor_t fd)
 int
 checkModifySystemProc(functor_t fd)
 { Procedure proc;
-
+  GET_LD
+  if(SYSTEM_MODE && O_DRA_TABLING)
+  {
+    succeed;
+  }
   if ( (proc = isStaticSystemProcedure(fd)) &&
        true(proc->definition, P_ISO) )
     return PL_error(NULL, 0, NULL, ERR_MODIFY_STATIC_PROC, proc);
@@ -362,7 +366,7 @@ overruleImportedProcedure(Procedure proc, Module target)
   Definition def = getProcDefinition(proc);
 
   assert(def->module != target);	/* e.g., imported */
-  if ( true(def->module, M_SYSTEM) )
+  if ( true(def->module, M_SYSTEM) && !SYSTEM_MODE)
   { return PL_error(NULL, 0, NULL, ERR_PERMISSION_PROC,
 		    ATOM_redefine, ATOM_built_in_procedure, proc);
   } else
@@ -582,7 +586,7 @@ get_procedure(term_t descr, Procedure *proc, term_t h, int how)
   { if ( !get_functor(descr, &fdef, &m, h,
 		      GF_PROCEDURE|(how&GP_TYPE_QUIET)|(how&GP_ATOM_ARITY_1)) )
       fail;
-  
+
   } else
   { term_t head = PL_new_term_ref();
 
@@ -1553,11 +1557,11 @@ field of a definition as well  as   the  P_TRANSPARENT and P_META flags.
 Non nuull mode_info indicates that mode_info is valid. P_META indicates that
 the declaration contains at least one meta-argument (//,  ^ or 0..9).
 
-  ":" should soon no longer to be considered needing P_TRANSPARENT 
+  ":" should soon no longer to be considered needing P_TRANSPARENT
   but only P_META
-  since its point is to function was to capture the 
+  since its point is to function was to capture the
     context module of the arg and not allways change the VM's context
-   Of course this is DM wishing to hold onto a distrtion between 
+   Of course this is DM wishing to hold onto a distrtion between
    P_TRANSPARENT and P_META
 
 @param HeadList	Comma separated list of predicates heads, where each
@@ -1652,8 +1656,8 @@ process_mode_declaration(term_t spec, int additional_flags)
 
   if(!isMetamask(def, mask))
   {
-    if(additional_flags)  
-    {    
+    if(additional_flags)
+    {
       set(def, additional_flags);
 
       DEBUG(1,
@@ -1673,7 +1677,7 @@ process_mode_declaration(term_t spec, int additional_flags)
 }
 
 
-/* modes/1 is used to deduce when this is a meta_predicate */
+/* mode/1 is used to deduce when this is a meta_predicate */
 static
 PRED_IMPL("mode", 1, mode, PL_FA_TRANSPARENT)
 { PRED_LD
@@ -1693,12 +1697,12 @@ PRED_IMPL("mode", 1, mode, PL_FA_TRANSPARENT)
   return TRUE;
 }
 
-/* 
+/*
   Since the introduction of global variables into prolog:
      We can store Goals in such variables.
-     Thus, is unreasonable to require that metapredicates use arguments.      
+     Thus, is unreasonable to require that metapredicates use arguments.
       For instance, in tabling code, uses only:
-    
+
 
     :-meta_predicate td(-).
 
@@ -1710,13 +1714,13 @@ PRED_IMPL("mode", 1, mode, PL_FA_TRANSPARENT)
 
 
 
-   meta_predicate/1 marks the predicate transparent even 
+   meta_predicate/1 marks the predicate transparent even
                        when the arguments did not imply it.
 
 
    mode/1 marks the predicate a meta_predicate *only*
                        when the arguments imply it.
-                   
+
 
 */
 static
@@ -1729,7 +1733,7 @@ PRED_IMPL("meta_predicate", 1, meta_predicate, PL_FA_TRANSPARENT)
   { _PL_get_arg(1, tail, head);
     if ( !process_mode_declaration(head, extra) )
       return FALSE;
-   
+
     _PL_get_arg(2, tail, tail);
   }
 
@@ -1744,10 +1748,10 @@ static int
 unify_mode_argument(term_t head, Definition def, int i)
 { GET_LD
   term_t arg = PL_new_term_ref();
-   
+
   _PL_get_arg(i+1, head, arg);
 
-  if(!def->modes) 
+  if(!def->modes)
   { if(false(def,P_META))
      return PL_unify_atom(arg, ATOM_question_mark);
 
@@ -1865,15 +1869,15 @@ PL_put_predicate_modes(predicate_t proc, const char *spec_s)
 int
 PL_meta_predicate(predicate_t proc, const char *spec_s)
 { Definition def = proc->definition;
-  int rc = PL_put_predicate_modes(proc, spec_s);  
+  int rc = PL_put_predicate_modes(proc, spec_s);
   /*set(def, P_TRANSPARENT);*/
-  if(false(def,P_META)) 
+  if(false(def,P_META))
   { Sdprintf("\n! PL_meta_predicate %s", spec_s);
    // PL_write_term(Serror, spec, 1200, PL_WRT_QUOTED);
     Sdprintf(" \n ");
   }
   return rc;
-  
+
 }
 
 
@@ -2844,7 +2848,7 @@ pl_get_predicate_attribute(term_t pred,
     hashtable_with_grefs* put = def->pred_trie;
     return put && unify_htb(value, put);
 
-#endif 
+#endif
 
   }  else if ( key == ATOM_foreign )
   { return PL_unify_integer(value, true(def, P_FOREIGN) ? 1 : 0);
@@ -2996,7 +3000,7 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
   int val;
   uintptr_t att;
 
-  
+
   if( !PL_get_atom_ex(what, &key) )
      return FALSE;
 
@@ -3020,7 +3024,7 @@ pl_set_predicate_attribute(term_t pred, term_t what, term_t value)
     def = getProcDefinition(proc);
 
     if (PL_is_variable(value))
-    {  def -> pred_trie = NULL;       
+    {  def -> pred_trie = NULL;
     } else
     { hashtable_with_grefs* get;
       if( get_htb(value, &get  PASS_LD))
