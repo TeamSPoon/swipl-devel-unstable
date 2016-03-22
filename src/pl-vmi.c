@@ -1699,12 +1699,9 @@ if(METATERM_REALLY_OK)
   if (LD_no_vmi_hacks < 1 && often != ATOM_false )
   {
     if(!METATERM_ENABLED)
-    {
-      /* DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: glbval-disable-vmi durring %s \n", named));*/
+    { /* DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: glbval-disable-vmi durring %s \n", named));*/
       goto as_normal;
     }
-
-    int sometimes = (often == ATOM_true);
 
 	/*catch loops*/
     if(LD_no_vmi_hacks>5)
@@ -1736,23 +1733,23 @@ if(METATERM_REALLY_OK)
         if ( soften==ATOM_false ) continue;
         for(int i=0;i<sa;i++) 
         { deRef2(&f->arguments[i], n);
-          if(isAttVar(*n))
-          { argAV = n;
-          int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
-          if(!IS_META(METATERM_SOURCE_VALUE) && !IS_META(METATERM_USE_VMI)) continue;
-          if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
-          { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi during VERY-DEEP %s \n", named));
-            continue; /*no vmi*/
-          }
-          if ( !some_source_var )
-          { some_source_var = argAV;
-            some_source_argNum = orig_argNum;
-            some_source_flags = flags;
-            some_source_varHolder = &f->arguments[i];
-          }           
+          if(!isAttVar(*n)) continue;
+            argAV = n;
+            int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+            if(!IS_META(METATERM_SOURCE_VALUE) && !IS_META(METATERM_USE_VMI)) continue;
+            if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+            { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi during VERY-DEEP %s \n", named));
+              continue; /*no vmi*/
+            }
+            if ( !some_source_var )
+            { some_source_var = argAV;
+              some_source_argNum = orig_argNum;
+              some_source_flags = flags;
+              some_source_varHolder = &f->arguments[i];
+            }           
         }
-        continue;
-      } else
+      }
+      else
       { if(!isAttVar(*argAV)) continue;
       }
       {
@@ -1767,7 +1764,7 @@ if(METATERM_REALLY_OK)
       { some_source_var = argAV;
         some_source_argNum = orig_argNum;
         some_source_flags = flags;
-        some_source_varHolder = &f->arguments[i];
+        some_source_varHolder = ARG;
       }
       word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
       if ( malt_functor==0 )
@@ -1835,98 +1832,34 @@ if(METATERM_REALLY_OK)
       alt_varHolder = some_source_varHolder;
       alt_functor = PL_new_functor(ATOM_dmetaterm_call, alt_arity);
       altDEF = lookupDefinition(alt_functor, MODULE_user);
-      metaterm_overrides_present++;
    }
-
-//alt_call:
-    {
-
-      if ( altDEF == DEF )
-      {
-        DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: altDEF == DEF %s -> %s\n", named, predicateName(altDEF)));
-        goto as_normal;
-      }
-      if ( !altDEF || unDEFined(altDEF) )
-      { DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
-        goto as_normal;
-      }
-
-      int flags = alt_flags;
-      if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-      { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled meta_term/source_term %s \n", named));
-        goto as_normal; /* disabled */
-      }
-      if ( FALSE && ( !(METATERM_USE_VMI & METATERM_ENABLED) ))
-      {
-       // DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !(METATERM_USE_VMI & METATERM_ENABLED) %s \n", named));
-        if ( !(METATERM_ENABLED) )
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: DISABLED %s -> %s\n", named, predicateName(altDEF)));
-          SHOW_IF_FALSE((LD->IO.portray_nesting < 1));
-          SHOW_IF_FALSE((LD->autoload_nesting < 1));
-          if ( exception_term )
-          { SHOW_IF_FALSE(!(exception_term));
-            SHOW_IF_FALSE(isVar(*valTermRef(exception_term)));
-          }
-        }
-        
-	  }
-      if ( LD_no_vmi_hacks > 0 )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: LD_no_vmi_hacks: %s \n", named));
-        goto as_wakeup;
-        goto as_normal;
-	  }
-      //  SAVE_REGISTERS(qid);
-      //  altDEF = getProcDefinedDefinition(altDEF PASS_LD);
-      //  LOAD_REGISTERS(qid);
-      if ( true(altDEF, P_VARARG) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
-        goto as_wakeup;
-      } else if ( true(altDEF, P_FOREIGN) )
-      {
-        DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
-        goto as_wakeup;
-    }
-      if ( orig_arity < alt_arity )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: functor %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_name, 50)));
-        goto as_wakeup;
-  }
-      DEF = altDEF;
-  goto as_normal;
-    } // alt_call:
 
 /*
    Adds the next instruction to the wakeup list and replaces this with nop/N
    Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N
 
   */
-as_wakeup:
 {
-      if ( unDEFined(PROCEDURE_dwakeup1->definition) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING PROCEDURE_dwakeup1 \n"));
-	   goto as_normal;
-	}
+  if ( unDEFined(PROCEDURE_dwakeup1->definition) )
+  { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING PROCEDURE_dwakeup1 \n"));
+   goto as_normal;
+  }
 
-      functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
+  functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
 
-      Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
-    if ( nopDEF==DEF ) goto as_normal;
-    if ( unDEFined(nopDEF) )
-    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
-      goto as_normal;
-    }
+  Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
+  if ( nopDEF==DEF ) goto as_normal;
+  if ( unDEFined(nopDEF) )
+  { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
+    goto as_normal;
+  }
 
-	{ int cells = 1 + alt_arity + BIND_GLOBAL_SPACE;
+  { int cells = 1 + alt_arity + BIND_GLOBAL_SPACE;
     if (!( gTop+cells <= gMax && tTop+BIND_TRAIL_SPACE <= tMax ))
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NOT WAITING FOR SPACE \n"));
-      goto as_normal;
-    }
-	}
-      if ( LD_no_vmi_hacks>0 )
-      { DEBUG(MSG_METATERM_VMI, Sdprintf("\n LD_no_vmi_hacks: %s \n", named));
+    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NOT WAITING FOR SPACE \n"));
         goto as_normal;
-      }
+    }
+  }
 
   Word frameWord;
  /* source_fluents */
