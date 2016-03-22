@@ -1678,10 +1678,12 @@ if(METATERM_REALLY_OK)
 
   Definition altDEF = NULL;
   Word alt_var = NULL;
+  Word alt_varHolder = NULL;
   Word some_source_fluent = NULL;
+  Word some_source_fluentHolder = NULL;
   int some_source_fluent_argNum = 0;
   int some_source_fluent_flags = 0;
-	int alt_argNum = 0;
+  int alt_argNum = 0;
   int alt_flags = 0;
   functor_t alt_functor = 0;
   functor_t orig_functor = ((Definition)DEF)->functor->functor;
@@ -1693,8 +1695,8 @@ if(METATERM_REALLY_OK)
 
   char* named = predicateName(DEF);
 
-
-  if (!LD_no_vmi_hacks && !isNeverOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
+  atom_t often = getPredOverriden(orig_name, orig_arity PASS_LD);
+  if (LD_no_vmi_hacks < 1 && often != ATOM_false )
   {
     if(!METATERM_ENABLED)
     {
@@ -1702,7 +1704,7 @@ if(METATERM_REALLY_OK)
       goto as_normal;
     }
 
-    int sometimes = isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD);
+    int sometimes = (often == ATOM_true);
 
 	/*catch loops*/
     if(LD_no_vmi_hacks>5)
@@ -1714,16 +1716,51 @@ if(METATERM_REALLY_OK)
 		LD_no_vmi_hacks=wasV;
 	}
     Word ARG = argFrameP(NFR, 0);
-		int metaterm_overrides_present = 0;
-		int metaterms_disabled = 0;
+	int metaterm_overrides_present = 0;
+	int metaterms_disabled = 0;
     int orig_argNum = 0;
-      int temp_arity = orig_arity;
-	  for (; temp_arity --> 0; ARG++)
+    int temp_arity = orig_arity;
+	for (; temp_arity --> 0; ARG++)
     {
-      Word argAV = ARG;
+      Word argAV = ARG;      
       orig_argNum++;
       deRef(argAV);
-      if ( argAV && isAttVar(*argAV) )
+      if(!argAV) continue;      
+      if(isTerm(*argAV))
+      { if ( often != ATOM_very_deep ) continue;
+        Word n;
+        Functor f = valueTerm(*argAV);
+        int sa = arityFunctor(f->definition);
+        for(int i=0;i<sa;i++) 
+        { deRef2(&f->arguments[i], n);
+          if(isAttVar(*n))
+          { argAV = n;
+            int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+            if(IS_META(METATERM_SOURCE_VALUE) || IS_META(METATERM_USE_VMI))
+            { if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+              { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring VERY-DEEP %s \n", named));
+                continue; /*no vmi*/
+              }
+              if ( !some_source_fluent )
+              {
+                some_source_fluent = argAV;
+                some_source_fluent_argNum = orig_argNum;
+                some_source_fluent_flags = flags;
+                some_source_fluentHolder = &f->arguments[i];
+              } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
+              {
+                some_source_fluent = argAV;
+                some_source_fluent_argNum = orig_argNum;
+                some_source_fluent_flags = flags;
+                some_source_fluentHolder = &f->arguments[i];
+              }
+            }
+          }
+        }
+        continue;
+      } else
+      { if(!isAttVar(*argAV)) continue;
+      }
       {
         if(alt_var==argAV) continue;
         int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
@@ -1744,11 +1781,13 @@ if(METATERM_REALLY_OK)
             some_source_fluent = argAV;
             some_source_fluent_argNum = orig_argNum;
             some_source_fluent_flags = flags;
+            some_source_fluentHolder = ARG;
           } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
           {
             some_source_fluent = argAV;
             some_source_fluent_argNum = orig_argNum;
             some_source_fluent_flags = flags;
+            some_source_fluentHolder = ARG;
           }
           /*some source fluent*/
         }
@@ -1774,6 +1813,7 @@ if(METATERM_REALLY_OK)
           { some_source_fluent = argAV;
             some_source_fluent_argNum = orig_argNum;
             some_source_fluent_flags = flags;
+            some_source_fluentHolder = ARG;
             continue;
           }
         }
@@ -1784,8 +1824,8 @@ if(METATERM_REALLY_OK)
           /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
 		      continue;*/
         }
-
-        if ( !isSometimesOverriden(orig_name, orig_arity, orig_functor PASS_LD) )
+        
+        if ( often != ATOM_true )
         {
           DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !isSometimesOverriden %s \n", named));
         }
@@ -1823,6 +1863,7 @@ if(METATERM_REALLY_OK)
         altDEF = maybeAltDef;
         alt_arity = altDEF->functor->arity;
         alt_functor = altDEF->functor->functor;
+        alt_varHolder = ARG;
 
       } //isAttVar
     } //for loop
@@ -1837,6 +1878,7 @@ if(METATERM_REALLY_OK)
       alt_var = some_source_fluent;
       alt_argNum = some_source_fluent_argNum;
       alt_flags = some_source_fluent_flags;
+      alt_varHolder = some_source_fluentHolder;
       alt_functor = PL_new_functor(ATOM_dmetaterm_call, alt_arity);
       altDEF = lookupDefinition(alt_functor, MODULE_user);
       metaterm_overrides_present++;
@@ -1860,7 +1902,7 @@ if(METATERM_REALLY_OK)
       { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled meta_term/source_term %s \n", named));
         goto as_normal; /* disabled */
       }
-      if ( !(METATERM_USE_VMI & METATERM_ENABLED) )
+      if ( FALSE && ( !(METATERM_USE_VMI & METATERM_ENABLED) ))
       {
        // DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !(METATERM_USE_VMI & METATERM_ENABLED) %s \n", named));
         if ( !(METATERM_ENABLED) )
@@ -1871,12 +1913,13 @@ if(METATERM_REALLY_OK)
           if ( exception_term )
           { SHOW_IF_FALSE(!(exception_term));
             SHOW_IF_FALSE(isVar(*valTermRef(exception_term)));
-      }
-      }
-      goto as_normal;
-	    }
+          }
+        }
+        
+	  }
       if ( LD_no_vmi_hacks > 0 )
       { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: LD_no_vmi_hacks: %s \n", named));
+        goto as_wakeup;
         goto as_normal;
 	  }
       //  SAVE_REGISTERS(qid);
@@ -1945,26 +1988,27 @@ as_wakeup:
 		}
         LOAD_REGISTERS(qid);
 
-
-        preMetatermCall(PASS_LD1);
-
+        //Word newVarPos = makeRef(valTermRef(LD->attvar.metaterm_wstates+2));
+        setVar(*alt_varHolder);
+        //*alt_varHolder = *newVarPos;
+        //*alt_varHolder = makeRef(frameWord[6]);
+        preMetatermCall(PASS_LD1);        
+        
 		/*copy the frame goal*/
 		Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
 		frameGoal[0] = DEF->functor->functor;
 
 		frameWord = gTop;
-		word newVar = makeRef(&frameWord[6]);
 		/*word newVar = makeRef(valHandle(noGC));*/
 		/*word newOldVar = makeRef(*valHandle(noGC+1));*/
-        int found = substVarWord(alt_var, newVar, orig_arity, frameGoal+1);
-		assert(found>0);
+
 		frameWord[0] = altDEF->functor->functor;
 		frameWord[1] = orig_name;
 		frameWord[2] = consPtr(frameGoal, TAG_COMPOUND | STG_GLOBAL);
         frameWord[3] = consInt(alt_argNum);
-        frameWord[4] = consInt(found);
+        frameWord[4] = often;
 		frameWord[5] = makeRef(alt_var);
-		frameWord[6] = (word)0;
+		frameWord[6] = makeRef(alt_varHolder);
 		gTop += 7;
 		/* Assigns the value */
         /* Runs new expression using the value */

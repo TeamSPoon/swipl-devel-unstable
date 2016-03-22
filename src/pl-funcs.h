@@ -56,8 +56,7 @@ COMMON(Word) 	valPHandle(term_t r ARG_LD);
 COMMON(word) getMetaOverride(Word av, word metaprop, int override_flags ARG_LD);
 COMMON(int)       getMetaFlags(Word av, int flags ARG_LD);
 COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
-COMMON(bool) isSometimesOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
-COMMON(bool) isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
+COMMON(atom_t) getPredOverriden(atom_t current_name, int arity  ARG_LD);
 COMMON(void) setupMetaterms(ARG1_LD);
 COMMON(int) preMetatermCall(ARG1_LD);
 

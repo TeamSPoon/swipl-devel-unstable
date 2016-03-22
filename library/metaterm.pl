@@ -831,6 +831,10 @@ metaterm_test:- X:=2, \+ \+ (X:=1), X==2.
 metaterm_test:- X:=2, X:=1, X:=3.
 metaterm_test:- X:=1,X=Y,X==1,Y==1.
 
+system:print_metaterm(X):-writeq(X).
+:-export(print_metaterm/1).
+:- add_overriden(print_metaterm/1,very_deep).
+
 metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),trace,3 is X + 1.
 metaterm_test:- source_fluent(X),metaterm_setval(X,2),trace,3 is X + 1.
 

@@ -2693,32 +2693,6 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
   return t;
 }
 
-static int
-substVarWord(Word old, word new, int arity, Word argv)
-{ GET_LD
-
-  int found = 0;
-	Word argp = argv;
-
-	for (int i = 0; i < arity; i++)
-	{ Word a;
-		deRef2(argv + i, a);
-		if (*a == *old) 
-		{ found++;
-			*argp++ = new;
-		}
-		else 
-		{ *argp++ = (needsRef(*a) ? makeRef(a) : *a);
-		}
-	}
-
-	return found;
-}
-
-static int
-substVar(Word old, word new, int arity, LocalFrame frame)
-{ return substVarWord(old, new, arity, argFrameP(frame, 0));
-}
 
 
 int

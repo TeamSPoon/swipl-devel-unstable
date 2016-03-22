@@ -2059,7 +2059,17 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
+typedef struct metaterm_pred_override
+{ atom_t name;
+  int	arity;
+  atom_t value;
+} metaterm_pred_override;
+
 /* assignAttVar() flags  - All defaulted to false */
+
+#define METATERM_OVERIDES_SIZE 2560
+#define METATERM_WSTATE_SIZE 3
+#define METATERM_WSTATE_BUFFERS 2
 
 #define  B_PUTATTS 0x0
 #define NB_PUTATTS 0x1

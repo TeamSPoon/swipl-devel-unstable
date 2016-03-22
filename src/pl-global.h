@@ -424,9 +424,7 @@ struct PL_local_data
     term_t  metaterm_regs;   /*  registers for calling fvOverrides */
     term_t  metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_current; /* flags for current matts () */
-#define METATERM_OVERIDES_SIZE 2560
-    word  metaterm_override[METATERM_OVERIDES_SIZE]; /* flags for current matts () */
-    word  metaterm_never_override[METATERM_OVERIDES_SIZE]; /* flags for current matts () */
+    metaterm_pred_override  metaterm_override[METATERM_OVERIDES_SIZE]; /* flags for current matts () */
 #endif
   } attvar;
 #endif
