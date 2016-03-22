@@ -1679,10 +1679,10 @@ if(METATERM_REALLY_OK)
   Definition altDEF = NULL;
   Word alt_var = NULL;
   Word alt_varHolder = NULL;
-  Word some_source_fluent = NULL;
-  Word some_source_fluentHolder = NULL;
-  int some_source_fluent_argNum = 0;
-  int some_source_fluent_flags = 0;
+  Word some_source_var = NULL;
+  Word some_source_varHolder = NULL;
+  int some_source_argNum = 0;
+  int some_source_flags = 0;
   int alt_argNum = 0;
   int alt_flags = 0;
   functor_t alt_functor = 0;
@@ -1726,159 +1726,113 @@ if(METATERM_REALLY_OK)
       orig_argNum++;
       deRef(argAV);
       if(!argAV) continue;      
-      if(isTerm(*argAV))
-      { if ( FALSE && often != ATOM_very_deep ) continue;
+      if ( !some_source_var & isTerm(*argAV)) 
+      { if ( often != ATOM_very_deep ) continue;
         Word n;
         Functor f = valueTerm(*argAV);
         int sa = arityFunctor(f->definition);
+        atom_t sname = nameFunctor(f->definition);
+        atom_t soften = getPredOverriden(sname, sa PASS_LD);
+        if ( soften==ATOM_false ) continue;
         for(int i=0;i<sa;i++) 
         { deRef2(&f->arguments[i], n);
           if(isAttVar(*n))
           { argAV = n;
-            int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
-            if(IS_META(METATERM_SOURCE_VALUE) || IS_META(METATERM_USE_VMI))
-            { if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
-              { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring VERY-DEEP %s \n", named));
-                continue; /*no vmi*/
-              }
-              if ( !some_source_fluent )
-              {
-                some_source_fluent = argAV;
-                some_source_fluent_argNum = orig_argNum;
-                some_source_fluent_flags = flags;
-                some_source_fluentHolder = &f->arguments[i];
-              } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-              {
-                some_source_fluent = argAV;
-                some_source_fluent_argNum = orig_argNum;
-                some_source_fluent_flags = flags;
-                some_source_fluentHolder = &f->arguments[i];
-              }
-            }
+          int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+          if(!IS_META(METATERM_SOURCE_VALUE) && !IS_META(METATERM_USE_VMI)) continue;
+          if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+          { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi during VERY-DEEP %s \n", named));
+            continue; /*no vmi*/
           }
+          if ( !some_source_var )
+          { some_source_var = argAV;
+            some_source_argNum = orig_argNum;
+            some_source_flags = flags;
+            some_source_varHolder = &f->arguments[i];
+          }           
         }
         continue;
       } else
       { if(!isAttVar(*argAV)) continue;
       }
       {
-        if(alt_var==argAV) continue;
-        int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
-        if ( flags==0 ) continue; /*normal attvar*/
+      if(alt_var==argAV) continue;
+      int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+      if(!IS_META(METATERM_SOURCE_VALUE) && !IS_META(METATERM_USE_VMI)) continue;
+      if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+      { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi during %s \n", named));
+        continue; /*no vmi*/
+      }
+      if ( !some_source_var )
+      { some_source_var = argAV;
+        some_source_argNum = orig_argNum;
+        some_source_flags = flags;
+        some_source_varHolder = &f->arguments[i];
+      }
+      word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
+      if ( malt_functor==0 )
+      { malt_functor = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
+      } else if (malt_functor == orig_name)
+      { continue;
+      } else if(isAtom(malt_functor))
+      { malt_functor = PL_new_functor(malt_functor, orig_arity);
+      }
+      if ( malt_functor == orig_functor )
+      { if(often == ATOM_true) DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
+        continue;
+        /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
+            continue;*/
+      }
 
-        if ( IS_META(METATERM_DISABLE_VMI) )
-        {
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring %s \n", named));
-          continue; /*no vmi*/
-        }
+      Module use_module = MODULE_user;//contextModule(NFR->parent?NFR->parent:LD->environment);
+      Definition maybeAltDef = lookupDefinition(malt_functor,use_module);
+      if ( !maybeAltDef || unDEFined(maybeAltDef) )
+      {
+        DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(malt_functor)));
+        continue;
+      }
+      if (IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR))
+      {
+        metaterms_disabled++;
+        DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled metaterm %s \n", named));
+        continue; /* disabled */
+      }
 
+      metaterm_overrides_present++;
 
-        if ( IS_META(METATERM_SOURCE_VALUE) )
-        {
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: source fluent durring %s \n", named));
-          if ( !some_source_fluent )
-          {
-            some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-          } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-          {
-            some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-          }
-          /*some source fluent*/
-        }
+      if ( altDEF != NULL && altDEF == maybeAltDef )
+      {
+        DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s SAME %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
+        continue;
+      }
+      if ( altDEF != NULL && altDEF != maybeAltDef )
+      {
+        DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s UNUSED %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
+        continue;
+      }
 
-        if ( !IS_META(METATERM_USE_VMI) )
-        {
-          if(some_source_fluent == argAV) continue;
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: non-vmi durring %s \n", named));
-          continue; /*no vmi*/
-        }
+      alt_argNum = orig_argNum;
+      alt_var = argAV;
+      alt_flags = flags;
+      altDEF = maybeAltDef;
+      alt_arity = altDEF->functor->arity;
+      alt_functor = altDEF->functor->functor;
+      alt_varHolder = ARG;
 
-        word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
-        if ( malt_functor==0 )
-        { malt_functor = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
-        } else if (malt_functor == orig_name)
-        { malt_functor = orig_functor;
-        } else if(isAtom(malt_functor))
-        { malt_functor = PL_new_functor(malt_functor, orig_arity);
-        }
-
-        if ( malt_functor == orig_functor )
-        { if(sometimes && some_source_fluent_argNum==0)
-          { some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-            continue;
-          }
-        }
-
-        if ( malt_functor == orig_functor )
-        { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
-          continue;
-          /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
-		      continue;*/
-        }
-        
-        if ( often != ATOM_true )
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !isSometimesOverriden %s \n", named));
-        }
-
-        Module use_module = MODULE_user;//contextModule(NFR->parent?NFR->parent:LD->environment);
-        Definition maybeAltDef = lookupDefinition(malt_functor,use_module);
-        if ( !maybeAltDef || unDEFined(maybeAltDef) )
-        {
-          DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(malt_functor)));
-          continue;
-        }
-	    if (IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR))
-        {
-          metaterms_disabled++;
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled metaterm %s \n", named));
-		  continue; /* disabled */
-        }
-
-        metaterm_overrides_present++;
-
-        if ( altDEF != NULL && altDEF == maybeAltDef )
-        {
-          DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s SAME %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
-          continue;
-        }
-        if ( altDEF != NULL && altDEF != maybeAltDef )
-        {
-          DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s UNUSED %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
-          continue;
-        }
-
-        alt_argNum = orig_argNum;
-	    alt_var = argAV;
-        alt_flags = flags;
-        altDEF = maybeAltDef;
-        alt_arity = altDEF->functor->arity;
-        alt_functor = altDEF->functor->functor;
-        alt_varHolder = ARG;
-
-      } //isAttVar
-    } //for loop
+    } //isAttVar
+  } //for loop
 
 	if (!metaterm_overrides_present)
-    { if (! some_source_fluent )
+    { if (! some_source_var )
       { /*DEBUG(MSG_METATERM_VMI, Sdprintf("\n NORMAL_CALL: %s \n", named));*/
         goto as_normal;
       }
-      DEBUG(MSG_METATERM, Sdprintf("\n some_source_fluent about to call: %s \n", named));
+      DEBUG(MSG_METATERM, Sdprintf("\n some_source_var about to call: %s \n", named));
       alt_arity = METATERM_CALL_ARITY;
-      alt_var = some_source_fluent;
-      alt_argNum = some_source_fluent_argNum;
-      alt_flags = some_source_fluent_flags;
-      alt_varHolder = some_source_fluentHolder;
+      alt_var = some_source_var;
+      alt_argNum = some_source_argNum;
+      alt_flags = some_source_flags;
+      alt_varHolder = some_source_varHolder;
       alt_functor = PL_new_functor(ATOM_dmetaterm_call, alt_arity);
       altDEF = lookupDefinition(alt_functor, MODULE_user);
       metaterm_overrides_present++;
@@ -1890,8 +1844,8 @@ if(METATERM_REALLY_OK)
       if ( altDEF == DEF )
       {
         DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: altDEF == DEF %s -> %s\n", named, predicateName(altDEF)));
-      goto as_normal;
-    }
+        goto as_normal;
+      }
       if ( !altDEF || unDEFined(altDEF) )
       { DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
         goto as_normal;

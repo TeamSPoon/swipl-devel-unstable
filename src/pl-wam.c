@@ -2693,6 +2693,56 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
   return t;
 }
 
+static int 
+nextSource(foundFluent ORIG,foundFluent SOURCE, atom_t often, 
+            Word ARG, const char* named ARG_LD)
+{ 
+  if(ARG==0) return FALSE;
+  Word argAV = ARG;
+  deRef(argAV);
+  if(argAV==0) return FALSE;
+  if ( isAttVar(*argAV) )
+  { int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+    if( flags == 0) return FALSE;
+    if ( IS_META(METATERM_SOURCE_VALUE) || IS_META(METATERM_USE_VMI) )
+    {
+      if (/* IS_META(METATERM_DISABLE_VMI) || */ ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+      {
+        DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring nextSource %s \n", named));
+        return FALSE; /*no vmi*/
+      }
+      if ( !SOURCE.var )
+      {
+        SOURCE.var = argAV;
+        SOURCE.argNum = ORIG.argNum;
+        SOURCE.flags = flags;
+        SOURCE.varHolder = ARG;
+        return TRUE;
+      } 
+    }
+  }
+  if ( often != ATOM_very_deep ) return FALSE;
+
+  if ( isTerm(*argAV) )
+  { Functor f = valueTerm(*argAV);
+    int sa = arityFunctor(f->definition);
+    atom_t sname = nameFunctor(f->definition);
+    atom_t soften = getPredOverriden(sname, sa PASS_LD);
+    if ( soften==ATOM_false ) return FALSE;
+    for ( int i=0;i<sa;i++ )    
+    {
+      if(nextSource(ORIG, SOURCE, soften, &f->arguments[i], named PASS_LD)) 
+      {
+        SOURCE.name = sname;
+        SOURCE.arity = sa;
+        SOURCE.argNum = i;
+        SOURCE.functor = f->definition;
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
 
 
 int

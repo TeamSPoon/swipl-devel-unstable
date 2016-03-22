@@ -847,4 +847,9 @@ foo(X,X,X).. converts to
 metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),3 is X + 1.
 metaterm_test:- source_fluent(X),metaterm_setval(X,2),3 is X + 1.
 
+/*
+a value #<GREY-STREAM 234234> is stored inside a smart pointer of PlBlob that 
+ PlBlob is stored ina PlAttvar which has a property of a metaterm which can 
+ overloaded with stream read/write commands .. this cannot be done with term expansion and goal expansion 
 
+*/

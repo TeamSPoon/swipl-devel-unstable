@@ -2059,6 +2059,24 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
+typedef struct foundFluent
+{ atom_t name;
+  int arity;
+  functor_t functor;
+  Definition Def;
+  int argNum;
+  Word varHolder;
+  Word var;
+  int flags;
+} foundFluent, * FoundFluent;
+
+typedef struct fluentWorkflow
+{
+  foundFluent orig;
+  foundFluent alt;
+  foundFluent source;
+} fluentWorkflow, *FluentWorkflow;
+
 typedef struct metaterm_pred_override
 { atom_t name;
   int	arity;
