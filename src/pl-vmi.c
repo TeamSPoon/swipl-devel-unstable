@@ -1727,7 +1727,7 @@ if(METATERM_REALLY_OK)
       deRef(argAV);
       if(!argAV) continue;      
       if(isTerm(*argAV))
-      { if ( often != ATOM_very_deep ) continue;
+      { if ( FALSE && often != ATOM_very_deep ) continue;
         Word n;
         Functor f = valueTerm(*argAV);
         int sa = arityFunctor(f->definition);

@@ -781,7 +781,7 @@ metaterm_test:-
   dmsg([x=X,y=Y,z=Z]),
   Y=X,
   dmsg([x=X,y=Y,z=Z]),
-  metaterm_setval(X,bar),
+  X:=bar,
   X=Z,
   dmsg([x=X,y=Y,z=Z]),
   wo_metaterm(dmsg([x=X,y=Y,z=Z])),
@@ -794,48 +794,57 @@ metaterm_test:-
   dmsg([x=X,y=Y,z=Z]),
   Y=X,
   dmsg([x=X,y=Y,z=Z]),
-  metaterm_setval(X,bar),
+  X:=bar,
   X=Z,
   dmsg([x=X,y=Y,z=Z]),
   meta(X),
   writeln(X).
 
 
-metaterm_test:- source_fluent(X),not(X=1).
+metaterm_test:- source_fluent(X),not(X=one).
 metaterm_test:- X:=foo,Y=X,Y==foo,meta(X).
-metaterm_test:- source_fluent(X),metaterm_setval(X,1),X=1.
-metaterm_test:- source_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),!,findall(X,X=_,List),List==[1,2,3].
-metaterm_test:- source_fluent(X),copy_var(X),metaterm_setval(X,foo),dmsg( ( x : X , y : Y ) ),Y=X,Y=foo,meta(X).
-metaterm_test:- source_fluent(X),\+ X=1.
-metaterm_test:- sink_fluent(X),X=1,X=2.
-metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),X=3.
-metaterm_test:- sink_fluent(X),X=1,metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
-metaterm_test:- sink_fluent(X),source_fluent(X),X=1,Y=X,_Z=Y,Y==1,X\==1,meta(X).
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[1,2,3].
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),metaterm_push(X,4),get_attr(X,value,Vs),!,Vs==[1,2,3,4].
-metaterm_test:- sink_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),findall(X,X=_,List),List==[].
-metaterm_test:- sink_fluent(X),metaterm_push(X,1), dif(X,1),copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
-metaterm_test:- sink_fluent(X),dif(X,1),X=2,copy_term(X,Y,G),member(E,G),dif(Y, 1)==E.
-metaterm_test:- no_bind(X),X=1,X=2.
-metaterm_test:- exists(X),var(X),X=1,meta(X),writeln(X),unbind(X),var(X),X=2,writeln(X).
-metaterm_test:- copy_var(X),Y=X,Y=1,X==Y.
-metaterm_test:- copy_var(X),Y=X,Y=1,unbind(X).
-metaterm_test:- copy_var(X),Y=X,X=1,writeln(Y),Y==1,unbind(Y),var(Y),X=1.
+metaterm_test:- source_fluent(X),(X:=one),X=one.
+metaterm_test:- source_fluent(X),metaterm_push(X,one),metaterm_push(X,too),metaterm_push(X,3),!,findall(X,X=_,List),List==[one,too,3].
+metaterm_test:- source_fluent(X),copy_var(X),(X:=foo),dmsg( ( x : X , y : Y ) ),Y=X,Y=foo,meta(X).
+metaterm_test:- source_fluent(X),\+ X=one.
+metaterm_test:- sink_fluent(X),X=one,X=too.
+metaterm_test:- sink_fluent(X),X=one,metaterm_push(X,too),metaterm_push(X,3),X=3.
+metaterm_test:- sink_fluent(X),X=one,metaterm_push(X,too),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[one,too,3].
+metaterm_test:- sink_fluent(X),source_fluent(X),X=one,Y=X,_Z=Y,Y==one,X\==one,meta(X).
+metaterm_test:- sink_fluent(X),metaterm_push(X,one),metaterm_push(X,too),metaterm_push(X,3),source_fluent(X),!,findall(X,X=_,List),List==[one,too,3].
+metaterm_test:- sink_fluent(X),metaterm_push(X,one),metaterm_push(X,too),metaterm_push(X,3),metaterm_push(X,4),get_attr(X,value,Vs),!,Vs==[one,too,3,4].
+metaterm_test:- sink_fluent(X),metaterm_push(X,one),metaterm_push(X,too),metaterm_push(X,3),findall(X,X=_,List),List==[].
+metaterm_test:- sink_fluent(X),metaterm_push(X,one), dif(X,one),copy_term(X,Y,G),member(E,G),dif(Y, one)==E.
+metaterm_test:- sink_fluent(X),dif(X,one),X=too,copy_term(X,Y,G),member(E,G),dif(Y, one)==E.
+metaterm_test:- no_bind(X),X=one,X=too.
+metaterm_test:- exists(X),var(X),X=one,meta(X),writeln(X),unbind(X),var(X),X=too,writeln(X).
+metaterm_test:- copy_var(X),Y=X,Y=one,X==Y.
+metaterm_test:- copy_var(X),Y=X,Y=one,unbind(X).
+metaterm_test:- copy_var(X),Y=X,X=one,writeln(Y),Y==one,unbind(Y),var(Y),X=one.
 
-metaterm_test:- X:=1,number(X),\+ var(X).
-metaterm_test:- X:=2, X:=1, X==1.
-metaterm_test:- X:=2, X:=1, X=1.
-metaterm_test:- X:=2, X:=1, \+ (X=2).
-metaterm_test:- X:=2, X:=1, \+ (X=3).
-metaterm_test:- X:=2, \+ \+ (X:=1), X==2.
-metaterm_test:- X:=2, X:=1, X:=3.
-metaterm_test:- X:=1,X=Y,X==1,Y==1.
+metaterm_test:- X:=one,number(X),\+ var(X).
+metaterm_test:- X:=2, X:=one, X==one.
+metaterm_test:- X:=2, X:=one, X=one.
+metaterm_test:- X:=2, X:=one, \+ (X=2).
+metaterm_test:- X:=2, X:=one, \+ (X=3).
+metaterm_test:- X:=2, \+ \+ (X:=one), X==2.
+metaterm_test:- X:=2, X:=one, X:=3.
+metaterm_test:- X:=one,X=Y,X==one,Y==one.
 
 system:print_metaterm(X):-writeq(X).
 :-export(print_metaterm/1).
 :- add_overriden(print_metaterm/1,very_deep).
 
-metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),trace,3 is X + 1.
-metaterm_test:- source_fluent(X),metaterm_setval(X,2),trace,3 is X + 1.
+/*
+foo(X,X,X).. converts to  
+  metaterm_getval(foo,foo(A,X,X),one,X,A), 
+  metaterm_getval(foo,foo(A,B,X),2,X,B),
+  metaterm_getval(foo,foo(A,B,C),3,X,C),
+  metaterm_overloading(X,foo(A,B,C),G),
+  call(G).
+*/
+
+metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),3 is X + 1.
+metaterm_test:- source_fluent(X),metaterm_setval(X,2),3 is X + 1.
 
 
