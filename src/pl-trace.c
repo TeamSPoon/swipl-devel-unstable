@@ -174,9 +174,7 @@ the parent is a debug frame.
 
 int
 isDebugFrame(LocalFrame FR)
-{ GET_LD
-
-  if ( false(FR->predicate, TRACE_ME) )
+{ if ( false(FR->predicate, TRACE_ME) )
     return FALSE;			/* hidden predicate */
 
   if ( false(FR->predicate, HIDE_CHILDS) )
@@ -194,8 +192,7 @@ isDebugFrame(LocalFrame FR)
       return FALSE;			/* system calls system */
     } else
     { if ( false(parent, FR_HIDE_CHILDS) )
-	        return TRUE;
-          if(LD->prolog_flag.access_level == ACCESS_LEVEL_SYSTEM) return TRUE;
+	return TRUE;
       return FALSE;
     }
   } else
