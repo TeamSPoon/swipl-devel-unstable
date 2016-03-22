@@ -59,6 +59,7 @@ COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG
 COMMON(bool) isSometimesOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
 COMMON(bool) isNeverOverriden(atom_t current_name, int arity, functor_t current_functor  ARG_LD);
 COMMON(void) setupMetaterms(ARG1_LD);
+COMMON(int) preMetatermCall(ARG1_LD);
 
 #endif
 

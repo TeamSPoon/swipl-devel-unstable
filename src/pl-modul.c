@@ -355,7 +355,13 @@ addSuperModule_no_lock(Module m, Module s, int where)
 { ListCell c;
 
   if ( reachableModule(s, m) )
+  {
+    if (O_NAUGHTY)
+    {
+      return TRUE;
+    }
     return cannotSetSuperModule(m, s);
+  }
 
   for(c=m->supers; c; c=c->next)
   { if ( c->value == s )

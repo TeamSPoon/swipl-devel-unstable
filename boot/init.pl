@@ -223,7 +223,7 @@ nop(_,_,_,_,_,_,_,_).
 :- meta_predicate(ifdef(+,0)).
 ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-'$metaterm_callp'(A,B,C,D,E,F,G,P):- amsgc('call'(P,A,B,C,D,E,F,G)).
+'$metaterm_callp'(A,B,C,D,E,F,Goal,P):- amsgc('call'(P,A,B,C,D,E,F,Goal)).
 '$metaterm_callp'(A,B,C,D,E,F,P):- amsgc('call'(P,A,B,C,D,E,F)).
 '$metaterm_callp'(A,B,C,D,E,P):- amsgc('call'(P,A,B,C,D,E)).
 '$metaterm_callp'(A,B,C,D,P):- amsgc('call'(P,A,B,C,D)).
@@ -237,11 +237,12 @@ ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
 amsgc(C):-wo_metaterm((amsg(C),C)).
 
+:- '$hide'(amsg/1).
 amsg(_):-!.
-amsg(G):- notrace(
+amsg(Goal):- notrace(
    ignore(( % current_prolog_flag(dmiles,true),
-           wo_metaterm((ifdef(logicmoo_util_dmsg:dmsg(G),
-                  format(user_error,'~N,~q~n',[G]))))))).
+           wo_metaterm((ifdef(logicmoo_util_dmsg:dmsg(Goal),
+                  format(user_error,'~N,~q~n',[Goal]))))))).
 
 
 :- meta_predicate
@@ -263,17 +264,22 @@ amsg(G):- notrace(
                   call_cleanup_each(0,0).
 
 :- module_transparent(must_or_die/1).
-must_or_die(G):- (G *-> true ; throw(failed_must_or_die(G))).
+must_or_die(Goal):- (Goal *-> true ; throw(failed_must_or_die(Goal))).
 
 :- module_transparent(must_atomic/1).
+:- '$hide'(must_atomic/1).
 must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
 
 :- module_transparent(must_notrace/1).
+:- '$hide'(must_notrace/1).
 must_notrace(Goal):- notrace(must_or_die(Goal)).
 
+
+:- '$hide'(call_cleanup_each/2).
 call_cleanup_each(Goal, Cleanup) :-
 	setup_call_cleanup_each(true, Goal, Cleanup).
 
+:- '$hide'(setup_call_cleanup_each/3).
 setup_call_cleanup_each(Setup,Goal,Undo):-
    must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
    setup_call_cleanup(true,
@@ -288,30 +294,41 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
      E, (must_atomic(Undo),throw(E))))),WasTrace).
 
 
-with_no_wakeups(G):-  G. %% setup_call_cleanup_each(set_no_metavmi(X,X+1), G, set_no_metavmi(_,X)).
-with_wakeups(G):- G. %% setup_call_cleanup_each(set_no_metavmi(X,0), G, set_no_metavmi(_,X)).
+:- '$hide'(with_no_wakeups/1).
+with_no_wakeups(Goal):-  Goal. % setup_call_cleanup_each(set_no_metavmi(X,X+1), Goal, set_no_metavmi(_,X)).
+:- '$hide'(with_wakeups/1).
+with_wakeups(Goal):- Goal. % setup_call_cleanup_each(set_no_metavmi(X,0), Goal, set_no_metavmi(_,X)).
 
-with_metaterm_disabled(G):-with_metaterm_disabled(global,G).
-with_metaterm_enabled(G):-with_metaterm_enabled(global,G).
-with_metaterm_disabled(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G))).
-with_metaterm_enabled(Var,G):- metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled)).
+with_metaterm_disabled(Goal):-with_metaterm_disabled(global,Goal).
+with_metaterm_enabled(Goal):-with_metaterm_enabled(global,Goal).
+with_metaterm_disabled(Var,Goal):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), Goal, metaterm_flags(Var,~,metaterm_disabled)); Goal))).
+with_metaterm_enabled(Var,Goal):- metaterm_flags(Var,metaterm_disabled,0) -> Goal ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), Goal, metaterm_flags(Var,set,metaterm_disabled)).
 
+:- '$hide'(get_tracing/2).
+get_tracing(Goal,GG):- ((tracing,notrace)-> GG= (trace,Goal) ; GG=Goal ).
 
-wo_metavmi(G):-  set_no_metavmi(X,_),(X>0 -> G ;setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), G, set_no_metavmi(_,X))).
-with_metavmi(G):-  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), G, set_no_metavmi(_,X)).
+:- '$hide'(wo_metavmi/1).
+wo_metavmi(Goal):- get_tracing(Goal,GG), set_no_metavmi(X,_),(X>0 -> GG ;setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), GG, set_no_metavmi(_,X))).
 
-with_metavmi_maybe(G):-
+:- '$hide'(with_metavmi/1).
+with_metavmi(Goal):- get_tracing(Goal,GG),  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), GG, set_no_metavmi(_,X)).
+
+:- '$hide'(with_metavmi_maybe/1).
+with_metavmi_maybe(GG):-
+ get_tracing(GG,Goal),
  set_no_metavmi(X,_),
   (X > 1
-    -> setup_call_cleanup_each(set_no_metavmi(_,X-1), G, set_no_metavmi(_,X))
-    ; setup_call_cleanup_each(set_no_metavmi(_,0), G, set_no_metavmi(_,X))).
+    -> setup_call_cleanup_each(set_no_metavmi(_,X-1), Goal, set_no_metavmi(_,X))
+    ; setup_call_cleanup_each(set_no_metavmi(_,0), Goal, set_no_metavmi(_,X))).
 
 
-wo_metaterm(G):- wo_metaterm(global,wo_metavmi(G)).
-with_metaterm(G):-with_metaterm(global,with_metavmi_maybe(G)).
+wo_metaterm(GG):- get_tracing(GG,Goal),wo_metaterm(global,wo_metavmi(Goal)).
 
-wo_metaterm(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), G, metaterm_flags(Var,~,metaterm_disabled)); G ))).
-with_metaterm(Var,G):- (((metaterm_flags(Var,metaterm_disabled,0) -> G ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), G, metaterm_flags(Var,set,metaterm_disabled) )))).
+with_metaterm(GG):- get_tracing(GG,Goal),with_metaterm(global,with_metavmi_maybe(Goal)).
+
+wo_metaterm(Var,GG):- get_tracing(GG,Goal), (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), Goal, metaterm_flags(Var,~,metaterm_disabled)); Goal ))).
+
+with_metaterm(Var,GG):- get_tracing(GG,Goal), (((metaterm_flags(Var,metaterm_disabled,0) -> Goal ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), Goal, metaterm_flags(Var,set,metaterm_disabled) )))).
 
 
 
@@ -391,8 +408,8 @@ call(Goal, A, B, C, D, E) :-
 	call(Goal, A, B, C, D, E).
 call(Goal, A, B, C, D, E, F) :-
 	call(Goal, A, B, C, D, E, F).
-call(Goal, A, B, C, D, E, F, G) :-
-	call(Goal, A, B, C, D, E, F, G).
+call(Goal, A, B, C, D, E, F, Goal) :-
+	call(Goal, A, B, C, D, E, F, Goal).
 
 %%	not(:Goal) is semidet.
 %
@@ -1339,10 +1356,10 @@ compiling :-
 :- meta_predicate
 	'$ifcompiling'(0).
 
-'$ifcompiling'(G) :-
+'$ifcompiling'(Goal) :-
 	(   '$compilation_mode'(database)
 	->  true
-	;   call(G)
+	;   call(Goal)
 	).
 
 		/********************************

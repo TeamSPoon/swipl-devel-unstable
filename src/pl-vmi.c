@@ -1938,12 +1938,15 @@ as_wakeup:
 		{ int rc;
 			if ((rc = ensureGlobalSpace(METATERM_CALL_ARITY + 1 + orig_arity + 1, ALLOW_NOTHING)) != TRUE)
 			{
-			   DEBUG(MSG_METATERM_VMI, Sdprintf("\n NO GLOBAL SPACE!?!\n"));
+              DEBUG(MSG_METATERM_VMI, Sdprintf("\n NO GLOBAL SPACE!?!\n"));
 			   LOAD_REGISTERS(qid);
                goto as_normal;
 			}
 		}
-		LOAD_REGISTERS(qid);
+        LOAD_REGISTERS(qid);
+
+
+        preMetatermCall(PASS_LD1);
 
 		/*copy the frame goal*/
 		Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
@@ -1965,7 +1968,8 @@ as_wakeup:
 		gTop += 7;
 		/* Assigns the value */
         /* Runs new expression using the value */
-		scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+        scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
+        
 		/* disabled the next instruction */
 		DEF = nopDEF;
 		goto wakeup;

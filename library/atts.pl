@@ -1231,10 +1231,6 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 
 :-  metaterm_flags(current,use_dra_interp,_).
 
-:- set_module_metaterm_overriden('$attvar',false).
-:- set_module_metaterm_overriden('atts',false).
-:- add_overriden(set_varname(_,_,_),false).
-:- add_overriden('$metaterm_call'(_,_,_,_,_),false).
 
 /* This snoozes the pending wakeups durring Goal 
   Initialy this impl is incomplete for source 
@@ -1242,13 +1238,15 @@ system:vc(X):- put_attr(X,tCC,'CCC').
 */
 :- meta_predicate(system:'$metaterm_call'(+,:,+,+,-,-)).
 system:'$metaterm_call'(_PredName,Goal,_ArgNum,_Count,Var,Value):- 
-   setup_call_cleanup_each(
-      must_notrace(('$save_wakeup'(RW),must_or_die(metaterm_getval(Var,Value)))),
-      Goal,
-      '$restore_wakeup'(RW)).
+   setup_call_cleanup( true,(must_or_die(metaterm_getval(Var,Value)),must_or_die(Var \== Value)),'$exit_metaterm_call'),
+   Goal.
 
 
 :- export_all.
+:- set_module_metaterm_overriden('$attvar',false).
+:- set_module_metaterm_overriden('atts',false).
+:- add_overriden(set_varname(_,_,_),false).
+:- add_overriden('$metaterm_call'(_,_,_,_,_),false).
 
 end_of_file.
 

@@ -31,6 +31,7 @@
    w_dt/1,
    var_info/1,
    v1/2,
+   ':='/2,
    use_unify_vp/1,
    use_unify_var/1,
    use_unify_var/0,
@@ -76,6 +77,7 @@
    dbg_list/1,
    counter_var/1,
    do_metaterm_tests/0,
+   metaterm_test/0,
    plvar/1,
   anything_once/1,termfilter/1,subsumer_var/1,plvar_ex/1]).
 
@@ -87,8 +89,7 @@
 :- discontiguous(fv:'$pldoc'/4).
 :- dynamic(fv:'$pldoc'/4).
 
-
-:- user:use_module(library(metaterm)).
+% :- user:use_module(library(metaterm)).
 
 
  /** <module> Fv Test Module
@@ -178,10 +179,10 @@ termfilter:attr_unify_hook(Goal,Value):-call(Goal,Value).
 atts:metaterm_type(term_copier).
 term_copier(Fluent):- put_atts(Fluent, +no_bind +term_copier +use_unify_var).
 term_copier:attr_unify_hook(Var,ValueIn):-
-   must_notrace((must((get_attr(Var,'$saved_atts',AttVal),
+   must_notrace((get_attr(Var,'$saved_atts',AttVal),
    del_attr(Var,term_copier),
    copy_term(Var,Value),
-   put_attr(Value,'$atts',AttVal))))),
+   put_attr(Value,'$atts',AttVal))),
    ValueIn=Value.
 
 
@@ -189,6 +190,13 @@ term_copier:attr_unify_hook(Var,ValueIn):-
 term_copier_filter(Goal,Fluent):-termfilter(Goal,Fluent),term_copier(Fluent).
 
 term_copier_filter(Fluent):-termfilter(Fluent),term_copier(Fluent).
+
+%% :=(MetaVar,Value).
+% The destructive assignment operator :=/2 allows 
+% you to override Prolog''s usual single-assignment 
+% "write once" policy for variables. 
+% It works in a way you''d expect from an imperative language.
+':='(MetaVar,Value):- unbind(MetaVar),metaterm_setval(MetaVar,Value),assertion(unbind(MetaVar)).
 
 %% nb_termfilter(-X) is det.
 %
@@ -251,8 +259,8 @@ plvar(Var):- source_fluent(Var),put_attr(Var,plvar,Var), metaterm_setval(Var,_).
 %% exists(Var) is det.
 % declare an a rebindable var that acts like a minikanren variable
 exists(Var):- 
-    must_notrace((  (meta(Var)->true;metaterm_setval(Var,_)),
-      put_atts(Var, +(source_fluent:metaterm_getval) +(sink_fluent:metaterm_setval) +use_unify_var +no_bind + use_vmi))).
+   wo_metavmi((  must_notrace((  (meta(Var)->true;metaterm_setval(Var,_)),
+     put_atts(Var, +(source_fluent:metaterm_getval) +(sink_fluent:metaterm_setval) +use_unify_var +no_bind + use_vmi))))).
 
 %% unbind(Var) is det.
 % unbind a variable
@@ -753,6 +761,19 @@ make_list_with_element(N,Init,[Init|List]):- Nm1 is N-1, make_list_with_element(
 
 do_metaterm_tests:- forall(clause(metaterm_test,B),(nl,nl,run_b_test(B),nl,nl)).
 
+
+run_b_test(B):- amsg(run_test(B)),fail.
+run_b_test(B):- catch((call((B,deterministic(Det),true)),!,(Det==true->amsg(test_passed(B));amsg(test_warn_nondet(B)))),_,fail),!.
+run_b_test(B):- catch((rtrace_each(B),fail),E,amsg(test_error(E,B))),!.
+run_b_test(B):- amsg(test_failed(B)),!.
+
+rtrace_each((A,B)):-!,rtrace_each(A),!,rtrace_each(B),!.
+rtrace_each(B):-rtrace(B).
+
+cls0 :- shell(clear),shell(cls).
+:- export_all.
+:- set_module_metaterm_overriden('metaterm',false).
+
 :- discontiguous(metaterm_test/0).
 
 metaterm_test:-
@@ -779,22 +800,9 @@ metaterm_test:-
   meta(X),
   writeln(X).
 
-run_b_test(B):- amsg(run_test(B)),fail.
-run_b_test(B):- catch((call((B,deterministic(Det),true)),!,(Det==true->amsg(test_passed(B));amsg(test_warn_nondet(B)))),_,fail),!.
-run_b_test(B):- catch((rtrace_each(B),fail),E,amsg(test_error(E,B))),!.
-run_b_test(B):- amsg(test_failed(B)),!.
-
-rtrace_each((A,B)):-!,rtrace_each(A),!,rtrace_each(B),!.
-rtrace_each(B):-rtrace(B).
-
-
-:- export_all.
-
-
-cls0 :- shell(clear),shell(cls).
 
 metaterm_test:- source_fluent(X),not(X=1).
-metaterm_test:- source_fluent(X),metaterm_setval(X,foo),Y=X,Y==foo,meta(X).
+metaterm_test:- X:=foo,Y=X,Y==foo,meta(X).
 metaterm_test:- source_fluent(X),metaterm_setval(X,1),X=1.
 metaterm_test:- source_fluent(X),metaterm_push(X,1),metaterm_push(X,2),metaterm_push(X,3),!,findall(X,X=_,List),List==[1,2,3].
 metaterm_test:- source_fluent(X),copy_var(X),metaterm_setval(X,foo),dmsg( ( x : X , y : Y ) ),Y=X,Y=foo,meta(X).
@@ -814,8 +822,16 @@ metaterm_test:- copy_var(X),Y=X,Y=1,X==Y.
 metaterm_test:- copy_var(X),Y=X,Y=1,unbind(X).
 metaterm_test:- copy_var(X),Y=X,X=1,writeln(Y),Y==1,unbind(Y),var(Y),X=1.
 
-
+metaterm_test:- X:=1,number(X),\+ var(X).
+metaterm_test:- X:=2, X:=1, X==1.
+metaterm_test:- X:=2, X:=1, X=1.
+metaterm_test:- X:=2, X:=1, \+ (X=2).
+metaterm_test:- X:=2, X:=1, \+ (X=3).
+metaterm_test:- X:=2, \+ \+ (X:=1), X==2.
+metaterm_test:- X:=2, X:=1, X:=3.
+metaterm_test:- X:=1,X=Y,X==1,Y==1.
 
 metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),trace,3 is X + 1.
 metaterm_test:- source_fluent(X),metaterm_setval(X,2),trace,3 is X + 1.
+
 

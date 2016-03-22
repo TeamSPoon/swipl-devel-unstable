@@ -1067,7 +1067,6 @@ saveWakeup(wakeup_state *state, int forceframe ARG_LD)
   }
 }
 
-
 static void
 restore_exception(Word p ARG_LD)
 { DEBUG(1, Sdprintf_ln("Restore exception from %p ", p));
@@ -2349,25 +2348,35 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
 }
 
 
-static
-PRED_IMPL("$save_wakeup", 1, save_wakeup, 0)
-{ PRED_LD
-  int index = ++LD_no_vmi_hacks;
-  DEBUG(CHK_SECURE,assert(LD_no_vmi_hacks==1));
-  assert(LD_no_vmi_hacks<5);
-  saveWakeup(&LD->attvar.wstates[index], FALSE PASS_LD);
-  return PL_unify_integer(A1, index);
+
+int
+preMetatermCall(ARG1_LD)
+{ Word h;
+  LD_no_vmi_hacks++;
+  if ( *(h=valTermRef(LD->attvar.head)))
+  { term_t s = LD->attvar.metaterm_wstates;
+    *valTermRef(s+0) = *h;
+    setVar(*h);
+    h = valTermRef(LD->attvar.tail);
+    *valTermRef(s+1) = *h;
+    setVar(*h);
+    LD->attvar.metaterm_wstate_index += 2;
+  }
+  return TRUE;
 }
 
 static
-PRED_IMPL("$restore_wakeup", 1, restore_wakeup, 0)
+PRED_IMPL("$exit_metaterm_call", 0, exit_metaterm_call, 0)
 { PRED_LD
-  int index;
-  int rc = PL_get_integer(A1, &index);
-  assert(LD_no_vmi_hacks == index);
-  --LD_no_vmi_hacks;
-  restoreWakeup(&LD->attvar.wstates[index] PASS_LD);
-  return rc;
+  if(LD_no_vmi_hacks>0) LD_no_vmi_hacks--;
+  if(LD->attvar.metaterm_wstate_index==0) return TRUE;
+  LD->attvar.metaterm_wstate_index -= 2;
+  term_t s = LD->attvar.metaterm_wstates + LD->attvar.metaterm_wstate_index;
+  *valTermRef(LD->attvar.head) = *valTermRef(s+0);
+  *valTermRef(LD->attvar.tail) = *valTermRef(s+1);
+  setVar(*valTermRef(s+0));
+  setVar(*valTermRef(s+1));
+  return TRUE;
 }
 
 
@@ -2411,8 +2420,7 @@ BeginPredDefs(attvar)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
   PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
   PRED_DEF("metaterm_overriding", 3, metaterm_overriding, 0)
-  PRED_DEF("$save_wakeup",    1, save_wakeup,    0)
-  PRED_DEF("$restore_wakeup",    1, restore_wakeup,    0)
+  PRED_DEF("$exit_metaterm_call",    0, exit_metaterm_call,    0)
 #endif
 
 EndPredDefs
