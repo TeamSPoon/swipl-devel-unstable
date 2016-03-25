@@ -2693,6 +2693,18 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
   return t;
 }
 
+static Definition
+nopDef(int orig_arity)
+{
+    functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
+    Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
+    if (FALSE/* unDEFined(nopDEF) */)
+    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
+      /*goto as_normal;*/
+    }
+    return nopDEF;
+}
+
 static int
 substVarWord(Word old, word new, int arity, int num_replaces, Word argv)
 {

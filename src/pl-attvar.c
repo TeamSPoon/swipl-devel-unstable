@@ -395,11 +395,14 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
 
 atom_t 
 getPredOverriden(atom_t current_name, int arity ARG_LD)
-{ if(arity>256 || arity<1 || current_name==ATOM_dmetaterm_call) return ATOM_false;
+{ if(arity>MAX_ARITY || arity < 0 || current_name==ATOM_dmetaterm_call) return ATOM_false;
   metaterm_pred_override* found = LD->attvar.metaterm_override;
-  int maxsize = 2560;
+  int maxsize = METATERM_OVERIDES_SIZE;
   while(found)
-  { if(found->name==0) return ATOM_unknown;
+  { if(found->name==0) 
+    { if( current_name == ATOM_unknown) return ATOM_unknown;
+      return getPredOverriden(ATOM_unknown, arity PASS_LD);
+    }
     if(found->name==current_name) 
     {
       if( found->arity==0 ) return found->value;
@@ -408,16 +411,17 @@ getPredOverriden(atom_t current_name, int arity ARG_LD)
 	  if (--maxsize <= 0) { trap_gdb(); return ATOM_unknown;}
     found++;
   }
-  return ATOM_unknown;
+  if( current_name == ATOM_unknown) return ATOM_unknown;
+  return getPredOverriden(ATOM_unknown, arity PASS_LD);
 }
 
 
 static void
 addOverriden(atom_t current_name, int arity, atom_t value ARG_LD)
-{ if(arity>256 || arity<1 || current_name==ATOM_dmetaterm_call) return;
+{ if(arity>MAX_ARITY || arity<0 || current_name==ATOM_dmetaterm_call) return;
   metaterm_pred_override* found = &LD->attvar.metaterm_override[0];
   metaterm_pred_override* lastFree = 0;
-  int maxsize = 2560;
+  int maxsize = METATERM_OVERIDES_SIZE;
   while(found)
   { if(found->name==0) {  if(!lastFree) lastFree = found; break; }
     if(found->name==ATOM_nil) { if(!lastFree) lastFree = found; continue; }
@@ -2334,7 +2338,7 @@ fvOverride(atom_t method, Word attvar, Word value, int* retresult ARG_LD)
 }
 
 static
-PRED_IMPL("add_overriden", 2, add_overriden, 0)
+PRED_IMPL("set_overriden", 2, set_overriden, 0)
 { PRED_LD
   size_t		arity;
   atom_t		name, value; 
@@ -2463,7 +2467,7 @@ BeginPredDefs(attvar)
   PRED_DEF("$visible_attrs",    2, dvisible_attrs,    0)
   PRED_DEF("metaterm_flags", 3, metaterm_flags, 0)
   PRED_DEF("set_no_metavmi", 2, set_no_metavmi, 0)
-  PRED_DEF("add_overriden", 2, add_overriden, 0)
+  PRED_DEF("set_overriden", 2, set_overriden, 0)
   PRED_DEF("get_overriden", 2, get_overriden, 0)
   PRED_DEF("nb_metaterm_flags", 3, nb_metaterm_flags, 0)
   PRED_DEF("current_metaterm_mask", 2, current_metaterm_mask, PL_FA_NONDETERMINISTIC)
@@ -2481,8 +2485,10 @@ setupMetaterms(ARG1_LD)
 {
   const PL_extension* from = PL_predicates_from_attvar;
   while(from && from->predicate_name)
-  { if(from->arity)
-    { addNeverOverriden(PL_new_atom(from->predicate_name),from->arity);
+  {
+    if ( from->arity )
+    {
+      addNeverOverriden(PL_new_atom(from->predicate_name),from->arity);
     }
     from++;
   }
@@ -2503,6 +2509,14 @@ setupMetaterms(ARG1_LD)
     addSometimesOverriden(ATOM_var, 1);
 
 
+  LD->attvar.metaterm_regs = PL_new_term_refs(4);
+  LD->attvar.metaterm_opts = PL_new_term_refs(1);
+  LD->attvar.metaterm_source_ref_index = 0;
+  LD->attvar.metaterm_source_ref = PL_new_term_refs(METATERM_SOURCE_REF_COUNT);
+  LD->attvar.metaterm_override[0].name = 0;
+  METATERM_CURRENT =  METATERM_DEFAULT;
+  *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
+  LD->slow_unify     = SLOW_UNIFY_DEFAULT;
 
 
   char* names[] = {"meta_unify","post_unify","current_predicate","=", "wo_metaterm",
@@ -2512,7 +2526,8 @@ setupMetaterms(ARG1_LD)
     "nop" ,NULL};
   char** from3 = names;
   while(*from3)
-  { addNeverOverriden(PL_new_atom(*from3), 0 );
+  {
+    addNeverOverriden(PL_new_atom(*from3), 0 );
     from3++;
   }
 

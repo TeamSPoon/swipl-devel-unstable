@@ -1189,17 +1189,9 @@ emptyStacks(void)
     LD->attvar.tail         = PL_new_term_ref();
     LD->attvar.gc_attvars   = PL_new_term_ref();
 
-	LD->attvar.metaterm_regs = PL_new_term_refs(4);
-    LD->attvar.metaterm_opts = PL_new_term_refs(1);
-    LD->attvar.metaterm_source_ref_index = 0;
-    LD->attvar.metaterm_source_ref = PL_new_term_refs(METATERM_SOURCE_REF_COUNT);
-    LD->attvar.metaterm_override[0].name = 0;
-    
-    METATERM_CURRENT =  METATERM_DEFAULT;
-    *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
-    LD->slow_unify     = SLOW_UNIFY_DEFAULT;
-
+#ifdef O_METATERM
     setupMetaterms(LD);
+#endif
 
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));
 #endif

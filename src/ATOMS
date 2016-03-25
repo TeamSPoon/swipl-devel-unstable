@@ -864,6 +864,7 @@ F dparse_quasi_quotations 2
 F dprof_node		1
 F dquasi_quotation	3
 F dra_call		1
+F dra_call		2
 F drecover_and_rethrow	2
 F dstream		1
 F dthread_init		0

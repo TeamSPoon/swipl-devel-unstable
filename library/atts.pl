@@ -579,7 +579,7 @@ metaterm_override_(X,What):- put_atts(X,'$meta': + What),put_atts(X,[+use_vmi]).
 
 metaterm_override(X,BPI,API):- must_notrace(metaterm_override_(X,BPI,API)).
 
-metaterm_override_(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),put_attr(X,'$meta',att(BPI,API,W)),add_overriden(BPI,true),put_atts(X,[+use_vmi]).
+metaterm_override_(X,BPI,API):- (get_attr(X,'$meta',W) ->true; W=[]),put_attr(X,'$meta',att(BPI,API,W)),set_overriden(BPI,true),put_atts(X,[+use_vmi]).
 
 
 make_metaterm_override(X,B=A):- metaterm_override_(X,B:A).
@@ -740,7 +740,7 @@ eclipse:free(X):- var(X),\+attvar(X).
 
 % This type-checking predicate succeeds iff its argument is an attributed variable. For other type testing predicates an attributed variable behaves like a variable.
 % eclipse:
-system:meta(X):- attvar(X),get_attr(X,'$atts',N),N>0.
+system:meta(X):- notrace((attvar(X),get_attr(X,'$atts',N),N>0)).
 
 % A new attribute can be added to a variable using the tool predicate
 % add_attribute(Var, Attr).
@@ -806,7 +806,7 @@ set_as(N,N,N,4).
 attrs_val(Var,AttsO):- '$visible_attrs'(Var,AttsO).
 
 ensure_meta(Fluent):- get_attrs(Fluent,att('$atts',_,_)),!.
-ensure_meta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));put_attr(Fluent,'$atts',0).
+ensure_meta(Fluent):- get_attrs(Fluent,Was)->put_attrs(Fluent,att('$atts',0,Was));((var(Fluent)->put_attr(Fluent,'$atts',0); throw(ensure_meta(Fluent)))).
 
 metaterm_setval(Var,Value):- get_cont(Var,Cont),!,fvi_set(Cont,Value).
 metaterm_setval(Var,Value):- put_attr(Var,value,v([Value])).
@@ -1107,8 +1107,8 @@ system:goal_expansion(Dict,X):- current_prolog_flag(set_dict_attvar_reader,true)
 
 set_module_metaterm_overriden(M,TF):- 
          module_property(M,file(F)),
-         forall((current_predicate(_,_:PP), predicate_property(PP,file(F))),add_overriden(PP,TF)),
-         forall((current_predicate(_,M:X),\+ predicate_property(X,imported_from(_))),add_overriden(X,TF)).
+         forall((current_predicate(_,_:PP), predicate_property(PP,file(F))),set_overriden(PP,TF)),
+         forall((current_predicate(_,M:X),\+ predicate_property(X,imported_from(_))),set_overriden(X,TF)).
 
 :- matts(+use_unify_var).
 
@@ -1155,7 +1155,7 @@ system:pointers(X,Y):- dmsg(pointers(X,Y)).
            *	  ATTR UNDO HOOK	*
 
 
-?- metaterm_override_(X,'$undo_unify'()),writeq(X),metaterm_overriding(X,'$undo_unify'(_,_),O).
+?- metaterm_override(X,'$undo_unify'()),writeq(X),metaterm_overriding(X,'$undo_unify'(_,_),O).
 
 
            *******************************/
@@ -1195,7 +1195,7 @@ export_all:-
  forall(source_file(M:H,S),
  ignore((functor(H,F,A),
    \+ predicate_property(M:H,imported_from(_)),
-   add_overriden(H,false),
+   set_overriden(H,false),
    \+ arg(_,v(attr_unify_hook/_,metaterm_unify_hook/_,verify_attributes/_,metaterm_unify_hook/_,'$pldoc'/4,'$mode'/2,attr_portray_hook/_,attribute_goals/_),F/A),
    \+ atom_concat('_',_,F),
    ignore((\+ predicate_property(M:H,transparent), M:module_transparent(M:F/A))),
@@ -1212,7 +1212,7 @@ export_all:-
 
 
 system:dmsg(M):- current_predicate(MOD:dmsg/1),MOD=logicmoo_util_dmsg, !, logicmoo_util_dmsg:dmsg(M),!.
-system:dmsg(M):- format(user_error,'~N~q.~n',[M]),flush_output(user_error).
+system:dmsg(M):- format(user_error,'~N~q.~n',[M]),flush_output(user_error),!.
 
 
 tAA:verify_attributes(Var, Value, [get_attrs(CVar,AttrsNow),dmsg(tAA:goal_for(Name,Attrs=AttrsNow))]):- sformat(Name,'~w',Var), ignore(get_attrs(Var,Attrs)),put_attrs(CVar,Attrs),dmsg(tAA:va(Var,Value,[])=Attrs).
@@ -1251,8 +1251,8 @@ system:'$metaterm_call'(_Often,Goal,_Name,_Arity,_ArgNum,_IGoal,_IName,_IArity,_
 :- export_all.
 :- set_module_metaterm_overriden('$attvar',false).
 :- set_module_metaterm_overriden('atts',false).
-:- add_overriden(set_varname(_,_,_),false).
-:- add_overriden('$metaterm_call'(_,_,_,_,_),false).
+:- set_overriden(set_varname(_,_,_),false).
+:- set_overriden('$metaterm_call'/0,false).
 
 end_of_file.
 

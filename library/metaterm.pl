@@ -833,7 +833,7 @@ metaterm_test:- X:=one,X=Y,X==one,Y==one.
 
 system:print_metaterm(X):-writeq(X).
 :-export(print_metaterm/1).
-:- add_overriden(print_metaterm/1,very_deep).
+:- set_overriden(print_metaterm/1,very_deep).
 
 metaterm_test:- X:=1,print_metaterm(X+X),!,X==1.
 
@@ -853,5 +853,16 @@ metaterm_test:- source_fluent(X),metaterm_setval(X,2),3 is X + 1.
 a value #<GREY-STREAM 234234> is stored inside a smart pointer of PlBlob that 
  PlBlob is stored ina PlAttvar which has a property of a metaterm which can 
  overloaded with stream read/write commands .. this cannot be done with term expansion and goal expansion 
+
+*/
+
+/*
+?- X:=1,Y:=2,Y:=3,X+1=:=Y.
+ERROR: =:=/2: Arguments are not sufficiently instantiated
+
+?- set_overriden(=:= /2 ,very_deep).
+true.
+
+?- X:=1,Y:=2,Y:=3,X+2=:=Y.
 
 */
