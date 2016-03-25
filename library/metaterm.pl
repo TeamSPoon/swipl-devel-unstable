@@ -835,6 +835,9 @@ system:print_metaterm(X):-writeq(X).
 :-export(print_metaterm/1).
 :- add_overriden(print_metaterm/1,very_deep).
 
+metaterm_test:- X:=1,print_metaterm(X+X),!,X==1.
+
+
 /*
 foo(X,X,X).. converts to  
   metaterm_getval(foo,foo(A,X,X),one,X,A), 
@@ -846,5 +849,9 @@ foo(X,X,X).. converts to
 
 metaterm_test:- source_fluent(X),metaterm_setval(X,3),metaterm_setval(X,2),3 is X + 1.
 metaterm_test:- source_fluent(X),metaterm_setval(X,2),3 is X + 1.
+ /*
+a value #<GREY-STREAM 234234> is stored inside a smart pointer of PlBlob that 
+ PlBlob is stored ina PlAttvar which has a property of a metaterm which can 
+ overloaded with stream read/write commands .. this cannot be done with term expansion and goal expansion 
 
-
+*/

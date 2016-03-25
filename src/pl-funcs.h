@@ -39,7 +39,7 @@ COMMON(int)		on_attvar_chain(Word avp);
 COMMON(Word)		alloc_attvar(ARG1_LD);
 COMMON(void)		registerWakeup(functor_t wakeup_type4, atom_t reason,  Word attvar, Word attrs, Word value ARG_LD);
 
-COMMON(void)	scheduleWakeup(word g, int alert_flags ARG_LD);
+COMMON(void)	scheduleWakeup(word g, int alert_flags,  int atBeginning ARG_LD);
 
 #ifdef O_UNDO_HOOK
 COMMON(int) find_attr(Word av, atom_t name, Word *vp ARG_LD);
@@ -58,7 +58,6 @@ COMMON(int)       getMetaFlags(Word av, int flags ARG_LD);
 COMMON(bool)      isMetaOverriden(Word av, word metaprop, int override_flags ARG_LD);
 COMMON(atom_t) getPredOverriden(atom_t current_name, int arity  ARG_LD);
 COMMON(void) setupMetaterms(ARG1_LD);
-COMMON(int) preMetatermCall(ARG1_LD);
 
 #endif
 

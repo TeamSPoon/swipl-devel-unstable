@@ -1225,7 +1225,7 @@ reclaim_attvars(Word after ARG_LD)
   }
 }
 
-int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD) 
+int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p ARG_LD)
 { //if(!actuallyDoit)return FALSE;
 
  /* DEBUG(MSG_UNDO, Sdprintf("\nUNDO: %s\n", where));*/
@@ -1246,7 +1246,7 @@ int metaterm_did_undo(const char* where, TrailEntry tt, int actuallyDoit, Word p
   {
     rc = TRUE;
     *location = older;
-  } 
+  }
   else
   {
     DEBUG(MSG_UNDO, Sdprintf("Dont actually UNDO "));
@@ -1300,7 +1300,7 @@ __do_undo(mark *m ARG_LD)
     { DEBUG(2, Sdprintf("Undoing a trailed assignment\n"));
       tt--;
 #ifdef O_UNDO_HOOK
-       if(!metaterm_did_undo("_do_undo",tt, 1, p PASS_LD))   
+       if(!metaterm_did_undo("_do_undo",tt, 1, p PASS_LD))
 #endif
       *tt->address = trailVal(p);
       DEBUG(CHK_SECURE,
@@ -2677,7 +2677,7 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
     {
        /*raiseStackOverflow(rc);*/
        return NULL;
-    }     
+    }
   }
   int i;
   argp = t = gTop;
@@ -2692,6 +2692,111 @@ frame_to_consP(int pre, int frameSkip, int arity, int post, LocalFrame frame)
 
   return t;
 }
+
+static int
+substVarWord(Word old, word new, int arity, int num_replaces, Word argv)
+{
+  GET_LD
+
+  int found = 0;
+
+  int do_value_compare = (*old!=0);
+
+  for ( int i = 0; i < arity; i++ )
+  {
+    Word a = argv + i;
+    if ( a == old )
+    { found++;
+      *a = new;
+      if ( found>=num_replaces ) return found;
+      continue;
+    }
+    if ( *a == *old && do_value_compare)
+    { found++;
+      *a = new;
+      if ( found>=num_replaces ) return found;
+      continue;
+    }
+    deRef(a);
+    if ( a == old )
+    { found++;
+      *a = new;
+      if ( found>=num_replaces ) return found;
+      continue;
+    }
+    if ( *a == *old && do_value_compare)
+    { found++;
+      *a = new;
+      if ( found>=num_replaces ) return found;
+      continue;
+    }
+    if ( isTerm(*a) )
+    { Functor f = valueTerm(*a);
+      atom_t fname = nameFunctor(f->definition);
+      int farity = arityFunctor(f->definition);
+      atom_t often = getPredOverriden(fname, farity PASS_LD);
+      if(often==ATOM_false) continue;
+      Word argVs = &f->arguments[0];
+      int ftt = substVarWord(old,new,farity,num_replaces-found,argVs);
+      found =+ ftt;
+      if ( found>=num_replaces ) return found;
+      continue;
+    }
+  }
+  return found;
+}
+
+
+
+static int
+nextSource(foundFluent *SOURCE, atom_t often,
+            Word ARG, const char* named ARG_LD)
+{
+  if(ARG==0) return FALSE;
+  Word argAV = ARG;
+  deRef(argAV);
+
+  if ( isAttVar(*argAV) )
+  { int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+    if( flags == 0) return FALSE;
+    if ( IS_META(METATERM_SOURCE_VALUE) )
+    {
+      if ( ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+      {
+        DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring nextSource %s \n", named));
+        return FALSE; /*no vmi*/
+      }
+      SOURCE->var = argAV;
+      SOURCE->flags = flags;
+      SOURCE->varHolder = ARG;
+      return TRUE;
+    }
+  }
+  if ( often != ATOM_very_deep ) return FALSE;
+
+  if ( isTerm(*argAV) )
+  { Functor f = valueTerm(*argAV);
+    atom_t sname = nameFunctor(f->definition);
+    int sa = arityFunctor(f->definition);
+    atom_t soften = getPredOverriden(sname, sa PASS_LD);
+    if ( soften==ATOM_false ) return FALSE;
+    for ( int i=0;i<sa;i++ )
+    {
+      if(nextSource(SOURCE, soften, &f->arguments[i], named PASS_LD))
+      {
+        if(SOURCE->name==0)
+        { SOURCE->name = sname;
+          SOURCE->arity = sa;
+          SOURCE->argNum = i;
+          SOURCE->conspHolder = *argAV;
+        }
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
+}
+
 
 
 
@@ -2803,7 +2908,7 @@ PL_next_solution(qid_t qid)
   Check for exceptions raised by foreign code.  PL_throw() uses longjmp()
   to get back here.  Our task is to restore the environment and throw the
   Prolog exception.
-  
+
   setjmp()/longjmp clobbers register variables. FR   is  restored from the
   environment. BFR is volatile, and qid is an argument. These are the only
   variables used in the B_THROW instruction.
@@ -2899,13 +3004,13 @@ wakeup:
 
   /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
         TRACER RETRY ACTION
-  
+
   By default, retries the  current  frame.  If   another  frame  is  to be
   retried, place the frame-reference, which  should   be  a  parent of the
   current frame, in debugstatus.retryFrame and jump to this label. This is
   implemented by returning retry(Frame) of the prolog_trace_interception/3
   hook.
-  
+
   First, the system will leave any parent  frames. Next, it will undo back
   to the call-port and finally, restart the clause.
   - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */

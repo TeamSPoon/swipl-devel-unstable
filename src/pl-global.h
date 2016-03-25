@@ -419,11 +419,11 @@ struct PL_local_data
     int     wakeup_ready;
 
 #ifdef O_METATERM
-    int  metaterm_wstate_index;
-    term_t  metaterm_wstates;
     term_t  metaterm_regs;   /*  registers for calling fvOverrides */
     term_t  metaterm_opts;   /* 0 == skip all matts based code (performance comparisons testing and when system is not being used) */
     int     metaterm_current; /* flags for current matts () */
+    term_t  metaterm_source_ref;
+    int  metaterm_source_ref_index;
     metaterm_pred_override  metaterm_override[METATERM_OVERIDES_SIZE]; /* flags for current matts () */
 #endif
   } attvar;

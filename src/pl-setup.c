@@ -1189,11 +1189,10 @@ emptyStacks(void)
     LD->attvar.tail         = PL_new_term_ref();
     LD->attvar.gc_attvars   = PL_new_term_ref();
 
-    LD->attvar.metaterm_wstate_index  = 0;
-    LD->attvar.metaterm_wstates  = PL_new_term_refs(METATERM_WSTATE_SIZE*METATERM_WSTATE_BUFFERS);
-    LD->attvar.metaterm_regs = PL_new_term_refs(4);
+	LD->attvar.metaterm_regs = PL_new_term_refs(4);
     LD->attvar.metaterm_opts = PL_new_term_refs(1);
-    LD->attvar.gc_attvars   = PL_new_term_ref();
+    LD->attvar.metaterm_source_ref_index = 0;
+    LD->attvar.metaterm_source_ref = PL_new_term_refs(METATERM_SOURCE_REF_COUNT);
     LD->attvar.metaterm_override[0].name = 0;
     
     METATERM_CURRENT =  METATERM_DEFAULT;

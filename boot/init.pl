@@ -215,6 +215,7 @@ nop(_,_,_,_,_).
 nop(_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_,_).
+nop(_,_,_,_,_,_,_,_,_).
 
 % nop/1 is for disabling code while staying in syntax
 
@@ -223,7 +224,17 @@ nop(_,_,_,_,_,_,_,_).
 :- meta_predicate(ifdef(+,0)).
 ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 
-'$metaterm_callp'(A,B,C,D,E,F,Goal,P):- amsgc('call'(P,A,B,C,D,E,F,Goal)).
+:- meta_predicate
+         amsgc(0),
+	'$metaterm_callp'(?,1),
+	'$metaterm_callp'(?,?,2),
+	'$metaterm_callp'(?,?,?,3),
+	'$metaterm_callp'(?,?,?,?,4),
+	'$metaterm_callp'(?,?,?,?,?,5),
+	'$metaterm_callp'(?,?,?,?,?,?,6),
+	'$metaterm_callp'(?,?,?,?,?,?,?,7).
+
+'$metaterm_callp'(A,B,C,D,E,F,G,P):- amsgc('call'(P,A,B,C,D,E,F,G)).
 '$metaterm_callp'(A,B,C,D,E,F,P):- amsgc('call'(P,A,B,C,D,E,F)).
 '$metaterm_callp'(A,B,C,D,E,P):- amsgc('call'(P,A,B,C,D,E)).
 '$metaterm_callp'(A,B,C,D,P):- amsgc('call'(P,A,B,C,D)).
@@ -232,10 +243,7 @@ ifdef(IfDef,Else):-'$c_current_predicate'(_, IfDef)->IfDef;Else.
 '$metaterm_callp'(A,P):- amsgc('call'(P,A)).
 
 
-%call_using(var,V,1,CallvarV):-!,setarg(2,CallvarV,Var).
-%call_using(P,V,N,Goal):-
-
-amsgc(C):-wo_metaterm((amsg(C),C)).
+amsgc(C):- ((amsg(C),C)).
 
 :- '$hide'(amsg/1).
 amsg(_):-!.
@@ -264,7 +272,9 @@ amsg(Goal):- notrace(
                   call_cleanup_each(0,0).
 
 :- module_transparent(must_or_die/1).
-must_or_die(Goal):- (Goal *-> true ; throw(failed_must_or_die(Goal))).
+must_or_die(Goal):- (Goal *-> notrace(true) ; throw(failed_must_or_die(Goal))).
+
+:- '$hide'(true/0).
 
 :- module_transparent(must_atomic/1).
 :- '$hide'(must_atomic/1).
@@ -272,7 +282,12 @@ must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
 
 :- module_transparent(must_notrace/1).
 :- '$hide'(must_notrace/1).
-must_notrace(Goal):- notrace(must_or_die(Goal)).
+must_notrace(Goal):- no_trace(must_or_die(Goal)).
+
+:- module_transparent(no_trace/1).
+:- '$hide'(no_trace/1).
+no_trace(G):-notrace((tracing,notrace))->
+   setup_call_cleanup_each(notrace(notrace),G,notrace(trace)); G.
 
 
 :- '$hide'(call_cleanup_each/2).
@@ -281,8 +296,21 @@ call_cleanup_each(Goal, Cleanup) :-
 
 :- '$hide'(setup_call_cleanup_each/3).
 setup_call_cleanup_each(Setup,Goal,Undo):-
-   must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),
-   setup_call_cleanup(true,
+   must_atomic(Setup),
+   catch((
+     call((Goal,deterministic(Det),true))
+        *->
+        (Det == true
+         -> must_atomic(Undo)
+          ; (must_atomic(Undo);(must_atomic(Setup),fail)))
+     ; (must_atomic(Undo),fail)),
+     E, (must_atomic(Undo),throw(E))).
+
+/*
+:- '$hide'(setup_call_cleanup_each/3).
+setup_call_cleanup_each(Setup,Goal,Undo):-
+   must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),!,   
+   setup_call_cleanup(notrace(true),
    (( must_atomic(Setup),
    catch((
      call((WasTrace,Goal,notrace,deterministic(Det),true))
@@ -292,6 +320,7 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
           ; (must_atomic(Undo);(must_atomic(Setup),fail)))
      ; (must_atomic(Undo),fail)),
      E, (must_atomic(Undo),throw(E))))),WasTrace).
+*/
 
 
 :- '$hide'(with_no_wakeups/1).
@@ -408,8 +437,8 @@ call(Goal, A, B, C, D, E) :-
 	call(Goal, A, B, C, D, E).
 call(Goal, A, B, C, D, E, F) :-
 	call(Goal, A, B, C, D, E, F).
-call(Goal, A, B, C, D, E, F, Goal) :-
-	call(Goal, A, B, C, D, E, F, Goal).
+call(Goal, A, B, C, D, E, F, G) :-
+	call(Goal, A, B, C, D, E, F, G).
 
 %%	not(:Goal) is semidet.
 %
@@ -1356,10 +1385,10 @@ compiling :-
 :- meta_predicate
 	'$ifcompiling'(0).
 
-'$ifcompiling'(Goal) :-
+'$ifcompiling'(G) :-
 	(   '$compilation_mode'(database)
 	->  true
-	;   call(Goal)
+	;   call(G)
 	).
 
 		/********************************

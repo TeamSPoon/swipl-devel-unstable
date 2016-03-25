@@ -1663,400 +1663,266 @@ normal_call:
 
 #ifdef O_METATERM
 
-#define METATERM_CALL_ARITY 6
+#define METATERM_CALL_ARITY 11
 #define DEBUG_TRAP(WHY, CODE) if (debugstatus.tracing) {  trap_gdb(); prolog_debug_from_string(#WHY, TRUE);  CODE ; }
 #define SHOW_IF_FALSE(CODE) if(!CODE) Sdprintf(#CODE " = FALSE");
-// maybe_metaterm:
-if(METATERM_REALLY_OK)
-{
-	atom_t orig_name = ((Definition)DEF)->functor->name;
-	if (orig_name == ATOM_dmetaterm_callp) goto as_normal;
-	if (orig_name == ATOM_dmetaterm_call) goto as_normal;
-
-    /*if (orig_name == ATOM_call) goto as_normal;
-*/
-
-  Definition altDEF = NULL;
-  Word alt_var = NULL;
-  Word alt_varHolder = NULL;
-  Word some_source_fluent = NULL;
-  Word some_source_fluentHolder = NULL;
-  int some_source_fluent_argNum = 0;
-  int some_source_fluent_flags = 0;
-  int alt_argNum = 0;
-  int alt_flags = 0;
-  functor_t alt_functor = 0;
-  functor_t orig_functor = ((Definition)DEF)->functor->functor;
-  /* DM: will look into perhaps runing this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
-	int orig_arity = ((Definition)DEF)->functor->arity;
-  //static term_t av4 = PL_new_term_ref_noshift();
-	int alt_arity = orig_arity;
-  //assert(PL_is_variable(av4));
-
-  char* named = predicateName(DEF);
-
-  atom_t often = getPredOverriden(orig_name, orig_arity PASS_LD);
-  if (LD_no_vmi_hacks < 1 && often != ATOM_false )
+  // maybe_metaterm:
+  if ( METATERM_REALLY_OK )
   {
-    if(!METATERM_ENABLED)
-    {
-      /* DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: glbval-disable-vmi durring %s \n", named));*/
-      goto as_normal;
-    }
-
-    int sometimes = (often == ATOM_true);
-
-	/*catch loops*/
-    if(LD_no_vmi_hacks>5)
-	{
-		trap_gdb();
-		int wasV = LD_no_vmi_hacks;
-		LD_no_vmi_hacks=0;
-		pl_break();
-		LD_no_vmi_hacks=wasV;
-	}
-    Word ARG = argFrameP(NFR, 0);
-	int metaterm_overrides_present = 0;
-	int metaterms_disabled = 0;
-    int orig_argNum = 0;
-    int temp_arity = orig_arity;
-	for (; temp_arity --> 0; ARG++)
-    {
-      Word argAV = ARG;      
-      orig_argNum++;
-      deRef(argAV);
-      if(!argAV) continue;      
-      if(isTerm(*argAV))
-      { if ( FALSE && often != ATOM_very_deep ) continue;
-        Word n;
-        Functor f = valueTerm(*argAV);
-        int sa = arityFunctor(f->definition);
-        for(int i=0;i<sa;i++) 
-        { deRef2(&f->arguments[i], n);
-          if(isAttVar(*n))
-          { argAV = n;
-            int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
-            if(IS_META(METATERM_SOURCE_VALUE) || IS_META(METATERM_USE_VMI))
-            { if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
-              { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring VERY-DEEP %s \n", named));
-                continue; /*no vmi*/
-              }
-              if ( !some_source_fluent )
-              {
-                some_source_fluent = argAV;
-                some_source_fluent_argNum = orig_argNum;
-                some_source_fluent_flags = flags;
-                some_source_fluentHolder = &f->arguments[i];
-              } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-              {
-                some_source_fluent = argAV;
-                some_source_fluent_argNum = orig_argNum;
-                some_source_fluent_flags = flags;
-                some_source_fluentHolder = &f->arguments[i];
-              }
-            }
-          }
-        }
-        continue;
-      } else
-      { if(!isAttVar(*argAV)) continue;
-      }
-      {
-        if(alt_var==argAV) continue;
-        int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
-        if ( flags==0 ) continue; /*normal attvar*/
-
-        if ( IS_META(METATERM_DISABLE_VMI) )
-        {
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi durring %s \n", named));
-          continue; /*no vmi*/
-        }
+    atom_t orig_name = ((Definition)DEF)->functor->name;
+    if ( orig_name == ATOM_dmetaterm_callp ) goto as_normal;
+    if ( orig_name == ATOM_dmetaterm_call ) goto as_normal;
+    int orig_arity = ((Definition)DEF)->functor->arity;
+    atom_t often = getPredOverriden(orig_name, orig_arity PASS_LD);
+    if ( often==ATOM_false ) goto as_normal;
+    if ( LD_no_vmi_hacks>0 ) goto as_normal;
 
 
-        if ( IS_META(METATERM_SOURCE_VALUE) )
-        {
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: source fluent durring %s \n", named));
-          if ( !some_source_fluent )
-          {
-            some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-          } else if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-          {
-            some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-          }
-          /*some source fluent*/
-        }
+    Definition altDEF = NULL;
+    Word alt_var = NULL;
+    int alt_flags = 0;
+    functor_t alt_functor = 0;
+    functor_t orig_functor = ((Definition)DEF)->functor->functor;
+    /* DM: will look into perhaps running this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
 
-        if ( !IS_META(METATERM_USE_VMI) )
-        {
-          if(some_source_fluent == argAV) continue;
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: non-vmi durring %s \n", named));
-          continue; /*no vmi*/
-        }
-
-        word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
-        if ( malt_functor==0 )
-        { malt_functor = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
-        } else if (malt_functor == orig_name)
-        { malt_functor = orig_functor;
-        } else if(isAtom(malt_functor))
-        { malt_functor = PL_new_functor(malt_functor, orig_arity);
-        }
-
-        if ( malt_functor == orig_functor )
-        { if(sometimes && some_source_fluent_argNum==0)
-          { some_source_fluent = argAV;
-            some_source_fluent_argNum = orig_argNum;
-            some_source_fluent_flags = flags;
-            some_source_fluentHolder = ARG;
-            continue;
-          }
-        }
-
-        if ( malt_functor == orig_functor )
-        { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
-          continue;
-          /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
-		      continue;*/
-        }
-        
-        if ( often != ATOM_true )
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !isSometimesOverriden %s \n", named));
-        }
-
-        Module use_module = MODULE_user;//contextModule(NFR->parent?NFR->parent:LD->environment);
-        Definition maybeAltDef = lookupDefinition(malt_functor,use_module);
-        if ( !maybeAltDef || unDEFined(maybeAltDef) )
-        {
-          DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(malt_functor)));
-          continue;
-        }
-	    if (IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR))
-        {
-          metaterms_disabled++;
-          DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled metaterm %s \n", named));
-		  continue; /* disabled */
-        }
-
-        metaterm_overrides_present++;
-
-        if ( altDEF != NULL && altDEF == maybeAltDef )
-        {
-          DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s SAME %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
-          continue;
-        }
-        if ( altDEF != NULL && altDEF != maybeAltDef )
-        {
-          DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s UNUSED %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
-          continue;
-        }
-
-        alt_argNum = orig_argNum;
-	    alt_var = argAV;
-        alt_flags = flags;
-        altDEF = maybeAltDef;
-        alt_arity = altDEF->functor->arity;
-        alt_functor = altDEF->functor->functor;
-        alt_varHolder = ARG;
-
-      } //isAttVar
-    } //for loop
-
-	if (!metaterm_overrides_present)
-    { if (! some_source_fluent )
-      { /*DEBUG(MSG_METATERM_VMI, Sdprintf("\n NORMAL_CALL: %s \n", named));*/
-        goto as_normal;
-      }
-      DEBUG(MSG_METATERM, Sdprintf("\n some_source_fluent about to call: %s \n", named));
-      alt_arity = METATERM_CALL_ARITY;
-      alt_var = some_source_fluent;
-      alt_argNum = some_source_fluent_argNum;
-      alt_flags = some_source_fluent_flags;
-      alt_varHolder = some_source_fluentHolder;
-      alt_functor = PL_new_functor(ATOM_dmetaterm_call, alt_arity);
-      altDEF = lookupDefinition(alt_functor, MODULE_user);
-      metaterm_overrides_present++;
-   }
-
-//alt_call:
-    {
-
-      if ( altDEF == DEF )
-      {
-        DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: altDEF == DEF %s -> %s\n", named, predicateName(altDEF)));
-      goto as_normal;
-    }
-      if ( !altDEF || unDEFined(altDEF) )
-      { DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overriden functor for metatype %s \n", functorName(alt_functor)));
-        goto as_normal;
-      }
-
-      int flags = alt_flags;
-      if ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) )
-      { DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: functor for skipped for disabled meta_term/source_term %s \n", named));
-        goto as_normal; /* disabled */
-      }
-      if ( FALSE && ( !(METATERM_USE_VMI & METATERM_ENABLED) ))
-      {
-       // DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: !(METATERM_USE_VMI & METATERM_ENABLED) %s \n", named));
-        if ( !(METATERM_ENABLED) )
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n WARN METATERM_CALL: DISABLED %s -> %s\n", named, predicateName(altDEF)));
-          SHOW_IF_FALSE((LD->IO.portray_nesting < 1));
-          SHOW_IF_FALSE((LD->autoload_nesting < 1));
-          if ( exception_term )
-          { SHOW_IF_FALSE(!(exception_term));
-            SHOW_IF_FALSE(isVar(*valTermRef(exception_term)));
-          }
-        }
-        
-	  }
-      if ( LD_no_vmi_hacks > 0 )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: LD_no_vmi_hacks: %s \n", named));
-        goto as_wakeup;
-        goto as_normal;
-	  }
-      //  SAVE_REGISTERS(qid);
-      //  altDEF = getProcDefinedDefinition(altDEF PASS_LD);
-      //  LOAD_REGISTERS(qid);
-      if ( true(altDEF, P_VARARG) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_VARARG %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
-        goto as_wakeup;
-      } else if ( true(altDEF, P_FOREIGN) )
-      {
-        DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: SKIP P_FOREIGN %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_functor, 50)));
-        goto as_wakeup;
-    }
-      if ( orig_arity < alt_arity )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_CALL: functor %s for metatype is now %s \n orig_functor=%s\n", named, predicateName(altDEF), atom_summary(orig_name, 50)));
-        goto as_wakeup;
-  }
-      DEF = altDEF;
-  goto as_normal;
-    } // alt_call:
-
-/*
-   Adds the next instruction to the wakeup list and replaces this with nop/N
-   Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N
-
-  */
-as_wakeup:
-{
-      if ( unDEFined(PROCEDURE_dwakeup1->definition) )
-      { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING PROCEDURE_dwakeup1 \n"));
-	   goto as_normal;
-	}
-
-      functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
-
-      Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
+    functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
+    Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
     if ( nopDEF==DEF ) goto as_normal;
     if ( unDEFined(nopDEF) )
-    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
+    {
+      DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
       goto as_normal;
     }
 
-	{ int cells = 1 + alt_arity + BIND_GLOBAL_SPACE;
-    if (!( gTop+cells <= gMax && tTop+BIND_TRAIL_SPACE <= tMax ))
-        {
-          DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NOT WAITING FOR SPACE \n"));
-      goto as_normal;
+    //static term_t av4 = PL_new_term_ref_noshift();
+    int alt_arity = orig_arity;
+    int alt_argNum = orig_arity;
+    //assert(PL_is_variable(av4));
+
+    char* named = predicateName(DEF);
+    int metaterm_overrides_present = 0;
+    int metaterms_disabled = 0;
+    int orig_argNum = 0;
+
+    int temp_arity = orig_arity;
+    Word ARG = argFrameP(NFR, 0);
+    for ( ; temp_arity --> 0; ARG++ )
+    {
+      Word argAV = ARG;
+      orig_argNum++;
+      deRef(argAV);
+      if ( !argAV ) continue;
+      if ( !isAttVar(*argAV) ) continue;
+      if ( alt_var==argAV ) continue;
+      int flags = getMetaFlags(argAV, METATERM_NO_INHERIT PASS_LD);
+      if ( !IS_META(METATERM_USE_VMI) ) continue;
+      if ( IS_META(METATERM_DISABLE_VMI) || ( IS_META(METATERM_DISABLED) && !IS_META(METATERM_ENABLE_VAR) ) )
+      {
+        DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: disable-vmi during %s \n", named));
+        continue; /*no vmi*/
+      }
+      word malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD);
+      if ( malt_functor==0 )
+      {
+        malt_functor = PL_new_functor(ATOM_dmetaterm_call, orig_arity+3);
+      } else if ( malt_functor == orig_name )
+      {
+        continue;
+      } else if ( isAtom(malt_functor) )
+      {
+        malt_functor = PL_new_functor(malt_functor, orig_arity);
+      }
+      if ( malt_functor == orig_functor )
+      {
+        if ( often == ATOM_true ) DEBUG(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: metaterm does not override %s \n", named));
+        continue;
+        /*DEBUG_TRAP(MSG_METATERM_VMI, malt_functor = getMetaOverride(argAV, orig_functor, METATERM_USE_VMI PASS_LD));
+          continue;*/
+      }
+
+      Module use_module = MODULE_user;//contextModule(NFR->parent?NFR->parent:LD->environment);
+      Definition maybeAltDef = lookupDefinition(malt_functor,use_module);
+      if ( !maybeAltDef || unDEFined(maybeAltDef) )
+      {
+        DEBUG_TRAP(MSG_METATERM, Sdprintf("\n METATERM_ERROR: undefined overridden functor for metatype %s \n", functorName(malt_functor)));
+        continue;
+      }
+
+      if ( altDEF != NULL && altDEF == maybeAltDef )
+      {
+        DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s SAME %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
+        continue;
+      }
+      if ( altDEF != NULL && altDEF != maybeAltDef )
+      {
+        DEBUG_TRAP(MSG_METATERM_VMI, Sdprintf("\n METATERM_CALL: %s UNUSED %s -> %s\n", named, predicateName(maybeAltDef), predicateName(altDEF)));
+        continue;
+      }
+
+      alt_argNum = orig_argNum;
+      alt_var = argAV;
+      alt_flags = flags;
+      altDEF = maybeAltDef;
+      alt_arity = altDEF->functor->arity;
+      alt_functor = altDEF->functor->functor;
+
+    } //for loop
+
+    if ( metaterm_overrides_present )
+    {
+      if ( alt_arity==orig_arity )
+      {
+        DEF = altDEF;
+        goto as_normal;
+      }
+      goto as_override_functor;
     }
-	}
-      if ( LD_no_vmi_hacks>0 )
-      { DEBUG(MSG_METATERM_VMI, Sdprintf("\n LD_no_vmi_hacks: %s \n", named));
+
+    /* source_fluents */
+    if(TRUE)
+    {
+      if(LD->attvar.metaterm_source_ref_index >= METATERM_SOURCE_REF_COUNT)
+      {
+        DEBUG(MSG_METATERM, Sdprintf("\nMETATERM_ERROR: NO LOCAL SPACE!?!\n"));
         goto as_normal;
       }
 
-  Word frameWord;
- /* source_fluents */
-    if (altDEF->functor->name == ATOM_dmetaterm_call)
-	{   SAVE_REGISTERS(qid);
-		{ int rc;
-			if ((rc = ensureGlobalSpace(METATERM_CALL_ARITY + 1 + orig_arity + 1, ALLOW_NOTHING)) != TRUE)
-			{
-              DEBUG(MSG_METATERM_VMI, Sdprintf("\n NO GLOBAL SPACE!?!\n"));
-			   LOAD_REGISTERS(qid);
-               goto as_normal;
-			}
-		}
-        LOAD_REGISTERS(qid);
-
-        //Word newVarPos = makeRef(valTermRef(LD->attvar.metaterm_wstates+2));
-        setVar(*alt_varHolder);
-        //*alt_varHolder = *newVarPos;
-        //*alt_varHolder = makeRef(frameWord[6]);
-        preMetatermCall(PASS_LD1);        
-        
-		/*copy the frame goal*/
-		Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
-		frameGoal[0] = DEF->functor->functor;
-
-		frameWord = gTop;
-		/*word newVar = makeRef(valHandle(noGC));*/
-		/*word newOldVar = makeRef(*valHandle(noGC+1));*/
-
-		frameWord[0] = altDEF->functor->functor;
-		frameWord[1] = orig_name;
-		frameWord[2] = consPtr(frameGoal, TAG_COMPOUND | STG_GLOBAL);
-        frameWord[3] = consInt(alt_argNum);
-        frameWord[4] = often;
-		frameWord[5] = makeRef(alt_var);
-		frameWord[6] = makeRef(alt_varHolder);
-		gTop += 7;
-		/* Assigns the value */
-        /* Runs new expression using the value */
-        scheduleWakeup(consPtr(frameWord, TAG_COMPOUND | STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-        
-		/* disabled the next instruction */
-		DEF = nopDEF;
-		goto wakeup;
-
-	}
+      foundFluent SOURCE;
+      SOURCE.varHolder = 0;
+      SOURCE.newVar = 0;
+      SOURCE.var = 0;
+      SOURCE.name = 0;
+      SOURCE.arity = 0;
+      SOURCE.argNum = 0;
+      SOURCE.conspHolder = 0;
 
 
-#define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
+      int temp_arity = orig_arity;
+      Word ARG = argFrameP(NFR, 0);
+      orig_argNum=0;
+      for ( ; temp_arity --> 0; ARG++ )
+      {
+        orig_argNum++;
+        if ( nextSource(&SOURCE, often, ARG, named PASS_LD) )
+        {
 
+          if ( SOURCE.name==0 )
+          {
+            SOURCE.name = orig_name;
+            SOURCE.arity = orig_arity;
+            SOURCE.argNum = orig_argNum;
+          }
 
-    int skipSpaces = orig_arity - alt_arity;
+          assert(SOURCE.var);
+          assert(SOURCE.varHolder);
+          assert(SOURCE.varHolder!=SOURCE.var);
 
-    /* exact metaterm override */
-    if ( skipSpaces>=0 )
-    { SAVE_REGISTERS(qid);
-      frameWord = frame_to_consP(1, skipSpaces,orig_arity,0, NFR);
-      CHECK_FRAME_SPACE;
-      frameWord[0] = altDEF->functor->functor;
-      scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-      LOAD_REGISTERS(qid);
-      DEF = nopDEF;
-      goto as_normal;
-    } else
-    { SAVE_REGISTERS(qid);
-      skipSpaces = - skipSpaces;
-      frameWord = frame_to_consP(1, 0,orig_arity,1+skipSpaces, NFR);
-      CHECK_FRAME_SPACE;
-      frameWord[0] = altDEF->functor->functor;
-      Word wakeFrame = frameWord+orig_arity+1;
-      if ( skipSpaces > 0 ) wakeFrame[0] = orig_name;
-      if ( skipSpaces > 1 ) wakeFrame[1] = consInt(alt_argNum);
-      if ( skipSpaces > 2 ) wakeFrame[2] = linkVal(alt_var);
-      if ( skipSpaces > 3 ) wakeFrame[3] = consInt(metaterm_overrides_present);
-      scheduleWakeup(consPtr(wakeFrame, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP PASS_LD);
-      LOAD_REGISTERS(qid);
-      DEF = nopDEF;
-      goto as_normal;
+          SAVE_REGISTERS(qid);
+          { int rc;
+            if ( (rc = ensureGlobalSpace(METATERM_CALL_ARITY + 1 + orig_arity + 2, ALLOW_NOTHING)) != TRUE )
+            {
+              DEBUG(MSG_METATERM, Sdprintf("\nMETATERM_ERROR: NO GLOBAL SPACE!?!\n"));
+              LOAD_REGISTERS(qid);
+              goto as_normal;
+            }
+          }
+          
+          LOAD_REGISTERS(qid);
+
+          
+          word newVar = makeRef(valTermRef(LD->attvar.metaterm_source_ref + LD->attvar.metaterm_source_ref_index));
+          LD->attvar.metaterm_source_ref_index++;
+
+          *SOURCE.varHolder = newVar;
+
+          Word frameGoal = frame_to_consP(1, 0, orig_arity, 0, NFR);
+          frameGoal[0] = DEF->functor->functor;
+
+          Word frameWord = gTop;
+
+          frameWord[0] = PL_new_functor(ATOM_dmetaterm_call, METATERM_CALL_ARITY);
+
+          frameWord[1] = often;
+
+          frameWord[2] = consPtr(frameGoal, TAG_COMPOUND | STG_GLOBAL);
+          frameWord[3] = orig_name;
+          frameWord[4] = consInt(orig_arity);
+          frameWord[5] = consInt(orig_argNum);
+
+          frameWord[6] = SOURCE.conspHolder;
+          frameWord[7] = SOURCE.name;
+          frameWord[8] = consInt(SOURCE.arity);
+          frameWord[9] = consInt(SOURCE.argNum);
+
+          frameWord[10] = makeRef(SOURCE.var);
+          frameWord[11] = newVar;
+
+          gTop += 12;
+
+          /* Assigns the value */
+          /* Runs new expression using the value */
+          scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP, TRUE PASS_LD);
+
+          /* disabled the next instruction */
+          DEF = nopDEF;
+          goto as_normal;
+        }
+      }
+
     }
-   } //as_wakeup:
-  } // !isNeverOver
-} // maybe_metaterm:
+
+    goto as_normal;
+
+    /*
+       Adds the next instruction to the wakeup list and replaces this with nop/N
+       Since the wakeup completes before the instruction, we might switch to nop_but_reenable/N
+
+      */
+
+
+  #define CHECK_FRAME_SPACE if ( frameWord==0 ){ DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: NO SPACE FOR WAKEUP GOAL! \n"));    LOAD_REGISTERS(qid);  goto as_normal; }
+
+    as_override_functor:
+    {
+
+      int skipSpaces = orig_arity - alt_arity;
+
+      Word frameWord;
+      /* exact metaterm override */
+      if ( skipSpaces>=0 )
+      {
+        SAVE_REGISTERS(qid);
+        frameWord = frame_to_consP(1, skipSpaces,orig_arity,0, NFR);
+        CHECK_FRAME_SPACE;
+        frameWord[0] = altDEF->functor->functor;
+        scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP, TRUE PASS_LD);
+        LOAD_REGISTERS(qid);
+        DEF = nopDEF;
+        goto as_normal;
+      } else
+      {
+        SAVE_REGISTERS(qid);
+        skipSpaces = - skipSpaces;
+        frameWord = frame_to_consP(1, 0,orig_arity,1+skipSpaces, NFR);
+        CHECK_FRAME_SPACE;
+        frameWord[0] = altDEF->functor->functor;
+        Word wakeFrame = frameWord+orig_arity+1;
+        if ( skipSpaces > 0 ) wakeFrame[0] = orig_name;
+        if ( skipSpaces > 1 ) wakeFrame[1] = consInt(alt_argNum);
+        if ( skipSpaces > 2 ) wakeFrame[2] = linkVal(alt_var);
+        if ( skipSpaces > 3 ) wakeFrame[3] = consInt(metaterm_overrides_present);
+        scheduleWakeup(consPtr(wakeFrame, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP, TRUE PASS_LD);
+        LOAD_REGISTERS(qid);
+        DEF = nopDEF;
+        goto as_normal;
+      }
+    }
+
+  } // maybe_metaterm:
 
 #endif /*O_METATERM*/
+
+as_normal:
 
 #ifdef O_DRA_TABLING_NEVER
 
@@ -2098,9 +1964,6 @@ as_wakeup:
     }
   }
 #endif /*O_DRA_TABLING*/
-
-as_normal:
-
 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -5043,15 +4906,20 @@ VMI(I_USERCALL0, VIF_BREAK, 0, ())
   if ( !(a = stripModule(a, &module PASS_LD)) )
     THROW_EXCEPTION;
 
-  DEBUG(MSG_CALL,
-	{ Sdprintf("MSG_CALL: (I_USERCALL0) ");
-	  LocalFrame ot = lTop;
-	  term_t g = pushWordAsTermRef(a);
-	  lTop += 100;
-	  pl_writeln(g);
-	  popTermRef();
-	  lTop = ot;
-	});
+  if(PL_thread_self()==1)
+  {
+    LD_no_vmi_hacks++;
+    DEBUG(MSG_CALL,
+	  { Sdprintf("MSG_CALL: (I_USERCALL0) ");
+	    LocalFrame ot = lTop;
+	    term_t g = pushWordAsTermRef(a);
+	    lTop += 100;
+	    pl_writeln(g);
+	    popTermRef();
+	    lTop = ot;
+	  });
+    LD_no_vmi_hacks--;
+  }
 
   DEBUG(CHK_SECURE, checkStacks(NULL));
 

@@ -2059,6 +2059,25 @@ typedef struct
 		 *      ATTVAR ASSIONMENT	*
 		 *******************************/
 
+typedef struct foundFluent
+{ atom_t name;
+  int arity;
+  int argNum;
+  Word varHolder;
+  word conspHolder;
+  word newVar;
+  Word var;
+  int flags;
+} foundFluent, * FoundFluent;
+
+
+typedef struct fluentWorkflow
+{
+  foundFluent orig;
+  foundFluent alt;
+  foundFluent source;
+} fluentWorkflow, *FluentWorkflow;
+
 typedef struct metaterm_pred_override
 { atom_t name;
   int	arity;
@@ -2068,8 +2087,7 @@ typedef struct metaterm_pred_override
 /* assignAttVar() flags  - All defaulted to false */
 
 #define METATERM_OVERIDES_SIZE 2560
-#define METATERM_WSTATE_SIZE 3
-#define METATERM_WSTATE_BUFFERS 2
+#define METATERM_SOURCE_REF_COUNT 160
 
 #define  B_PUTATTS 0x0
 #define NB_PUTATTS 0x1
@@ -2087,7 +2105,7 @@ typedef struct metaterm_pred_override
 #define METATERM_DISABLED   	   0x0001 /* disable all options (allows the options to be saved) */
 #define METATERM_COPY_VAR   	   0x0002 /* allow attvar survival */
 #define METATERM_SOURCE_VALUE      0x0004 /* the attvar has an effective value */
-#define METATERM_VALUE_SINK        0x0008 /* the attvar has an effective value */
+#define METATERM_VALUE_SINK        0x0008 /* the attvar in a sink fluent */
 #define METATERM_NO_WAKEUP  	   0x0010 /* Dont call wakeup */
 #define METATERM_NO_TRAIL          0x0020 /* Do not bother to trail the previous value */
 #define METATERM_NO_INHERIT        0x0040 /* This Fv doest not inherit from 'matts_default' flags (otherwise they are or-ed) */
@@ -2160,7 +2178,7 @@ typedef struct metaterm_pred_override
 
 #define METATERM_SKIP_HIDDEN(ValPAttVar) (METATERM_USE_SKIP_HIDDEN ? attrs_after(ValPAttVar,ATOM_dmeta PASS_LD): ValPAttVar)
 #define METATERM_ENABLED  METATERM_GLOBAL_FLAGS && (!(METATERM_CURRENT & METATERM_DISABLED)) && METATERM_REALLY_OK
-#define METATERM_REALLY_OK  !LD->in_print_message && GD->initialised && ((!( GD->cleaning > CLN_PROLOG )) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
+#define METATERM_REALLY_OK  LD->attvar.wakeup_ready && !LD->in_print_message && GD->initialised && ((!( GD->cleaning > CLN_PROLOG )) && (LD->IO.portray_nesting<1) && (LD->autoload_nesting<1) && (!exception_term || isVar(*valTermRef(exception_term))))
 #define METATERM_OVERIDES(var,atom) METATERM_ENABLED && isMetaOverriden(var, atom, METATERM_USE_VMI PASS_LD)
 #define METATERM_HOOK(atom,t1,t2,rc) (METATERM_USE_VMI & METATERM_ENABLED && \
                     ((tag(*t1)==TAG_ATTVAR && METATERM_OVERIDES(t1,ATOM_ ## atom))  || \

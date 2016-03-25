@@ -1321,6 +1321,7 @@ fatalError(const char *fm, ...)
   va_start(args, fm);
   vfatalError(fm, args);
 /*va_end(args);*/
+  pl_break();
 }
 
 

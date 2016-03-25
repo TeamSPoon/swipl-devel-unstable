@@ -44,7 +44,7 @@
       metaterm_create/2,
       was_tracing/1,
       was_access_level_atts/1,
-      
+      metaterm_reset/2,
       unify_val/2,
       undo/1,
       testfv/0,
@@ -1236,10 +1236,16 @@ system:vc(X):- put_attr(X,tCC,'CCC').
   Initialy this impl is incomplete for source 
    terms as it only deals with one Term per goal.
 */
-:- meta_predicate(system:'$metaterm_call'(+,:,+,+,-,-)).
-system:'$metaterm_call'(_PredName,Goal,_ArgNum,_Count,Var,Value):- 
-   setup_call_cleanup( true,(must_or_die(metaterm_getval(Var,Value)),must_or_die(Var \== Value)),'$exit_metaterm_call'),
-   Goal.
+
+:- meta_predicate(system:'$metaterm_call'(+,0,+,+,+,0,+,+,+,?,?)).
+
+
+system:'$metaterm_call'(_Often,Goal,_Name,_Arity,_ArgNum,_IGoal,_IName,_IArity,_IArgNum,Var,Value):- 
+   setup_call_cleanup( 
+    notrace((get_attr(Var,'$atts',_),must_or_die(\+ get_attr(Value,'$atts',_)))),
+    (must_or_die(metaterm_getval(Var,Value)),with_metavmi(Goal)),
+    '$exit_metaterm_call').
+   
 
 
 :- export_all.

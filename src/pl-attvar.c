@@ -134,8 +134,37 @@ registerWakeup(functor_t wakeup_type, atom_t atomcaller, Word attvar, Word attrs
   appendWakeup(wake PASS_LD);
 }
 
+static void
+prependWakeup(Word wake ARG_LD)
+{ Word tail = valTermRef(LD->attvar.tail);
+
+  if ( *tail )
+  { Word h;				/* Non-empty list */
+    Word head = valTermRef(LD->attvar.tail);
+    deRef2(head, h);
+    TrailAssignment(h);
+    wake[2] = *h;
+    *h = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
+    TrailAssignment(tail);		/* on local stack! */
+    
+    DEBUG(MSG_WAKEUPS, Sdprintf_ln("prepended to wakeup"));
+  } else				/* empty list */
+  { Word head = valTermRef(LD->attvar.head);
+
+    assert(isVar(*head));
+    TrailAssignment(head);		/* See (*) */
+    *head = consPtr(wake, TAG_COMPOUND|STG_GLOBAL);
+    TrailAssignment(tail);
+    *tail = makeRef(wake+2);
+    LD->alerted |= ALERT_WAKEUP;
+    DEBUG(MSG_WAKEUPS, Sdprintf_ln("new wakeup alerted=%d ", LD->alerted & ALERT_WAKEUP));
+
+  }
+}
+
+
 void
-scheduleWakeup(word g, int alert_flags ARG_LD)
+scheduleWakeup(word g, int alert_flags, int atBeginning ARG_LD)
 { Word wake;
 
   wake = gTop;
@@ -143,8 +172,12 @@ scheduleWakeup(word g, int alert_flags ARG_LD)
   wake[0] = FUNCTOR_comma2;
   wake[1] = g;
   wake[2] = ATOM_true;
+  if(atBeginning)
+  { prependWakeup(wake PASS_LD);
+  } else
+  {  appendWakeup(wake PASS_LD);
+  }
   LD->alerted |= alert_flags;
-  appendWakeup(wake PASS_LD);
 }
 
 
@@ -2106,7 +2139,7 @@ PRED_IMPL("$schedule_wakeup", 1, dschedule_wakeup, PL_FA_TRANSPARENT)
     g = valTermRef(g2);
       *g = consPtr(t, STG_GLOBAL|TAG_COMPOUND);
   }
-   scheduleWakeup(*g, ALERT_WAKEUP PASS_LD);
+   scheduleWakeup(*g, ALERT_WAKEUP, FALSE PASS_LD);
    return TRUE;
 }
 
@@ -2382,34 +2415,15 @@ PRED_IMPL("$depth_of_var", 2, ddepth_of_var, 0)
 
 
 
-int
-preMetatermCall(ARG1_LD)
-{ Word h;
-  LD_no_vmi_hacks++;
-  if ( *(h=valTermRef(LD->attvar.head)))
-  { term_t s = LD->attvar.metaterm_wstates;
-    *valTermRef(s+0) = *h;
-    setVar(*h);
-    h = valTermRef(LD->attvar.tail);
-    *valTermRef(s+1) = *h;
-    setVar(*h);
-    LD->attvar.metaterm_wstate_index += 1;
-  }
-  return TRUE;
-}
-
 static
 PRED_IMPL("$exit_metaterm_call", 0, exit_metaterm_call, 0)
 { PRED_LD
   if(LD_no_vmi_hacks>0) LD_no_vmi_hacks--;
-  if(LD->attvar.metaterm_wstate_index==0) return TRUE;
-  LD->attvar.metaterm_wstate_index -= 1;
-  term_t s = LD->attvar.metaterm_wstates + (LD->attvar.metaterm_wstate_index * METATERM_WSTATE_SIZE);
-  *valTermRef(LD->attvar.head) = *valTermRef(s+0);
-  *valTermRef(LD->attvar.tail) = *valTermRef(s+1);
-  setVar(*valTermRef(s+0));
-  setVar(*valTermRef(s+1));
-  setVar(*valTermRef(s+2));
+  if (LD->attvar.metaterm_source_ref_index > 0)
+  {
+    LD->attvar.metaterm_source_ref_index --;    
+  }
+  LD->attvar.metaterm_source_ref_index++;
   return TRUE;
 }
 
