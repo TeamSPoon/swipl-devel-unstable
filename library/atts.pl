@@ -67,6 +67,7 @@
       metaterm_override/2,
       metaterm_handler_name/1,
       metaterm_getval/2,
+      metaterm_getval_/2,
       metaflag_unset/2,
       metaflag_set/2,
       metaflag_get/2,
@@ -820,7 +821,9 @@ unify_val(Var,Value):- metaterm_setval(Var,Value).
 
 get_cont(Var,Cont):- get_attr(Var,gvar,Cell)->nb_linkval(Cell,Cont);get_attr(Var,value,Cont).
 
-metaterm_getval(Var,Value):- get_cont(Var,Cont),fvi_get(Cont,Value).
+metaterm_getval(Var,Value):- no_trace(wo_metavmi(metaterm_getval_(Var,Value))).
+metaterm_getval_(Var,Value):- get_cont(Var,Cont),!,fvi_get(Cont,Value).
+metaterm_getval_(Var,Value):- get_attr(Var,copy_var,[How]),call(How,Var,Value).
 
 metaterm_pop(Var,Value):- get_cont(Var,Cont),fvi_pop(Cont,Value).
 

@@ -395,7 +395,7 @@ setMetaFlags(Word av, int value, int backtrack_flags ARG_LD)
 
 atom_t 
 getPredOverriden(atom_t current_name, int arity ARG_LD)
-{ if(arity>MAX_ARITY || arity < 0 || current_name==ATOM_dmetaterm_call) return ATOM_false;
+{ if(arity>MAXARITY || arity < 0 || current_name==ATOM_dmetaterm_call) return ATOM_false;
   metaterm_pred_override* found = LD->attvar.metaterm_override;
   int maxsize = METATERM_OVERIDES_SIZE;
   while(found)
@@ -418,7 +418,7 @@ getPredOverriden(atom_t current_name, int arity ARG_LD)
 
 static void
 addOverriden(atom_t current_name, int arity, atom_t value ARG_LD)
-{ if(arity>MAX_ARITY || arity<0 || current_name==ATOM_dmetaterm_call) return;
+{ if(arity>MAXARITY || arity<0 || current_name==ATOM_dmetaterm_call) return;
   metaterm_pred_override* found = &LD->attvar.metaterm_override[0];
   metaterm_pred_override* lastFree = 0;
   int maxsize = METATERM_OVERIDES_SIZE;
@@ -2483,6 +2483,14 @@ EndPredDefs
 void
 setupMetaterms(ARG1_LD)
 {
+  LD->attvar.metaterm_regs = PL_new_term_refs(4);
+  LD->attvar.metaterm_opts = PL_new_term_refs(1);
+  LD->attvar.metaterm_source_ref_index = 0;
+  LD->attvar.metaterm_source_ref = PL_new_term_refs(METATERM_SOURCE_REF_COUNT);
+  METATERM_CURRENT =  METATERM_DEFAULT;
+  *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
+  LD->slow_unify     = SLOW_UNIFY_DEFAULT;
+  LD->attvar.metaterm_override[0].name = 0;
   const PL_extension* from = PL_predicates_from_attvar;
   while(from && from->predicate_name)
   {
@@ -2509,16 +2517,6 @@ setupMetaterms(ARG1_LD)
     addSometimesOverriden(ATOM_var, 1);
 
 
-  LD->attvar.metaterm_regs = PL_new_term_refs(4);
-  LD->attvar.metaterm_opts = PL_new_term_refs(1);
-  LD->attvar.metaterm_source_ref_index = 0;
-  LD->attvar.metaterm_source_ref = PL_new_term_refs(METATERM_SOURCE_REF_COUNT);
-  LD->attvar.metaterm_override[0].name = 0;
-  METATERM_CURRENT =  METATERM_DEFAULT;
-  *METATERM_GLOBAL = consUInt(METATERM_CURRENT);
-  LD->slow_unify     = SLOW_UNIFY_DEFAULT;
-
-
   char* names[] = {"meta_unify","post_unify","current_predicate","=", "wo_metaterm",
     "simplify_goal_printed", "metaterm_unify","amsg", "with_metaterm","pre_unify" ,"copy_term", "dmsg",
     "with_metaterm","wo_metaterm","label_sources",
@@ -2530,7 +2528,6 @@ setupMetaterms(ARG1_LD)
     addNeverOverriden(PL_new_atom(*from3), 0 );
     from3++;
   }
-
 }
 
 #endif /*O_ATTVAR*/

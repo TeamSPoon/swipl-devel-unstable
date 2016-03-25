@@ -272,7 +272,7 @@ amsg(Goal):- notrace(
                   call_cleanup_each(0,0).
 
 :- module_transparent(must_or_die/1).
-must_or_die(Goal):- (Goal *-> notrace(true) ; throw(failed_must_or_die(Goal))).
+must_or_die(Goal):- (Goal *-> notrace(true) ; (trace,Goal->true;throw(failed_must_or_die(Goal)))).
 
 :- '$hide'(true/0).
 

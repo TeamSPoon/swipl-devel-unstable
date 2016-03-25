@@ -1781,11 +1781,6 @@ normal_call:
     /* source_fluents */
     if(TRUE)
     {
-      if(LD->attvar.metaterm_source_ref_index >= METATERM_SOURCE_REF_COUNT)
-      {
-        DEBUG(MSG_METATERM, Sdprintf("\nMETATERM_ERROR: NO LOCAL SPACE!?!\n"));
-        goto as_normal;
-      }
 
       foundFluent SOURCE;
       SOURCE.varHolder = 0;
@@ -1805,6 +1800,11 @@ normal_call:
         orig_argNum++;
         if ( nextSource(&SOURCE, often, ARG, named PASS_LD) )
         {
+
+          if(LD->attvar.metaterm_source_ref_index >= METATERM_SOURCE_REF_COUNT)
+          { DEBUG(MSG_METATERM, Sdprintf("\nMETATERM_ERROR: NO LOCAL SPACE!?!\n"));
+            goto as_normal;
+          }
 
           if ( SOURCE.name==0 )
           {
