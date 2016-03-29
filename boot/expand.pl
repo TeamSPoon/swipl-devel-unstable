@@ -1176,11 +1176,7 @@ compile_meta_call(CallIn, CallOut, Module, Term) :-
 
 compile_auxiliary_clause(Module, Clause) :-
 	Clause = (Head:-Body),
-<<<<<<< HEAD
-        '$current_source_module'(SM),
-=======
 	'$current_source_module'(SM),
->>>>>>> 38f631bf40a57b7b09e7011c5157e5e84e93ecf7
 	(   predicate_property(SM:Head, defined)
 	->  true
 	;   SM == Module
