@@ -85,9 +85,9 @@
 :- discontiguous(atts:metaterm_type/1).
 :- dynamic(atts:metaterm_type/1).
 
-:- multifile(fv:'$pldoc'/4).
-:- discontiguous(fv:'$pldoc'/4).
-:- dynamic(fv:'$pldoc'/4).
+:- multifile(metaterm:'$pldoc'/4).
+:- discontiguous(metaterm:'$pldoc'/4).
+:- dynamic(metaterm:'$pldoc'/4).
 
 % :- user:use_module(library(metaterm)).
 

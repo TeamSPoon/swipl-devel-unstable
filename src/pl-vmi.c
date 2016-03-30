@@ -1685,12 +1685,9 @@ normal_call:
     functor_t orig_functor = ((Definition)DEF)->functor->functor;
     /* DM: will look into perhaps running this code during  !(LD->alerted & ALERT_WAKEUP) && PL_is_variable(exception_term))*/
 
-    functor_t nop_functor = PL_new_functor(ATOM_nop, orig_arity);
-    Definition nopDEF = lookupDefinition(nop_functor,MODULE_system);
-    if ( nopDEF==DEF ) goto as_normal;
-    if ( unDEFined(nopDEF) )
-    {
-      DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
+    Definition nopDEF = nopDef(orig_arity);
+    if ( nopDEF==NULL || unDEFined(nopDEF) )
+    { DEBUG(MSG_METATERM, Sdprintf("\n METATERM_ERROR: MISSING NOP \n"));
       goto as_normal;
     }
 
@@ -1922,9 +1919,7 @@ normal_call:
 
 #endif /*O_METATERM*/
 
-as_normal:
-
-#ifdef O_DRA_TABLING_NEVER
+#ifdef O_DRA_TABLING
 
   if ( DRA_CALL && DEF->dra_interp )
   {
@@ -1935,35 +1930,45 @@ as_normal:
       proc->dra_depth++;
       int orig_arity = DEF->functor->arity;
       word expr;
+      Word frameWord;
   #ifdef DRA_INTERP_TERM_T
       expr = linkVal(valPHandle(DEF->dra_interp));
   #else
       expr = DEF->dra_interp;
   #endif
       SAVE_REGISTERS(qid);
-      if(isAtom(expr))
+      if ( isAtom(expr) )
       {
-        Word frameWord = frame_to_consP(1, orig_arity,0, NFR);
-      if ( frameWord==0 )
+        frameWord = frame_to_consP(2, 0, orig_arity,0, NFR);
+        if ( frameWord==0 )
+        { DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));
+          LOAD_REGISTERS(qid);
+          goto as_normal;
+        }
+        frameWord[0] = PL_new_functor((atom_t)expr,1);
+        frameWord[1] = DEF->functor->functor;
+      } else
       {
-          DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));
-        LOAD_REGISTERS(qid);
-        goto as_normal;
+        frameWord = frame_to_consP(3, 0, orig_arity,0, NFR);
+        if ( frameWord==0 )
+        { DEBUG(MSG_METATERM, Sdprintf("\n NORMAL_CALL: NO SPACE FOR DRA! \n"));
+          LOAD_REGISTERS(qid);
+          goto as_normal;
+        }
+        frameWord[0] = FUNCTOR_call2;
+        frameWord[1] = expr;
+        frameWord[2] = DEF->functor->functor;
       }
-        frameWord[0] = DEF->functor->functor;
-        frameWord[] = PL_new_functor((atom_t)expr,1);
-      }
+      scheduleWakeup(consPtr(frameWord, TAG_COMPOUND|STG_GLOBAL), ALERT_WAKEUP, TRUE PASS_LD);
 
-      frameWord[0] = expr;
-      int callargs = orig_arity+1;
-      functor_t alt_functor = PL_new_functor(ATOM_call,orig_arity+1);
-      DEF = lookupDefinition(alt_functor,PARENT_MODULE);
-      *PC = callargs;
-      VMI_GOTO(I_USERCALLN);
-      //   goto normal_call;
+      /* disabled the next instruction */
+      DEF = nopDef(orig_arity);
+      goto as_normal;
     }
   }
 #endif /*O_DRA_TABLING*/
+
+as_normal:
 
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
