@@ -26,6 +26,10 @@
     invalidate any other reasons why the executable file might be covered by
     the GNU General Public License.
 */
+
+end_of_file.
+
+
 :- module(metaterm,[
    with_prolog_debug/2,
    w_dt/1,
@@ -80,6 +84,7 @@
    metaterm_test/0,
    plvar/1,
   anything_once/1,termfilter/1,subsumer_var/1,plvar_ex/1]).
+
 
 :- multifile(atts:metaterm_type/1).
 :- discontiguous(atts:metaterm_type/1).
@@ -868,3 +873,6 @@ true.
 ?- copy_var(X),X:=X.
 
 */
+
+:- set_prolog_flag(metaterm,enabled).
+

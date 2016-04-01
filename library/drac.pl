@@ -1,5 +1,3 @@
-end_of_file.
-
 /*  Part of SWI-Prolog
 
     Author:        Douglas R. Miles
@@ -58,6 +56,7 @@ end_of_file.
 :-module('$drac',[
           dra_call_interp/1,
           dra_call_tabled/1,
+          dra_call_tabled/5,
           dra_call_coind0/1,
           dra_call_coind1/1,
 					essence_hook/2,
@@ -83,8 +82,7 @@ end_of_file.
           op( 910,  fy, 'tnot'  )    % allow  "?- tnot  p(_) ,"
 ]).
 
- 
-/** Module $drac - Tabling by Dynamic Ordering of Alternatives
+/** <module> $drac - Tabling by Dynamic Ordering of Alternatives
 
    BEGIN README.md
 
@@ -1383,7 +1381,7 @@ legal_directive(P):-compound(P),functor(P,F,1),property_pred(F,_).
 
 % process_dra_ective( +directive ):
 % Process a directive.
-:-module_transparent(process_dra_ective/1).
+:- module_transparent(process_dra_ective/1).
 
 process_dra_ective( Directive ) :-           % unsupported directive
        \+ legal_directive( Directive ),

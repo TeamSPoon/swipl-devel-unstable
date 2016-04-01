@@ -742,7 +742,7 @@ backward:				/* reversing backwards */
   { word w = get_value(current);
     int t = (int)tag(w);
 
-    assert(onStack(global, current));
+
 
     next = valPtr(w);
     set_value(current, val);
@@ -751,9 +751,11 @@ backward:				/* reversing backwards */
 	val = makeRef(current);
         break;
       case TAG_COMPOUND:
+         assert(onStack(global, current));
 	val = makePtr(current-1, t PASS_LD);
         break;
       case TAG_ATTVAR:
+       assert(onStack(global, current));
 	val = makePtr(current, t PASS_LD);
         break;
       default:
@@ -2370,7 +2372,7 @@ untag_trail(ARG1_LD)
     { word mask = ttag(te->address);
 #ifdef O_UNDO_HOOK
       if(!metaterm_did_undo("untag", te, 0, te->address PASS_LD));
-#endif      
+#endif
 
       te->address = (Word)((word)valPtr((word)te->address)|mask);
 #ifdef O_ATTVAR

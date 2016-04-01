@@ -225,6 +225,9 @@ PRED_IMPL("notrace", 1, notrace, PL_FA_TRANSPARENT|PL_FA_NOTRACE)
   uintptr_t  skipSave  = debugstatus.skiplevel;
   bool	     traceSave = debugstatus.tracing;
 
+
+
+
   rval = callProlog(NULL, A1, PL_Q_CATCH_EXCEPTION|PL_Q_NODEBUG, &ex);
 
   debugstatus.skiplevel    = skipSave;
@@ -251,6 +254,7 @@ static
 PRED_IMPL("$sig_atomic", 1, sig_atomic, PL_FA_TRANSPARENT)
 { PRED_LD
   int rval;
+
 
   startCritical;
   rval = callProlog(NULL, A1, PL_Q_PASS_EXCEPTION, NULL);
@@ -312,6 +316,8 @@ callProlog(Module module, term_t goal, int flags, term_t *ex)
     if ( (args = PL_new_term_refs(arity)) )
     { for(n=0; n<arity; n++)
 	_PL_get_arg(n+1, g, args+n);
+
+
 
       if ( (qid = PL_open_query(module, flags, proc, args)) )
       { rval = PL_next_solution(qid);

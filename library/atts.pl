@@ -32,6 +32,7 @@
 /* 
 
 */
+end_of_file.
 
 :- module(atts,[
       % in init.pl
@@ -127,7 +128,7 @@
 :- meta_predicate(get_atts(+,:)).
 :- meta_predicate(put_atts(+,:)).
 :- meta_predicate(dict_to_attvar(:)).
-:- meta_predicate(dict_to_attvar(:,-)).
+:- meta_predicate(dict_to_attvar(:,-)). 
 :- meta_predicate wi_atts(+,0).
 
 :- meta_predicate w_dmvars(0).

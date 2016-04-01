@@ -950,6 +950,7 @@ analyse_variables(Word head, Word body, CompileInfo ci ARG_LD)
       return nvars == AVARS_CYCLIC ? CYCLIC_HEAD : nvars;
   }
   if ( body )
+
   { if ( (nvars = analyseVariables2(body, nvars, arity, ci, 0, TRUE PASS_LD)) < 0 )
       return nvars == AVARS_CYCLIC ? CYCLIC_BODY : nvars;
   }

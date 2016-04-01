@@ -103,10 +103,11 @@ code into functions.
 #define BEGIN_SHAREDVARS {
 #define END_SHAREDVARS   }
 
-#define PARENT_MODULE contextModule(NFR->parent?NFR->parent:LD->environment)
 /*||LD->slow_unify*/
-#define DEBUGGING_OR_SLOW (debugstatus.debugging)
-#define REALLY_DEBUGGING (debugstatus.debugging)
+#define DEBUGGING_OR_SLOW (NEED_DEBUG_INFO || LD->slow_unify)
+#define NEED_DEBUG_INFO (debugstatus.debugging && !debugstatus.suspendTrace)
+#define REALLY_DEBUGGING debugstatus.debugging
+
 
 /* for Intellisense */
 #include "pl-incl.h"
@@ -1141,7 +1142,7 @@ VMI(B_UNIFY_VAR, VIF_BREAK, 1, (CA1_VAR))
 { ARGP = varFrameP(FR, (int)*PC++);
 
 unify_var_cont:
-  if ( (slow_unify=LD->slow_unify) )
+  if ( (slow_unify=DEBUGGING_OR_SLOW) )
   { Word k = ARGP;
 
     ARGP = argFrameP(lTop, 0);
@@ -1179,7 +1180,7 @@ VMI(B_UNIFY_FF, VIF_BREAK, 2, (CA1_FVAR,CA1_FVAR))
 { Word v1 = varFrameP(FR, (int)*PC++);
   Word v2 = varFrameP(FR, (int)*PC++);
 
-  if ( LD->slow_unify )
+  if ( DEBUGGING_OR_SLOW )
   { setVar(*v1);
     setVar(*v2);
     ARGP = argFrameP(lTop, 0);
@@ -1212,7 +1213,7 @@ VMI(B_UNIFY_FV, VIF_BREAK, 2, (CA1_FVAR,CA1_VAR))
 { Word f = varFrameP(FR, (int)*PC++);
   Word v = varFrameP(FR, (int)*PC++);
 
-  if ( LD->slow_unify )
+  if ( DEBUGGING_OR_SLOW )
   { setVar(*f);
     ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(f);
@@ -1231,7 +1232,7 @@ VMI(B_UNIFY_VV, VIF_BREAK, 2, (CA1_VAR,CA1_VAR))
   Word v1 = varFrameP(FR, (int)*PC++);
   Word v2 = varFrameP(FR, (int)*PC++);
 
-  if ( LD->slow_unify )
+  if ( DEBUGGING_OR_SLOW )
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
     *ARGP++ = linkVal(v2);
@@ -1265,7 +1266,7 @@ VMI(B_UNIFY_FC, VIF_BREAK, 2, (CA1_FVAR, CA1_DATA))
 { Word v1 = varFrameP(FR, (int)*PC++);
   word c = (word)*PC++;
 
-  if ( LD->slow_unify )
+  if ( DEBUGGING_OR_SLOW )
   { setVar(*v1);
     ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
@@ -1286,7 +1287,7 @@ VMI(B_UNIFY_VC, VIF_BREAK, 2, (CA1_VAR, CA1_DATA))
 { Word k = varFrameP(FR, (int)*PC++);
   word c = (word)*PC++;
 
-  if ( LD->slow_unify )
+  if ( DEBUGGING_OR_SLOW )
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(k);
     *ARGP++ = c;
@@ -1329,7 +1330,7 @@ VMI(B_EQ_VV, VIF_BREAK, 2, (CA1_VAR,CA1_VAR))
   int rc;
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
     *ARGP++ = linkVal(v2);
@@ -1341,7 +1342,7 @@ VMI(B_EQ_VV, VIF_BREAK, 2, (CA1_VAR,CA1_VAR))
   }
 #endif
 
-  if ( (rc=compareStandard(v1, v2, TRUE PASS_LD)) == 0 )
+  if ( (rc=compareStandard(v1, v2, TRUE PASS_LD)) == CMP_EQUAL )
     NEXT_INSTRUCTION;
   if ( rc == CMP_ERROR )
     THROW_EXCEPTION;
@@ -1359,7 +1360,7 @@ VMI(B_EQ_VC, VIF_BREAK, 2, (CA1_VAR,CA1_DATA))
   word c  = (word)*PC++;
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
     *ARGP++ = c;
@@ -1385,11 +1386,11 @@ VMI(B_NEQ_VV, VIF_BREAK, 2, (CA1_VAR,CA1_VAR))
   int rc;
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
     *ARGP++ = linkVal(v2);
-  debug_neq_vv:
+debug_neq_vv:
     NFR = lTop;
     DEF = GD->procedures.not_strict_equal2->definition;
     setNextFrameFlags(NFR, FR);
@@ -1397,7 +1398,7 @@ VMI(B_NEQ_VV, VIF_BREAK, 2, (CA1_VAR,CA1_VAR))
   }
 #endif
 
-  if ( (rc=compareStandard(v1, v2, TRUE PASS_LD)) == 0 )
+  if ( (rc=compareStandard(v1, v2, TRUE PASS_LD)) == CMP_EQUAL )
     BODY_FAILED;
   if ( rc == CMP_ERROR )
     THROW_EXCEPTION;
@@ -1415,7 +1416,15 @@ VMI(B_NEQ_VC, VIF_BREAK, 2, (CA1_VAR,CA1_DATA))
   word c  = (word)*PC++;
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
+  { ARGP = argFrameP(lTop, 0);
+    *ARGP++ = linkVal(v1);
+    *ARGP++ = c;
+    goto debug_neq_vv;
+  }
+#endif
+
+#ifdef O_METATERM_PARANOID
   { ARGP = argFrameP(lTop, 0);
     *ARGP++ = linkVal(v1);
     *ARGP++ = c;
@@ -1588,7 +1597,7 @@ VMI(I_ENTER, VIF_BREAK, 0, ())
   if ( unlikely(LD->alerted) )
   {
 #if O_DEBUGGER
-    if ( debugstatus.debugging )
+    if ( REALLY_DEBUGGING )
     { int action;
 
       SAVE_REGISTERS(qid);
@@ -1673,6 +1682,7 @@ normal_call:
     if ( orig_name == ATOM_dmetaterm_callp ) goto as_normal;
     if ( orig_name == ATOM_dmetaterm_call ) goto as_normal;
     int orig_arity = ((Definition)DEF)->functor->arity;
+    if(orig_arity==0)  goto as_normal;
     atom_t often = getPredOverriden(orig_name, orig_arity PASS_LD);
     if ( often==ATOM_false ) goto as_normal;
     if ( LD_no_vmi_hacks>0 ) goto as_normal;
@@ -2056,7 +2066,7 @@ retry_continue:
       if ( depth > depth_limit )
       { DEBUG(2, Sdprintf("depth-limit\n"));
 
-	if ( debugstatus.debugging )
+	if ( NEED_DEBUG_INFO )
 	  newChoice(CHP_DEBUG, FR PASS_LD);
 	FRAME_FAILED;
       }
@@ -2075,7 +2085,7 @@ retry_continue:
 #endif
 
 #if O_DEBUGGER
-    if ( debugstatus.debugging )
+    if ( REALLY_DEBUGGING )
     { int rc;
 
       lTop = (LocalFrame) argFrameP(FR, DEF->functor->arity);
@@ -2249,7 +2259,7 @@ VMI(I_EXIT, VIF_BREAK, 0, ())
   if ( unlikely(LD->alerted) )
   {
 #if O_DEBUGGER
-    if ( debugstatus.debugging )
+    if ( REALLY_DEBUGGING )
     { int action;
 
       SAVE_REGISTERS(qid);
@@ -2318,7 +2328,7 @@ VMI(I_EXITFACT, 0, 0, ())
 { if ( unlikely(LD->alerted) )
   {
 #if O_DEBUGGER
-    if ( debugstatus.debugging )
+    if ( REALLY_DEBUGGING )
     { int action;
 
       SAVE_REGISTERS(qid);
@@ -2406,7 +2416,7 @@ provide proper debugger output.
 VMI(I_CUT, VIF_BREAK, 0, ())
 {
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( REALLY_DEBUGGING )
   { int rc;
     Choice ch;
     mark m;
@@ -2813,7 +2823,7 @@ when in debug-mode, so we can trace the call.
 VMI(I_FAIL, VIF_BREAK, 0, ())
 {
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { NFR = lTop;
     setNextFrameFlags(NFR, FR);
     DEF = lookupDefinition(FUNCTOR_fail0, MODULE_system);
@@ -2832,7 +2842,7 @@ I_TRUE: Translation of true/0.  See also I_FAIL.
 VMI(I_TRUE, VIF_BREAK, 0, ())
 {
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { NFR = lTop;
     setNextFrameFlags(NFR, FR);
     DEF = lookupDefinition(FUNCTOR_true0, MODULE_system);
@@ -2854,7 +2864,7 @@ VMI(I_VAR, VIF_BREAK, 1, (CA1_VAR))
 { p = varFrameP(FR, (int)*PC++);
 
 #ifdef O_DEBUGGER
-  if ( unlikely(debugstatus.debugging) )
+  if ( unlikely(NEED_DEBUG_INFO) )
   { fpred = FUNCTOR_var1;
   debug_pred1:
 
@@ -2882,7 +2892,7 @@ VMI(I_NONVAR, VIF_BREAK, 1, (CA1_VAR))
 { p = varFrameP(FR, (int)*PC++);
 
 #ifdef O_DEBUGGER
-  if ( unlikely(debugstatus.debugging) )
+  if ( unlikely(NEED_DEBUG_INFO) )
   { fpred = FUNCTOR_nonvar1;
     goto debug_pred1;
   }
@@ -3014,7 +3024,7 @@ VMI(S_STATIC, 0, 0, ())
 
   if ( !(cl = firstClause(ARGP, FR, DEF, &chp PASS_LD)) )
   { DEBUG(9, Sdprintf("No clause matching index.\n"));
-    if ( debugstatus.debugging )
+    if ( NEED_DEBUG_INFO )
       newChoice(CHP_DEBUG, FR PASS_LD);
 
     FRAME_FAILED;
@@ -3030,7 +3040,7 @@ VMI(S_STATIC, 0, 0, ())
   if ( chp.cref )
   { Choice ch = newChoice(CHP_CLAUSE, FR PASS_LD);
     ch->value.clause = chp;
-  } else if ( debugstatus.debugging )
+  } else if ( NEED_DEBUG_INFO )
     newChoice(CHP_DEBUG, FR PASS_LD);
 
   DEBUG(CHK_SECURE,
@@ -3126,7 +3136,7 @@ next_clause:
 VMI(S_NEXTCLAUSE, 0, 0, ())
 { cref = CL->next;
 
-  if ( debugstatus.debugging && !debugstatus.suspendTrace )
+  if ( REALLY_DEBUGGING && !debugstatus.suspendTrace )
   { ARGP = argFrameP(FR, 0);
     lTop = (LocalFrame)ARGP + FR->predicate->functor->arity;
 
@@ -3551,7 +3561,7 @@ VMI(A_ADD_FC, VIF_BREAK, 3, (CA1_FVAR, CA1_VAR, CA1_INTEGER))
   deRef(np);
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { Word expr;
 
     if ( !hasGlobalSpace(3) )
@@ -3887,7 +3897,7 @@ VMI(I_FOPEN, 0, 0, ())
 { FliFrame ffr;
 
 #ifdef O_DEBUGGER
-  if ( debugstatus.debugging )
+  if ( NEED_DEBUG_INFO )
   { lTop = (LocalFrame)argFrameP(FR, DEF->functor->arity);
     BFR = newChoice(CHP_DEBUG, FR PASS_LD);
     ffr = (FliFrame)lTop;
@@ -3927,6 +3937,7 @@ VMI(I_FCALLDETVA, 0, 1, (CA1_FOREIGN))
   context.predicate = DEF;
 
   PROF_FOREIGN;
+
   rc = (*f)(h0, DEF->functor->arity, &context);
   VMI_GOTO(I_FEXITDET);
 }
@@ -4256,7 +4267,7 @@ VMI(I_FEXITNDET, 0, 0, ())
 	PL_clear_foreign_exception(FR);
       DEBUG(CHK_SECURE, assert(BFR->value.PC == PC));
 #ifdef O_DEBUGGER
-      if ( unlikely(debugstatus.debugging) )
+      if ( unlikely(NEED_DEBUG_INFO) )
 	BFR->type = CHP_DEBUG;
       else
 #endif
@@ -4268,7 +4279,7 @@ VMI(I_FEXITNDET, 0, 0, ())
 	THROW_EXCEPTION;
       DEBUG(CHK_SECURE, assert(BFR->value.PC == PC));
 #ifdef O_DEBUGGER
-      if ( unlikely(debugstatus.debugging) )
+      if ( unlikely(NEED_DEBUG_INFO) )
 	BFR->type = CHP_DEBUG;
       else
 #endif
@@ -4584,7 +4595,7 @@ again:
   }
 
 
-  if ( debugstatus.debugging )
+  if ( REALLY_DEBUGGING )
   {
     for ( ;
         FR && FR > (LocalFrame)valTermRef(catchfr_ref);

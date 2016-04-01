@@ -330,19 +330,25 @@ with_wakeups(Goal):- Goal. % setup_call_cleanup_each(set_no_metavmi(X,0), Goal, 
 
 with_metaterm_disabled(Goal):-with_metaterm_disabled(global,Goal).
 with_metaterm_enabled(Goal):-with_metaterm_enabled(global,Goal).
+
+with_metaterm_disabled(Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm_disabled(Var,Goal):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), Goal, metaterm_flags(Var,~,metaterm_disabled)); Goal))).
+with_metaterm_enabled(Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm_enabled(Var,Goal):- metaterm_flags(Var,metaterm_disabled,0) -> Goal ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), Goal, metaterm_flags(Var,set,metaterm_disabled)).
 
 :- '$hide'(get_tracing/2).
 get_tracing(Goal,GG):- ((tracing,notrace)-> GG= (trace,Goal) ; GG=Goal ).
 
 :- '$hide'(wo_metavmi/1).
+wo_metavmi(Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 wo_metavmi(Goal):- get_tracing(Goal,GG), set_no_metavmi(X,_),(X>0 -> GG ;setup_call_cleanup_each(ignore(set_no_metavmi(_,X+1)), GG, set_no_metavmi(_,X))).
 
 :- '$hide'(with_metavmi/1).
+with_metavmi(Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metavmi(Goal):- get_tracing(Goal,GG),  set_no_metavmi(X,_),setup_call_cleanup_each(ignore(set_no_metavmi(_,0)), GG, set_no_metavmi(_,X)).
 
 :- '$hide'(with_metavmi_maybe/1).
+with_metavmi_maybe(Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metavmi_maybe(GG):-
  get_tracing(GG,Goal),
  set_no_metavmi(X,_),
@@ -351,12 +357,16 @@ with_metavmi_maybe(GG):-
     ; setup_call_cleanup_each(set_no_metavmi(_,0), Goal, set_no_metavmi(_,X))).
 
 
+wo_metaterm(Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 wo_metaterm(GG):- get_tracing(GG,Goal),wo_metaterm(global,wo_metavmi(Goal)).
 
+with_metaterm(Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm(GG):- get_tracing(GG,Goal),with_metaterm(global,with_metavmi_maybe(Goal)).
 
+wo_metaterm(_,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 wo_metaterm(Var,GG):- get_tracing(GG,Goal), (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), Goal, metaterm_flags(Var,~,metaterm_disabled)); Goal ))).
 
+with_metaterm(_,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm(Var,GG):- get_tracing(GG,Goal), (((metaterm_flags(Var,metaterm_disabled,0) -> Goal ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), Goal, metaterm_flags(Var,set,metaterm_disabled) )))).
 
 
