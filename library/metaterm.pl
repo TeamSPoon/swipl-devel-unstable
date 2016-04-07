@@ -27,7 +27,6 @@
     the GNU General Public License.
 */
 
-end_of_file.
 
 
 :- module(metaterm,[
@@ -85,7 +84,6 @@ end_of_file.
    plvar/1,
   anything_once/1,termfilter/1,subsumer_var/1,plvar_ex/1]).
 
-
 :- multifile(atts:metaterm_type/1).
 :- discontiguous(atts:metaterm_type/1).
 :- dynamic(atts:metaterm_type/1).
@@ -112,8 +110,6 @@ end_of_file.
 :- meta_predicate must_ts_det(0).
 :- meta_predicate metaterm_call(1,0).
 
-
-:- user:use_module(library(atts)).
 
 :- debug(fluents).
 :- debug(attvars).
@@ -807,6 +803,12 @@ rtrace_each((A,B)):-!,rtrace_each(A),!,rtrace_each(B),!.
 rtrace_each(B):-rtrace(B).
 
 cls0 :- shell(clear),shell(cls).
+
+:- set_prolog_flag(metaterm,enabled).
+
+:- user:use_module(library(atts)).
+:- use_module(library(atts)).
+
 :- export_all.
 :- set_module_metaterm_overriden('metaterm',false).
 
@@ -905,5 +907,5 @@ true.
 
 */
 
-:- set_prolog_flag(metaterm,enabled).
+
 

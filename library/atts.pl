@@ -32,7 +32,7 @@
 /* 
 
 */
-end_of_file.
+:- if(current_prolog_flag(metaterm,true)).
 
 :- module(atts,[
       % in init.pl
@@ -72,6 +72,7 @@ end_of_file.
       metaflag_unset/2,
       metaflag_set/2,
       metaflag_get/2,
+      meta/1,
       merge_fbs/3,
       matts/2,
       matts/1,
@@ -741,8 +742,8 @@ dict_to_attvar(Mod:Dict,Out):-
 eclipse:free(X):- var(X),\+attvar(X).
 
 % This type-checking predicate succeeds iff its argument is an attributed variable. For other type testing predicates an attributed variable behaves like a variable.
-% eclipse:
-system:meta(X):- notrace((attvar(X),get_attr(X,'$atts',N),N>0)).
+% eclipse: system:
+meta(X):- notrace((attvar(X),get_attr(X,'$atts',N),N>0)).
 
 % A new attribute can be added to a variable using the tool predicate
 % add_attribute(Var, Attr).
@@ -1213,11 +1214,12 @@ export_all:-
 
  
 
-
+:- if(\+ current_predicate(system:dmsg/1)).
 
 system:dmsg(M):- current_predicate(MOD:dmsg/1),MOD=logicmoo_util_dmsg, !, logicmoo_util_dmsg:dmsg(M),!.
 system:dmsg(M):- format(user_error,'~N~q.~n',[M]),flush_output(user_error),!.
 
+:- endif.
 
 tAA:verify_attributes(Var, Value, [get_attrs(CVar,AttrsNow),dmsg(tAA:goal_for(Name,Attrs=AttrsNow))]):- sformat(Name,'~w',Var), ignore(get_attrs(Var,Attrs)),put_attrs(CVar,Attrs),dmsg(tAA:va(Var,Value,[])=Attrs).
 tBB:verify_attributes(Var, Value, [get_attrs(CVar,AttrsNow),dmsg(tBB:goal_for(Name,Attrs=AttrsNow))]):- sformat(Name,'~w',Var), ignore(get_attrs(Var,Attrs)),put_attrs(CVar,Attrs),dmsg(tBB:va(Var,Value,[])=Attrs).
@@ -1257,6 +1259,8 @@ system:'$metaterm_call'(_Often,Goal,_Name,_Arity,_ArgNum,_IGoal,_IName,_IArity,_
 :- set_module_metaterm_overriden('atts',false).
 :- set_overriden(set_varname(_,_,_),false).
 :- set_overriden('$metaterm_call'/0,false).
+
+:- endif.
 
 end_of_file.
 
