@@ -1016,7 +1016,7 @@ any_to_fbs(BitsIn,BitsOut):- must_notrace((
 
 tst(G):- G*-> true; throw(tst_fail(G)).
 
-tst_det(G):- G,deterministic(Y),(Y==true->true;throw(tst_fail(G))).
+tst_det(G):- G,deterministic(Y),true,(Y==true->true;throw(tst_fail(G))).
 
 
 merge_fbs(V,VV,VVV):- number(V),catch((V < 0),_,fail),!, V0 is - V, merge_fbs(-(V0),VV,VVV),!.

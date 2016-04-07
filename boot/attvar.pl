@@ -39,6 +39,8 @@
 	  ]).
 
 :- meta_predicate '$wakeup'(0).
+% :- module_transparent((system:attr_portray_hook/2,system:attr_unify_hook/2)).
+:- module_transparent((freeze:attr_portray_hook/2,freeze:attr_unify_hook/2)).
 
 /** <module> Attributed variable handling
 
@@ -69,6 +71,7 @@ system:goals_with_module(_,_).
 :- meta_predicate run_crv(0,+,+,-).
 :- meta_predicate unfreeze(0).
 :- meta_predicate freeze:attr_unify_hook(0,?).
+% :- meta_predicate system:attr_unify_hook(?,?).
 
 
 
@@ -264,7 +267,10 @@ freeze:attr_unify_hook(Goal, Y) :-
 %	freeze(X, (a, !, b)).
 
 unfreeze(Goal) :- call(Goal).
+:- meta_predicate(system:'$and_froze'(0,0)).
 system:'$and_froze'(A,B):-unfreeze(A),unfreeze(B).
+
+
 
 freeze:attr_portray_hook(Goal, Var) :-
 	format('freeze(~w, ~W)', [ Var, Goal,
@@ -305,7 +311,7 @@ portray_attvar(Var) :-
 
 portray_attrs([], _).
 portray_attrs(att(Name, Value, Rest), Var) :-
-	Name:attr_portray_hook(Value, Var),
+	ifdef(Name:attr_portray_hook(Value, Var),system_portray_attrs(Value,Var)),
 	(   Rest == []
 	->  true
 	;   write(', '),
@@ -313,7 +319,7 @@ portray_attrs(att(Name, Value, Rest), Var) :-
 	).
 
 
-system:attr_portray_hook(Name,Value):- 
+system_portray_attrs(Name,Value):- 
   current_prolog_flag(write_attributes,W),
   set_prolog_flag(write_attributes, ignore),
  format('~q:~W', [Name, Value,

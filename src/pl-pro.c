@@ -172,7 +172,9 @@ pl_break1(atom_t goal)
   }
   LD->break_level = old_level;
 
+#ifndef O_NOTRACE_JUST_DISABLES
   debugstatus.suspendTrace = suspSave;
+#endif
   debugstatus.skiplevel    = skipSave;
   tracemode(traceSave, NULL);
   debugmode(debugSave, NULL);
@@ -231,7 +233,10 @@ PRED_IMPL("notrace", 1, notrace, PL_FA_TRANSPARENT|PL_FA_NOTRACE)
   rval = callProlog(NULL, A1, PL_Q_CATCH_EXCEPTION|PL_Q_NODEBUG, &ex);
 
   debugstatus.skiplevel    = skipSave;
+
+#ifdef O_NOTRACE_JUST_DISABLES
   debugstatus.tracing      = traceSave;
+#endif
 
   if ( !rval && ex )
     return PL_raise_exception(ex);

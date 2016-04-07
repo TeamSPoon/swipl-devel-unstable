@@ -1816,6 +1816,12 @@ PL_put_predicate_modes(predicate_t proc, const char *spec_s)
   { int spec_c = *s;
     int spec;
 
+    /* 
+
+      TODO implement '@', '++', '!' ,'--'
+
+    */
+
     switch(spec_c)
     { case '+':
 	spec = MA_NONVAR;

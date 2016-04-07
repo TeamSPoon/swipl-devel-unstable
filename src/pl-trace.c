@@ -654,8 +654,13 @@ traceAction(char *cmd, int port, LocalFrame frame, Choice bfr,
   { case 'a':	FeedBack("abort\n");
 		return ACTION_ABORT;
     case 'b':	FeedBack("break\n");
-		pl_break();
-		return ACTION_AGAIN;
+        pl_break();
+        return ACTION_AGAIN;
+#ifdef O_NOTRACE_JUST_DISABLES
+    case 't':	FeedBack("unsuspend trace\n");
+        debugstatus.suspendTrace = 0;
+        return ACTION_AGAIN;
+#endif
     case '/':	FeedBack("/");
 		Sflush(Sdout);
 		if ( setupFind(&s[1]) )
@@ -727,7 +732,7 @@ traceAction(char *cmd, int port, LocalFrame frame, Choice bfr,
 		debugmode(DBG_OFF, NULL);
 		return ACTION_CONTINUE;
     case 'g':	FeedBack("goals\n");
-		PL_backtrace(num_arg == Default ? 5 : num_arg, PL_BT_USER);
+		PL_backtrace(num_arg == Default ? 15 : num_arg, PL_BT_USER);
 		return ACTION_AGAIN;
     case 'A':	FeedBack("alternatives\n");
 		alternatives(bfr);
@@ -1297,7 +1302,8 @@ stack in a fairly safe manner.
     { pl_context_t ctx;
 
       if ( PL_get_context(&ctx, 0) )
-      { int max = 5;
+      { int max = 
+      5;
 
 	Sdprintf("Prolog stack:\n");
 
@@ -1604,6 +1610,9 @@ interruptHandler(int sig)
   { if ( PL_pending(sig) )
     { PL_clearsig(sig);
       safe = FALSE;
+#ifdef O_NOTRACE_JUST_DISABLES
+      safe = TRUE;
+#endif
     } else
     { DEBUG(1, Sdprintf("Reposting as synchronous\n"));
       PL_raise(sig);
@@ -1616,6 +1625,10 @@ interruptHandler(int sig)
 
   Sreset();
 again:
+
+#ifdef O_NOTRACE_JUST_DISABLES
+   safe = TRUE;
+#endif
   if ( safe )
   { printMessage(ATOM_debug, PL_FUNCTOR, FUNCTOR_interrupt1, PL_ATOM, ATOM_begin);
   } else
@@ -1663,7 +1676,13 @@ again:
 		break;
 #ifdef O_DEBUGGER
     case 'g':	Sfprintf(Sdout, "goals\n");
-		PL_backtrace(5, PL_BT_USER);
+      #ifdef O_NOTRACE_JUST_DISABLES
+          debugstatus.suspendTrace = 0;
+          PL_backtrace(15, PL_BT_USER);
+      #else
+          PL_backtrace(5, PL_BT_USER);
+      #endif
+
 		goto again;
 #endif /*O_DEBUGGER*/
     case 's':	save_backtrace("INT");
@@ -1677,9 +1696,13 @@ again:
 #ifdef O_DEBUGGER
     case 't':	if ( safe )
 		{ Sfprintf(Sdout, "trace\n");
+#ifdef O_NOTRACE_JUST_DISABLES
+          debugstatus.suspendTrace = 0;
+#endif
 		  printMessage(ATOM_debug,
 			       PL_FUNCTOR, FUNCTOR_interrupt1,
 			         PL_ATOM, ATOM_trace);
+
 		  pl_trace();
 		  break;
 		} else
@@ -1729,7 +1752,8 @@ suspendTrace(int suspend)
   if ( suspend )
     debugstatus.suspendTrace++;
   else
-    debugstatus.suspendTrace--;
+    if(debugstatus.suspendTrace>0)
+      debugstatus.suspendTrace--;
 }
 
 

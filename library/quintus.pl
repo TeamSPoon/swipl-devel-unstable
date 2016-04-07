@@ -263,8 +263,10 @@ no_style_check(QOption) :-
 %	  :- op(1150, fx, [(mode)]).
 %	  ==
 
+% https://github.com/logicmoo/swipl-devel-unstable defines m,ode/1
+:- if(\+ current_predicate(system:mode/1)).
 mode(_).
-
+:- endif.
 
 		 /*******************************
 		 *	      TYPES		*

@@ -217,8 +217,6 @@ nop(_,_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_,_).
 nop(_,_,_,_,_,_,_,_,_).
 
-% nop/1 is for disabling code while staying in syntax
-
 
 
 :- meta_predicate(ifdef(+,0)).
@@ -272,13 +270,14 @@ amsg(Goal):- notrace(
                   call_cleanup_each(0,0).
 
 :- module_transparent(must_or_die/1).
-must_or_die(Goal):- (catch(Goal,E,(writeq(E),nl,fail)) *-> notrace(true) ; (trace,Goal->true;throw(failed_must_or_die(Goal)))).
+% must_or_die(Goal):- (catch(Goal,E,(writeq(E),nl,fail)) *-> notrace(true) ; (trace,Goal->true;throw(failed_must_or_die(Goal)))).
+must_or_die(Goal):- (Goal *-> true ; throw(failed_must_or_die(Goal))).
 
 :- '$hide'(true/0).
 
 :- module_transparent(must_atomic/1).
 :- '$hide'(must_atomic/1).
-must_atomic(Goal):- '$sig_atomic'(must_or_die(Goal)).
+must_atomic(Goal):- must_or_die('$sig_atomic'(Goal)).
 
 :- module_transparent(must_notrace/1).
 :- '$hide'(must_notrace/1).
@@ -296,15 +295,14 @@ call_cleanup_each(Goal, Cleanup) :-
 
 :- '$hide'(setup_call_cleanup_each/3).
 setup_call_cleanup_each(Setup,Goal,Undo):-
-   must_atomic(Setup),
-   catch((
-     call((Goal,deterministic(Det),true))
+     catch((
+        call((must_atomic(Setup),Goal,deterministic(Det),true))
         *->
         (Det == true
-         -> must_atomic(Undo)
-          ; (must_atomic(Undo);(must_atomic(Setup),fail)))
-     ; (must_atomic(Undo),fail)),
-     E, (must_atomic(Undo),throw(E))).
+         -> (once(Undo),!)
+          ; (once(Undo);(must_atomic(Setup),fail)))
+     ; (once(Undo),!,fail)),
+     E, (ignore(once(Undo)),throw(E))).
 
 /*
 :- '$hide'(setup_call_cleanup_each/3).

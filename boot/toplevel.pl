@@ -820,8 +820,9 @@ subst_chars([H|T]) -->
 
 '$execute_goal2'(Goal, Bindings) :-
 	restore_debug,
-	residue_vars(Goal, Vars),
-	deterministic(Det),
+	(residue_vars(Goal, Vars),
+	deterministic(Det)),
+        true,
 	(   save_debug
 	;   restore_debug, fail
 	),

@@ -2156,6 +2156,7 @@ typedef struct metaterm_pred_override
 #ifdef O_METATERM
 
 #define O_METATERM_PARANOID 1
+#define O_NOTRACE_JUST_DISABLES 1
 
 #define METATERM_GLOBAL_FLAGS (METATERM_CURRENT = isVar(*METATERM_GLOBAL)?METATERM_DEFAULT:valInteger(*METATERM_GLOBAL))
 #define METATERM_GLOBAL valPHandle(LD->attvar.metaterm_opts PASS_LD)

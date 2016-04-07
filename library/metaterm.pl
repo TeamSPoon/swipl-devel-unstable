@@ -395,6 +395,37 @@ equals0(b3,y3).
 
 q(A,B):-ab(A,B),xy(A,B).
 
+/*
+
+ in,out   det,nondet
+
+ semidet, 
+
+   :- 
+
+   : @
+   ^
+   0-N = 
+
+
+
+   +   The argument is instantiated, i.e. it is not a variable.
+   
+   ++  The argument is ground.
+   
+   -   The argument is not instantiated, it must be a free variable without 
+       any constraints, especially it must not occur in any other argument 
+       and it cannot be a suspending variable. 
+   
+   *   The argument is an attributed variable that may have constraints 
+       or is a suspending variable. This detail is not a valid argument mode
+       to the mode/1 directive and is printed merely for interest. As a result
+       the actual argument mode will appear as '?'.
+   
+   ?   The mode is not known or it is neither of the above ones.
+
+*/
+
 %:- pop_current_source_module.
 
 %% set_unifyp(+Pred,?Fluent) is det.
@@ -508,7 +539,7 @@ t2:- must_ts(rtrace( (freeze(Foo,setarg(1,Foo,cant)),  Foo=break_me(borken), Foo
 must_ts(G):- !, must(G).
 must_ts(G):- G*-> true; throw(must_ts_fail(G)).
 must_ts_det(G):- !, must(G),!.
-must_ts_det(G):- G,deterministic(Y),(Y==true->true;throw(must_ts_fail_det(G))).
+must_ts_det(G):- G,deterministic(Y),true,(Y==true->true;throw(must_ts_fail_det(G))).
 
 do_test_type(MType):- strip_module(MType,_M,Type), atts:metaterm_type(Type), writeln(maplist_local=Type+X),
    call(Type,X),

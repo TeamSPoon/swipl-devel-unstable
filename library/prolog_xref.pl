@@ -47,7 +47,7 @@
 	    xref_current_source/1,	% ?Source
 	    xref_done/2,		% +Source, -When
 	    xref_built_in/1,		% ?Callable
-	    xref_source_file/3,		% +Spec, -Path, +Source
+	    %xref_source_file/3,		% +Spec, -Path, +Source
 	    xref_source_file/4,		% +Spec, -Path, +Source, +Options
 	    xref_public_list/3,		% +File, +Src, +Options
 	    xref_public_list/4,		% +File, -Path, -Export, +Src
@@ -82,6 +82,13 @@
 		       process_include(boolean)
 		     ]).
 
+
+
+:- multifile
+	prolog:xref_source_identifier/2,	% +Source, -Id
+	prolog:xref_source_directory/2,		% +Source, -Dir
+	prolog:xref_open_source/2,		% +SourceId, -Stream
+	prolog:xref_source_file/3.
 
 :- dynamic
 	called/4,			% Head, Src, From, Cond
