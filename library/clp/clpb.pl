@@ -1523,8 +1523,9 @@ attribute_goals(Var) -->
         (   { root_get_formula_bdd(Root, Formula, BDD) } ->
             { del_bdd(Root) },
             (   { current_prolog_flag(clpb_residuals, bdd) } ->
-                { bdd_nodes(BDD, Nodes) },
-                nodes(Nodes)
+                { bdd_nodes(BDD, Nodes),
+                  phrase(nodes(Nodes), Ns) },
+                [clpb:'$clpb_bdd'(Ns)]
             ;   { phrase(sat_ands(Formula), Ands0),
                   ands_fusion(Ands0, Ands),
                   maplist(formula_anf, Ands, ANFs0),
@@ -1534,7 +1535,7 @@ attribute_goals(Var) -->
                 sats(ANFs)
             ),
             (   { get_attr(Var, clpb_atom, Atom) } ->
-                [sat(Var=:=Atom)]
+                [clpb:sat(Var=:=Atom)]
             ;   []
             ),
             % formula variables not occurring in the BDD should be booleans
@@ -1545,6 +1546,8 @@ attribute_goals(Var) -->
             booleans(RestVs)
         ;   boolean(Var)  % the variable may have occurred only in taut/2
         ).
+
+del_clpb(Var) :- del_attr(Var, clpb).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Fuse formulas that share the same variables into single conjunctions.
@@ -1643,9 +1646,10 @@ pairs_([B|Bs], A) --> [A-B], pairs_(Bs, A).
 
 nodes([]) --> [].
 nodes([Node|Nodes]) -->
-        { node_var_low_high(Node, Var, Low, High),
+        { node_var_low_high(Node, Var0, Low, High),
+          var_or_atom(Var0, Var),
           maplist(node_projection, [Node,High,Low], [ID,HID,LID]),
-          var_index(Var, VI) },
+          var_index(Var0, VI) },
         [ID-(v(Var,VI) -> HID ; LID)],
         nodes(Nodes).
 
@@ -1656,23 +1660,20 @@ node_projection(Node, Projection) :-
         ;   Projection = ID
         ).
 
-
-del_clpb(Var) :- del_attr(Var, clpb).
-
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    By default, residual goals are sat/1 calls of the remaining formulas,
    using (mostly) algebraic normal form.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
 sats([]) --> [].
-sats([A|As]) --> [sat(A)], sats(As).
+sats([A|As]) --> [clpb:sat(A)], sats(As).
 
 booleans([]) --> [].
 booleans([B|Bs]) --> boolean(B), { del_clpb(B) }, booleans(Bs).
 
 boolean(Var) -->
         (   { get_attr(Var, clpb_omit_boolean, true) } -> []
-        ;   [sat(Var =:= Var)]
+        ;   [clpb:sat(Var =:= Var)]
         ).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
