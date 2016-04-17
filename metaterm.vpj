@@ -1,0 +1,145 @@
+<!DOCTYPE Project SYSTEM "http://www.slickedit.com/dtd/vse/10.0/vpj.dtd">
+<Project
+	Version="10.0"
+	VendorName="SlickEdit"
+	WorkingDir=".">
+	<Config
+		Name="Release"
+		OutputFile=""
+		CompilerConfigName="Latest Version">
+		<Menu>
+			<Target
+				Name="Compile"
+				MenuCaption="&amp;Compile"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveCurrent"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Build"
+				MenuCaption="&amp;Build"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveWorkspaceFiles"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Rebuild"
+				MenuCaption="&amp;Rebuild"
+				CaptureOutputWith="ProcessBuffer"
+				SaveOption="SaveWorkspaceFiles"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Debug"
+				MenuCaption="&amp;Debug"
+				SaveOption="SaveNone"
+				RunFromDir="%rw">
+				<Exec/>
+			</Target>
+			<Target
+				Name="Execute"
+				MenuCaption="E&amp;xecute"
+				SaveOption="SaveNone"
+				RunFromDir="%rw">
+				<Exec CmdLine='"metaterm.exe"'/>
+			</Target>
+		</Menu>
+	</Config>
+	<CustomFolders>
+		<Folder
+			Name="Source Files"
+			Filters="*.c;*.C;*.cc;*.cpp;*.cp;*.cxx;*.prg;*.pas;*.dpr;*.asm;*.s;*.bas;*.java;*.cs;*.sc;*.e;*.cob;*.html;*.rc;*.tcl;*.py;*.pl">
+		</Folder>
+		<Folder
+			Name="Header Files"
+			Filters="*.h;*.H;*.hh;*.hpp;*.hxx;*.inc;*.sh;*.cpy;*.if">
+		</Folder>
+		<Folder
+			Name="Resource Files"
+			Filters="*.ico;*.cur;*.dlg"/>
+		<Folder
+			Name="Bitmaps"
+			Filters="*.bmp"/>
+		<Folder
+			Name="Other Files"
+			Filters="">
+		</Folder>
+	</CustomFolders>
+	<Files AutoFolders="PackageView">
+		<Folder Name="/root">
+			<F N="/root/.bash_history"/>
+			<F N="/root/.swiplrc"/>
+			<F N="/root/.swiplrc.hide"/>
+			<F N="/root/.swiplrca"/>
+		</Folder>
+		<Folder Name="boot">
+			<F N="boot/attvar.pl"/>
+			<F N="boot/init.pl"/>
+			<F N="boot/syspred.pl"/>
+			<F N="boot/toplevel.pl"/>
+		</Folder>
+		<Folder Name="library">
+			<F N="library/atts.pl"/>
+			<F N="library/drac.pl"/>
+			<F N="library/metaterm.pl"/>
+		</Folder>
+		<Folder Name="src">
+			<F N="src/ATOMS"/>
+			<F N="src/config.h"/>
+			<F N="src/pl-attvar.c"/>
+			<F N="src/pl-codelist.h"/>
+			<F N="src/pl-comp.c"/>
+			<F N="src/pl-cont.c"/>
+			<F N="src/pl-copyterm.c"/>
+			<F N="src/pl-dbref.c"/>
+			<F N="src/pl-dra.c"/>
+			<F N="src/pl-error.c"/>
+			<F N="src/pl-ext.c"/>
+			<F N="src/pl-fli.c"/>
+			<F N="src/pl-funcs.h"/>
+			<F N="src/pl-funct.c"/>
+			<F N="src/pl-gc.c"/>
+			<F N="src/pl-global.h"/>
+			<F N="src/pl-gvar.c"/>
+			<F N="src/pl-incl.h"/>
+			<F N="src/pl-init.c"/>
+			<F N="src/pl-init.h"/>
+			<F N="src/pl-inline.h"/>
+			<F N="src/pl-op.c"/>
+			<F N="src/pl-prims.c"/>
+			<F N="src/pl-pro.c"/>
+			<F N="src/pl-proc.c"/>
+			<F N="src/pl-rec.c"/>
+			<F N="src/pl-setup.c"/>
+			<F N="src/pl-sys.c"/>
+			<F N="src/pl-trace.c"/>
+			<F N="src/pl-util.c"/>
+			<F N="src/pl-variant.c"/>
+			<F N="src/pl-version.c"/>
+			<F N="src/pl-vmi.c"/>
+			<F N="src/pl-wam.c"/>
+		</Folder>
+		<Folder Name="src/Tests/attvar">
+			<F N="src/Tests/attvar/sendmoney.pl"/>
+			<F N="src/Tests/attvar/test_dif.pl"/>
+			<F N="src/Tests/attvar/test_wake_all.pl"/>
+		</Folder>
+		<Folder Name="src/Tests/tabling">
+			<F N="src/Tests/tabling/test_tabling_sanity.pl"/>
+		</Folder>
+		<F N=".gitmodules"/>
+		<F N=".ircbot.pl"/>
+		<F N="build"/>
+		<F N="buildr"/>
+		<F N="foo"/>
+		<F N="guess_modes.pl"/>
+		<F
+			N="Makefile"
+			Type="Makefile"/>
+		<F N="nobuild"/>
+		<F N="test123.pl"/>
+	</Files>
+</Project>
