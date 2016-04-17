@@ -165,7 +165,7 @@ destroyDefinition(Definition def)
     set(def, P_ERASED);
   } else					/* foreign and thread-local */
   { if ( true(def, P_DIRTYREG) )
-    { DEBUG(0, Sdprintf("Dirty: %s\n", predicateName(def)));
+    { DEBUG(MSG_PROC, Sdprintf("Dirty: %s\n", predicateName(def)));
       unregisterDirtyDefinition(def);
     }
 

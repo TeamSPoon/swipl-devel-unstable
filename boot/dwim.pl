@@ -346,7 +346,7 @@ map_pi_heads([PI0|T0], [H0|T]) :-
 map_pi_head(M:PI, M:Head) :-
 	nonvar(M), !,
 	map_pi_head(PI, Head).
-map_pi_head(Name/Arity, Term) :-
+map_pi_head(Name/Arity, Term) :- (var(Term)->ignore(Arity=1);true),
 	functor(Term, Name, Arity).
 
 %%	principal_predicates(:Heads, +Context, -Principals)

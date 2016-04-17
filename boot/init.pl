@@ -329,9 +329,9 @@ with_wakeups(Goal):- Goal. % setup_call_cleanup_each(set_no_metavmi(X,0), Goal, 
 with_metaterm_disabled(Goal):-with_metaterm_disabled(global,Goal).
 with_metaterm_enabled(Goal):-with_metaterm_enabled(global,Goal).
 
-with_metaterm_disabled(Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
+with_metaterm_disabled(_Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm_disabled(Var,Goal):- (((metaterm_flags(Var,metaterm_disabled,0) -> setup_call_cleanup_each(metaterm_flags(Var,set,metaterm_disabled), Goal, metaterm_flags(Var,~,metaterm_disabled)); Goal))).
-with_metaterm_enabled(Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
+with_metaterm_enabled(_Var,Goal):- \+ current_prolog_flag(metaterm,enabled),!,Goal.
 with_metaterm_enabled(Var,Goal):- metaterm_flags(Var,metaterm_disabled,0) -> Goal ; setup_call_cleanup_each(metaterm_flags(Var,~,metaterm_disabled), Goal, metaterm_flags(Var,set,metaterm_disabled)).
 
 :- '$hide'(get_tracing/2).

@@ -804,7 +804,7 @@ rtrace_each(B):-rtrace(B).
 
 cls0 :- shell(clear),shell(cls).
 
-:- set_prolog_flag(metaterm,enabled).
+:- set_prolog_flag(metaterm,true).
 
 :- user:use_module(library(atts)).
 :- use_module(library(atts)).

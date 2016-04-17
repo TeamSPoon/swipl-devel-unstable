@@ -742,7 +742,7 @@ restore_debug :-
 	set_prolog_flag(debug, Debugging),
 	(   Tracing == true
 	->  trace
-	;   true
+	;   notrace
 	).
 
 :- initialization
@@ -819,9 +819,9 @@ subst_chars([H|T]) -->
 	fail.
 
 '$execute_goal2'(Goal, Bindings) :-
-	restore_debug,
+	notrace(restore_debug),
 	(residue_vars(Goal, Vars),
-	deterministic(Det)),
+        deterministic(Det)),
         true,
 	(   save_debug
 	;   restore_debug, fail
