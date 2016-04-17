@@ -51,6 +51,9 @@
 :- use_module(library(assoc)).
 :- use_module(library(apply_macros)).
 
+:- create_prolog_flag(clpb_monotonic, false, []).
+:- create_prolog_flag(clpb_residuals, default, []).
+
 /** <module> Constraint Logic Programming over Boolean Variables
 
 ### Introduction                        {#clpb-intro}
@@ -274,7 +277,9 @@ node(2)- (v(X, 1)->false;true).
    Type checking.
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
 
-is_sat(V)     :- var(V), !.
+is_sat(V)     :- var(V), !, non_monotonic(V).
+is_sat(v(V))  :- var(V), !.
+is_sat(v(I))  :- integer(I), between(0, 1, I).
 is_sat(I)     :- integer(I), between(0, 1, I).
 is_sat(A)     :- atom(A).
 is_sat(~A)    :- is_sat(A).
@@ -295,6 +300,15 @@ is_sat(card(Is,Fs)) :-
         must_be(list, Fs),
         maplist(is_sat, Fs).
 
+non_monotonic(X) :-
+        (   var_index(X, _) ->
+            % OK: already constrained to a CLP(B) variable
+            true
+        ;   current_prolog_flag(clpb_monotonic, true) ->
+            instantiation_error(X)
+        ;   true
+        ).
+
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Rewriting to canonical expressions.
    Atoms are converted to variables with a special attribute.
@@ -306,6 +320,7 @@ is_sat(card(Is,Fs)) :-
 sat_rewrite(V, V)       :- var(V), !.
 sat_rewrite(I, I)       :- integer(I), !.
 sat_rewrite(A, V)       :- atom(A), !, clpb_atom_var(A, V).
+sat_rewrite(v(V), V).
 sat_rewrite(P0*Q0, P*Q) :- sat_rewrite(P0, P), sat_rewrite(Q0, Q).
 sat_rewrite(P0+Q0, P+Q) :- sat_rewrite(P0, P), sat_rewrite(Q0, Q).
 sat_rewrite(P0#Q0, P#Q) :- sat_rewrite(P0, P), sat_rewrite(Q0, Q).
@@ -328,6 +343,7 @@ or(A, B, B + A).
 and(A, B, B * A).
 
 must_be_sat(Sat) :-
+        must_be(acyclic, Sat),
         (   is_sat(Sat) -> true
         ;   no_truth_value(Sat)
         ).
@@ -1356,11 +1372,16 @@ var_u(Node, VNum, Index) :-
 % each admissible assignment is equally likely. Seed is an integer,
 % used as the initial seed for the random number generator.
 
+single_bdd(Vars0) :-
+        maplist(monotonic_variable, Vars0, Vars),
+        % capture all variables with a single BDD
+        sat(+[1|Vars]).
+
 random_labeling(Seed, Vars) :-
         must_be(list, Vars),
         set_random(seed(Seed)),
         (   ground(Vars) -> true
-        ;   catch((sat(+[1|Vars]), % capture all variables with a single BDD
+        ;   catch((single_bdd(Vars),
                    once((member(Var, Vars),var(Var))),
                    var_index_root(Var, _, Root),
                    root_get_formula_bdd(Root, _, BDD),
@@ -1420,7 +1441,7 @@ random_bindings(VNum, Node) -->
 weighted_maximum(Ws, Vars, Max) :-
         must_be(list(integer), Ws),
         must_be(list(var), Vars),
-        sat(+[1|Vars]),      % capture all variables with a single BDD
+        single_bdd(Vars),
         Vars = [Var|_],
         var_index_root(Var, _,  Root),
         root_get_formula_bdd(Root, _, BDD0),
@@ -1686,17 +1707,27 @@ formula_anf(Formula0, ANF) :-
         node_anf(Node, ANF).
 
 node_anf(Node, ANF) :-
-        node_xors(Node, Xors),
+        node_xors(Node, Xors0),
+        maplist(maplist(monotonic_variable), Xors0, Xors),
         maplist(list_to_conjunction, Xors, Conjs),
-        (   Conjs = [Var,C|Rest], var(Var) ->
+        (   Conjs = [Var,C|Rest], clpb_var(Var) ->
             foldl(xor, Rest, C, RANF),
             ANF = (Var =\= RANF)
-        ;   Conjs = [One,Var,C|Rest], One == 1, var(Var) ->
+        ;   Conjs = [One,Var,C|Rest], One == 1, clpb_var(Var) ->
             foldl(xor, Rest, C, RANF),
             ANF = (Var =:= RANF)
         ;   Conjs = [C|Cs],
             foldl(xor, Cs, C, ANF)
         ).
+
+monotonic_variable(Var0, Var) :-
+        (   var(Var0), current_prolog_flag(clpb_monotonic, true) ->
+            Var = v(Var0)
+        ;   Var = Var0
+        ).
+
+clpb_var(Var) :- var(Var), !.
+clpb_var(v(_)).
 
 list_to_conjunction([], 1).
 list_to_conjunction([L|Ls], Conj) :- foldl(and, Ls, L, Conj).

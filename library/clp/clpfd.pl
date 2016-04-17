@@ -239,6 +239,12 @@ http://eu.swi-prolog.org/man/clpfd.html
 The implementation of this library is described in:
 [metalevel.at/drt.pdf](http://www.metalevel.at/drt.pdf)
 
+The best way to discuss applying, improving and extending CLP(FD)
+constraints is to use the dedicated **clpfd** tag on
+[**stackoverflow.com**](http://stackoverflow.com/questions/tagged/clpfd).
+Several of the world's foremost CLP(FD) experts regularly participate
+in these discussions and will help you for free on this platform.
+
 ### Arithmetic constraints		{#clpfd-arith-constraints}
 
 *Arithmetic constraints* subsume and supersede low-level Prolog
@@ -577,6 +583,8 @@ X in inf..sup.
 
 @author Markus Triska
 */
+
+:- create_prolog_flag(clpfd_monotonic, false, []).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    A bound is either:
@@ -6707,7 +6715,7 @@ unwrap_with(Goal, Term0, Term) :-
         maplist(unwrap_with(Goal), Args0, Args),
         Term =.. [F|Args].
 
-bare_integer(V0, V)    :- ( integer(V0) -> V = V0 ; V = ?(V0) ).
+bare_integer(V0, V)    :- ( integer(V0) -> V = V0 ; V = #(V0) ).
 
 attribute_goal_(presidual(Goal))       --> [Goal].
 attribute_goal_(pgeq(A,B))             --> [?(A) #>= ?(B)].
