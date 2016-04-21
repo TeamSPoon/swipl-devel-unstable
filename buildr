@@ -20,8 +20,8 @@ make clean distclean
 # remainder of the commandline as privilaged   user. E.g., if you change
 # PREFIX to /usr/local you typically must change SUDO to "sudo"
 
-PREFIX=$HOME
-#PREFIX=/usr/local
+#PREFIX=$HOME
+PREFIX=/usr/local
 SUDO=
 
 #rm -rf /usr/local/lib/swipl-7.3.15

@@ -289,11 +289,14 @@ no_trace(G):-notrace((tracing,notrace))->
    setup_call_cleanup_each(notrace(notrace),G,notrace(trace)); G.
 
 
+
 :- '$hide'(call_cleanup_each/2).
 call_cleanup_each(Goal, Cleanup) :-
 	setup_call_cleanup_each(true, Goal, Cleanup).
 
-:- '$hide'(setup_call_cleanup_each/3).
+/*
+
+:- if(\+ current_predicate(system:setup_call_cleanup_each/3)).
 setup_call_cleanup_each(Setup,Goal,Undo):-
      catch((
         call((must_atomic(Setup),Goal,deterministic(Det),true))
@@ -303,9 +306,13 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
           ; (once(Undo);(must_atomic(Setup),fail)))
      ; (once(Undo),!,fail)),
      E, (ignore(once(Undo)),throw(E))).
+:- endif.
+
+:- '$hide'(setup_call_cleanup_each/3).
+
+*/
 
 /*
-:- '$hide'(setup_call_cleanup_each/3).
 setup_call_cleanup_each(Setup,Goal,Undo):-
    must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),!,   
    setup_call_cleanup(notrace(true),
@@ -2476,8 +2483,7 @@ load_files(Module:Files, Options) :-
 	       'Non-module file already loaded into module ~w; \c
 	       trying to load into ~w',
 	       [OldModule, Module]),
-	throw(error(permission_error(load, source, File),
-		    context(load_files/2, Msg))).
+	nop(throw(error(permission_error(load, source, File),context(load_files/2, Msg)))).
 '$check_load_non_module'(_, _).
 
 %%	'$load_file'(+Path, +Id, -Module, +Options)

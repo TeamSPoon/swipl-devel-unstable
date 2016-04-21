@@ -121,6 +121,157 @@ put_environment(term_t env, LocalFrame fr, Code pc)
 }
 
 
+
+static qid_t 
+quidFromGoal(Module module, term_t goal, int flags)
+{ GET_LD
+  functor_t fd;
+  Procedure proc;
+  term_t g;
+
+  assert((Word)lTop == refFliP(fli_context, fli_context->size));
+
+  if ( !(g=PL_new_term_ref()) )
+  {
+    return FALSE;
+  }
+
+  if ( !PL_strip_module(goal, &module, g) )
+    return FALSE;
+  if ( !PL_get_functor(g, &fd) )
+  {
+    PL_error(NULL, 0, NULL, ERR_TYPE, ATOM_callable, goal);
+    PL_reset_term_refs(g);
+    return FALSE;
+  }
+  proc = resolveProcedure(fd, module);
+
+  { int arity = arityFunctor(fd);
+    term_t args;
+    int n;
+
+    if ( (args = PL_new_term_refs(arity)) )
+    {
+      for ( n=0; n<arity; n++ )
+        _PL_get_arg(n+1, g, args+n);
+
+     return PL_open_query(module, flags, proc, args);
+    }
+  }
+  return FALSE;
+}
+
+static int
+get_deterministic(ARG1_LD)
+{ LocalFrame FR  = environment_frame->parent;
+  Choice     BFR = LD->choicepoints;
+  
+  for ( ; BFR; BFR = BFR->parent )
+  {
+    switch ( BFR->type )
+    {
+      case CHP_CLAUSE:
+        if ( BFR->frame == FR )
+          return CHP_CLAUSE;
+      case CHP_JUMP:
+        if ( (void *)BFR > (void *)FR )
+          return 0;
+        else
+          return 2;
+      default:
+        continue;
+    }
+  }
+  return 3;
+}
+
+
+#define RETRY_MAGIC	0x37ac7666
+
+typedef struct retry_next
+{ int		magic;			/* RETRY_MAGIC */
+  term_t   presetup;		/* Used for undo  */
+  qid_t    qid;		/* Used for redo  */
+} retry_next;
+
+
+static
+PRED_IMPL("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
+{
+  PRED_LD
+  retry_next *redo;
+  redo = 0;
+  int rval, det;
+  term_t qex = 0;
+  
+  switch ( CTX_CNTRL )
+  {
+    case FRG_FIRST_CALL:
+      redo = malloc(sizeof(retry_next));
+      DEBUG(MSG_NSOLS, Sdprintf("Suspend %p\n", redo));
+      redo->magic = RETRY_MAGIC;
+      redo->qid = quidFromGoal(NULL,A2,PL_Q_NORMAL);
+    case FRG_REDO:
+      if(!redo)
+      {
+        redo = CTX_PTR;
+        if(redo->presetup) PL_reset_term_refs(redo->presetup);
+      }
+      redo->presetup =  PL_new_term_ref();
+
+      startCritical;
+      rval = callProlog(NULL, A1, PL_Q_PASS_EXCEPTION, NULL);
+      if ( !endCritical )
+        fail;       /* aborted */
+      if ( rval!=TRUE )
+      {
+        return rval;
+      }
+      rval = PL_next_solution(redo->qid);
+
+      DEBUG(MSG_NSOLS, Sdprintf("Resume %p\n", redo));
+      if ( !rval )
+      { det = 1;
+        qex = PL_exception(redo->qid); 
+      } else
+      {
+        det = get_deterministic(PASS_LD1);
+      }
+      if ( det )
+      { PL_cut_query(redo->qid);
+      }
+
+      startCritical;
+      callProlog(NULL, A3, PL_Q_PASS_EXCEPTION, NULL);
+      if ( !endCritical )
+        rval = 0;       /* aborted */
+
+      if (qex)
+      {
+        PL_throw(qex);
+        return rval;
+      }
+
+      if(!rval) 
+      { if(redo->presetup)
+          PL_reset_term_refs(redo->presetup);
+        return FALSE;
+      }
+
+      if (!det )ForeignRedoPtr(redo);
+      return rval;
+
+    case FRG_CUTTED:
+      redo = CTX_PTR;
+      PL_cut_query(redo->qid);
+      free(redo);
+      return TRUE;
+    default:
+      assert(0);
+      return FALSE;
+  }
+}
+
 static int
 unify_continuation(term_t cont, LocalFrame resetfr, LocalFrame fr, Code pc)
 { GET_LD
@@ -352,4 +503,5 @@ BeginPredDefs(cont)
   PRED_DEF("$start_reset",        0, start_reset,        0)
   PRED_DEF("shift",               1, shift,              0)
   PRED_DEF("$call_one_tail_body", 1, call_one_tail_body, 0)
+  PRED_DEF("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
 EndPredDefs

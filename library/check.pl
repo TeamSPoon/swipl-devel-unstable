@@ -45,6 +45,19 @@
 :- use_module(library(option)).
 :- use_module(library(apply)).
 :- use_module(library(prolog_codewalk)).
+/*
+?- check.
+% Checking undefined predicates ...
+% Checking trivial failures ...
+% Checking redefined system and global predicates ...
+% Checking predicates with declarations but without clauses ...
+% Checking predicates that need autoloading ...
+ERROR: check:predicate/3: Undefined procedure: check:predicate_name/2
+ERROR:   However, there are definitions for:
+ERROR:         predicate_name/2
+true.
+*/
+:- use_module(library(prolog_clause)). % needed for predicate_name/2?
 :- use_module(library(occurs)).
 
 :- set_prolog_flag(generate_debug_info, false).
