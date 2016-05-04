@@ -29,6 +29,7 @@
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+:- if((current_prolog_flag(autoload_yall,true);current_prolog_flag(xref,true))).
 :- module(yall,
 	  [ (>>)/2, (>>)/3, (>>)/4, (>>)/5, (>>)/6, (>>)/7, (>>)/8, (>>)/9,
 	    (/)/2, (/)/3, (/)/4, (/)/5, (/)/6, (/)/7, (/)/8, (/)/9,
@@ -517,3 +518,5 @@ sandbox:safe_meta(yall:Lambda, [Goal]) :-
 	compound_name_arity(Lambda, >>, Arity),
 	Arity >= 2,
 	lambda_calls(Lambda, Goal).
+
+:- endif.

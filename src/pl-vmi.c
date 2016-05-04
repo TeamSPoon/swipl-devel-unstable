@@ -2370,6 +2370,9 @@ VMI(I_EXITQUERY, 0, 0, ())
   QF->solutions++;
 
   assert(FR == &QF->top_frame);
+  /* ?- setup_call_cleanup_each(asserta(foo,REF),member(X,[1,2,3]),erase(REF)).
+
+    */
 
   if ( BFR == &QF->choice )		/* No alternatives */
   { set(QF, PL_Q_DETERMINISTIC);

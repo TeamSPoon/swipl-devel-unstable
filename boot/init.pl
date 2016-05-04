@@ -269,11 +269,13 @@ amsg(Goal):- notrace(
                   setup_call_cleanup_each(0,0,0),
                   call_cleanup_each(0,0).
 
-:- module_transparent(must_or_die/1).
-% must_or_die(Goal):- (catch(Goal,E,(writeq(E),nl,fail)) *-> notrace(true) ; (trace,Goal->true;throw(failed_must_or_die(Goal)))).
-must_or_die(Goal):- (Goal *-> true ; throw(failed_must_or_die(Goal))).
 
 :- '$hide'(true/0).
+
+:- module_transparent(must_or_die/1).
+:- '$hide'(must_or_die/1).
+% must_or_die(Goal):- (catch(Goal,E,(writeq(e_xxXXXXXX_xxxxxxxx_failed_must_or_die(E)),nl,fail)) *-> true ; (trace,Goal*->true;throw(failed_must_or_die(Goal)))).
+must_or_die(Goal):- (Goal *-> true ; throw(failed_must_or_die(Goal))).
 
 :- module_transparent(must_atomic/1).
 :- '$hide'(must_atomic/1).
@@ -285,35 +287,32 @@ must_notrace(Goal):- no_trace(must_or_die(Goal)).
 
 :- module_transparent(no_trace/1).
 :- '$hide'(no_trace/1).
-no_trace(G):-notrace((tracing,notrace))->
+no_trace(G):- notrace((tracing,notrace))->
    setup_call_cleanup_each(notrace(notrace),G,notrace(trace)); G.
 
-
-
+:- module_transparent(call_cleanup_each/2).
 :- '$hide'(call_cleanup_each/2).
 call_cleanup_each(Goal, Cleanup) :-
-	setup_call_cleanup_each(true, Goal, Cleanup).
+  setup_call_cleanup_each(true, Goal, Cleanup).
 
-/*
+:- module_transparent(setup_call_cleanup_each/3).
+:- '$hide'(setup_call_cleanup_each/3).
 
-:- if(\+ current_predicate(system:setup_call_cleanup_each/3)).
-setup_call_cleanup_each(Setup,Goal,Undo):-
+setup_call_cleanup_each(Setup,Goal,Cleanup):- current_prolog_flag(scce,Pred),Pred\==pure, !, call(Pred,Setup,Goal,Cleanup).
+setup_call_cleanup_each(Setup,Goal,Cleanup):- !, setup_call_cleanup(Setup,Goal,Cleanup).
+setup_call_cleanup_each(Setup,Goal,Cleanup):-
      catch((
         call((must_atomic(Setup),Goal,deterministic(Det),true))
         *->
         (Det == true
-         -> (once(Undo),!)
-          ; (once(Undo);(must_atomic(Setup),fail)))
-     ; (once(Undo),!,fail)),
-     E, (ignore(once(Undo)),throw(E))).
-:- endif.
+          -> (must_atomic(Cleanup),!)
+          ; (must_atomic(Cleanup);(must_atomic(Setup),fail)))
+     ; (must_atomic(Cleanup),!,fail)),
+     E, (ignore(must_atomic(Cleanup)),throw(E))).
 
-:- '$hide'(setup_call_cleanup_each/3).
-
-*/
 
 /*
-setup_call_cleanup_each(Setup,Goal,Undo):-
+setup_call_cleanup_each(Setup,Goal,Cleanup):-
    must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),!,   
    setup_call_cleanup(notrace(true),
    (( must_atomic(Setup),
@@ -321,10 +320,10 @@ setup_call_cleanup_each(Setup,Goal,Undo):-
      call((WasTrace,Goal,notrace,deterministic(Det),true))
         *->
         (Det == true
-         -> must_atomic(Undo)
-          ; (must_atomic(Undo);(must_atomic(Setup),fail)))
-     ; (must_atomic(Undo),fail)),
-     E, (must_atomic(Undo),throw(E))))),WasTrace).
+         -> must_atomic(Cleanup)
+          ; (must_atomic(Cleanup);(must_atomic(Setup),fail)))
+     ; (must_atomic(Cleanup),fail)),
+     E, (must_atomic(Cleanup),throw(E))))),WasTrace).
 */
 
 

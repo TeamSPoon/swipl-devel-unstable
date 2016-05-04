@@ -821,8 +821,8 @@ subst_chars([H|T]) -->
 '$execute_goal2'(Goal, Bindings) :-
 	notrace(restore_debug),
 	(residue_vars(Goal, Vars),
-        deterministic(Det)),
-        true,
+        deterministic(Det),
+        true),
 	(   save_debug
 	;   restore_debug, fail
 	),

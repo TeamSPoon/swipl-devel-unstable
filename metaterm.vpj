@@ -71,15 +71,24 @@
 	<Files AutoFolders="PackageView">
 		<Folder Name="/root">
 			<F N="/root/.bash_history"/>
+			<F N="/root/.pl-history"/>
 			<F N="/root/.swiplrc"/>
 			<F N="/root/.swiplrc.hide"/>
 			<F N="/root/.swiplrca"/>
+			<F N="/root/.xpce_emacs_server.ubuntu"/>
 		</Folder>
 		<Folder Name="boot">
 			<F N="boot/attvar.pl"/>
 			<F N="boot/init.pl"/>
 			<F N="boot/syspred.pl"/>
 			<F N="boot/toplevel.pl"/>
+		</Folder>
+		<Folder Name="C:/Users/Administrator/AppData/Roaming/SWI-Prolog">
+			<F N="C:/Users/Administrator/AppData/Roaming/SWI-Prolog/pl.ini"/>
+			<F N="C:/Users/Administrator/AppData/Roaming/SWI-Prolog/swipl.ini"/>
+		</Folder>
+		<Folder Name="C:/Users/Administrator/Documents/Prolog">
+			<F N="C:/Users/Administrator/Documents/Prolog/.ircbot.pl"/>
 		</Folder>
 		<Folder Name="library">
 			<F N="library/atts.pl"/>

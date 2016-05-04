@@ -1468,7 +1468,7 @@ print_statistics :-
         dra_getval_flag( number_of_answers, NAns ),
         dra_getval_flag( old_table_size, OldNAns ),
         TableGrowth is NAns - OldNAns,
-        dra_wln([step=NSteps,growth=TableGrowth,tabled=NAns]).
+        nop(dra_wln([step=NSteps,growth=TableGrowth,tabled=NAns])).
 
 
 

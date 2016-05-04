@@ -191,19 +191,21 @@ get_deterministic(ARG1_LD)
 typedef struct retry_next
 { int		magic;			/* RETRY_MAGIC */
   term_t   presetup;		/* Used for undo  */
+  fid_t   fid;
   qid_t    qid;		/* Used for redo  */
 } retry_next;
 
 
 static
-PRED_IMPL("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
+PRED_IMPL("$setup_call_cleanup_each_c", 3, dsetup_call_cleanup_each_c, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
 {
   PRED_LD
   retry_next *redo;
   redo = 0;
   int rval, det;
   term_t qex = 0;
-  
+  fid_t fid = 0;
+
   switch ( CTX_CNTRL )
   {
     case FRG_FIRST_CALL:
@@ -217,16 +219,24 @@ PRED_IMPL("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERM
         redo = CTX_PTR;
         if(redo->presetup) PL_reset_term_refs(redo->presetup);
       }
+      if ( !(redo->fid = PL_open_foreign_frame()) ) return FALSE;
       redo->presetup =  PL_new_term_ref();
 
+      if ( !(fid = PL_open_foreign_frame()) ) return FALSE;
       startCritical;
       rval = callProlog(NULL, A1, PL_Q_PASS_EXCEPTION, NULL);
       if ( !endCritical )
-        fail;       /* aborted */
+      {   PL_close_foreign_frame(fid);
+          fail;       /* aborted */
+      } else
+      {   PL_close_foreign_frame(fid);
+
+      }
       if ( rval!=TRUE )
       {
         return rval;
       }
+
       rval = PL_next_solution(redo->qid);
 
       DEBUG(MSG_NSOLS, Sdprintf("Resume %p\n", redo));
@@ -241,24 +251,81 @@ PRED_IMPL("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERM
       { PL_cut_query(redo->qid);
       }
 
+      if ( !(fid = PL_open_foreign_frame()) ) return FALSE;
       startCritical;
       callProlog(NULL, A3, PL_Q_PASS_EXCEPTION, NULL);
       if ( !endCritical )
         rval = 0;       /* aborted */
+      PL_close_foreign_frame(fid);
 
       if (qex)
       {
         PL_throw(qex);
+        PL_close_foreign_frame(redo->fid);
         return rval;
       }
 
       if(!rval) 
       { if(redo->presetup)
           PL_reset_term_refs(redo->presetup);
+        PL_close_foreign_frame(redo->fid);
         return FALSE;
       }
 
-      if (!det )ForeignRedoPtr(redo);
+      if (!det )
+      {
+        ForeignRedoPtr(redo);
+      } else
+      {
+        PL_close_foreign_frame(redo->fid);
+      }
+      return rval;
+
+    case FRG_CUTTED:
+      redo = CTX_PTR;
+      PL_cut_query(redo->qid);
+      PL_close_foreign_frame(redo->fid);
+      free(redo);
+      return TRUE;
+    default:
+      assert(0);
+      return FALSE;
+  }
+}
+
+static
+PRED_IMPL("$call_c", 1, dcall_c, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
+{
+  PRED_LD
+  retry_next *redo;
+  redo = 0;
+  int rval, det;
+  // fid_t fid = 0;
+
+  switch ( CTX_CNTRL )
+  {
+    case FRG_FIRST_CALL:
+      redo = malloc(sizeof(retry_next));
+      DEBUG(MSG_NSOLS, Sdprintf("Suspend %p\n", redo));
+      redo->magic = RETRY_MAGIC;
+      redo->qid = quidFromGoal(NULL,A1,PL_Q_NORMAL);
+
+    case FRG_REDO:
+      if(!redo)
+      {
+        redo = CTX_PTR;
+      }
+      rval = PL_next_solution(redo->qid);
+      if ( !rval )
+      { det = 1;       
+      } 
+      else
+      {
+        det = get_deterministic(PASS_LD1);
+      }
+      if ( det )
+      { PL_cut_query(redo->qid);
+      }
       return rval;
 
     case FRG_CUTTED:
@@ -266,6 +333,7 @@ PRED_IMPL("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERM
       PL_cut_query(redo->qid);
       free(redo);
       return TRUE;
+
     default:
       assert(0);
       return FALSE;
@@ -503,5 +571,6 @@ BeginPredDefs(cont)
   PRED_DEF("$start_reset",        0, start_reset,        0)
   PRED_DEF("shift",               1, shift,              0)
   PRED_DEF("$call_one_tail_body", 1, call_one_tail_body, 0)
-  PRED_DEF("setup_call_cleanup_each", 3, setup_call_cleanup_each, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
+  PRED_DEF("$setup_call_cleanup_each_c", 3, dsetup_call_cleanup_each_c, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
+  PRED_DEF("$call_c", 1, dcall_c, PL_FA_NONDETERMINISTIC|PL_FA_TRANSPARENT)
 EndPredDefs
