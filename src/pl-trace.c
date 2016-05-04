@@ -733,7 +733,7 @@ traceAction(char *cmd, int port, LocalFrame frame, Choice bfr,
 		debugmode(DBG_OFF, NULL);
 		return ACTION_CONTINUE;
     case 'g':	FeedBack("goals\n");
-		PL_backtrace(num_arg == Default ? 15 : num_arg, PL_BT_USER);
+		PL_backtrace(num_arg == Default ? 1500 : num_arg, PL_BT_USER);
 		return ACTION_AGAIN;
     case 'A':	FeedBack("alternatives\n");
 		alternatives(bfr);
@@ -1679,9 +1679,9 @@ again:
     case 'g':	Sfprintf(Sdout, "goals\n");
       #ifdef O_NOTRACE_JUST_DISABLES
           debugstatus.suspendTrace = 0;
-          PL_backtrace(15, PL_BT_USER);
+          PL_backtrace(1500, PL_BT_USER);
       #else
-          PL_backtrace(5, PL_BT_USER);
+          PL_backtrace(500, PL_BT_USER);
       #endif
 
 		goto again;
