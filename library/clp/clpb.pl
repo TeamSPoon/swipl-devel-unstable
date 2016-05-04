@@ -1547,7 +1547,8 @@ attribute_goals(Var) -->
                 { bdd_nodes(BDD, Nodes),
                   phrase(nodes(Nodes), Ns) },
                 [clpb:'$clpb_bdd'(Ns)]
-            ;   { phrase(sat_ands(Formula), Ands0),
+            ;   { prepare_global_variables(BDD),
+                  phrase(sat_ands(Formula), Ands0),
                   ands_fusion(Ands0, Ands),
                   maplist(formula_anf, Ands, ANFs0),
                   sort(ANFs0, ANFs1),
@@ -1569,6 +1570,30 @@ attribute_goals(Var) -->
         ).
 
 del_clpb(Var) :- del_attr(Var, clpb).
+
+/* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+   To make residual projection work with recorded constraints, the
+   global counters must be adjusted so that new variables and nodes
+   also get new IDs. Also, clpb_next_id/2 is used to actually create
+   these counters, because creating them with b_setval/2 would make
+   them [] on backtracking, which is quite unfortunate in itself.
+- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - */
+
+prepare_global_variables(BDD) :-
+        clpb_next_id('$clpb_next_var', V0),
+        clpb_next_id('$clpb_next_node', N0),
+        bdd_nodes(BDD, Nodes),
+        foldl(max_variable_node, Nodes, V0-N0, MaxV0-MaxN0),
+        MaxV is MaxV0 + 1,
+        MaxN is MaxN0 + 1,
+        b_setval('$clpb_next_var', MaxV),
+        b_setval('$clpb_next_node', MaxN).
+
+max_variable_node(Node, V0-N0, V-N) :-
+        node_id(Node, N1),
+        node_varindex(Node, V1),
+        N is max(N0,N1),
+        V is max(V0,V1).
 
 /* - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
    Fuse formulas that share the same variables into single conjunctions.

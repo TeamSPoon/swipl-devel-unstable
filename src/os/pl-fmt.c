@@ -30,6 +30,7 @@ source should also use format() to produce error messages, etc.
 #include "pl-ctype.h"
 #include "pl-utf8.h"
 #include <ctype.h>
+#include <stdio.h>
 
 #ifdef __CYGWIN__
 #include <stdio.h>
