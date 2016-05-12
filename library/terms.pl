@@ -30,13 +30,13 @@
 :- module(terms,
 	  [ term_hash/2,		% @Term, -HashKey
 	    term_hash/4,		% @Term, +Depth, +Range, -HashKey
-	    term_variables/2,		% @Term, -Variables
+	  %  term_variables/2,		% @Term, -Variables
 	    term_variables/3,		% @Term, -Variables, +Tail
 	    variant/2,			% @Term1, @Term2
-	    subsumes/2,			% +Generic, @Specific
-	    subsumes_chk/2,		% +Generic, @Specific
+	  %  subsumes/2,			% +Generic, @Specific
+	  %  subsumes_chk/2,		% +Generic, @Specific
 	    cyclic_term/1,		% @Term
-	    acyclic_term/1,		% @Term
+	  %  acyclic_term/1,		% @Term
 	    term_subsumer/3,		% +Special1, +Special2, -General
 	    term_factorized/3		% +Term, -Skeleton, -Subsitution
 	  ]).

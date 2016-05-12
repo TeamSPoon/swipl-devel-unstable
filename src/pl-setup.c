@@ -1191,6 +1191,7 @@ emptyStacks(void)
 
 #ifdef O_METATERM
     setupMetaterms(LD);
+    LD->notrace_hacks.break_at_level = 1000;
 #endif
 
     DEBUG(3, Sdprintf("attvar.tail at %p\n", valTermRef(LD->attvar.tail)));

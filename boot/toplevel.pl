@@ -819,7 +819,7 @@ subst_chars([H|T]) -->
 	fail.
 
 '$execute_goal2'(Goal, Bindings) :-
-	notrace(restore_debug),
+	once(restore_debug),
 	(residue_vars(Goal, Vars),
         deterministic(Det),
         true),

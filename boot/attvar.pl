@@ -83,7 +83,7 @@ system:goals_with_module(_,_).
 
 % FVs -> METATERM_UNIFY
 system:pre_unify(att('$atts',_Was,Rest),M:Next, Var, Value, Atom ):- !,
-  notrace((amsg(metaterm_unify(Atom, Var, Value )),
+  ((amsg(metaterm_unify(Atom, Var, Value )),
   (M==system->UM=user;UM=M))),
   % next line disabled from being a  variable is now disabled
   wo_metaterm(Var,with_metaterm(UM:metaterm_unify(Rest, Atom, Var, Value))),

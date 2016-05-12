@@ -429,6 +429,10 @@ struct PL_local_data
   } attvar;
 #endif
 
+  struct { int notrace_level; int break_at_level; }
+    notrace_hacks;
+  
+
   struct
   { int	in_dra;			/* recursion depth */
     Table	functor_to_ht_p;		/* functor --> hashTable<Module,ProcTries> */

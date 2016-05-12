@@ -245,7 +245,7 @@ amsgc(C):- ((amsg(C),C)).
 
 :- '$hide'(amsg/1).
 amsg(_):-!.
-amsg(Goal):- notrace(
+amsg(Goal):- once(
    ignore(( % current_prolog_flag(dmiles,true),
            wo_metaterm((ifdef(logicmoo_util_dmsg:dmsg(Goal),
                   format(user_error,'~N,~q~n',[Goal]))))))).
@@ -287,8 +287,8 @@ must_notrace(Goal):- no_trace(must_or_die(Goal)).
 
 :- module_transparent(no_trace/1).
 :- '$hide'(no_trace/1).
-no_trace(G):- notrace((tracing,notrace))->
-   setup_call_cleanup_each(notrace(notrace),G,notrace(trace)); G.
+no_trace(G):- ((tracing,notrace))->
+   setup_call_cleanup_each(notrace(notrace),G,(trace)); G.
 
 :- module_transparent(call_cleanup_each/2).
 :- '$hide'(call_cleanup_each/2).
@@ -310,21 +310,6 @@ setup_call_cleanup_each(Setup,Goal,Cleanup):-
      ; (must_atomic(Cleanup),!,fail)),
      E, (ignore(must_atomic(Cleanup)),throw(E))).
 
-
-/*
-setup_call_cleanup_each(Setup,Goal,Cleanup):-
-   must_notrace(((tracing,notrace)->WasTrace=trace;WasTrace=notrace)),!,   
-   setup_call_cleanup(notrace(true),
-   (( must_atomic(Setup),
-   catch((
-     call((WasTrace,Goal,notrace,deterministic(Det),true))
-        *->
-        (Det == true
-         -> must_atomic(Cleanup)
-          ; (must_atomic(Cleanup);(must_atomic(Setup),fail)))
-     ; (must_atomic(Cleanup),fail)),
-     E, (must_atomic(Cleanup),throw(E))))),WasTrace).
-*/
 
 
 :- '$hide'(with_no_wakeups/1).

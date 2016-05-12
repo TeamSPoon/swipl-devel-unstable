@@ -229,10 +229,20 @@ PRED_IMPL("notrace", 1, notrace, PL_FA_TRANSPARENT|PL_FA_NOTRACE)
 
 
 
+  
+  if (LD->notrace_hacks.notrace_level++ > LD->notrace_hacks.break_at_level)
+  {
+    trap_gdb();
+    DEBUG(0, Sdprintf("Exceeded LD->notrace_hacks.break_at_level of %d \n ",LD->notrace_hacks.break_at_level));
+
+    LD->notrace_hacks.break_at_level = LD->notrace_hacks.break_at_level * 2;
+    pl_break();
+  }
 
   rval = callProlog(NULL, A1, PL_Q_CATCH_EXCEPTION|PL_Q_NODEBUG, &ex);
 
   debugstatus.skiplevel    = skipSave;
+  LD->notrace_hacks.notrace_level--;
 
 #ifdef O_NOTRACE_JUST_DISABLES
   debugstatus.tracing      = traceSave;
