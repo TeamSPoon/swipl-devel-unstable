@@ -1191,6 +1191,8 @@ emptyStacks(void)
 
 #ifdef O_METATERM
     setupMetaterms(LD);
+#endif
+#ifdef O_CSTACK_CHECK
     LD->notrace_hacks.break_at_level = 1000;
 #endif
 

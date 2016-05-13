@@ -429,8 +429,13 @@ struct PL_local_data
   } attvar;
 #endif
 
-  struct { int notrace_level; int break_at_level; }
-    notrace_hacks;
+#ifdef O_CSTACK_CHECK  
+  struct 
+  { int notrace_level; 
+    int break_at_level; 
+  }
+  notrace_hacks;
+#endif
   
 
   struct

@@ -162,6 +162,8 @@ handy for it someone wants to add a data type to the system.
 #define O_METATERM 1
 /*#undef O_METATERM*/
 
+#define O_CSTACK_CHECK 1  /* for catching situations that C stack is being over utilized */
+
 #define O_NAUGHTY 1
 
 #define O_UNDO_HOOK 1
