@@ -1420,6 +1420,8 @@ PRED_IMPL("attv_bind", 2, attv_bind, 0)
   if (!isAttVar(*av) )
   { return PL_error("attv_bind", 2, NULL, ERR_UNINSTANTIATION, 1, A1);
   }
+
+  TrailAssignment(av);
   *av = linkVal(valTermRef(A2));
   return TRUE;
 }
