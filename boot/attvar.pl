@@ -55,8 +55,13 @@ in pl-attvar.c
 
 '$wakeup'([]).
 '$wakeup'(wakeup(Attribute, Value, Rest)) :-
-    call_all_attr_uhooks(Attribute, Value),
+    begin_call_all_attr_uhooks(Attribute, Value),
     '$wakeup'(Rest).
+
+begin_call_all_attr_uhooks(att('$VAR$', IDVar, Attrs),Value) :- !,
+    user:attr_pre_unify_hook(IDVar, Value, Attrs).
+begin_call_all_attr_uhooks(Attribute, Value) :-
+    call_all_attr_uhooks(Attribute, Value).
 
 call_all_attr_uhooks([], _).
 call_all_attr_uhooks(att(Module, AttVal, Rest), Value) :-
