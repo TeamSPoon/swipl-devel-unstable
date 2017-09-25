@@ -72,6 +72,7 @@ This module defines reusable code to colourise Prolog source.
     message//1,                     % +ColourClass
     term_colours/2,                 % +SourceTerm, -ColourSpec
     goal_colours/2,                 % +Goal, -ColourSpec
+    goal_colours/3,                 % +Goal, +Class, -ColourSpec
     directive_colours/2,            % +Goal, -ColourSpec
     goal_classification/2,          % +Goal, -Class
     vararg_goal_classification/3.   % +Name, +Arity, -Class
@@ -936,8 +937,12 @@ colourise_goal(Goal, _Origin, TB, Pos) :-
     colourise_term_arg(Goal, TB, Pos).
 colourise_goal(Goal, Origin, TB, Pos) :-
     nonvar(Goal),
-    goal_colours(Goal, ClassSpec-ArgSpecs),   % specified
-    !,
+    (   goal_classification(TB, Goal, Origin, ClassInferred),
+        goal_colours(Goal, ClassInferred, ClassSpec-ArgSpecs)
+    ->  true
+    ;   goal_colours(Goal, ClassSpec-ArgSpecs)
+    ),
+    !,                                          % specified
     functor_position(Pos, FPos, ArgPos),
     (   ClassSpec == classify
     ->  goal_classification(TB, Goal, Origin, Class)
@@ -1003,12 +1008,17 @@ colourization_module(TB, Module) :-
     ).
 
 colourise_goal_args(Goal, M, TB, term_position(_,_,_,_,ArgPos)) :-
-    meta_args(Goal, TB, MetaArgs),
     !,
-    colourise_meta_args(1, Goal, M, MetaArgs, TB, ArgPos).
-colourise_goal_args(Goal, M, TB, term_position(_,_,_,_,ArgPos)) :-
+    (   meta_args(Goal, TB, MetaArgs)
+    ->  colourise_meta_args(1, Goal, M, MetaArgs, TB, ArgPos)
+    ;   colourise_goal_args(1, Goal, M, TB, ArgPos)
+    ).
+colourise_goal_args(Goal, M, TB, brace_term_position(_,_,ArgPos)) :-
     !,
-    colourise_goal_args(1, Goal, M, TB, ArgPos).
+    (   meta_args(Goal, TB, MetaArgs)
+    ->  colourise_meta_args(1, Goal, M, MetaArgs, TB, [ArgPos])
+    ;   colourise_goal_args(1, Goal, M, TB, [ArgPos])
+    ).
 colourise_goal_args(_, _, _, _).                % no arguments
 
 colourise_goal_args(_, _, _, _, []) :- !.
@@ -2087,6 +2097,8 @@ def_style(flag_name(_),            [colour(blue)]).
 def_style(no_flag_name(_),         [colour(red)]).
 def_style(unused_import,           [colour(blue), background(pink)]).
 def_style(undefined_import,        [colour(red)]).
+
+def_style(constraint(_),           [colour(darkcyan)]).
 
 def_style(keyword(_),              [colour(blue)]).
 def_style(identifier,              [bold(true)]).
