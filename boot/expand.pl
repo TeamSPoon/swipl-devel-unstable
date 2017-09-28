@@ -1001,6 +1001,12 @@ replace_functions(Term0, Term0Pos, Eval, EvalPos, Term, TermPos, Ctx) :-
 replace_functions(Term, Pos, true, _, Term, Pos, _).
 
 
+not_meta_predicate_arg(Term0,Arg):- current_prolog_flag(scope_functions,true),
+    'predicate_property'(Term0,meta_predicate(MP)),!,
+   arg(Arg,MP,Type),\+ number(Type),Type\== (:).
+
+not_meta_predicate_arg(_,_).
+
 %!  map_functions(+Arg, +Arity,
 %!                +TermIn, +ArgInPos, -Term, -ArgPos, -Eval, -EvalPos,
 %!                +Context)
@@ -1011,6 +1017,7 @@ map_functions(Arity, Arity, _, LPos0, _, LPos, true, _, _) :-
 map_functions(I0, Arity, Term0, LPos0, Term, LPos, Eval, EP, Ctx) :-
     pos_list(LPos0, AP0, APT0, LPos, AP, APT),
     I is I0+1,
+    not_meta_predicate_arg(Term0,I),
     arg(I, Term0, Arg0),
     arg(I, Term, Arg),
     replace_functions(Arg0, AP0, Eval0, EP0, Arg, AP, Ctx),
@@ -1036,7 +1043,9 @@ conj(X, PX, Y, PY, (X,Y), P) :-
 %   True if function expansion needs to be applied for the given
 %   term.
 
-function(.(_,_), _) :- \+ current_prolog_flag(gvar_syntax,true), \+ functor([_|_], ., _).
+function(.(_,_), _) :- 
+   \+ current_prolog_flag(gvar_syntax_no_functions,true), 
+   \+ functor([_|_], ., _).
 
 
                  /*******************************
