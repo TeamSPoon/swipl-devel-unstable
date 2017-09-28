@@ -218,12 +218,11 @@ retract_topvar(Name, Value) :-
 %   Print known bindings for toplevel ($Var) variables.
 
 print_toplevel_variables :-
-    (   toplevel_var(Name, Value)
+    ignore(   toplevel_var(Name, Value)
     *-> format('$~w =~t~12|~p~n', [Name, Value]),
         fail
     ;   format('No defined toplevel variables~n')
     ).
-print_toplevel_variables.
 
 
 verbose_expansion(on) :-
