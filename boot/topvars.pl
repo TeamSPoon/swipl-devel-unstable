@@ -223,6 +223,8 @@ print_toplevel_variables :-
         fail
     ;   format('No defined toplevel variables~n')
     ).
+print_toplevel_variables.
+
 
 verbose_expansion(on) :-
     !,

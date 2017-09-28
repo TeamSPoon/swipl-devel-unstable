@@ -1036,7 +1036,7 @@ conj(X, PX, Y, PY, (X,Y), P) :-
 %   True if function expansion needs to be applied for the given
 %   term.
 
-function(.(_,_), _) :- \+ functor([_|_], ., _).
+function(.(_,_), _) :- \+ current_prolog_flag(gvar_syntax,false), \+ functor([_|_], ., _).
 
 
                  /*******************************

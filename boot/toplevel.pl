@@ -78,6 +78,9 @@ user:file_search_path(app_preferences, UserHome) :-
                  *         VERSION BANNER       *
                  *******************************/
 
+
+maybe_notrace :- current_prolog_flag(access_level,user)->notrace;true.
+
 :- dynamic
     prolog:version_msg/1.
 
@@ -949,7 +952,7 @@ save_debug_after_read.
 
 save_debug :-
     (   tracing,
-        notrace
+        maybe_notrace
     ->  Tracing = true
     ;   Tracing = false
     ),
@@ -1036,12 +1039,15 @@ subst_chars([H|T]) -->
     !,
     setup_call_cleanup(
         '$set_source_module'(M0, TypeIn),
-        expand_goal(Corrected, Expanded),
+        (current_prolog_flag(toplevel_goal_expansion,false)
+          -> Corrected = Expanded
+          ; expand_goal(Corrected, Expanded)
+         ),
         '$set_source_module'(M0)),
     print_message(silent, toplevel_goal(Expanded, Bindings)),
     '$execute_goal2'(Expanded, Bindings).
 '$execute'(_, _) :-
-    notrace,
+    maybe_notrace,
     print_message(query, query(no)).
 
 '$execute_goal2'(Goal, Bindings) :-
@@ -1063,12 +1069,12 @@ subst_chars([H|T]) -->
 residue_vars(Goal, Vars) :-
     current_prolog_flag(toplevel_residue_vars, true),
     !,
-    call_residue_vars(Goal, Vars).
+    '$current_typein_module'(TypeIn),TypeIn:call_residue_vars(Goal, Vars).
 residue_vars(Goal, []) :-
     toplevel_call(Goal).
 
 toplevel_call(Goal) :-
-    call(Goal),
+    '$current_typein_module'(TypeIn),TypeIn:call(Goal),
     no_lco.
 
 no_lco.
