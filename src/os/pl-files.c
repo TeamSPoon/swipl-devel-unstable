@@ -3,7 +3,7 @@
     Author:        Jan Wielemaker
     E-mail:        J.Wielemaker@vu.nl
     WWW:           http://www.swi-prolog.org
-    Copyright (c)  2011-2016, University of Amsterdam
+    Copyright (c)  2011-2017, University of Amsterdam
                               VU University Amsterdam
     All rights reserved.
 
@@ -141,7 +141,12 @@ LastModifiedFile(const char *name, double *tp)
   if ( statfunc(OsPath(name, tmp), &buf) < 0 )
     return FALSE;
 
+#ifdef HAVE_STRUCT_STAT_ST_MTIM
+  *tp = (double)buf.st_mtim.tv_sec + (double)buf.st_mtim.tv_nsec/1.0e9;
+#else
   *tp = (double)buf.st_mtime;
+#endif
+
   return TRUE;
 #endif
 }
